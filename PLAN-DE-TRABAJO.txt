@@ -1,0 +1,82 @@
+ARGENTINACITY 3000 - PLAN DE TRABAJO (reconstruccion desde cero)
+=================================================================
+Fecha: 2026-11-11
+Carpeta: E:\PROYECTO_CLAUDE_ARGENCITY (repo git nuevo; ORIGINAL/ queda fuera de git)
+
+OBJETIVO
+--------
+Un city-builder isometrico ORIGINAL, con identidad argentina (porteno + conurbano),
+que se juegue de punta a punta en el navegador. Mecanicas genericas del genero
+(zonas, demanda, energia, presupuesto); arte, interfaz y nombres propios.
+ORIGINAL/ solo se usa como referencia: ningun archivo, sprite, sonido ni formato
+de ahi entra al juego.
+
+STACK
+-----
+TypeScript + Vite + Canvas 2D + Vitest. Sin librerias de render. Arte generado
+por codigo (pixel art procedural), asi el juego no depende de ningun asset externo.
+
+QUE VAS A PODER HACER (v1)
+--------------------------
+1. Pantalla de inicio: nombre de la ciudad, semilla del mapa, "Nueva ciudad" / "Cargar".
+2. Mapa procedural de 128x128 con relieve suave (lomas), costa sobre un rio ancho
+   y un arroyo que cruza el mapa. Arboles (jacaranda, palo borracho, ombu).
+3. Camara isometrica: arrastrar para mover, rueda para zoom, 4 rotaciones, minimapa.
+4. Herramientas:
+   - Consulta (ficha de la celda)       - Calle (se traza arrastrando, en L)
+   - Bulldozer (rectangulo)             - Tendido electrico (arrastrando)
+   - Zona Residencial / Comercial / Industrial (rectangulo)
+   - Usina (2x2)                        - Plaza (rectangulo)
+   - Tamano de bloque 1x1 / 2x2 / 4x4: ajusta zonas, plazas y bulldozer al bloque.
+   Cada herramienta muestra el costo antes de soltar el mouse.
+5. Simulacion:
+   - Demanda R/C/I: la gente viene si hay laburo; comercio e industria siguen a la poblacion.
+   - Los lotes crecen en 4 niveles si tienen luz, calle cerca y demanda.
+     R: casita, chalet, PH, torre de departamentos
+     C: kiosco, almacen, galeria, edificio de oficinas
+     I: taller, galpon, fabrica, planta industrial
+   - Energia: las usinas tienen capacidad; la red viaja por calles, zonas y cables.
+     Si falta potencia hay apagon parcial.
+   - Contaminacion (industria y usinas) y valor del suelo (agua, plazas, arboles)
+     limitan hasta que nivel crece cada lote.
+   - Presupuesto mensual: impuestos ajustables (0-20 %), mantenimiento de calles,
+     cables, usinas y plazas. Caja inicial SIEMPRE. Con caja en rojo no se puede
+     construir y la ciudad deja de crecer hasta recuperarse.
+   - Fecha en pantalla (Ene 1990 en adelante), velocidades: pausa / lento / normal / rapido.
+6. Interfaz con paleta calida y fileteado porteno sutil:
+   barra superior (fecha, caja, poblacion, demanda RCI), barra de herramientas,
+   panel de presupuesto, capas (energia, contaminacion, valor del suelo),
+   "El Diario del Conurbano" con titulares segun lo que pasa en la ciudad.
+   Copy en espanol rioplatense; el jugador es "Intendente" (nunca "Alcalde").
+7. Guardado: 3 ranuras en el navegador + autoguardado anual.
+
+FUERA DE v1 (para despues)
+--------------------------
+Agua potable, transito, crimen, servicios (policia/bomberos/escuelas), desastres,
+audio, puentes, mapa real de OpenStreetMap.
+
+COMO LO VOY A CONSTRUIR (unidades de trabajo, una por commit aprox.)
+--------------------------------------------------------------------
+T1  Base: proyecto Vite+TS, RNG con semilla, proyeccion isometrica y rotaciones,
+    generador de terreno, tests.
+T2  Render: arte procedural (terreno, agua, arboles, calles, edificios), cache del
+    mapa, camara, picking del mouse con relieve.
+T3  Edicion: herramientas, validaciones, costos, previsualizacion al arrastrar.
+T4  Simulacion: energia, demanda, crecimiento, contaminacion, valor del suelo,
+    presupuesto, calendario.
+T5  Interfaz: barra superior, herramientas, presupuesto, consulta, capas, minimapa,
+    diario, pantalla de inicio.
+T6  Guardado/carga y autoguardado.
+T7  Balance y pulido: partida de prueba completa, ajuste de numeros, ayuda en pantalla.
+
+Cada unidad lleva tests (Vitest) de la logica pura; el seguimiento detallado queda
+en odd/tasks/argencity-3000.md.
+
+DECISIONES QUE TOME POR DEFECTO (decime si alguna no te cierra)
+---------------------------------------------------------------
+- Edificios de 1 celda (las usinas ocupan 2x2). El "bloque" 2x2/4x4 que habias
+  elegido antes queda como opcion de pintado, no como tamano fijo de edificio.
+- Calles de una celda de ancho; no se puede construir sobre agua (sin puentes en v1).
+- Caja inicial: $30.000. Impuesto inicial: 7 %.
+- Tiempo: 60 ticks = 1 mes; a velocidad normal, un mes dura unos 6 segundos.
+- Sin "game over": con la caja en rojo la ciudad se congela hasta que se recupera.
