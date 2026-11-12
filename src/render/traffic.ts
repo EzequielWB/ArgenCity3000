@@ -168,25 +168,97 @@ export class Traffic {
 
 const CAR_COLORS = ['#c8392f', '#f4f0e6', '#2f63a6', '#3c8d4a', '#7d7f86', '#e0a526', '#6b3fa0'];
 
-interface DrawItem {
-  key: number;
-  car?: Car;
-  obj?: PlacedSprite;
+/** Where a car is: its view cell (for the drawing order) and its position on the screen. */
+export interface CarSpot {
+  id: number;
+  vx: number;
+  vy: number;
+  sx: number;
+  sy: number;
+}
+
+export interface ClipBox {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+/** Pixels around a car's position that its drawing can touch: the box objects are redrawn into. */
+export const CAR_BOX = { side: 6, up: 6, down: 4 };
+
+/**
+ * How far in front of a car (in view cells) something can still cover it: the tallest sprite
+ * is about 112 px, which is 14 cells of the diagonal; and how far to each side of its column.
+ */
+const FRONT_REACH = 15;
+const FRONT_SIDE = 3;
+
+export interface OverdrawOp<T extends CarSpot = CarSpot> {
+  car: T;
+  /** The only area the car and the objects in front of it can affect. */
+  clip: ClipBox;
+  /** Objects drawn after the car's cell that overlap its box, in drawing order. */
+  objects: PlacedSprite[];
 }
 
 /**
- * Draws the visible cars in painter's order: each car goes right after its own cell, and
- * every object drawn later that overlaps it (houses, trees, plants in front) is drawn again
- * on top, so cars pass behind buildings instead of over them.
+ * For each car, in drawing order, the objects that stand in front of it (drawn after its cell)
+ * and overlap it. Whatever they cover is taken off the car, inside the car's box only:
+ * painting those sprites over the map again would also paint over the neighbours in front of
+ * them, and buildings would flicker on top of each other wherever a car goes by.
+ */
+export function planOverdraw<T extends CarSpot>(cars: readonly T[], map: Pick<MapRenderer, 'objectAt'>, n: number): OverdrawOp<T>[] {
+  const cache = new Map<number, PlacedSprite | null>();
+  const objectAt = (vx: number, vy: number): PlacedSprite | null => {
+    const k = vy * n + vx;
+    let o = cache.get(k);
+    if (o === undefined) {
+      o = map.objectAt(vx, vy);
+      cache.set(k, o);
+    }
+    return o;
+  };
+  const ops: OverdrawOp<T>[] = [];
+  for (const car of cars) {
+    const clip: ClipBox = { x0: car.sx - CAR_BOX.side, x1: car.sx + CAR_BOX.side, y0: car.sy - CAR_BOX.up, y1: car.sy + CAR_BOX.down };
+    const key = car.vy * n + car.vx;
+    const found: { key: number; obj: PlacedSprite }[] = [];
+    // Cells t steps down the diagonal and e columns off it: dx + dy = t, dx - dy = e.
+    for (let t = 1; t <= FRONT_REACH; t++) {
+      for (let e = -FRONT_SIDE; e <= FRONT_SIDE; e++) {
+        if ((t + e) % 2 !== 0) continue;
+        const dx = (t + e) / 2;
+        const dy = (t - e) / 2;
+        const vx = car.vx + dx;
+        const vy = car.vy + dy;
+        if (vx < 0 || vy < 0 || vx >= n || vy >= n) continue;
+        const k = vy * n + vx;
+        if (k <= key) continue;
+        const obj = objectAt(vx, vy);
+        if (!obj) continue;
+        const left = obj.ax - obj.sprite.ax;
+        const top = obj.ay - obj.sprite.ay;
+        if (left + obj.sprite.canvas.width <= clip.x0 || left >= clip.x1 || top + obj.sprite.canvas.height <= clip.y0 || top >= clip.y1) continue;
+        found.push({ key: k, obj });
+      }
+    }
+    found.sort((a, b) => a.key - b.key);
+    ops.push({ car, clip, objects: found.map((f) => f.obj) });
+  }
+  return ops.sort((a, b) => a.car.vy * n + a.car.vx - (b.car.vy * n + b.car.vx));
+}
+
+/**
+ * Draws the visible cars so they pass behind buildings instead of over them: each car loses
+ * the pixels that the objects in front of it cover (see `planOverdraw`).
  */
 export function drawTraffic(g: CanvasRenderingContext2D, traffic: Traffic, map: MapRenderer, visible: [number, number, number, number]): void {
   const w = traffic.world;
   const n = w.n;
   const rot = map.rot;
   const [x0, y0, x1, y1] = visible;
-  const items: DrawItem[] = [];
-  const occluders = new Set<number>();
-  const screen = new Map<number, { sx: number; sy: number; sdx: number; sdy: number }>();
+  const spots: (CarSpot & { ref: Car; sdx: number; sdy: number })[] = [];
 
   for (const c of traffic.cars) {
     const [px, py] = traffic.position(c);
@@ -199,32 +271,62 @@ export function drawTraffic(g: CanvasRenderingContext2D, traffic: Traffic, map: 
     const sy = oy + map.originY;
     if (sx < x0 - 10 || sx > x1 + 10 || sy < y0 - 10 || sy > y1 + 10) continue;
     const [rdx, rdy] = rotateDir(c.dx, c.dy, rot);
-    screen.set(c.id, { sx, sy, sdx: rdx - rdy, sdy: (rdx + rdy) / 2 });
-    const key = cvy * n + cvx;
-    items.push({ key: key + 0.5, car: c });
-    // Objects drawn after this cell that may cover the car.
-    for (let oy2 = cvy; oy2 <= Math.min(n - 1, cvy + 6); oy2++) {
-      for (let ox2 = Math.max(0, cvx - 1); ox2 <= Math.min(n - 1, cvx + 6); ox2++) {
-        const k = oy2 * n + ox2;
-        if (k <= key || occluders.has(k)) continue;
-        const obj = map.objectAt(ox2, oy2);
-        if (!obj) continue;
-        const left = obj.ax - obj.sprite.ax;
-        const top = obj.ay - obj.sprite.ay;
-        if (sx + 4 < left || sx - 4 > left + obj.sprite.canvas.width || sy + 4 < top || sy - 6 > top + obj.sprite.canvas.height) continue;
-        occluders.add(k);
-        items.push({ key: k, obj });
-      }
-    }
+    spots.push({ id: c.id, vx: cvx, vy: cvy, sx, sy, ref: c, sdx: rdx - rdy, sdy: (rdx + rdy) / 2 });
   }
-  items.sort((a, b) => a.key - b.key);
-  for (const it of items) {
-    if (it.obj) {
-      g.drawImage(it.obj.sprite.canvas, Math.round(it.obj.ax - it.obj.sprite.ax), Math.round(it.obj.ay - it.obj.sprite.ay));
-    } else if (it.car) {
-      drawCar(g, it.car, screen.get(it.car.id)!, traffic.alpha(it.car));
+
+  const ops = planOverdraw(spots, map, n);
+  if (ops.length === 0) return;
+
+  // All the cars go on one layer the size of the screen, with the map's own transform (zoom,
+  // pan), so each looks exactly as if it were drawn straight on the map. Each car is drawn and
+  // then loses the pixels that the objects in front of it cover. The layer is pasted once at
+  // the end, so the map itself is never painted over and the canvas is not switched per car.
+  const m = g.getTransform();
+  const lg = layerContext(g.canvas.width, g.canvas.height);
+  lg.setTransform(1, 0, 0, 1, 0, 0);
+  lg.clearRect(0, 0, g.canvas.width, g.canvas.height);
+  lg.imageSmoothingEnabled = g.imageSmoothingEnabled;
+  lg.setTransform(m);
+  for (const op of ops) {
+    drawCar(lg, op.car.ref, op.car, traffic.alpha(op.car.ref));
+    if (op.objects.length === 0) continue;
+    lg.globalCompositeOperation = 'destination-out';
+    // Only the part of each sprite inside the car's box matters: copy just that (the sprites
+    // sit on whole pixels, so source and destination match one to one).
+    const cx0 = Math.floor(op.clip.x0);
+    const cy0 = Math.floor(op.clip.y0);
+    const cx1 = Math.ceil(op.clip.x1);
+    const cy1 = Math.ceil(op.clip.y1);
+    for (const o of op.objects) {
+      const left = Math.round(o.ax - o.sprite.ax);
+      const top = Math.round(o.ay - o.sprite.ay);
+      const ix0 = Math.max(left, cx0);
+      const iy0 = Math.max(top, cy0);
+      const ix1 = Math.min(left + o.sprite.canvas.width, cx1);
+      const iy1 = Math.min(top + o.sprite.canvas.height, cy1);
+      if (ix1 <= ix0 || iy1 <= iy0) continue;
+      lg.drawImage(o.sprite.canvas, ix0 - left, iy0 - top, ix1 - ix0, iy1 - iy0, ix0, iy0, ix1 - ix0, iy1 - iy0);
     }
+    lg.globalCompositeOperation = 'source-over';
   }
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.drawImage(layer!, 0, 0);
+  g.restore();
+}
+
+let layer: HTMLCanvasElement | null = null;
+let layerCtx: CanvasRenderingContext2D | null = null;
+
+/** The cars' layer: a canvas of exactly the size of the screen canvas. */
+function layerContext(w: number, h: number): CanvasRenderingContext2D {
+  if (!layer || !layerCtx) {
+    layer = document.createElement('canvas');
+    layerCtx = layer.getContext('2d')!;
+  }
+  if (layer.width !== w) layer.width = w;
+  if (layer.height !== h) layer.height = h;
+  return layerCtx;
 }
 
 function drawCar(g: CanvasRenderingContext2D, c: Car, s: { sx: number; sy: number; sdx: number; sdy: number }, alpha: number): void {
