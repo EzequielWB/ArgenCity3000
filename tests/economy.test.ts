@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FUNDING, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH } from '../src/config';
+import { DEFAULT_FUNDING, FIXED_SHARE, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH, type ServiceKind } from '../src/config';
 import { SAVE_VERSION, deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { computeDemand } from '../src/sim/demand';
-import { computeServices } from '../src/sim/fields';
+import { computeServices, residentsServed } from '../src/sim/fields';
 import { headlinesFor, type CitySnapshot } from '../src/sim/news';
 import { computePower } from '../src/sim/power';
 import { Simulation, newSimState } from '../src/sim/simulation';
@@ -71,13 +71,20 @@ describe('taxes per zone', () => {
   });
 });
 
+/** The upkeep a service of the town costs at `percent` funding: its use-based cost times the funding share. */
+function upkeepAt(w: World, kind: ServiceKind, x: number, y: number, percent: number): number {
+  const use = Math.min(1, residentsServed(w, w.idx(x, y), kind) / SERVICES[kind].capacity);
+  return Math.round((SERVICES[kind].upkeep * (FIXED_SHARE + (1 - FIXED_SHARE) * use) * percent) / 100);
+}
+
 describe('service funding', () => {
   it('costs its share of the upkeep', () => {
     const w = town();
     const half = monthlyBudget(w, even(7), { ...fullFunding, school: 50, police: 0 });
-    expect(half.schools).toBe(Math.round(SERVICES.school.upkeep / 2));
+    expect(half.schools).toBe(upkeepAt(w, 'school', 11, 5, 50));
+    expect(half.schools).toBeLessThan(Math.round(SERVICES.school.upkeep / 2));
     expect(half.police).toBe(0);
-    expect(half.clinics).toBe(SERVICES.clinic.upkeep);
+    expect(half.clinics).toBe(upkeepAt(w, 'clinic', 11, 7, 100));
     expect(half.expenses).toBe(half.roads + half.lines + half.parks + half.plants + half.services + half.schools + half.clinics + half.police + half.firefighters);
   });
 
@@ -112,7 +119,7 @@ describe('service funding', () => {
     const sim = new Simulation(town(), newSimState(1), 'X');
     sim.setFunding('school', 50);
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
-    expect(sim.state.lastBudget!.schools).toBe(Math.round(SERVICES.school.upkeep / 2));
+    expect(sim.state.lastBudget!.schools).toBe(upkeepAt(sim.world, 'school', 11, 5, 50));
   });
 });
 

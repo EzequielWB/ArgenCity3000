@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
-import { World } from '../src/world/world';
+import { TILE, World } from '../src/world/world';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { buildingName, describeCell } from '../src/sim/report';
@@ -93,6 +93,28 @@ describe('describeCell', () => {
     expect(on.lines.join(' ')).toMatch(/Con luz/);
     expect(on.lines.join(' ')).toMatch(/Radio: 11 lotes/);
     expect(on.lines.join(' ')).toMatch(/6\.000 vecinos/);
+  });
+
+  it('shows how many neighbours a service attends and what it costs to keep today', () => {
+    const { w, sim, b } = setup();
+    b('plant', 0, 0);
+    b('road', 2, 0, 2, 8);
+    b('road', 3, 8, 7, 8);
+    b('school', 8, 8);
+    sim.refresh();
+    const empty = describeCell(w, sim, 8, 8).lines.join(' | ');
+    expect(empty).toMatch(/Atiende a 0 de 6.000 vecinos/);
+    expect(empty).toMatch(/Mantenimiento: \$65 por mes/); // an unused school costs its fixed quarter of $260
+    expect(empty).not.toMatch(/\$260/);
+    b('zoneR', 9, 8, 12, 11); // 16 lots
+    for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === TILE.R) w.level[i] = 3;
+    sim.refresh();
+    const used = describeCell(w, sim, 8, 8).lines.join(' | ');
+    expect(used).toMatch(/Atiende a 960 de 6.000 vecinos/);
+    // 260 x (0.25 + 0.75 x 960 / 6000) = 96.2
+    expect(used).toMatch(/Mantenimiento: \$96 por mes/);
+    sim.setFunding('school', 50);
+    expect(describeCell(w, sim, 8, 8).lines.join(' | ')).toMatch(/Mantenimiento: \$48 por mes/);
   });
 
   it('shows the coverage of every service on a lot', () => {

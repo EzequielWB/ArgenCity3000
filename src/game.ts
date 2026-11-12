@@ -9,7 +9,9 @@ import { Minimap } from './render/minimap';
 import { View, type Layer } from './render/view';
 import type { SaveData } from './save/save';
 import { saveToSlot } from './save/slots';
-import { dateLabel } from './sim/calendar';
+import { monthlyBudget, type BudgetReport } from './sim/budget';
+import { dateLabel, weekLabel } from './sim/calendar';
+import { describeOutlook, placementUpkeep } from './sim/outlook';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { TOOL_ICONS } from './ui/icons';
@@ -82,6 +84,9 @@ export class Game implements PointerTarget {
   private raf = 0;
   private detach: () => void;
   private shownNews = '';
+  /** The month's estimated budget shown in the top bar: recomputed a few times per second and after edits. */
+  private outlookBudget: BudgetReport | null = null;
+  private outlookAt = 0;
   private keyboardPan = { x: 0, y: 0 };
   /** Fires already announced with the siren. */
   private firesHeard = 0;
@@ -343,6 +348,7 @@ export class Game implements PointerTarget {
   }
 
   private afterEdit(): void {
+    this.outlookAt = 0;
     this.sim.refresh();
     this.view.invalidateLayer();
     this.view.refreshTraffic();
@@ -399,7 +405,8 @@ export class Game implements PointerTarget {
       tip.textContent = `${formatMoney(plan.cost)} · no alcanza`;
       tip.classList.add('bad');
     } else {
-      tip.textContent = `${formatMoney(plan.cost)}${plan.cells.length > 1 ? ` · ${plan.cells.length} lotes` : ''}`;
+      const upkeep = placementUpkeep(this.tool);
+      tip.textContent = `${formatMoney(plan.cost)}${plan.cells.length > 1 ? ` · ${plan.cells.length} lotes` : ''}${upkeep ? ` · ${upkeep}` : ''}`;
       tip.classList.remove('bad');
     }
   }
@@ -491,10 +498,11 @@ export class Game implements PointerTarget {
 
   updateHud(force: boolean): void {
     const s = this.sim.state;
-    $('#date').textContent = dateLabel(s.tick);
+    $('#date').textContent = weekLabel(s.tick);
     const cash = $('#cash');
     cash.textContent = formatMoney(s.cash);
     cash.classList.toggle('neg', s.cash < 0);
+    this.updateOutlook(force);
     $('#pop').textContent = formatNumber(this.sim.totals.pop);
     $('#cityType').textContent = settlementType(this.sim.totals.pop);
     const bars = document.querySelectorAll<HTMLElement>('#rci .bar i');
@@ -518,6 +526,24 @@ export class Game implements PointerTarget {
     }
     if (this.queried) this.renderInfo();
     if (force) this.updateStatus();
+  }
+
+  /** Estimated monthly balance next to the cash, with how long the cash lasts when it is short. */
+  private updateOutlook(force: boolean): void {
+    const s = this.sim.state;
+    const now = performance.now();
+    if (force || !this.outlookBudget || now - this.outlookAt > 400) {
+      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding);
+      this.outlookAt = now;
+    }
+    const o = describeOutlook(this.outlookBudget, s.cash);
+    const text = $('#balanceText');
+    text.textContent = o.balanceText;
+    text.className = `tone-${o.balanceTone}`;
+    const runway = $('#runway');
+    runway.textContent = o.runwayText ? ` · ${o.runwayText}` : '';
+    runway.className = o.runwayTone ? `tone-${o.runwayTone}` : '';
+    $('#balance').title = o.tooltip;
   }
 
   private renderInfo(): void {

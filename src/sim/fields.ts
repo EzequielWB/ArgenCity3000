@@ -108,6 +108,33 @@ function coverageField(w: World, kind: ServiceKind): Uint8Array {
 }
 
 /**
+ * Residents inside the radius of the service at cell `i`: the people of the occupied homes
+ * (built, not abandoned, not burning) within reach. Coverage (`computeServices`) and upkeep
+ * (`monthlyBudget`) both read this, so what a service covers and what it costs agree.
+ */
+export function residentsServed(w: World, i: number, kind: ServiceKind): number {
+  const n = w.n;
+  const { radius } = SERVICES[kind];
+  const cx = i % n;
+  const cy = (i - cx) / n;
+  const r2 = radius * radius;
+  let residents = 0;
+  for (let y = Math.max(0, cy - radius); y <= Math.min(n - 1, cy + radius); y++) {
+    for (let x = Math.max(0, cx - radius); x <= Math.min(n - 1, cx + radius); x++) {
+      if ((x - cx) ** 2 + (y - cy) ** 2 > r2) continue;
+      const j = y * n + x;
+      if (w.tiles[j] === TILE.R && w.isOccupied(j)) residents += CAPACITY.R[w.level[j]];
+    }
+  }
+  return residents;
+}
+
+/** Share of a service's capacity in use, from 0 to 1. */
+export function utilization(w: World, i: number, kind: ServiceKind): number {
+  return Math.min(1, residentsServed(w, i, kind) / SERVICES[kind].capacity);
+}
+
+/**
  * Coverage of every public service. A powered service covers a disc of its radius, fading a
  * little towards the edge; if more residents live in the disc than it can serve, its
  * coverage drops in proportion. Overlapping services of the same kind add up to 100.
@@ -126,14 +153,7 @@ export function computeServices(w: World, funding: Readonly<ServiceFunding> = DE
     const cx = i % n;
     const cy = (i - cx) / n;
     const r2 = radius * radius;
-    let residents = 0;
-    for (let y = Math.max(0, cy - radius); y <= Math.min(n - 1, cy + radius); y++) {
-      for (let x = Math.max(0, cx - radius); x <= Math.min(n - 1, cx + radius); x++) {
-        if ((x - cx) ** 2 + (y - cy) ** 2 > r2) continue;
-        const j = y * n + x;
-        if (w.tiles[j] === TILE.R && w.isOccupied(j)) residents += CAPACITY.R[w.level[j]];
-      }
-    }
+    const residents = residentsServed(w, i, kind);
     const efficiency = Math.min(1, capacity / Math.max(1, residents)) * (funding[kind] / 100);
     const field = coverageField(w, kind);
     for (let y = Math.max(0, cy - radius); y <= Math.min(n - 1, cy + radius); y++) {

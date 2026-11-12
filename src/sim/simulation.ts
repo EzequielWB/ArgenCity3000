@@ -7,6 +7,8 @@ import {
   MAX_TAX,
   MIN_TAX,
   TICKS_PER_MONTH,
+  TICKS_PER_WEEK,
+  WEEKS_PER_MONTH,
   type ServiceFunding,
   type ServiceKind,
   type ZoneTaxes,
@@ -15,10 +17,11 @@ import { Rng } from '../core/rng';
 import { World, zoneOf, type ZoneKind } from '../world/world';
 import { buildingName } from './report';
 import { monthlyBudget, type BudgetReport } from './budget';
-import { dateLabel, dateOf } from './calendar';
+import { cumulativeShare, dateLabel, dateOf } from './calendar';
 import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computePollution, computeRoadAccess, computeServices } from './fields';
-import { FILLERS, headlinesFor, type CitySnapshot, type NewsItem } from './news';
+import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
+import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
 import { computePower, type PowerReport } from './power';
 
 export interface SimState {
@@ -93,6 +96,10 @@ export class Simulation {
   private burning = new Set<number>();
   private fireNews = 0;
 
+  /** What this month's weekly settlements have already moved (not saved; see the constructor). */
+  private monthPaid = 0;
+  /** Months in a row in which the public services outweighed the income (not saved; see `hints`). */
+  private servicesStreak = 0;
   private rng: Rng;
   private seenNetwork = -1;
   private prevSnapshot: CitySnapshot;
@@ -104,8 +111,9 @@ export class Simulation {
     this.rng = new Rng(state.rngState);
     this.refresh();
     this.prevSnapshot = this.snapshot();
+    this.monthPaid = this.paidSoFar();
     if (state.tick === 0 && state.news.length === 0) {
-      this.publish(`Se funda ${cityName}: el Intendente promete calles, luz y progreso`);
+      this.publish(`Se funda ${cityName}: el Intendente promete calles, luz y progreso`, true);
     }
   }
 
@@ -181,6 +189,7 @@ export class Simulation {
     this.grow();
     s.tick++;
     if (s.tick % TICKS_PER_MONTH === 0) this.endOfMonth();
+    else if (s.tick % TICKS_PER_WEEK === 0) this.settleWeek();
     s.rngState = this.rng.state;
   }
 
@@ -317,14 +326,40 @@ export class Simulation {
     }
   }
 
+  /**
+   * Weeks 1 to 3 of a month collect and pay the cumulative quarter of the budget as it stands now;
+   * week 4 (see `endOfMonth`) settles the rest, so the month always adds up to its balance.
+   */
+  private settleWeek(): void {
+    const s = this.state;
+    const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding).balance, week);
+    s.cash += due - this.monthPaid;
+    this.monthPaid = due;
+    s.crisis = s.cash < 0;
+  }
+
+  /**
+   * The part of this month's balance already settled when the simulation starts: zero at the
+   * start of a month, an estimate from the current budget for a game saved in the middle of one.
+   */
+  private paidSoFar(): number {
+    const s = this.state;
+    const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
+    if (week === 0) return 0;
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+  }
+
   private endOfMonth(): void {
     const s = this.state;
     const w = this.world;
     this.fireNews = 0;
+    this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
     const budget = monthlyBudget(w, s.taxes, s.funding);
     s.lastBudget = budget;
-    s.cash += budget.balance;
+    s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
+    this.monthPaid = 0;
     s.crisis = s.cash < 0;
     this.totals = cityTotals(w);
     this.abandonedCount = countAbandoned(w);
@@ -333,10 +368,13 @@ export class Simulation {
     if (s.history.length > MAX_HISTORY) s.history.shift();
 
     const snap = this.snapshot();
-    const lines = headlinesFor(this.prevSnapshot, snap, this.cityName);
-    lines.push(...this.hints());
-    if (lines.length === 0 && this.rng.chance(0.3)) lines.push(this.rng.pick(FILLERS));
-    for (const l of lines) this.publish(l);
+    if (this.paperOpen()) {
+      const lines = headlinesFor(this.prevSnapshot, snap, this.cityName);
+      lines.push(...this.hints());
+      if (lines.length === 0 && this.rng.chance(0.3)) lines.push(this.rng.pick(FILLERS));
+      for (const l of lines) this.publish(l, true); // the paper is open here
+    }
+    // While the paper is closed the snapshot still advances: those events are never reported.
     this.prevSnapshot = snap;
   }
 
@@ -372,6 +410,13 @@ export class Simulation {
     hint('appetite', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) > APPETITE_MAX_TAX, 'Con tasas tan altas, nadie quiere mudarse: la ciudad dejó de atraer gente');
     hint('blight', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) <= APPETITE_MAX_TAX && this.abandonedCount > 0, 'El abandono espanta a los nuevos vecinos: hay que recuperar o demoler los edificios vacíos');
     hint('smog', smog > 5, 'Vecinos se quejan del humo de las fábricas');
+    const b = s.lastBudget;
+    if (b) {
+      const runway = runwayHeadline(b, s.cash);
+      hint('runway', runway !== null, runway ?? '');
+      this.servicesStreak = servicesOutweighIncome(b) ? this.servicesStreak + 1 : 0;
+      hint('servicesCost', this.servicesStreak >= 2, servicesCostHeadline(b) ?? '');
+    }
     return out;
   }
 
@@ -394,7 +439,25 @@ export class Simulation {
     };
   }
 
-  private publish(text: string): void {
+  /**
+   * The newspaper writes only once it has "opened": the founding headline does not count, and an
+   * opened paper never closes again. Derived from the saved news, so nothing extra is stored.
+   */
+  private paperOpen(): boolean {
+    return this.state.news.length > 1;
+  }
+
+  /** Opens the paper (with its opening headline) when the city has enough of each basic zone; true when open. */
+  private openPaper(): boolean {
+    if (this.paperOpen()) return true;
+    if (!paperCanOpen(this.world)) return false;
+    this.publish(`El Diario del Conurbano sale a la calle: ya hay vecinos, comercios y fábricas en ${this.cityName}`, true);
+    return true;
+  }
+
+  /** Adds a headline. Only the founding and opening ones (`force`) may be written while the paper is closed. */
+  private publish(text: string, force = false): void {
+    if (!force && !this.paperOpen()) return;
     this.state.news.unshift({ date: dateLabel(this.state.tick), text });
     if (this.state.news.length > MAX_NEWS) this.state.news.length = MAX_NEWS;
   }

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { World, TILE } from '../src/world/world';
 import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools';
-import { SERVICES, TICKS_PER_MONTH } from '../src/config';
+import { FIXED_SHARE, SERVICES, TICKS_PER_MONTH } from '../src/config';
 import { computePower } from '../src/sim/power';
-import { computeCrime, computeLandValue, computePollution, computeServices } from '../src/sim/fields';
+import { computeCrime, computeLandValue, computePollution, computeServices, residentsServed } from '../src/sim/fields';
 import { cityTotals, levelCap } from '../src/sim/demand';
 import { monthlyBudget } from '../src/sim/budget';
 import { Simulation, newSimState } from '../src/sim/simulation';
@@ -125,38 +125,131 @@ describe('levelCap with services', () => {
   });
 });
 
+/** The four services in the middle of a field of homes of the given level: they all serve the same people. */
+function servicesAmongHomes(level: number, funding?: Parameters<typeof monthlyBudget>[2]) {
+  const w = new World(flat());
+  build(w, 'zoneR', 14, 14, 26, 26);
+  for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === TILE.R) w.level[i] = level;
+  const cells = { school: [19, 20], clinic: [20, 20], police: [21, 20], fire: [22, 20] } as const;
+  for (const [kind, [x, y]] of Object.entries(cells)) place(w, kind as 'school' | 'clinic' | 'police' | 'fire', x, y);
+  return { w, cells, budget: monthlyBudget(w, 7, funding) };
+}
+
 describe('budget with services', () => {
-  it('charges each service type its upkeep and adds it to the expenses', () => {
+  it('charges an unused service only its fixed share of the upkeep, and adds it to the expenses', () => {
     const w = new World(flat());
     build(w, 'school', 3, 3);
     build(w, 'school', 3, 5);
     build(w, 'clinic', 5, 3);
     build(w, 'police', 7, 3);
     build(w, 'fire', 9, 3);
-    const b = monthlyBudget(w, 7);
-    expect(b.schools).toBe(2 * SERVICES.school.upkeep);
-    expect(b.clinics).toBe(SERVICES.clinic.upkeep);
-    expect(b.police).toBe(SERVICES.police.upkeep);
-    expect(b.firefighters).toBe(SERVICES.fire.upkeep);
+    expect(FIXED_SHARE).toBe(0.25);
+    const b = monthlyBudget(w, 7); // no field was computed first, and nobody lives nearby
+    expect(b.schools).toBe(Math.round(2 * SERVICES.school.upkeep * FIXED_SHARE));
+    expect(b.clinics).toBe(Math.round(SERVICES.clinic.upkeep * FIXED_SHARE));
+    expect(b.police).toBe(Math.round(SERVICES.police.upkeep * FIXED_SHARE));
+    expect(b.firefighters).toBe(Math.round(SERVICES.fire.upkeep * FIXED_SHARE));
     expect(b.expenses).toBe(b.roads + b.lines + b.parks + b.plants + b.services + b.schools + b.clinics + b.police + b.firefighters);
+  });
+
+  it('charges the whole upkeep to a service used to its capacity', () => {
+    const { w, cells, budget } = servicesAmongHomes(4);
+    for (const kind of ['school', 'clinic', 'police', 'fire'] as const) {
+      const [x, y] = cells[kind];
+      expect(residentsServed(w, w.idx(x, y), kind)).toBeGreaterThanOrEqual(SERVICES[kind].capacity);
+    }
+    expect(budget.schools).toBe(SERVICES.school.upkeep);
+    expect(budget.clinics).toBe(SERVICES.clinic.upkeep);
+    expect(budget.police).toBe(SERVICES.police.upkeep);
+    expect(budget.firefighters).toBe(SERVICES.fire.upkeep);
+  });
+
+  it('puts the funding share on top of the use-based cost', () => {
+    const { budget: full } = servicesAmongHomes(4);
+    const { budget: cut } = servicesAmongHomes(4, { school: 50, clinic: 0, police: 120, fire: 100 });
+    expect(cut.schools).toBe(Math.round(full.schools * 0.5));
+    expect(cut.clinics).toBe(0);
+    expect(cut.police).toBe(Math.round(full.police * 1.2));
+    expect(cut.firefighters).toBe(full.firefighters);
+    // a partly used service funded at 50 % costs half of its partly used cost
+    const half = servicesAmongHomes(1);
+    const halfCut = servicesAmongHomes(1, { school: 50, clinic: 100, police: 100, fire: 100 });
+    expect(halfCut.budget.schools).toBe(Math.round(half.budget.schools / 2));
+  });
+
+  it('grows with the residents the service attends, by the documented formula', () => {
+    const costs = [1, 2, 3].map((level) => {
+      const { w, cells, budget } = servicesAmongHomes(level);
+      const served = residentsServed(w, w.idx(...cells.school), 'school');
+      const use = Math.min(1, served / SERVICES.school.capacity);
+      expect(budget.schools).toBe(Math.round(SERVICES.school.upkeep * (FIXED_SHARE + (1 - FIXED_SHARE) * use)));
+      return budget.schools;
+    });
+    expect(costs[0]).toBeGreaterThan(Math.round(SERVICES.school.upkeep * FIXED_SHARE));
+    expect(costs[1]).toBeGreaterThan(costs[0]);
+    expect(costs[2]).toBeGreaterThan(costs[1]);
+    expect(costs[2]).toBeLessThanOrEqual(SERVICES.school.upkeep);
+  });
+});
+
+describe('residentsServed', () => {
+  it('counts only the occupied homes inside the radius', () => {
+    const w = new World(flat());
+    build(w, 'zoneR', 10, 10, 30, 30);
+    build(w, 'zoneC', 10, 32, 30, 33);
+    for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === TILE.R || w.tiles[i] === TILE.C) w.level[i] = 2;
+    place(w, 'police', 20, 20);
+    const at = w.idx(20, 20);
+    const r = SERVICES.police.radius;
+    let expected = 0;
+    for (let y = 0; y < 40; y++) {
+      for (let x = 0; x < 40; x++) {
+        if ((x - 20) ** 2 + (y - 20) ** 2 <= r * r && w.tiles[w.idx(x, y)] === TILE.R) expected += 20;
+      }
+    }
+    expect(residentsServed(w, at, 'police')).toBe(expected);
+    // abandoned, burning and demolished homes are not there
+    w.abandoned[w.idx(21, 20)] = 1;
+    w.fire[w.idx(19, 20)] = 30;
+    w.setLevel(w.idx(20, 21), 0);
+    expect(residentsServed(w, at, 'police')).toBe(expected - 3 * 20);
+  });
+
+  it('is the same count the coverage drops by when the service is overcrowded', () => {
+    const w = denseCity(4);
+    place(w, 'school', 20, 12);
+    fields(w);
+    const at = w.idx(20, 12);
+    const residents = residentsServed(w, at, 'school');
+    expect(residents).toBeGreaterThan(SERVICES.school.capacity);
+    expect(w.edu[at]).toBe(Math.round((100 * SERVICES.school.capacity) / residents));
   });
 });
 
 describe('fires', () => {
-  function run(cover: boolean): Simulation {
+  /** News are capped at 50 entries, so `fireHeadlines` remembers whether any month ever carried one. */
+  function run(cover: boolean): Simulation & { fireHeadlines: boolean } {
     const w = denseCity(3);
     if (cover) for (const x of [8, 20, 32]) for (const y of [12, 22, 32]) place(w, 'fire', x, y);
+    // The newspaper only starts writing with two built lots of each basic zone.
+    build(w, 'zoneC', 3, 5, 4, 5);
+    build(w, 'zoneI', 3, 7, 4, 7);
+    for (const y of [5, 7]) for (const x of [3, 4]) w.level[w.idx(x, y)] = 1;
     const sim = new Simulation(w, newSimState(9), 'X');
     sim.state.cash = 10_000_000;
-    for (let i = 0; i < TICKS_PER_MONTH * 60; i++) sim.tick();
-    return sim;
+    let fireHeadlines = false;
+    for (let i = 0; i < TICKS_PER_MONTH * 60; i++) {
+      sim.tick();
+      if (i % TICKS_PER_MONTH === 0) fireHeadlines ||= sim.state.news.some((n) => n.text.includes('ncendio'));
+    }
+    return Object.assign(sim, { fireHeadlines });
   }
 
   it('burn down buildings in a dense city without firefighters', () => {
     const sim = run(false);
     expect(sim.stats.firesStarted).toBeGreaterThan(0);
     expect(sim.stats.buildingsBurned).toBeGreaterThan(0);
-    expect(sim.state.news.some((n) => n.text.includes('Incendio'))).toBe(true);
+    expect(sim.fireHeadlines).toBe(true);
   });
 
   it('are mostly put out when fire stations cover the city', () => {

@@ -19,8 +19,14 @@ export const DEFAULT_TAX = 7;
 export const MIN_TAX = 0;
 export const MAX_TAX = 20;
 
-/** Simulation ticks per in-game month, and months per year. */
-export const TICKS_PER_MONTH = 60;
+/**
+ * Simulation ticks per in-game week, weeks per month and ticks per month (a week takes 1.5 s at
+ * the "Normal" speed). Money moves every week; everything else (headlines, fires, history,
+ * growth appetite, yearly autosave) stays monthly.
+ */
+export const TICKS_PER_WEEK = 15;
+export const WEEKS_PER_MONTH = 4;
+export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
 export const START_YEAR = 1990;
 
 export const COSTS = {
@@ -42,7 +48,12 @@ export const UPKEEP = {
   line: 0.3,
   park: 2,
   plant: 350,
-  servicesPerResident: 0.06,
+  /**
+   * Administration per resident. Raised from 0.06 when service upkeep started to depend on use
+   * (S22): the long-run cash no longer piled up once the early deficit was gone. It costs a
+   * young city almost nothing (a few pesos at 500 residents) and a big one a lot.
+   */
+  servicesPerResident: 0.1,
   /** Population at which the cost per resident of municipal services doubles. */
   servicesScale: 9000,
 } as const;
@@ -75,6 +86,12 @@ export const SERVICES: Record<ServiceKind, { cost: number; upkeep: number; radiu
   police: { cost: 1000, upkeep: 180, radius: 10, capacity: 8000, power: 6 },
   fire: { cost: 1000, upkeep: 160, radius: 11, capacity: 10000, power: 6 },
 };
+
+/**
+ * Share of a service's upkeep that is paid whether or not anybody uses it. The rest grows with
+ * the share of its capacity in use: upkeep x (FIXED_SHARE + (1 - FIXED_SHARE) x utilization).
+ */
+export const FIXED_SHARE = 0.25;
 
 /** Municipal tax rate of each zone, in percent. */
 export interface ZoneTaxes {

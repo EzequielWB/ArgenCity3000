@@ -1,6 +1,7 @@
-import { DEFAULT_FUNDING, ROAD_REACH, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
+import { DEFAULT_FUNDING, FIXED_SHARE, ROAD_REACH, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { cityTotals, zoneTaxes } from './demand';
+import { utilization } from './fields';
 
 export interface BudgetReport {
   taxR: number;
@@ -47,6 +48,11 @@ function usedInheritedStreets(w: World): Uint8Array {
   return used;
 }
 
+/** Monthly upkeep of one service at `utilization` (0 to 1) of its capacity, before the funding share. */
+export function serviceUpkeep(kind: ServiceKind, utilization: number): number {
+  return SERVICES[kind].upkeep * (FIXED_SHARE + (1 - FIXED_SHARE) * utilization);
+}
+
 /** The month's income and expenses. `tax` is per zone, or one number for every zone. */
 export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING): BudgetReport {
   const taxes = zoneTaxes(tax);
@@ -69,7 +75,7 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
       else if (tile === TILE.PARK) parks++;
       else {
         const k = serviceOf(tile);
-        if (k) upkeep[k] += SERVICES[k].upkeep;
+        if (k) upkeep[k] += serviceUpkeep(k, utilization(w, i, k));
       }
     }
   }

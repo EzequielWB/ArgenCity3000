@@ -2,7 +2,9 @@ import { CAPACITY, FIRE_SAFE_COVER, PLANT_CAPACITY, ROAD_REACH, SERVICES, type S
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf, zoneOf, type ZoneKind } from '../world/world';
+import { serviceUpkeep } from './budget';
 import { SERVICE_NEED, levelCap } from './demand';
+import { residentsServed, utilization } from './fields';
 import type { Simulation } from './simulation';
 
 const NAMES: Record<ZoneKind, string[]> = {
@@ -76,8 +78,9 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
       title: SERVICE_NAMES[service],
       lines: [
         w.powered[i] ? 'Con luz' : 'Sin luz: no atiende a nadie',
-        `Radio: ${info.radius} lotes · Atiende hasta ${formatNumber(info.capacity)} vecinos`,
-        `Mantenimiento: $${formatNumber(info.upkeep)} por mes`,
+        `Radio: ${info.radius} lotes`,
+        `Atiende a ${formatNumber(w.powered[i] ? residentsServed(w, i, service) : 0)} de ${formatNumber(info.capacity)} vecinos`,
+        `Mantenimiento: $${formatNumber(Math.round((serviceUpkeep(service, utilization(w, i, service)) * sim.state.funding[service]) / 100))} por mes`,
         SERVICE_ROLE[service],
       ],
       hint: w.powered[i] ? undefined : 'Necesita luz: conectala a la red con calles, zonas o tendido.',

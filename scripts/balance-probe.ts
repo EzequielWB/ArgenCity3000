@@ -1,7 +1,7 @@
 /**
  * Headless balance check: builds a small grid city, then plays like a reasonable player for
  * 15 years and prints a yearly summary. The player adds a plant on blackouts and more zones
- * when lots run out, builds each public service once the city is big enough to need it, and
+ * when lots run out (or homes are wanted and none are free), builds each public service once the city is big enough to need it, and
  * looks after the budget: with the cash running out it raises taxes (up to 9 %) and then
  * trims police and fire funding; with money to spare it undoes those cuts; and when nobody
  * wants to move in it lowers taxes again.
@@ -85,9 +85,16 @@ for (let year = 1; year <= 15; year++) {
     }
     buildServices();
     manageBudget();
+    // Zone more land when lots run out, or when homes are wanted and no free home lot is left
+    // (free commerce and industry lots alone must not hide that).
     let free = 0;
-    for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] >= TILE.R && w.tiles[i] <= TILE.I && w.level[i] === 0) free++;
-    if (free < 40 && sim.state.cash > 3000 && row < 100) addRow();
+    let freeHomes = 0;
+    for (let i = 0; i < w.tiles.length; i++) {
+      if (w.tiles[i] < TILE.R || w.tiles[i] > TILE.I || w.level[i] !== 0) continue;
+      free++;
+      if (w.tiles[i] === TILE.R) freeHomes++;
+    }
+    if ((free < 40 || (sim.demand.R > 20 && freeHomes < 12)) && sim.state.cash > 3000 && row < 100) addRow();
   }
   const levels = [0, 0, 0, 0, 0];
   for (let i = 0; i < w.level.length; i++) if (w.level[i]) levels[w.level[i]]++;

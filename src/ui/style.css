@@ -221,6 +221,31 @@ select {
   color: #ff7a6b;
 }
 
+/* Estimated monthly balance under the cash: green when the city earns, red when it loses, and the
+   runway in amber or red when the cash will not last. */
+#topbar .stat .balance {
+  font-size: 12px;
+  font-weight: 700;
+  cursor: help;
+}
+
+#topbar .stat .balance span {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.balance .tone-good {
+  color: #8fd49a;
+}
+
+.balance .tone-warn {
+  color: #f0b34a;
+}
+
+.balance .tone-bad {
+  color: #ff7a6b;
+}
+
 .speed {
   display: flex;
   gap: 2px;
@@ -853,6 +878,10 @@ ol.steps li {
 }
 
 @media (max-width: 900px) {
+  #runway {
+    display: none; /* still in the tooltip */
+  }
+
   #app {
     grid-template-columns: 76px 1fr 0;
   }

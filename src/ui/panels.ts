@@ -276,7 +276,7 @@ export function openHelp(): void {
       <li><strong>Zonificá</strong> residencial (5), comercial (6) e industrial (7) pegado a las calles. Al zonificar, la manzana se nivela sola y las calles hacen de rampa.
         La luz viaja por calles, zonas y tendido eléctrico (4), así que todo tiene que estar conectado a la usina.</li>
       <li><strong>Mirá la demanda</strong> (barras R C I arriba): la gente viene si hay trabajo, y el comercio y la industria siguen a la gente.</li>
-      <li><strong>Cuidá la caja.</strong> Cada mes cobrás tasas y pagás mantenimiento. Con la caja en rojo no se construye nada y los vecinos empiezan a irse.
+      <li><strong>Cuidá la caja.</strong> Cada semana cobrás tasas y pagás mantenimiento. Al lado de la Caja ves el saldo estimado del mes y, si la caja no va a durar un año, cuántos meses alcanza. Con la caja en rojo no se construye nada y los vecinos empiezan a irse. Los servicios públicos cuestan una parte fija (el 25 %) y el resto según cuántos vecinos atienden.
         En el <strong>Presupuesto</strong> (P) ponés una tasa para cada zona (cada una mueve solo la demanda de su zona) y decidís cuánto financiar cada servicio:
         al 50 % cuesta la mitad y cubre la mitad.</li>
       <li><strong>Plazas</strong> (8), agua y árboles suben el valor del suelo y dejan crecer edificios más altos. La industria contamina: alejala de las casas.</li>
@@ -304,6 +304,7 @@ export function openHelp(): void {
       <span><kbd>Esc</kbd> cancelar o cerrar</span>
     </div>
     <p><small>Con la herramienta Consulta (1) un clic muestra la ficha del lote y por qué crece o no; arrastrando movés el mapa.</small></p>
+    <p><small>El Diario del Conurbano sale a la calle recién cuando hay al menos dos viviendas, dos comercios y dos fábricas construidas; hasta entonces los avisos de plata están solo en la barra superior.</small></p>
     <p><small>Al fundar una ciudad inventada elegís el tipo de mapa: Con salida al mar (lomas suaves, un río ancho al este y un arroyo), Llanura (casi llano, con arroyo y laguna), Con gran relieve (cerros y valles por todo el mapa) o Sierras (cordones de montañas con valles anchos para construir). Por ahora el tamaño es Chico (128 × 128 lotes); Mediano y Grande llegan cuando el dibujado del mapa los banque. Los mapas reales ignoran estas opciones.</small></p>
     <p><small>Mapas reales: calles, agua y parques © colaboradores de OpenStreetMap (ODbL); relieve de Terrain Tiles (Mapzen y AWS, con datos de SRTM y otros).</small></p>
   `);

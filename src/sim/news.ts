@@ -1,5 +1,6 @@
 import { SERVICE_KINDS, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { formatMoney, formatNumber, settlementType } from '../core/format';
+import { TILE, type World } from '../world/world';
 
 /** What the newspaper compares month to month. */
 export interface CitySnapshot {
@@ -14,6 +15,28 @@ export interface CitySnapshot {
   year: number;
   cash: number;
   abandoned: number;
+}
+
+/** Built lots (level above 0, not burning) of each basic zone. */
+export function builtBasicZones(w: World): Record<'R' | 'C' | 'I', number> {
+  const out = { R: 0, C: 0, I: 0 };
+  for (let i = 0; i < w.tiles.length; i++) {
+    if (w.level[i] === 0 || w.fire[i]) continue;
+    const t = w.tiles[i];
+    if (t === TILE.R) out.R++;
+    else if (t === TILE.C) out.C++;
+    else if (t === TILE.I) out.I++;
+  }
+  return out;
+}
+
+/** Built lots of each basic zone the city needs before the newspaper starts writing. */
+export const PAPER_OPENS_WITH = 2;
+
+/** True when there are at least `PAPER_OPENS_WITH` built lots of residential, commercial and industrial. */
+export function paperCanOpen(w: World): boolean {
+  const b = builtBasicZones(w);
+  return b.R >= PAPER_OPENS_WITH && b.C >= PAPER_OPENS_WITH && b.I >= PAPER_OPENS_WITH;
 }
 
 export interface NewsItem {
