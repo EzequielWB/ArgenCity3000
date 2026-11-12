@@ -16,6 +16,7 @@ Otros comandos:
 | `npm test` | Tests de la lógica (Vitest) |
 | `npm run build` | Typecheck y build de producción en `dist/` (se abre con cualquier servidor estático) |
 | `npm run probe` | Simula 15 años de una ciudad sin navegador e imprime el balance año por año |
+| `npm run bake-maps` | Vuelve a preparar los mapas reales (`public/maps/`); necesita internet. `npm run bake-maps -- mar-del-plata` prepara uno solo |
 
 ### Primeros pasos
 
@@ -30,6 +31,7 @@ En el juego, `H` abre la ayuda completa con todos los controles.
 
 ## Qué tiene
 
+- Mapas reales preparados de antemano (por ahora Mar del Plata): relieve, costa, agua y arboledas reales, con o sin las calles reales ya trazadas. Se preparan con `npm run bake-maps` a partir de OpenStreetMap y de datos abiertos de elevación, y quedan en `public/maps/`. Para sumar una ciudad se agrega a `CITIES` en `scripts/bake-maps.ts` y a `PRESETS` en `src/world/presets.ts`.
 - Mapa procedural de 128×128 a partir de una semilla: lomas, la costa de un río ancho, un arroyo y arboledas de jacarandás, palos borrachos, ombúes y eucaliptos.
 - Cámara isométrica con 4 rotaciones, zoom de 0,25× a 3×, minimapa y picking que respeta el relieve.
 - Herramientas: consulta, topadora, calles (con puentes), tendido eléctrico, zonas R/C/I, plazas, usinas, escuelas, salitas, comisarías y cuarteles de bomberos, con costo visible antes de soltar el mouse, bloques de 1×1, 2×2 o 4×4 y deshacer (`Ctrl+Z`): devuelve todo lo pagado dentro del mes de la obra y la mitad hasta un año después.

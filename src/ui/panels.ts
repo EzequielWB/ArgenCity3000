@@ -264,5 +264,6 @@ export function openHelp(): void {
       <span><kbd>Esc</kbd> cancelar o cerrar</span>
     </div>
     <p><small>Con la herramienta Consulta (1) un clic muestra la ficha del lote y por qué crece o no; arrastrando movés el mapa.</small></p>
+    <p><small>Mapas reales: calles, agua y parques © colaboradores de OpenStreetMap (ODbL); relieve de Terrain Tiles (Mapzen y AWS, con datos de SRTM y otros).</small></p>
   `);
 }

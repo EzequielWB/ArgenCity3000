@@ -34,13 +34,16 @@ function terrainColor(t: Terrain, x: number, y: number): [number, number, number
   return [160 - 25 * k, 180 - 40 * k, 90 - 10 * k];
 }
 
-/** Paints a top-down picture of a terrain (used for the start screen preview). */
-export function paintTerrainPreview(canvas: HTMLCanvasElement, t: Terrain): void {
+/**
+ * Paints a top-down picture of a terrain (used for the start screen preview), with the
+ * cells marked in `roads` drawn as streets.
+ */
+export function paintTerrainPreview(canvas: HTMLCanvasElement, t: Terrain, roads?: Uint8Array): void {
   const n = t.n;
   const img = new ImageData(n, n);
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
-      const [r, g, b] = terrainColor(t, x, y);
+      const [r, g, b] = roads?.[y * n + x] ? TILE_COLORS[TILE.ROAD] : terrainColor(t, x, y);
       const o = (y * n + x) * 4;
       img.data[o] = r;
       img.data[o + 1] = g;

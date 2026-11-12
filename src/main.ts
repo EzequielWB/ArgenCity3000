@@ -10,6 +10,7 @@ import { $, toast } from './ui/dom';
 import { closeModal, initModal, isModalOpen, openBudget, openHelp, openSaves } from './ui/panels';
 import { generateTerrain } from './world/terrain';
 import { TOOLS } from './world/tools';
+import { PRESETS, loadPreset, worldFromPreset, type MapPreset } from './world/presets';
 import { World } from './world/world';
 
 const CITY_NAMES = [
@@ -43,11 +44,48 @@ function parseSeed(text: string): number {
 // ---------------------------------------------------------------- start screen
 
 let previewTimer = 0;
+/** The real-place map picked on the start screen, once loaded; null for an invented map. */
+let preset: MapPreset | null = null;
+const presetCache = new Map<string, MapPreset>();
+
 function refreshPreview(): void {
   clearTimeout(previewTimer);
   previewTimer = window.setTimeout(() => {
-    paintTerrainPreview($<HTMLCanvasElement>('#startMap'), generateTerrain(parseSeed($<HTMLInputElement>('#startSeed').value), MAP_SIZE));
+    const canvas = $<HTMLCanvasElement>('#startMap');
+    if (preset) {
+      const p = preset;
+      paintTerrainPreview(canvas, { n: p.n, corners: p.corners, trees: p.trees }, $<HTMLInputElement>('#startStreets').checked ? p.roads : undefined);
+    } else paintTerrainPreview(canvas, generateTerrain(parseSeed($<HTMLInputElement>('#startSeed').value), MAP_SIZE));
   }, 120);
+}
+
+async function pickMap(id: string): Promise<void> {
+  const real = id !== '';
+  $('#seedField').classList.toggle('hidden', real);
+  $('#streetsField').classList.toggle('hidden', !real);
+  $('#mapNote').classList.toggle('hidden', !real);
+  $<HTMLButtonElement>('#startNew').disabled = real;
+  preset = null;
+  if (!real) return refreshPreview();
+  const info = PRESETS.find((p) => p.id === id)!;
+  $('#mapNote').textContent = `${info.blurb} Cargando…`;
+  try {
+    let p = presetCache.get(id);
+    if (!p) {
+      p = await loadPreset(id);
+      presetCache.set(id, p);
+    }
+    if ($<HTMLSelectElement>('#startMapKind').value !== id) return; // the player picked another one meanwhile
+    preset = p;
+    $('#mapNote').textContent = `${info.blurb} ${p.attribution}`;
+    $<HTMLInputElement>('#startName').value = p.name;
+    $<HTMLButtonElement>('#startNew').disabled = false;
+    refreshPreview();
+  } catch (err) {
+    toast((err as Error).message, true);
+    $<HTMLSelectElement>('#startMapKind').value = '';
+    void pickMap('');
+  }
 }
 
 function showStart(): void {
@@ -59,7 +97,8 @@ function showStart(): void {
   const name = $<HTMLInputElement>('#startName');
   name.value = CITY_NAMES[Math.floor(Math.random() * CITY_NAMES.length)];
   $<HTMLInputElement>('#startSeed').value = String(randomSeed());
-  refreshPreview();
+  $<HTMLSelectElement>('#startMapKind').value = '';
+  void pickMap('');
   name.focus();
   name.select();
 }
@@ -76,6 +115,12 @@ function launch(data: SaveData): void {
 
 function startNew(): void {
   const name = $<HTMLInputElement>('#startName').value.trim() || 'Villa Sin Nombre';
+  if ($<HTMLSelectElement>('#startMapKind').value !== '') {
+    if (!preset) return; // still loading
+    const seed = hashString(preset.id) % 1_000_000_000;
+    launch({ name, seed, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed) });
+    return;
+  }
   const seed = parseSeed($<HTMLInputElement>('#startSeed').value);
   const world = new World(generateTerrain(seed, MAP_SIZE));
   launch({ name, seed, world, sim: newSimState(seed) });
@@ -86,6 +131,10 @@ $('#startReroll').addEventListener('click', () => {
   refreshPreview();
 });
 $('#startSeed').addEventListener('input', refreshPreview);
+const mapKind = $<HTMLSelectElement>('#startMapKind');
+for (const p of PRESETS) mapKind.add(new Option(`${p.name} (mapa real)`, p.id));
+mapKind.addEventListener('change', () => void pickMap(mapKind.value));
+$('#startStreets').addEventListener('change', refreshPreview);
 $('#startNew').addEventListener('click', startNew);
 $('#startLoad').addEventListener('click', () => openSaves(null, launch));
 $('#startName').addEventListener('keydown', (e) => {

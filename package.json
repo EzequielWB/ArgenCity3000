@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "probe": "vite-node scripts/balance-probe.ts"
+    "probe": "vite-node scripts/balance-probe.ts",
+    "bake-maps": "vite-node scripts/bake-maps.ts"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

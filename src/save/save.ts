@@ -16,14 +16,15 @@ export interface SaveData {
   sim: SimState;
 }
 
-function toBase64(bytes: Uint8Array): string {
+export function toBase64(bytes: Uint8Array): string {
   let s = '';
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s);
 }
 
-function fromBase64(text: unknown, length: number, max: number, what: string): Uint8Array {
-  if (typeof text !== 'string') throw new Error(`Falta ${what} en la partida`);
+/** Decodes a byte grid, checking its size and that no value goes above `max`. */
+export function fromBase64(text: unknown, length: number, max: number, what: string, where = 'la partida'): Uint8Array {
+  if (typeof text !== 'string') throw new Error(`Falta ${what} en ${where}`);
   let raw: string;
   try {
     raw = atob(text);

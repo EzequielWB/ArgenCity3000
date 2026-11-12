@@ -34,7 +34,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
   color: inherit;
 }
@@ -54,7 +55,8 @@ button:hover {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 2px solid var(--celeste);
   outline-offset: 1px;
 }
@@ -69,7 +71,8 @@ button.primary:hover {
   background: linear-gradient(#df5642, #b8342a);
 }
 
-input {
+input,
+select {
   background: #140e0a;
   border: 1px solid #6b5137;
   border-radius: 6px;
@@ -651,8 +654,26 @@ input {
   font-weight: 700;
 }
 
-.start-form input {
+.start-form input,
+.start-form select {
   width: 100%;
+}
+
+.start-form label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.start-form label.check input {
+  width: auto;
+  accent-color: var(--gold);
+}
+
+.start-form .map-note {
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .start-form .row input {
