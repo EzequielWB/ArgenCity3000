@@ -1,0 +1,518 @@
+import { PAL, shade } from './color';
+import type { ZoneKind } from '../world/world';
+
+/**
+ * Procedural isometric sprites. Every sprite is anchored at the top corner of its footprint
+ * diamond on the ground: (ax, ay) inside the sprite canvas is where that corner goes on screen.
+ */
+export interface Sprite {
+  canvas: HTMLCanvasElement;
+  ax: number;
+  ay: number;
+  /** Chimney tops (relative to the anchor) that emit smoke. */
+  smoke: [number, number][];
+  /** Top of the power pole (relative to the anchor), for wires. */
+  attach?: [number, number];
+}
+
+const TOP = 1;
+const LEFT = 0.84;
+const RIGHT = 0.64;
+
+type Pt = [number, number];
+
+class Painter {
+  readonly g: CanvasRenderingContext2D;
+  readonly smoke: [number, number][] = [];
+  constructor(
+    readonly canvas: HTMLCanvasElement,
+    readonly ax: number,
+    readonly ay: number,
+  ) {
+    this.g = canvas.getContext('2d')!;
+  }
+
+  /** Footprint coordinates (u, v in cells, z in px) → sprite pixels. */
+  P(u: number, v: number, z: number): Pt {
+    return [this.ax + 16 * (u - v), this.ay + 8 * (u + v) - z];
+  }
+
+  poly(pts: Pt[], fill: string, stroke?: string): void {
+    const g = this.g;
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.closePath();
+    g.fillStyle = fill;
+    g.fill();
+    if (stroke) {
+      g.strokeStyle = stroke;
+      g.lineWidth = 0.6;
+      g.stroke();
+    }
+  }
+
+  box(u0: number, v0: number, u1: number, v1: number, z0: number, h: number, color: string, outline = true): void {
+    const z1 = z0 + h;
+    const P = this.P.bind(this);
+    const edge = outline ? shade(color, 0.45) : undefined;
+    this.poly([P(u1, v0, z0), P(u1, v1, z0), P(u1, v1, z1), P(u1, v0, z1)], shade(color, RIGHT), edge);
+    this.poly([P(u0, v1, z0), P(u1, v1, z0), P(u1, v1, z1), P(u0, v1, z1)], shade(color, LEFT), edge);
+    this.poly([P(u0, v0, z1), P(u1, v0, z1), P(u1, v1, z1), P(u0, v1, z1)], shade(color, TOP), edge);
+  }
+
+  /** Rectangle on the left-facing wall (v fixed), spanning u0..u1 and z0..z1. */
+  left(v: number, u0: number, u1: number, z0: number, z1: number, color: string): void {
+    const P = this.P.bind(this);
+    this.poly([P(u0, v, z0), P(u1, v, z0), P(u1, v, z1), P(u0, v, z1)], shade(color, LEFT));
+  }
+
+  /** Rectangle on the right-facing wall (u fixed), spanning v0..v1 and z0..z1. */
+  right(u: number, v0: number, v1: number, z0: number, z1: number, color: string): void {
+    const P = this.P.bind(this);
+    this.poly([P(u, v0, z0), P(u, v1, z0), P(u, v1, z1), P(u, v0, z1)], shade(color, RIGHT));
+  }
+
+  /** Grid of windows on both visible walls of a box. */
+  windows(
+    u0: number,
+    v0: number,
+    u1: number,
+    v1: number,
+    zFrom: number,
+    zTo: number,
+    floorH: number,
+    color: string,
+    cols = 3,
+    winH = 3,
+  ): void {
+    for (let z = zFrom; z + winH <= zTo; z += floorH) {
+      for (let c = 0; c < cols; c++) {
+        const a = u0 + ((u1 - u0) * (c + 0.25)) / cols;
+        const b = u0 + ((u1 - u0) * (c + 0.75)) / cols;
+        this.left(v1, a, b, z, z + winH, color);
+        const p = v0 + ((v1 - v0) * (c + 0.25)) / cols;
+        const q = v0 + ((v1 - v0) * (c + 0.75)) / cols;
+        this.right(u1, p, q, z, z + winH, color);
+      }
+    }
+  }
+
+  hipRoof(u0: number, v0: number, u1: number, v1: number, z: number, rh: number, color: string): void {
+    const P = this.P.bind(this);
+    const apex = P((u0 + u1) / 2, (v0 + v1) / 2, z + rh);
+    const dark = shade(color, 0.5);
+    this.poly([P(u0, v0, z), P(u1, v0, z), apex], shade(color, 0.95), dark);
+    this.poly([P(u0, v0, z), P(u0, v1, z), apex], shade(color, 1.05), dark);
+    this.poly([P(u0, v1, z), P(u1, v1, z), apex], shade(color, LEFT), dark);
+    this.poly([P(u1, v0, z), P(u1, v1, z), apex], shade(color, RIGHT), dark);
+  }
+
+  /** Gable roof with the ridge running along u. */
+  gableRoof(u0: number, v0: number, u1: number, v1: number, z: number, rh: number, color: string, wall: string): void {
+    const P = this.P.bind(this);
+    const vm = (v0 + v1) / 2;
+    const dark = shade(color, 0.5);
+    this.poly([P(u0, v0, z), P(u1, v0, z), P(u1, vm, z + rh), P(u0, vm, z + rh)], shade(color, 1.05), dark);
+    this.poly([P(u0, v1, z), P(u1, v1, z), P(u1, vm, z + rh), P(u0, vm, z + rh)], shade(color, LEFT), dark);
+    this.poly([P(u1, v0, z), P(u1, v1, z), P(u1, vm, z + rh)], shade(wall, RIGHT), shade(wall, 0.45));
+  }
+
+  cylinder(cu: number, cv: number, r: number, z0: number, h: number, color: string): void {
+    const g = this.g;
+    const [bx, by] = this.P(cu, cv, z0);
+    const [, ty] = this.P(cu, cv, z0 + h);
+    const rx = r * 22.6;
+    const ry = rx / 2;
+    g.fillStyle = shade(color, 0.72);
+    g.fillRect(bx - rx, ty, rx * 2, by - ty);
+    g.fillStyle = shade(color, 0.88);
+    g.fillRect(bx - rx, ty, rx * 0.8, by - ty);
+    g.beginPath();
+    g.ellipse(bx, by, rx, ry, 0, 0, Math.PI);
+    g.fillStyle = shade(color, 0.72);
+    g.fill();
+    g.beginPath();
+    g.ellipse(bx, ty, rx, ry, 0, 0, Math.PI * 2);
+    g.fillStyle = shade(color, 1.05);
+    g.fill();
+    g.strokeStyle = shade(color, 0.5);
+    g.lineWidth = 0.6;
+    g.stroke();
+  }
+
+  /** Red-and-white striped chimney; registers a smoke source at its top. */
+  chimney(u0: number, v0: number, s: number, h: number, base = 0, a = '#c8462f', b = '#efe6d8'): void {
+    const bands = 5;
+    for (let k = 0; k < bands; k++) {
+      this.box(u0, v0, u0 + s, v0 + s, base + (h * k) / bands, h / bands, k % 2 ? b : a, false);
+    }
+    const [x, y] = this.P(u0 + s / 2, v0 + s / 2, base + h);
+    this.smoke.push([x - this.ax, y - this.ay]);
+  }
+
+  /** Striped awning hanging off the left wall. */
+  awning(v: number, u0: number, u1: number, z: number, c1: string, c2: string, stripes = 4): void {
+    const P = this.P.bind(this);
+    for (let k = 0; k < stripes; k++) {
+      const a = u0 + ((u1 - u0) * k) / stripes;
+      const b = u0 + ((u1 - u0) * (k + 1)) / stripes;
+      this.poly([P(a, v, z), P(b, v, z), P(b, v + 0.13, z - 4), P(a, v + 0.13, z - 4)], k % 2 ? c2 : c1);
+    }
+  }
+
+  /** Same awning on the right wall. */
+  awningRight(u: number, v0: number, v1: number, z: number, c1: string, c2: string, stripes = 4): void {
+    const P = this.P.bind(this);
+    for (let k = 0; k < stripes; k++) {
+      const a = v0 + ((v1 - v0) * k) / stripes;
+      const b = v0 + ((v1 - v0) * (k + 1)) / stripes;
+      this.poly([P(u, a, z), P(u, b, z), P(u + 0.13, b, z - 4), P(u + 0.13, a, z - 4)], shade(k % 2 ? c2 : c1, 0.85));
+    }
+  }
+
+  tree(u: number, v: number, kind: number, scale = 1): void {
+    const g = this.g;
+    const [x, y] = this.P(u, v, 0);
+    const s = scale;
+    if (kind === 4) {
+      // Eucalipto: tall and narrow.
+      g.fillStyle = '#d9cfb8';
+      g.fillRect(x - 0.7, y - 14 * s, 1.4, 14 * s);
+      blob(g, x, y - 16 * s, 3.2 * s, 7 * s, '#6f9461');
+      blob(g, x - 1, y - 19 * s, 2 * s, 3 * s, '#8db07c');
+      return;
+    }
+    if (kind === 2) {
+      // Palo borracho: swollen trunk, pink flowers.
+      g.fillStyle = '#7f9a6a';
+      g.beginPath();
+      g.ellipse(x, y - 3 * s, 1.6 * s, 3.2 * s, 0, 0, Math.PI * 2);
+      g.fill();
+      blob(g, x, y - 9 * s, 5 * s, 3.6 * s, '#d97aa3');
+      blob(g, x - 1.5 * s, y - 10.5 * s, 2.4 * s, 1.8 * s, '#f0a8c6');
+      return;
+    }
+    g.fillStyle = '#6b4a2e';
+    g.fillRect(x - 0.8, y - 6 * s, 1.6, 6 * s);
+    if (kind === 3) {
+      // Ombú: wide dark crown.
+      blob(g, x, y - 9 * s, 6.5 * s, 4.5 * s, '#3e6e3a');
+      blob(g, x - 2 * s, y - 11 * s, 3 * s, 2 * s, '#5a8a48');
+    } else {
+      // Jacarandá: lilac crown.
+      blob(g, x, y - 9 * s, 5 * s, 4 * s, '#8e6cc2');
+      blob(g, x - 1.5 * s, y - 10.5 * s, 2.5 * s, 2 * s, '#b49ae2');
+    }
+  }
+}
+
+function blob(g: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, color: string): void {
+  g.beginPath();
+  g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  g.fillStyle = color;
+  g.fill();
+  g.strokeStyle = shade(color.startsWith('#') ? color : '#000000', 0.6);
+  g.lineWidth = 0.5;
+  g.stroke();
+}
+
+function makeCanvas(w: number, h: number): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+}
+
+/** Creates a painter for a footprint of `cells`×`cells` and `height` px above the ground. */
+function painter(cells: number, height: number): Painter {
+  const w = 32 * cells + 4;
+  const h = 16 * cells + height + 4;
+  return new Painter(makeCanvas(w, h), w / 2, height + 2);
+}
+
+function done(p: Painter, attach?: [number, number]): Sprite {
+  return { canvas: p.canvas, ax: p.ax, ay: p.ay, smoke: p.smoke, attach };
+}
+
+const WALLS = ['#f1e3c6', '#e9b9a2', '#b5d3e0', '#f0d27c', '#c2dbb3', '#f4f0e6'];
+const ROOFS = ['#b4532f', '#9e4428', '#c06a3c', '#7d6a5e'];
+const AWNINGS: [string, string][] = [
+  ['#c8392f', '#f4ece0'],
+  ['#2f7f4f', '#f4ece0'],
+  ['#2f63a6', '#f4ece0'],
+  ['#e0a526', '#7a2f2a'],
+];
+
+function residential(level: number, v: number): Sprite {
+  const wall = WALLS[v % WALLS.length];
+  const roof = ROOFS[(v >> 3) % ROOFS.length];
+  if (level === 1) {
+    const p = painter(1, 24);
+    if (v % 3 === 0) p.tree(0.15, 0.85, 1 + ((v >> 2) % 4), 0.7);
+    p.box(0.25, 0.25, 0.75, 0.75, 0, 8, wall);
+    p.left(0.75, 0.42, 0.55, 0, 6, PAL.door);
+    p.right(0.75, 0.38, 0.6, 3, 6, PAL.glass);
+    p.hipRoof(0.2, 0.2, 0.8, 0.8, 8, 7, roof);
+    return done(p);
+  }
+  if (level === 2) {
+    const p = painter(1, 32);
+    if (v % 2 === 0) {
+      // Chalet with a tiled gable roof.
+      p.box(0.14, 0.2, 0.86, 0.8, 0, 12, wall);
+      p.left(0.8, 0.22, 0.34, 0, 8, PAL.door);
+      p.left(0.8, 0.45, 0.6, 4, 9, PAL.glass);
+      p.left(0.8, 0.68, 0.8, 4, 9, PAL.glass);
+      p.right(0.86, 0.35, 0.62, 4, 9, PAL.glass);
+      p.box(0.25, 0.3, 0.33, 0.38, 12, 9, '#9a8d80');
+      p.gableRoof(0.1, 0.16, 0.9, 0.84, 12, 8, roof, wall);
+    } else {
+      // Casa chorizo with a rooftop terrace.
+      p.box(0.1, 0.2, 0.9, 0.8, 0, 13, wall);
+      p.left(0.8, 0.15, 0.27, 0, 9, PAL.door);
+      for (const a of [0.35, 0.55, 0.75]) p.left(0.8, a, a + 0.1, 3, 10, '#4a5560');
+      p.right(0.9, 0.3, 0.45, 3, 10, '#4a5560');
+      p.right(0.9, 0.55, 0.7, 3, 10, '#4a5560');
+      p.box(0.1, 0.2, 0.9, 0.24, 13, 2, shade(wall, 0.9), false);
+      p.box(0.1, 0.76, 0.9, 0.8, 13, 2, shade(wall, 0.9), false);
+      p.box(0.6, 0.35, 0.72, 0.47, 13, 3, '#4f8a3a', false);
+    }
+    return done(p);
+  }
+  if (level === 3) {
+    const p = painter(1, 48);
+    const facade = v % 2 ? PAL.brick : wall;
+    p.box(0.1, 0.1, 0.9, 0.9, 0, 30, facade);
+    p.left(0.9, 0.4, 0.6, 0, 7, PAL.door);
+    p.windows(0.1, 0.1, 0.9, 0.9, 9, 30, 7, '#3f5866', 3, 3);
+    for (const z of [8, 15, 22]) p.left(0.9, 0.1, 0.9, z, z + 1, shade(facade, 0.7));
+    p.box(0.55, 0.55, 0.75, 0.75, 30, 6, '#8f9ea6');
+    p.box(0.2, 0.2, 0.35, 0.35, 30, 3, '#9c8f86', false);
+    return done(p);
+  }
+  const h = 56 + (v % 4) * 8;
+  const p = painter(1, h + 24);
+  const facade = ['#efe8dc', '#d9cbb4', '#c9b8a6', '#e4d6bf'][v % 4];
+  p.box(0.15, 0.15, 0.85, 0.85, 0, h, facade);
+  p.left(0.85, 0.4, 0.6, 0, 7, PAL.door);
+  p.windows(0.15, 0.15, 0.85, 0.85, 9, h - 2, 6, '#41606f', 3, 3);
+  for (let z = 12; z < h - 2; z += 12) p.left(0.85, 0.15, 0.85, z, z + 1, shade(facade, 0.62));
+  p.box(0.45, 0.45, 0.7, 0.7, h, 7, '#8f9ea6');
+  const [x, y] = p.P(0.3, 0.3, h);
+  p.g.fillStyle = '#4a4440';
+  p.g.fillRect(x, y - 12, 1, 12);
+  return done(p);
+}
+
+function commercial(level: number, v: number): Sprite {
+  const [a1, a2] = AWNINGS[v % AWNINGS.length];
+  if (level === 1) {
+    const p = painter(1, 24);
+    const wall = WALLS[(v >> 2) % WALLS.length];
+    p.box(0.3, 0.3, 0.7, 0.7, 0, 9, wall);
+    p.left(0.7, 0.36, 0.64, 1, 6, PAL.glass);
+    p.awning(0.7, 0.3, 0.7, 8, a1, a2, 3);
+    p.box(0.3, 0.3, 0.7, 0.7, 9, 2, a1, false);
+    return done(p);
+  }
+  if (level === 2) {
+    const p = painter(1, 30);
+    const wall = WALLS[(v >> 2) % WALLS.length];
+    p.box(0.12, 0.12, 0.88, 0.88, 0, 13, wall);
+    p.left(0.88, 0.18, 0.82, 1, 7, PAL.glass);
+    p.right(0.88, 0.2, 0.8, 1, 7, PAL.glass);
+    p.awning(0.88, 0.12, 0.88, 9, a1, a2, 5);
+    p.awningRight(0.88, 0.12, 0.88, 9, a1, a2, 5);
+    p.left(0.88, 0.12, 0.88, 10, 13, '#e0a526');
+    for (const u of [0.25, 0.5, 0.75]) p.left(0.88, u, u + 0.04, 11, 12, '#c8392f');
+    return done(p);
+  }
+  if (level === 3) {
+    const p = painter(1, 44);
+    const wall = ['#e7dccb', '#d6c3a5', '#c9d3d6'][v % 3];
+    p.box(0.08, 0.08, 0.92, 0.92, 0, 24, wall);
+    p.left(0.92, 0.1, 0.9, 0, 8, PAL.glassDark);
+    p.right(0.92, 0.1, 0.9, 0, 8, PAL.glassDark);
+    p.windows(0.08, 0.08, 0.92, 0.92, 11, 24, 6, PAL.glass, 4, 3);
+    p.box(0.3, 0.5, 0.75, 0.56, 24, 9, a1);
+    p.left(0.56, 0.34, 0.71, 26, 31, a2);
+    return done(p);
+  }
+  const h = 64 + (v % 3) * 12;
+  const p = painter(1, h + 22);
+  const glass = ['#5f9fb8', '#6c8fa8', '#4f8f8a'][v % 3];
+  p.box(0.18, 0.18, 0.82, 0.82, 0, h, glass);
+  for (let z = 3; z < h; z += 4) {
+    p.left(0.82, 0.18, 0.82, z, z + 1, shade(glass, 1.25));
+    p.right(0.82, 0.18, 0.82, z, z + 1, shade(glass, 1.25));
+  }
+  p.box(0.25, 0.25, 0.75, 0.75, h, 5, '#d9d4cc');
+  const [x, y] = p.P(0.5, 0.5, h + 5);
+  p.g.fillStyle = '#3a3a3a';
+  p.g.fillRect(x - 0.5, y - 14, 1, 14);
+  p.g.fillStyle = '#e04a3a';
+  p.g.fillRect(x - 1, y - 15, 2, 2);
+  return done(p);
+}
+
+function industrial(level: number, v: number): Sprite {
+  if (level === 1) {
+    const p = painter(1, 24);
+    p.box(0.12, 0.15, 0.88, 0.85, 0, 10, PAL.brick);
+    p.left(0.85, 0.25, 0.65, 0, 7, '#6d6f72');
+    for (let z = 1; z < 7; z += 2) p.left(0.85, 0.25, 0.65, z, z + 0.5, '#55575a');
+    p.gableRoof(0.1, 0.12, 0.9, 0.88, 10, 5, PAL.chapa, PAL.brick);
+    return done(p);
+  }
+  if (level === 2) {
+    const p = painter(1, 28);
+    const wall = v % 2 ? '#a9b4b8' : PAL.brick;
+    p.box(0.06, 0.1, 0.94, 0.9, 0, 11, wall);
+    p.left(0.9, 0.55, 0.85, 0, 8, '#5d6064');
+    p.right(0.94, 0.3, 0.7, 4, 7, PAL.glassDark);
+    p.gableRoof(0.04, 0.08, 0.96, 0.92, 11, 6, '#b7bfc2', wall);
+    return done(p);
+  }
+  if (level === 3) {
+    const p = painter(1, 52);
+    p.chimney(0.72, 0.1, 0.14, 40);
+    p.box(0.08, 0.08, 0.92, 0.92, 0, 16, PAL.brickDark);
+    p.left(0.92, 0.1, 0.9, 5, 11, PAL.glassDark);
+    const teeth = 3;
+    for (let k = 0; k < teeth; k++) {
+      const a = 0.08 + (0.84 * k) / teeth;
+      const b = 0.08 + (0.84 * (k + 1)) / teeth;
+      p.poly([p.P(a, 0.08, 16), p.P(b, 0.08, 22), p.P(b, 0.92, 22), p.P(a, 0.92, 16)], shade(PAL.chapa, 0.95), shade(PAL.chapa, 0.5));
+      p.poly([p.P(b, 0.08, 16), p.P(b, 0.92, 16), p.P(b, 0.92, 22), p.P(b, 0.08, 22)], PAL.glass);
+    }
+    return done(p);
+  }
+  const p = painter(1, 64);
+  p.chimney(0.1, 0.1, 0.14, 50);
+  p.box(0.04, 0.04, 0.96, 0.96, 0, 3, '#8a8780', false);
+  p.cylinder(0.32, 0.68, 0.2, 3, 18, '#e8e4dc');
+  p.cylinder(0.68, 0.32, 0.18, 3, 14, '#d9c9a0');
+  p.box(0.55, 0.55, 0.94, 0.94, 3, 20, '#a9b0b4');
+  p.windows(0.55, 0.55, 0.94, 0.94, 8, 22, 6, PAL.glassDark, 2, 2);
+  return done(p);
+}
+
+function plant(): Sprite {
+  const p = painter(2, 84);
+  p.box(0.05, 0.05, 1.95, 1.95, 0, 3, PAL.concrete, false);
+  p.chimney(0.3, 0.15, 0.22, 64, 3);
+  p.chimney(0.75, 0.15, 0.22, 64, 3);
+  // Coal heap.
+  p.poly([p.P(1.3, 0.15, 3), p.P(1.85, 0.15, 3), p.P(1.85, 0.7, 3), p.P(1.3, 0.7, 3), p.P(1.57, 0.42, 12)], '#2d2a28', '#1a1817');
+  p.box(0.15, 0.6, 1.2, 1.85, 3, 26, PAL.brick);
+  for (let u = 0.25; u < 1.15; u += 0.22) p.left(1.85, u, u + 0.1, 8, 24, PAL.glassDark);
+  p.right(1.2, 0.8, 1.7, 14, 22, PAL.glassDark);
+  p.box(1.25, 0.9, 1.85, 1.85, 3, 18, '#c9b9a0');
+  p.right(1.85, 1.0, 1.75, 6, 9, '#7a3a2c');
+  p.left(1.85, 1.3, 1.8, 3, 12, '#5d6064');
+  return done(p);
+}
+
+function treeSprite(kind: number, v: number): Sprite {
+  const p = painter(1, 26);
+  const spots: [number, number][] = [
+    [0.35, 0.35],
+    [0.7, 0.45],
+    [0.45, 0.75],
+  ];
+  const count = 1 + (v % 3);
+  for (let k = 0; k < count; k++) {
+    const [u, w] = spots[(k + v) % 3];
+    p.tree(u, w, k === 2 && kind !== 4 ? ((kind % 4) + 1) : kind, 0.9 + 0.1 * ((v + k) % 3));
+  }
+  return done(p);
+}
+
+function parkSprite(v: number): Sprite {
+  const p = painter(1, 30);
+  const kind = v % 3;
+  p.tree(0.2, 0.25, 1 + ((v >> 2) % 3), 0.8);
+  if (kind === 0) {
+    // Small obelisk.
+    p.box(0.42, 0.42, 0.58, 0.58, 0, 2, '#d8d2c4', false);
+    p.poly([p.P(0.45, 0.45, 2), p.P(0.55, 0.45, 2), p.P(0.55, 0.55, 2), p.P(0.45, 0.55, 2), p.P(0.5, 0.5, 20)], '#efe9dc', '#9a9284');
+  } else if (kind === 1) {
+    // Fountain.
+    const [x, y] = p.P(0.5, 0.5, 1);
+    p.g.beginPath();
+    p.g.ellipse(x, y, 7, 3.5, 0, 0, Math.PI * 2);
+    p.g.fillStyle = '#d8d2c4';
+    p.g.fill();
+    p.g.beginPath();
+    p.g.ellipse(x, y, 5.5, 2.6, 0, 0, Math.PI * 2);
+    p.g.fillStyle = '#6fb7e0';
+    p.g.fill();
+    p.g.fillStyle = '#d8d2c4';
+    p.g.fillRect(x - 0.8, y - 5, 1.6, 5);
+    p.g.fillStyle = '#cfe6ec';
+    p.g.fillRect(x - 0.5, y - 7, 1, 2);
+  } else {
+    // Glorieta (bandstand).
+    for (const [u, w] of [
+      [0.35, 0.35],
+      [0.65, 0.35],
+      [0.35, 0.65],
+      [0.65, 0.65],
+    ]) {
+      const [x, y] = p.P(u, w, 0);
+      p.g.fillStyle = '#efe9dc';
+      p.g.fillRect(x - 0.5, y - 7, 1, 7);
+    }
+    p.box(0.3, 0.3, 0.7, 0.7, 0, 1, '#d8d2c4', false);
+    p.hipRoof(0.28, 0.28, 0.72, 0.72, 7, 6, '#2f7f4f');
+  }
+  p.tree(0.8, 0.75, 1 + ((v >> 4) % 4), 0.75);
+  return done(p);
+}
+
+function poleSprite(): Sprite {
+  const p = painter(1, 26);
+  const [x, y] = p.P(0.5, 0.5, 0);
+  p.g.fillStyle = PAL.pole;
+  p.g.fillRect(x - 0.8, y - 18, 1.6, 18);
+  p.g.fillRect(x - 5, y - 17, 10, 1.4);
+  return done(p, [0, 8 - 17]);
+}
+
+const cache = new Map<string, Sprite>();
+
+function cached(key: string, make: () => Sprite): Sprite {
+  let s = cache.get(key);
+  if (!s) {
+    s = make();
+    cache.set(key, s);
+  }
+  return s;
+}
+
+/** Number of visual variants kept per building type (variant bytes are folded into this range). */
+const VARIANTS = 8;
+
+export function buildingSprite(zone: ZoneKind, level: number, variant: number): Sprite {
+  const v = variant % VARIANTS;
+  return cached(`${zone}${level}:${v}`, () =>
+    zone === 'R' ? residential(level, v * 7 + 3) : zone === 'C' ? commercial(level, v * 5 + 1) : industrial(level, v),
+  );
+}
+
+export function plantSprite(): Sprite {
+  return cached('plant', plant);
+}
+
+export function treeSpriteFor(kind: number, variant: number): Sprite {
+  return cached(`tree${kind}:${variant % 6}`, () => treeSprite(kind, variant % 6));
+}
+
+export function parkSpriteFor(variant: number): Sprite {
+  return cached(`park:${variant % 6}`, () => parkSprite(variant % 6));
+}
+
+export function poleSpriteFor(): Sprite {
+  return cached('pole', poleSprite);
+}
