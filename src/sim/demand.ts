@@ -31,16 +31,20 @@ function pressure(target: number, current: number): number {
   return ((target - current) / Math.max(target, 1)) * 100;
 }
 
+/** How much bigger than today the city wants to be: a served city keeps growing. */
+const GROWTH_APPETITE = 1.1;
+
 /**
  * Residents come when there are jobs (two residents per job plus a few pioneers);
- * commerce follows the population and industry follows the workforce.
+ * commerce follows the population and industry follows the workforce. Every target is
+ * a bit above today's numbers, so a city with lots, power and streets keeps growing.
  * Taxes above the default push every demand down, below it push them up.
  */
 export function computeDemand(t: Totals, tax: number): Demand {
   const taxEffect = (tax - DEFAULT_TAX) * 6;
-  const targetPop = (t.cJobs + t.iJobs + 40) * 2;
-  const targetC = t.pop * 0.15 + 10;
-  const targetI = t.pop * 0.35 + 20;
+  const targetPop = (t.cJobs + t.iJobs) * 2 * GROWTH_APPETITE + 80;
+  const targetC = t.pop * 0.15 * GROWTH_APPETITE + 10;
+  const targetI = t.pop * 0.35 * GROWTH_APPETITE + 20;
   return {
     R: clamp(pressure(targetPop, t.pop) - taxEffect),
     C: clamp(pressure(targetC, t.cJobs) - taxEffect),
@@ -50,10 +54,10 @@ export function computeDemand(t: Totals, tax: number): Demand {
 
 /** Highest level a lot can reach given its land value and the city size. */
 export function levelCap(zone: ZoneKind, landValue: number, pop: number): number {
-  const byValue = (step: number) => 1 + Math.floor(landValue / step);
+  const byValue = (step: number) => 1 + Math.floor((landValue + 15) / step);
   let cap: number;
-  if (zone === 'R') cap = Math.min(byValue(25), pop < 150 ? 2 : pop < 800 ? 3 : 4);
-  else if (zone === 'C') cap = Math.min(byValue(22), pop < 300 ? 1 : pop < 1200 ? 2 : pop < 4000 ? 3 : 4);
-  else cap = pop < 200 ? 1 : pop < 1000 ? 2 : pop < 3000 ? 3 : 4;
+  if (zone === 'R') cap = Math.min(byValue(22), pop < 150 ? 2 : pop < 700 ? 3 : 4);
+  else if (zone === 'C') cap = Math.min(byValue(20), pop < 250 ? 1 : pop < 900 ? 2 : pop < 2500 ? 3 : 4);
+  else cap = pop < 200 ? 1 : pop < 900 ? 2 : pop < 2500 ? 3 : 4;
   return Math.max(1, Math.min(MAX_LEVEL, cap));
 }

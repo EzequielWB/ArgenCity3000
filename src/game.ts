@@ -110,6 +110,7 @@ export class Game implements PointerTarget {
     this.last = t;
     if (this.keyboardPan.x || this.keyboardPan.y) {
       this.view.pan(-this.keyboardPan.x * dt * 0.9, -this.keyboardPan.y * dt * 0.9);
+      this.minimapDirty = true;
     }
     if (SPEEDS[this.speed] > 0 && !this.hooks.isModalOpen()) {
       this.acc += (dt * SPEEDS[this.speed]) / 1000;
@@ -140,6 +141,7 @@ export class Game implements PointerTarget {
 
   private onNewMonth(): void {
     this.view.invalidateLayer();
+    this.view.refreshTraffic();
     if (this.sim.state.tick % (TICKS_PER_MONTH * 12) === 0) {
       try {
         saveToSlot('auto', this.saveData());
@@ -286,6 +288,7 @@ export class Game implements PointerTarget {
     applyPlan(this.world, plan);
     this.sim.refresh();
     this.view.invalidateLayer();
+    this.view.refreshTraffic();
     this.minimapDirty = true;
     this.updateHud(false);
     if (this.mouse) this.hover(...this.mouse);
@@ -403,8 +406,8 @@ export class Game implements PointerTarget {
       else if (b.dataset.layer) this.setLayer(b.dataset.layer as Layer);
       else if (b.dataset.act === 'rotl') this.rotate(-1);
       else if (b.dataset.act === 'rotr') this.rotate(1);
-      else if (b.dataset.act === 'zin') this.view.zoomStep(1);
-      else if (b.dataset.act === 'zout') this.view.zoomStep(-1);
+      else if (b.dataset.act === 'zin') this.zoom(1, this.view.width / 2, this.view.height / 2);
+      else if (b.dataset.act === 'zout') this.zoom(-1, this.view.width / 2, this.view.height / 2);
     };
   }
 

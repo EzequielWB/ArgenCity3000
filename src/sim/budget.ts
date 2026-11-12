@@ -10,6 +10,8 @@ export interface BudgetReport {
   lines: number;
   parks: number;
   plants: number;
+  /** Garbage collection, street lighting and the like: grows faster than the city. */
+  services: number;
   income: number;
   expenses: number;
   balance: number;
@@ -32,9 +34,9 @@ export function monthlyBudget(w: World, tax: number): BudgetReport {
       else if (tile === TILE.PARK) parks++;
     }
   }
-  const taxR = Math.round(t.pop * tax * 0.07);
-  const taxC = Math.round(t.cJobs * tax * 0.09);
-  const taxI = Math.round(t.iJobs * tax * 0.09);
+  const taxR = Math.round(t.pop * tax * 0.055);
+  const taxC = Math.round(t.cJobs * tax * 0.075);
+  const taxI = Math.round(t.iJobs * tax * 0.075);
   const r = {
     taxR,
     taxC,
@@ -43,8 +45,9 @@ export function monthlyBudget(w: World, tax: number): BudgetReport {
     lines: Math.round(lines * UPKEEP.line),
     parks: Math.round(parks * UPKEEP.park),
     plants: w.plants.length * UPKEEP.plant,
+    services: Math.round(t.pop * UPKEEP.servicesPerResident * (1 + t.pop / UPKEEP.servicesScale)),
   };
   const income = r.taxR + r.taxC + r.taxI;
-  const expenses = r.roads + r.lines + r.parks + r.plants;
+  const expenses = r.roads + r.lines + r.parks + r.plants + r.services;
   return { ...r, income, expenses, balance: income - expenses };
 }

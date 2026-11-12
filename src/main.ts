@@ -152,10 +152,10 @@ window.addEventListener('keydown', (e) => {
       break;
     case '+':
     case '=':
-      game.view.zoomStep(1);
+      game.zoom(1, game.view.width / 2, game.view.height / 2);
       break;
     case '-':
-      game.view.zoomStep(-1);
+      game.zoom(-1, game.view.width / 2, game.view.height / 2);
       break;
     case ' ':
       game.togglePause();

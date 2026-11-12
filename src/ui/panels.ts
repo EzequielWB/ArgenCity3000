@@ -55,6 +55,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Tendido eléctrico', b.lines)}
     ${row('Plazas', b.parks)}
     ${row('Usinas', b.plants)}
+    ${row('Servicios municipales', b.services)}
     ${row('Total gastos', b.expenses, 'total')}
     <tr class="total"><td>Saldo del mes</td><td>${money(b.balance, true)}</td></tr>
   </table>`;

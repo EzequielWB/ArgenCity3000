@@ -146,7 +146,22 @@ describe('monthlyBudget', () => {
     expect(b.plants).toBeGreaterThan(0);
     expect(b.roads).toBeGreaterThan(0);
     expect(b.balance).toBe(b.income - b.expenses);
-    expect(b.expenses).toBe(b.roads + b.lines + b.parks + b.plants);
+    expect(b.expenses).toBe(b.roads + b.lines + b.parks + b.plants + b.services);
+  });
+
+  it('charges municipal services that grow faster than the population', () => {
+    const small = new World(flat());
+    build(small, 'zoneR', 0, 0, 4, 4);
+    for (let i = 0; i < small.tiles.length; i++) if (small.tiles[i] === TILE.R) small.level[i] = 1;
+    const big = new World(flat());
+    build(big, 'zoneR', 0, 0, 31, 31);
+    for (let i = 0; i < big.tiles.length; i++) if (big.tiles[i] === TILE.R) big.level[i] = 4;
+    const s = monthlyBudget(small, 7);
+    const b = monthlyBudget(big, 7);
+    const popSmall = cityTotals(small).pop;
+    const popBig = cityTotals(big).pop;
+    expect(s.services).toBeGreaterThan(0);
+    expect(b.services / popBig).toBeGreaterThan(s.services / popSmall);
   });
 
   it('collects more with more residents and a higher rate', () => {

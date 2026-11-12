@@ -411,6 +411,7 @@ input {
 
 .card h3 {
   margin: 0 0 6px;
+  padding: 0 20px 0 22px;
   font-family: 'Rye', Georgia, serif;
   font-weight: 400;
   color: var(--gold-soft);
@@ -686,6 +687,7 @@ input {
 }
 
 .modal-card h2 {
+  padding-left: 18px;
   font-family: 'Rye', Georgia, serif;
   font-weight: 400;
   color: var(--gold-soft);

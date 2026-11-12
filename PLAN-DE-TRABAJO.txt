@@ -2,6 +2,7 @@ ARGENTINACITY 3000 - PLAN DE TRABAJO (reconstruccion desde cero)
 =================================================================
 Fecha: 2026-11-11
 Carpeta: E:\PROYECTO_CLAUDE_ARGENCITY (repo git nuevo; ORIGINAL/ queda fuera de git)
+ESTADO: v1 jugable terminada. Para jugar: npm install && npm run dev  ->  http://localhost:5273
 
 OBJETIVO
 --------
@@ -78,5 +79,8 @@ DECISIONES QUE TOME POR DEFECTO (decime si alguna no te cierra)
   elegido antes queda como opcion de pintado, no como tamano fijo de edificio.
 - Calles de una celda de ancho; no se puede construir sobre agua (sin puentes en v1).
 - Caja inicial: $30.000. Impuesto inicial: 7 %.
+- Gasto de "Servicios municipales" que crece con la poblacion (para que la caja
+  no explote en ciudades grandes).
+- Transito animado (autos, taxis, colectivos) solo visual; el transito simulado queda para v2.
 - Tiempo: 60 ticks = 1 mes; a velocidad normal, un mes dura unos 6 segundos.
 - Sin "game over": con la caja en rojo la ciudad se congela hasta que se recupera.

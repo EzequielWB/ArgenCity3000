@@ -134,7 +134,7 @@ export class Simulation {
         if (level > cap && rng.chance(0.002)) this.changeLevel(i, level - 1);
         continue;
       }
-      if (rng.chance((GROWTH_RATE * d) / 100 / (1 + level))) {
+      if (rng.chance((GROWTH_RATE * d) / 100 / (1 + level * 0.5))) {
         this.changeLevel(i, level + 1);
         w.variant[i] = rng.int(256);
         w.terrain.trees[i] = 0;

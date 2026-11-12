@@ -25,11 +25,14 @@ export const COSTS = {
 
 /** Monthly upkeep. */
 export const UPKEEP = {
-  road: 0.5,
-  bridge: 3,
-  line: 0.2,
-  park: 1,
-  plant: 250,
+  road: 1,
+  bridge: 4,
+  line: 0.3,
+  park: 2,
+  plant: 350,
+  servicesPerResident: 0.08,
+  /** Population at which the cost per resident of municipal services doubles. */
+  servicesScale: 15000,
 } as const;
 
 /** Power plant output and footprint. */

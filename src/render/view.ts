@@ -4,6 +4,7 @@ import { TILE, World, zoneOf } from '../world/world';
 import { PAL } from './color';
 import { cellScreenCorners, type Pt } from './geometry';
 import { MapRenderer } from './mapRenderer';
+import { computeTraffic, drawTraffic } from './traffic';
 
 export type Layer = 'none' | 'power' | 'pollution' | 'landValue';
 
@@ -31,6 +32,7 @@ export class View {
 
   private layerCanvas: HTMLCanvasElement;
   private layerDirty = true;
+  private traffic: Uint8Array;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -41,6 +43,8 @@ export class View {
     this.layerCanvas = document.createElement('canvas');
     this.layerCanvas.width = map.canvas.width;
     this.layerCanvas.height = map.canvas.height;
+    this.traffic = new Uint8Array(world.n * world.n);
+    this.refreshTraffic();
     this.resize();
   }
 
@@ -60,6 +64,11 @@ export class View {
 
   invalidateLayer(): void {
     this.layerDirty = true;
+  }
+
+  /** Recounts cars per street; call after edits and every month. */
+  refreshTraffic(): void {
+    computeTraffic(this.world, this.traffic);
   }
 
   /** Screen (CSS px) → cache canvas coordinates. */
@@ -142,6 +151,7 @@ export class View {
     const [vx1, vy1] = this.screenToCache(this.width, this.height);
     const visible = (x: number, y: number, m = 40) => x > vx0 - m && x < vx1 + m && y > vy0 - m && y < vy1 + m;
 
+    if (z >= 1) drawTraffic(g, this.world, this.map.rot, this.traffic, [this.map.originX, this.map.originY], [vx0, vy0, vx1, vy1], time);
     if (z >= 0.5) this.drawSmoke(g, time, visible);
     this.drawPowerWarnings(g, time, visible);
     this.drawPreview(g);

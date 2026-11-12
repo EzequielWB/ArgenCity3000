@@ -521,7 +521,7 @@ function light(a: [number, number, number], b: [number, number, number], c: [num
   const ll = Math.hypot(L[0], L[1], L[2]);
   const dot = (nx * L[0] + ny * L[1] + nz * L[2]) / (len * ll);
   const flat = L[2] / ll;
-  return Math.max(0.68, Math.min(1.28, dot / flat));
+  return Math.max(0.8, Math.min(1.18, dot / flat));
 }
 
 function addRect(rects: Rect[], r: Rect): void {

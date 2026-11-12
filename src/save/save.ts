@@ -137,7 +137,7 @@ function parseSim(raw: unknown): SimState {
   let lastBudget: BudgetReport | null = null;
   if (s.lastBudget !== null && s.lastBudget !== undefined) {
     const b = s.lastBudget as Record<string, unknown>;
-    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'income', 'expenses', 'balance'];
+    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'income', 'expenses', 'balance'];
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }
