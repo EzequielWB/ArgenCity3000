@@ -1,4 +1,4 @@
-import { CAPACITY, ROAD_REACH, SERVICES, type ServiceKind } from '../config';
+import { CAPACITY, DEFAULT_FUNDING, ROAD_REACH, SERVICES, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf } from '../world/world';
 
@@ -111,8 +111,9 @@ function coverageField(w: World, kind: ServiceKind): Uint8Array {
  * Coverage of every public service. A powered service covers a disc of its radius, fading a
  * little towards the edge; if more residents live in the disc than it can serve, its
  * coverage drops in proportion. Overlapping services of the same kind add up to 100.
+ * `funding` scales each kind's coverage (a school funded at 50 % covers half as well).
  */
-export function computeServices(w: World): void {
+export function computeServices(w: World, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING): void {
   const n = w.n;
   w.edu.fill(0);
   w.health.fill(0);
@@ -120,7 +121,7 @@ export function computeServices(w: World): void {
   w.fireCover.fill(0);
   for (let i = 0; i < n * n; i++) {
     const kind = serviceOf(w.tiles[i]);
-    if (!kind || !w.powered[i]) continue;
+    if (!kind || !w.powered[i] || funding[kind] <= 0) continue;
     const { radius, capacity } = SERVICES[kind];
     const cx = i % n;
     const cy = (i - cx) / n;
@@ -133,7 +134,7 @@ export function computeServices(w: World): void {
         if (w.tiles[j] === TILE.R && w.isOccupied(j)) residents += CAPACITY.R[w.level[j]];
       }
     }
-    const efficiency = Math.min(1, capacity / Math.max(1, residents));
+    const efficiency = Math.min(1, capacity / Math.max(1, residents)) * (funding[kind] / 100);
     const field = coverageField(w, kind);
     for (let y = Math.max(0, cy - radius); y <= Math.min(n - 1, cy + radius); y++) {
       for (let x = Math.max(0, cx - radius); x <= Math.min(n - 1, cx + radius); x++) {

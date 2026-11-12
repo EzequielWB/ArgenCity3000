@@ -1,6 +1,6 @@
-import { SERVICES, UPKEEP } from '../config';
-import { TILE, World, serviceOf } from '../world/world';
-import { cityTotals } from './demand';
+import { DEFAULT_FUNDING, ROAD_REACH, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
+import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import { cityTotals, zoneTaxes } from './demand';
 
 export interface BudgetReport {
   taxR: number;
@@ -22,17 +22,47 @@ export interface BudgetReport {
 }
 
 /** Monthly income and expenses for the current city. Whole pesos only. */
-export function monthlyBudget(w: World, tax: number): BudgetReport {
+/**
+ * Inherited streets (from a real-place map) within reach of a building or a service:
+ * those are in use, so they are charged like any other street.
+ */
+function usedInheritedStreets(w: World): Uint8Array {
+  const n = w.n;
+  const used = new Uint8Array(n * n);
+  if (!w.inherited.some((v) => v)) return used;
+  for (let i = 0; i < n * n; i++) {
+    const t = w.tiles[i];
+    if (!((zoneOf(t) && w.level[i] > 0) || serviceOf(t))) continue;
+    const x = i % n;
+    const y = (i - x) / n;
+    for (let dy = -ROAD_REACH; dy <= ROAD_REACH; dy++) {
+      const r = ROAD_REACH - Math.abs(dy);
+      for (let dx = -r; dx <= r; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < n && ny < n) used[ny * n + nx] = 1;
+      }
+    }
+  }
+  return used;
+}
+
+/** The month's income and expenses. `tax` is per zone, or one number for every zone. */
+export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING): BudgetReport {
+  const taxes = zoneTaxes(tax);
   const t = cityTotals(w);
   let roads = 0;
   let bridges = 0;
   let lines = 0;
   let parks = 0;
   const upkeep = { school: 0, clinic: 0, police: 0, fire: 0 };
+  const used = usedInheritedStreets(w);
   for (let y = 0; y < w.n; y++) {
     for (let x = 0; x < w.n; x++) {
-      const tile = w.tiles[w.idx(x, y)];
+      const i = w.idx(x, y);
+      const tile = w.tiles[i];
       if (tile === TILE.ROAD) {
+        if (w.inherited[i] && !used[i]) continue;
         if (w.isWater(x, y)) bridges++;
         else roads++;
       } else if (tile === TILE.LINE) lines++;
@@ -43,9 +73,10 @@ export function monthlyBudget(w: World, tax: number): BudgetReport {
       }
     }
   }
-  const taxR = Math.round(t.pop * tax * 0.055);
-  const taxC = Math.round(t.cJobs * tax * 0.075);
-  const taxI = Math.round(t.iJobs * tax * 0.075);
+  const taxR = Math.round(t.pop * taxes.R * 0.055);
+  const taxC = Math.round(t.cJobs * taxes.C * 0.075);
+  const taxI = Math.round(t.iJobs * taxes.I * 0.075);
+  const funded = (k: ServiceKind) => Math.round((upkeep[k] * funding[k]) / 100);
   const r = {
     taxR,
     taxC,
@@ -55,10 +86,10 @@ export function monthlyBudget(w: World, tax: number): BudgetReport {
     parks: Math.round(parks * UPKEEP.park),
     plants: w.plants.length * UPKEEP.plant,
     services: Math.round(t.pop * UPKEEP.servicesPerResident * (1 + t.pop / UPKEEP.servicesScale)),
-    schools: upkeep.school,
-    clinics: upkeep.clinic,
-    police: upkeep.police,
-    firefighters: upkeep.fire,
+    schools: funded('school'),
+    clinics: funded('clinic'),
+    police: funded('police'),
+    firefighters: funded('fire'),
   };
   const income = r.taxR + r.taxC + r.taxI;
   const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters;

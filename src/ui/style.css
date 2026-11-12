@@ -770,8 +770,14 @@ table.budget tr.total td {
 
 .tax output {
   font-weight: 800;
-  min-width: 42px;
-  font-size: 18px;
+  min-width: 52px;
+  font-size: 16px;
+  text-align: right;
+}
+
+.tax label {
+  min-width: 92px;
+  font-size: 13px;
 }
 
 canvas.chart {

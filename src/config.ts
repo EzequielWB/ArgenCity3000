@@ -30,9 +30,9 @@ export const UPKEEP = {
   line: 0.3,
   park: 2,
   plant: 350,
-  servicesPerResident: 0.05,
+  servicesPerResident: 0.06,
   /** Population at which the cost per resident of municipal services doubles. */
-  servicesScale: 15000,
+  servicesScale: 9000,
 } as const;
 
 /** Power plant output and footprint. */
@@ -58,11 +58,26 @@ export const SERVICE_KINDS: readonly ServiceKind[] = ['school', 'clinic', 'polic
  * services of the same kind add up (up to 100 %). They need power.
  */
 export const SERVICES: Record<ServiceKind, { cost: number; upkeep: number; radius: number; capacity: number; power: number }> = {
-  school: { cost: 1500, upkeep: 120, radius: 11, capacity: 6000, power: 8 },
-  clinic: { cost: 1200, upkeep: 100, radius: 11, capacity: 6000, power: 8 },
-  police: { cost: 1000, upkeep: 90, radius: 10, capacity: 8000, power: 6 },
-  fire: { cost: 1000, upkeep: 80, radius: 11, capacity: 10000, power: 6 },
+  school: { cost: 1500, upkeep: 260, radius: 11, capacity: 6000, power: 8 },
+  clinic: { cost: 1200, upkeep: 220, radius: 11, capacity: 6000, power: 8 },
+  police: { cost: 1000, upkeep: 180, radius: 10, capacity: 8000, power: 6 },
+  fire: { cost: 1000, upkeep: 160, radius: 11, capacity: 10000, power: 6 },
 };
+
+/** Municipal tax rate of each zone, in percent. */
+export interface ZoneTaxes {
+  R: number;
+  C: number;
+  I: number;
+}
+
+/**
+ * Budget of each service, in percent of its standard upkeep. A service funded at X % costs
+ * X % of its upkeep and gives X % of its coverage.
+ */
+export type ServiceFunding = Record<ServiceKind, number>;
+export const DEFAULT_FUNDING: Readonly<ServiceFunding> = { school: 100, clinic: 100, police: 100, fire: 100 };
+export const MAX_FUNDING = 120;
 
 /** Fire coverage at which firefighters put a fire out before the building is lost. */
 export const FIRE_SAFE_COVER = 50;

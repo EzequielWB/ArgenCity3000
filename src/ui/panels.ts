@@ -1,4 +1,6 @@
-import { MAX_TAX, MIN_TAX, PLANT_CAPACITY } from '../config';
+import { MAX_FUNDING, MAX_TAX, MIN_TAX, PLANT_CAPACITY, type ServiceKind } from '../config';
+import { averageTax } from '../sim/demand';
+import type { ZoneKind } from '../world/world';
 import { formatMoney, formatNumber } from '../core/format';
 import type { Game } from '../game';
 import { deserialize, serialize, type SaveData } from '../save/save';
@@ -39,6 +41,18 @@ export function initModal(): void {
 
 // ---------------------------------------------------------------- budget
 
+const ZONE_ROWS: [ZoneKind, string][] = [
+  ['R', 'Residencial'],
+  ['C', 'Comercial'],
+  ['I', 'Industrial'],
+];
+const SERVICE_ROWS: [ServiceKind, string][] = [
+  ['school', 'Escuelas'],
+  ['clinic', 'Salitas'],
+  ['police', 'Comisarías'],
+  ['fire', 'Bomberos'],
+];
+
 function money(v: number, sign = false): string {
   const cls = sign ? (v >= 0 ? 'pos' : 'neg') : '';
   return `<span class="${cls}">${sign && v > 0 ? '+' : ''}${formatMoney(v)}</span>`;
@@ -75,9 +89,18 @@ export function openBudget(game: Game): void {
         <div id="budgetNow"></div>
       </section>
       <section>
-        <h3>Tasa municipal</h3>
-        <div class="tax"><input type="range" id="taxRange" min="${MIN_TAX}" max="${MAX_TAX}" step="1" value="${sim.state.tax}" aria-label="Tasa municipal"><output id="taxOut">${sim.state.tax} %</output></div>
+        <h3>Tasas por zona</h3>
+        ${ZONE_ROWS.map(
+          ([z, label]) =>
+            `<div class="tax"><label for="tax${z}">${label}</label><input type="range" id="tax${z}" data-tax="${z}" min="${MIN_TAX}" max="${MAX_TAX}" step="1" value="${sim.state.taxes[z]}"><output>${sim.state.taxes[z]} %</output></div>`,
+        ).join('')}
         <p id="taxNote"></p>
+        <h3>Presupuesto de servicios</h3>
+        ${SERVICE_ROWS.map(
+          ([k, label]) =>
+            `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
+        ).join('')}
+        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos.</small></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
         Saldo anual estimado: <strong id="yearly"></strong><br>
@@ -90,22 +113,36 @@ export function openBudget(game: Game): void {
     ${sim.state.lastBudget ? `<h3>Mes pasado</h3>${budgetTable(sim.state.lastBudget)}` : ''}
   `);
   const refresh = () => {
-    const b = monthlyBudget(game.world, sim.state.tax);
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding);
     $('#budgetNow').innerHTML = budgetTable(b);
     $('#yearly').innerHTML = money(b.balance * 12, true);
-    $('#taxOut').textContent = `${sim.state.tax} %`;
     const d = sim.demand;
+    const avg = averageTax(sim.state.taxes);
+    const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;
     $('#taxNote').textContent =
-      sim.state.tax > 9
-        ? `Tasas altas: entra más plata pero baja la demanda (R ${d.R} · C ${d.C} · I ${d.I}).`
-        : sim.state.tax < 5
-          ? `Tasas bajas: la ciudad crece más rápido pero entra menos plata (R ${d.R} · C ${d.C} · I ${d.I}).`
-          : `Tasas moderadas (R ${d.R} · C ${d.C} · I ${d.I}).`;
+      avg > 9
+        ? `Tasas altas: entra más plata, pero baja la demanda y la ciudad deja de atraer gente nueva. ${demand}`
+        : avg < 5
+          ? `Tasas bajas: la ciudad crece más rápido pero entra menos plata. ${demand}`
+          : `Cada tasa mueve la demanda de su zona. ${demand}`;
   };
-  body.querySelector<HTMLInputElement>('#taxRange')!.addEventListener('input', (e) => {
-    sim.setTax(Number((e.target as HTMLInputElement).value));
-    refresh();
-  });
+  body.querySelectorAll<HTMLInputElement>('input[data-tax]').forEach((input) =>
+    input.addEventListener('input', () => {
+      const z = input.dataset.tax as ZoneKind;
+      sim.setTax(Number(input.value), z);
+      input.nextElementSibling!.textContent = `${sim.state.taxes[z]} %`;
+      refresh();
+    }),
+  );
+  body.querySelectorAll<HTMLInputElement>('input[data-fund]').forEach((input) =>
+    input.addEventListener('input', () => {
+      const k = input.dataset.fund as ServiceKind;
+      sim.setFunding(k, Number(input.value));
+      input.nextElementSibling!.textContent = `${sim.state.funding[k]} %`;
+      game.view.invalidateLayer();
+      refresh();
+    }),
+  );
   refresh();
   drawHistory(body.querySelector<HTMLCanvasElement>('#chart')!, sim.state.history);
 }
@@ -238,7 +275,9 @@ export function openHelp(): void {
       <li><strong>Zonificá</strong> residencial (5), comercial (6) e industrial (7) pegado a las calles.
         La luz viaja por calles, zonas y tendido eléctrico (4), así que todo tiene que estar conectado a la usina.</li>
       <li><strong>Mirá la demanda</strong> (barras R C I arriba): la gente viene si hay trabajo, y el comercio y la industria siguen a la gente.</li>
-      <li><strong>Cuidá la caja.</strong> Cada mes cobrás tasas y pagás mantenimiento. Con la caja en rojo no se construye nada.</li>
+      <li><strong>Cuidá la caja.</strong> Cada mes cobrás tasas y pagás mantenimiento. Con la caja en rojo no se construye nada y los vecinos empiezan a irse.
+        En el <strong>Presupuesto</strong> (P) ponés una tasa para cada zona (cada una mueve solo la demanda de su zona) y decidís cuánto financiar cada servicio:
+        al 50 % cuesta la mitad y cubre la mitad.</li>
       <li><strong>Plazas</strong> (8), agua y árboles suben el valor del suelo y dejan crecer edificios más altos. La industria contamina: alejala de las casas.</li>
       <li>Si una usina no da abasto, aparecen rayos rojos sobre los edificios sin luz: hacé otra.</li>
       <li><strong>Servicios públicos</strong> (necesitan luz y cubren un radio): sin <strong>salita</strong> (U) las casas no pasan de chalet, y sin

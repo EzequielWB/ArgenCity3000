@@ -64,6 +64,11 @@ export class World {
   readonly variant: Uint8Array;
   /** 1 when a building stands empty: nobody lives or works there. */
   readonly abandoned: Uint8Array;
+  /**
+   * 1 on streets that came with a real-place map: they are only charged once buildings use
+   * them. Building anything on the cell (the same street included) clears it.
+   */
+  readonly inherited: Uint8Array;
   /** Ticks left of a fire burning in the cell (0 = no fire). */
   readonly fire: Uint8Array;
   plants: Plant[] = [];
@@ -92,6 +97,7 @@ export class World {
     this.level = new Uint8Array(size);
     this.variant = new Uint8Array(size);
     this.abandoned = new Uint8Array(size);
+    this.inherited = new Uint8Array(size);
     this.fire = new Uint8Array(size);
     this.crime = new Uint8Array(size);
     this.edu = new Uint8Array(size);
@@ -130,6 +136,7 @@ export class World {
     this.tiles[i] = tile;
     this.level[i] = level;
     this.abandoned[i] = 0;
+    this.inherited[i] = 0;
     this.fire[i] = 0;
     this.markDirty(i);
   }

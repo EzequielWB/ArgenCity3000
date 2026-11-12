@@ -2,9 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { cornersFromElevation, dominantBearing, rasterLine4 } from '../scripts/mapgen/geo';
 import { PRESETS, decodePreset, encodePreset, worldFromPreset, type MapPreset } from '../src/world/presets';
 import { MAX_HEIGHT, SEA_LEVEL, isWaterCell } from '../src/world/terrain';
-import { TILE } from '../src/world/world';
+import { TILE, World } from '../src/world/world';
 import { deserialize, serialize } from '../src/save/save';
 import { newSimState } from '../src/sim/simulation';
+import { monthlyBudget } from '../src/sim/budget';
+import { UPKEEP } from '../src/config';
+import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools';
+import { UndoHistory } from '../src/world/history';
+
+function build(w: World, tool: ToolId, ax: number, ay: number, bx = ax, by = ay) {
+  applyPlan(w, planTool(w, tool, dragCells(tool, ax, ay, bx, by, 1, w.n)));
+}
 
 describe('dominantBearing', () => {
   it('finds the angle of a rotated street grid, ignoring a few odd streets', () => {
@@ -132,6 +140,47 @@ describe('map presets', () => {
     expect(p.trees[2 * 8 + 3]).toBe(2);
     const save = deserialize(serialize({ name: 'Pueblo chico', seed: 1, world: streets, sim: newSimState(1) }));
     expect(save.world.tileAt(3, 2)).toBe(TILE.ROAD);
+  });
+
+  it('charge the streets that come with the map only once buildings use them', () => {
+    const w = worldFromPreset(tinyPreset(), true);
+    expect(w.inherited[w.idx(3, 2)]).toBe(1);
+    expect(monthlyBudget(w, 7).roads).toBe(0);
+    // A house two lots away from the street: the cells of the street within reach start costing.
+    build(w, 'zoneR', 3, 4);
+    w.level[w.idx(3, 4)] = 1;
+    const used = monthlyBudget(w, 7).roads;
+    expect(used).toBeGreaterThan(0);
+    expect(used).toBeLessThan(8 * UPKEEP.bridge);
+    // Streets the player builds cost from the start, as always.
+    const own = new World(worldFromPreset(tinyPreset(), false).terrain);
+    build(own, 'road', 0, 2, 5, 2);
+    expect(monthlyBudget(own, 7).roads).toBe(6 * UPKEEP.road);
+  });
+
+  it('turn an inherited street into the player own street when it is rebuilt, and undo brings it back', () => {
+    const w = worldFromPreset(tinyPreset(), true);
+    const history = new UndoHistory();
+    const bulldoze = planTool(w, 'bulldoze', [[3, 2]]);
+    history.record(w, bulldoze, 0);
+    applyPlan(w, bulldoze);
+    expect(w.inherited[w.idx(3, 2)]).toBe(0);
+    history.undo(w, 0);
+    expect(w.tileAt(3, 2)).toBe(TILE.ROAD);
+    expect(w.inherited[w.idx(3, 2)]).toBe(1);
+    applyPlan(w, planTool(w, 'bulldoze', [[3, 2]]));
+    applyPlan(w, planTool(w, 'road', [[3, 2]]));
+    expect(w.inherited[w.idx(3, 2)]).toBe(0);
+  });
+
+  it('keep the inherited streets in saves, and older saves have none', () => {
+    const w = worldFromPreset(tinyPreset(), true);
+    const text = serialize({ name: 'X', seed: 1, world: w, sim: newSimState(1) });
+    expect(Array.from(deserialize(text).world.inherited)).toEqual(Array.from(w.inherited));
+    const old = JSON.parse(text);
+    old.version = 2;
+    delete old.inherited;
+    expect(Array.from(deserialize(JSON.stringify(old)).world.inherited).every((v) => v === 0)).toBe(true);
   });
 
   it('ship every listed map as a valid file with land, water and streets', () => {

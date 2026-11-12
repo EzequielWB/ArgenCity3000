@@ -1,4 +1,4 @@
-import { CAPACITY, DEFAULT_TAX, MAX_LEVEL } from '../config';
+import { CAPACITY, DEFAULT_TAX, MAX_LEVEL, type ZoneTaxes } from '../config';
 import { World, zoneOf, type ZoneKind } from '../world/world';
 
 export interface Totals {
@@ -39,18 +39,29 @@ export const GROWTH_APPETITE = 1.1;
  * commerce follows the population and industry follows the workforce. With an appetite
  * above 1 every target is a bit above today's numbers, so a thriving city keeps growing;
  * at 1 it only grows as far as its own jobs and residents justify.
- * Taxes above the default push every demand down, below it push them up.
+ * Each zone's tax above the default pushes that zone's demand down; below it, up.
  */
-export function computeDemand(t: Totals, tax: number, appetite = GROWTH_APPETITE): Demand {
-  const taxEffect = (tax - DEFAULT_TAX) * 6;
+export function computeDemand(t: Totals, tax: ZoneTaxes | number, appetite = GROWTH_APPETITE): Demand {
+  const taxes = zoneTaxes(tax);
+  const taxEffect = (z: ZoneKind) => (taxes[z] - DEFAULT_TAX) * 6;
   const targetPop = (t.cJobs + t.iJobs) * 2 * appetite + 80;
   const targetC = t.pop * 0.15 * appetite + 10;
   const targetI = t.pop * 0.35 * appetite + 20;
   return {
-    R: clamp(pressure(targetPop, t.pop) - taxEffect),
-    C: clamp(pressure(targetC, t.cJobs) - taxEffect),
-    I: clamp(pressure(targetI, t.iJobs) - taxEffect),
+    R: clamp(pressure(targetPop, t.pop) - taxEffect('R')),
+    C: clamp(pressure(targetC, t.cJobs) - taxEffect('C')),
+    I: clamp(pressure(targetI, t.iJobs) - taxEffect('I')),
   };
+}
+
+/** Per-zone taxes; a single number means the same tax for every zone. */
+export function zoneTaxes(tax: ZoneTaxes | number): ZoneTaxes {
+  return typeof tax === 'number' ? { R: tax, C: tax, I: tax } : tax;
+}
+
+/** The plain average of the three zone taxes. */
+export function averageTax(taxes: ZoneTaxes): number {
+  return (taxes.R + taxes.C + taxes.I) / 3;
 }
 
 export interface ServiceLevels {

@@ -1,3 +1,4 @@
+import { SERVICE_KINDS, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { formatMoney, formatNumber, settlementType } from '../core/format';
 
 /** What the newspaper compares month to month. */
@@ -7,7 +8,8 @@ export interface CitySnapshot {
   plants: number;
   shortage: boolean;
   crisis: boolean;
-  tax: number;
+  taxes: ZoneTaxes;
+  funding: ServiceFunding;
   month: number;
   year: number;
   cash: number;
@@ -20,6 +22,17 @@ export interface NewsItem {
 }
 
 const MILESTONES = [100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
+
+const TAX_NAMES = { R: ['residenciales', 'los barrios'], C: ['comerciales', 'los comercios'], I: ['industriales', 'las fábricas'] } as const;
+
+/** A service funded below this percent makes the news. */
+const DEEP_CUT = 50;
+const CUT_NEWS: Record<ServiceKind, (pct: number) => string> = {
+  school: (p) => `Paro docente: el presupuesto de las escuelas quedó al ${p} %`,
+  clinic: (p) => `Salitas sin insumos: el presupuesto de salud quedó al ${p} %`,
+  police: (p) => `Patrulleros sin nafta: recortan el presupuesto de las comisarías al ${p} %`,
+  fire: (p) => `Los bomberos voluntarios piden ayuda: les dejaron el presupuesto al ${p} %`,
+};
 
 /** Headlines caused by the change from `prev` to `next`. Pure: same input, same headlines. */
 export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: string): string[] {
@@ -38,8 +51,14 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   if (prev.crisis && !next.crisis) out.push('La Municipalidad salió del rojo: vuelven las obras');
   if (prev.abandoned < 10 && next.abandoned >= 10) out.push(`Crece el abandono: ya son ${next.abandoned} los edificios vacíos en ${city}`);
   if (prev.abandoned >= 10 && next.abandoned < 5) out.push('Vuelven los vecinos: se recuperan los barrios abandonados');
-  if (next.tax > prev.tax) out.push(`Suben las tasas municipales al ${next.tax} %: malestar en los barrios`);
-  if (next.tax < prev.tax) out.push(`Bajan las tasas al ${next.tax} %: alivio en los comercios`);
+  for (const z of ['R', 'C', 'I'] as const) {
+    const [kind, who] = TAX_NAMES[z];
+    if (next.taxes[z] > prev.taxes[z]) out.push(`Suben las tasas ${kind} al ${next.taxes[z]} %: malestar en ${who}`);
+    if (next.taxes[z] < prev.taxes[z]) out.push(`Bajan las tasas ${kind} al ${next.taxes[z]} %: alivio en ${who}`);
+  }
+  for (const k of SERVICE_KINDS) {
+    if (prev.funding[k] >= DEEP_CUT && next.funding[k] < DEEP_CUT) out.push(CUT_NEWS[k](next.funding[k]));
+  }
   if (prev.month === 12 && next.month === 1) {
     out.push(`Balance ${prev.year}: ${formatNumber(next.pop)} habitantes y ${formatMoney(next.cash)} en la caja`);
   }

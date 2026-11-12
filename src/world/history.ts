@@ -9,6 +9,7 @@ interface CellBefore {
   variant: number;
   tree: number;
   abandoned: number;
+  inherited: number;
   fire: number;
 }
 
@@ -48,7 +49,16 @@ export class UndoHistory {
     if (plan.cells.length === 0) return;
     const cells = plan.cells.map(([x, y]) => {
       const i = w.idx(x, y);
-      return { i, tile: w.tiles[i], level: w.level[i], variant: w.variant[i], tree: w.terrain.trees[i], abandoned: w.abandoned[i], fire: w.fire[i] };
+      return {
+        i,
+        tile: w.tiles[i],
+        level: w.level[i],
+        variant: w.variant[i],
+        tree: w.terrain.trees[i],
+        abandoned: w.abandoned[i],
+        inherited: w.inherited[i],
+        fire: w.fire[i],
+      };
     });
     this.entries.push({ tool: plan.tool, cost: plan.cost, tick, cells, plants: w.plants.map((p) => ({ ...p })) });
     if (this.entries.length > UndoHistory.MAX_ENTRIES) this.entries.shift();
@@ -68,6 +78,7 @@ export class UndoHistory {
       w.variant[c.i] = c.variant;
       w.terrain.trees[c.i] = c.tree;
       w.abandoned[c.i] = c.abandoned;
+      w.inherited[c.i] = c.inherited;
       w.fire[c.i] = c.fire;
     }
     w.plants = e.plants.map((p) => ({ ...p }));

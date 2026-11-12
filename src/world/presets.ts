@@ -79,7 +79,9 @@ export function worldFromPreset(p: MapPreset, withStreets: boolean): World {
   if (withStreets) {
     const cells: Cell[] = [];
     for (let i = 0; i < p.roads.length; i++) if (p.roads[i]) cells.push([i % p.n, Math.floor(i / p.n)]);
-    applyPlan(w, planTool(w, 'road', cells));
+    const plan = planTool(w, 'road', cells);
+    applyPlan(w, plan);
+    for (const [x, y] of plan.cells) w.inherited[w.idx(x, y)] = 1;
   }
   return w;
 }
