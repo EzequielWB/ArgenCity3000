@@ -130,7 +130,13 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
     return;
   }
-  if (!game || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!game) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    game.undo();
+    e.preventDefault();
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (panKeys[key]) {
     held.add(key);

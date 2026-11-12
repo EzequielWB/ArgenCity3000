@@ -15,6 +15,13 @@ const PAD_SIDE = 24;
 const SPRITE_REACH = 112;
 const BASE_HEIGHT = 0;
 
+export interface PlacedSprite {
+  sprite: Sprite;
+  /** Cache coordinates where the sprite's anchor goes. */
+  ax: number;
+  ay: number;
+}
+
 interface Rect {
   x0: number;
   y0: number;
@@ -174,38 +181,53 @@ export class MapRenderer {
     if (vx === n - 1 || vy === n - 1) this.drawSkirts(vx, vy, x, y);
 
     // Objects standing on the cell.
+    const obj = this.objectAt(vx, vy);
+    if (obj) this.blit(obj.sprite, obj.ax, obj.ay, i);
+    if (tile === TILE.LINE) this.drawWires(vx, vy, obj!);
+  }
+
+  /**
+   * The sprite standing on a view cell (building, plant, park, pole or trees) and where its
+   * anchor goes in cache coordinates, or null. A plant is returned only by its front cell,
+   * which is the one drawn last.
+   */
+  objectAt(vx: number, vy: number): PlacedSprite | null {
+    const w = this.world;
+    const n = w.n;
+    const rot = this.rot;
+    const [x, y] = fromView(vx, vy, rot, n);
+    const i = w.idx(x, y);
+    const tile = w.tiles[i];
+    const level = w.level[i];
     if (tile === TILE.PLANT) {
       const p = w.plantAt(x, y);
-      if (p) {
-        const corners: Pt[] = [];
-        for (const [dx, dy] of [
-          [0, 0],
-          [1, 0],
-          [0, 1],
-          [1, 1],
-        ]) {
-          corners.push(toView(p.x + dx, p.y + dy, rot, n));
-        }
-        const fx = Math.max(...corners.map((c) => c[0]));
-        const fy = Math.max(...corners.map((c) => c[1]));
-        if (vx === fx && vy === fy) {
-          const h = plantHeight(w, p.x, p.y);
-          const [ax, ay] = this.toCache(fx - (PLANT_SIZE - 1), fy - (PLANT_SIZE - 1), h);
-          this.blit(plantSprite(), ax, ay, i);
-        }
+      if (!p) return null;
+      let fx = -1;
+      let fy = -1;
+      for (const [dx, dy] of [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1],
+      ]) {
+        const [cx, cy] = toView(p.x + dx, p.y + dy, rot, n);
+        fx = Math.max(fx, cx);
+        fy = Math.max(fy, cy);
       }
-    } else if (level > 0 && zoneOf(tile)) {
-      const [ax, ay] = this.toCache(vx, vy, hs[0]);
-      this.blit(buildingSprite(zoneOf(tile)!, level, w.variant[i]), ax, ay, i);
-    } else if (tile === TILE.PARK) {
-      const [ax, ay] = this.toCache(vx, vy, avg(hs));
-      this.blit(parkSpriteFor(w.variant[i]), ax, ay, i);
-    } else if (tile === TILE.LINE) {
-      this.drawPole(vx, vy, hs, i);
-    } else if (w.terrain.trees[i] && !water && tile !== TILE.ROAD) {
-      const [ax, ay] = this.toCache(vx, vy, avg(hs));
-      this.blit(treeSpriteFor(w.terrain.trees[i], w.variant[i]), ax, ay, i);
+      if (vx !== fx || vy !== fy) return null;
+      const [ax, ay] = this.toCache(fx - (PLANT_SIZE - 1), fy - (PLANT_SIZE - 1), plantHeight(w, p.x, p.y));
+      return { sprite: plantSprite(), ax, ay };
     }
+    const hs = surfaceHeights(w, vx, vy, rot);
+    if (level > 0 && zoneOf(tile)) {
+      const [ax, ay] = this.toCache(vx, vy, hs[0]);
+      return { sprite: buildingSprite(zoneOf(tile)!, level, w.variant[i]), ax, ay };
+    }
+    const [ax, ay] = this.toCache(vx, vy, avg(hs));
+    if (tile === TILE.PARK) return { sprite: parkSpriteFor(w.variant[i]), ax, ay };
+    if (tile === TILE.LINE) return { sprite: poleSpriteFor(), ax, ay };
+    if (w.terrain.trees[i] && !w.isWater(x, y) && tile !== TILE.ROAD) return { sprite: treeSpriteFor(w.terrain.trees[i], w.variant[i]), ax, ay };
+    return null;
   }
 
   private blit(s: Sprite, ax: number, ay: number, i: number): void {
@@ -420,11 +442,9 @@ export class MapRenderer {
     }
   }
 
-  private drawPole(vx: number, vy: number, hs: number[], i: number): void {
-    const [ax, ay] = this.toCache(vx, vy, avg(hs));
-    const s = poleSpriteFor();
-    this.blit(s, ax, ay, i);
-    const top: Pt = [ax + s.attach![0], ay + s.attach![1]];
+  private drawWires(vx: number, vy: number, pole: PlacedSprite): void {
+    const s = pole.sprite;
+    const top: Pt = [pole.ax + s.attach![0], pole.ay + s.attach![1]];
     const g = this.g;
     g.strokeStyle = PAL.wire;
     g.lineWidth = 0.6;

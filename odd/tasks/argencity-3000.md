@@ -14,6 +14,9 @@ Plan legible para el usuario: `PLAN-DE-TRABAJO.txt`. Spec anterior (referencia d
 - **S6 — Tiempo (verbatim, decisión previa):** "además no hay referencia de tiempo como para saber si pasa o no, estaria bueno eso". La fecha se ve en pantalla.
 - **S7 — Alcance v1:** el detallado en `PLAN-DE-TRABAJO.txt` (terreno, cámara, herramientas, simulación, interfaz, guardado). Supuestos marcados allí como "decisiones por defecto".
 - **S8 — Stack:** TypeScript + Vite + Canvas 2D + Vitest.
+- **S9 — Deshacer (verbatim):** "Exacto, el deshacer". Ctrl+Z deshace la última construcción o demolición y devuelve lo pagado.
+- **S10 — Bug de autos (verbatim):** "los autos que pasan medio que desaparecen y se bugean, además que se ven por encima de las casas en caso de tener que pasar por detras de estas". Los autos se mueven de forma continua por las calles y quedan tapados por lo que esté delante.
+- **S11 — Dificultad (verbatim):** "es muy facil, ,me gusta tus ideas y estaria bueno una investigación sobre como los juegos de gestionar ciudades afrontan esos problemas". Primero se investiga; el cambio de diseño sale de la investigación.
 
 ## Tasks
 
@@ -24,7 +27,10 @@ Plan legible para el usuario: `PLAN-DE-TRABAJO.txt`. Spec anterior (referencia d
 | T3 Simulación | S5, S6, S7 | inline | hecho | `8681e5b`; RED observado |
 | T4 Render (sprites, cache, picking) + guardado | S2, S3, S7 | inline | hecho | `4a77c89`; RED de `save` observado; picking escrito junto con el test (sin RED previo) |
 | T5 Interfaz | S4, S6, S7 | inline | hecho | `33cb6f6`; prueba en Chrome headless (puppeteer-core en scratch) |
-| T6 Balance y pulido | S1 | inline | hecho | commit de cierre; sonda de 15 años + partida en Chrome |
+| T6 Balance y pulido | S1 | inline | hecho | `848dba4`; sonda de 15 años + partida en Chrome |
+| T7 Deshacer | S9 | inline | hecho | RED observado (`world/history` inexistente, después reembolso parcial); Chrome: demoler un bloque y Ctrl+Z restauran la población exacta (1318 → 1188 → 1318) |
+| T8 Tránsito continuo con oclusión | S10 | inline | hecho | RED observado (`Traffic` inexistente); 147 autos en Chrome sin errores; tapados por los sprites de adelante |
+| T9 Investigación de dificultad | S11 | delegado (investigación web, solo lectura) | hecho | informe con fuentes; resumen en L5 |
 
 Ruta: inline en todas, porque no hay motivo de writer. Son unidades dependientes que comparten `main.ts`, sin paralelismo real.
 
@@ -39,3 +45,6 @@ Ruta: inline en todas, porque no hay motivo de writer. Son unidades dependientes
   - Balance (`npm run probe`, 15 años con un jugador automático): el primer año es ajustado (+$87/mes) y aparecen torres desde el año 2. Se agregó el gasto "Servicios municipales", que crece más que lineal con la población, porque sin él la caja explotaba (unos $2,5 M en 15 años).
 - **Decisiones por defecto tomadas** (listadas en `PLAN-DE-TRABAJO.txt`, a confirmar por el usuario): edificios de 1 celda, la usina de 2×2, el bloque 2×2/4×4 como opción de pintado, puentes automáticos sobre el agua, caja inicial de $30.000 y sin game over.
 - **Pendiente para v2:** agua potable, tránsito simulado (el actual es solo visual), servicios (policía, bomberos, escuelas), desastres, audio y mapa real de OpenStreetMap.
+- **L4 (2026-11-12), pedido del usuario (verbatim):** "Exacto, el deshacer y es muy facil, ,me gusta tus ideas y estaria bueno una investigación sobre como los juegos de gestionar ciudades afrontan esos problemas. Otra cosa, los autos que pasan medio que desaparecen y se bugean, además que se ven por encima de las casas en caso de tener que pasar por detras de estas"
+  - Diagnóstico de S10: cada auto se dibujaba por celda con su propia fase, sin continuidad entre celdas, y por encima de toda la cache. El parche de ocultarlos detrás de edificios de nivel 3 o más los hacía desaparecer. Solución: autos como agentes sobre la red de calles, intercalados en el orden de pintor con los sprites que tienen delante.
+- **L5 (2026-11-12), investigación de dificultad (resumen):** CS1 recibió críticas de prensa por "dinero demasiado fácil" (Expert Reviews, bit-tech, TechSpot). CS2 Economy 2.0 quitó los subsidios y subió el mantenimiento por lo mismo (diario de desarrollo de Paradox). SC4 genera presión con servicios de radio limitado y presupuesto por edificio, topes de demanda y abandono por crimen, viaje y valor del suelo, pero se lo critica por opaco. Ranking recomendado: 1) crecimiento condicionado y topes de demanda; 2) abandono en lugar de congelar; 3) servicios con radio y capacidad; 4) presupuesto por servicio e impuestos por zona; 5) préstamos con interés. Para deshacer, el patrón del género es reembolso completo solo en una ventana corta: se aplicó 100 % dentro del mes y 50 % hasta un año.

@@ -242,6 +242,7 @@ export function openHelp(): void {
     <div class="help-grid">
       <span><kbd>1</kbd>–<kbd>9</kbd> herramientas</span>
       <span><kbd>B</kbd> tamaño de bloque</span>
+      <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer la última obra (devuelve todo dentro del mes, la mitad hasta un año)</span>
       <span>Arrastrar con clic izquierdo: construir</span>
       <span>Clic derecho o rueda apretada: mover el mapa</span>
       <span>Rueda: zoom · <kbd>+</kbd> <kbd>−</kbd></span>

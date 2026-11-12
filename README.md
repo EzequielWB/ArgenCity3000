@@ -31,7 +31,7 @@ En el juego, `H` abre la ayuda completa con todos los controles.
 
 - Mapa procedural de 128×128 a partir de una semilla: lomas, la costa de un río ancho, un arroyo y arboledas de jacarandás, palos borrachos, ombúes y eucaliptos.
 - Cámara isométrica con 4 rotaciones, zoom de 0,25× a 3×, minimapa y picking que respeta el relieve.
-- Herramientas: consulta, topadora, calles (con puentes), tendido eléctrico, zonas R/C/I, plazas y usinas, con costo visible antes de soltar el mouse y bloques de 1×1, 2×2 o 4×4.
+- Herramientas: consulta, topadora, calles (con puentes), tendido eléctrico, zonas R/C/I, plazas y usinas, con costo visible antes de soltar el mouse, bloques de 1×1, 2×2 o 4×4 y deshacer (`Ctrl+Z`): devuelve todo lo pagado dentro del mes de la obra y la mitad hasta un año después.
 - Simulación: red eléctrica con capacidad y apagones, acceso a calles, contaminación, valor del suelo, demanda R/C/I, crecimiento en 4 niveles por zona, tasas ajustables y presupuesto mensual.
 - Edificios: casitas, chalets, casas chorizo, PH con tanque de agua, torres, kioscos y almacenes con toldo, galerías, oficinas, talleres, galpones, fábricas y plantas industriales. También hay humo animado y tránsito con taxis negros y amarillos y colectivos.
 - Interfaz con fileteado, El Diario del Conurbano, panel de presupuesto con historia, capas de luz, humo y valor del suelo, y ficha de cada lote que explica por qué crece o no.

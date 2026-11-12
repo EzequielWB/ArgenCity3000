@@ -14,6 +14,7 @@ import { Simulation } from './sim/simulation';
 import { TOOL_ICONS } from './ui/icons';
 import { $, escapeHtml, toast } from './ui/dom';
 import { applyPlan, dragCells, planTool, plantFootprint, toolInfo, TOOLS, type ToolId } from './world/tools';
+import { UndoHistory } from './world/history';
 import { World } from './world/world';
 
 /** Ticks per second for each speed: pause, slow, normal, fast. */
@@ -55,6 +56,7 @@ export class Game implements PointerTarget {
   block = 1;
   speed = 2;
 
+  private history = new UndoHistory();
   private dragFrom: [number, number] | null = null;
   private dragTo: [number, number] | null = null;
   private mouse: [number, number] | null = null;
@@ -112,7 +114,9 @@ export class Game implements PointerTarget {
       this.view.pan(-this.keyboardPan.x * dt * 0.9, -this.keyboardPan.y * dt * 0.9);
       this.minimapDirty = true;
     }
-    if (SPEEDS[this.speed] > 0 && !this.hooks.isModalOpen()) {
+    const running = SPEEDS[this.speed] > 0 && !this.hooks.isModalOpen();
+    this.view.traffic.update(running ? (dt / 1000) * (this.speed === 3 ? 1.6 : 1) : 0);
+    if (running) {
       this.acc += (dt * SPEEDS[this.speed]) / 1000;
       const steps = Math.min(8, Math.floor(this.acc));
       this.acc = steps === 8 ? 0 : this.acc - steps;
@@ -285,7 +289,25 @@ export class Game implements PointerTarget {
       toast(`No alcanza la plata: hace falta ${formatMoney(plan.cost)}`, true);
       return;
     }
+    this.history.record(this.world, plan, this.sim.state.tick);
     applyPlan(this.world, plan);
+    this.afterEdit();
+  }
+
+  /** Reverts the latest construction or demolition and gives the money back. */
+  undo(): void {
+    this.dragCancel();
+    const r = this.history.undo(this.world, this.sim.state.tick);
+    if (!r) {
+      toast('No hay nada reciente para deshacer', true);
+      return;
+    }
+    this.sim.state.cash += r.refund;
+    this.afterEdit();
+    toast(`Deshecho: ${toolInfo(r.tool).label}${r.refund ? ` (se devolvieron ${formatMoney(r.refund)})` : ''}`);
+  }
+
+  private afterEdit(): void {
     this.sim.refresh();
     this.view.invalidateLayer();
     this.view.refreshTraffic();
@@ -393,7 +415,7 @@ export class Game implements PointerTarget {
     const layers = LAYERS.map(
       (l) => `<button class="small" data-layer="${l.id}" aria-pressed="${l.id === 'none'}" title="Capa: ${l.label} (C)">${l.label}</button>`,
     ).join('');
-    bar.innerHTML = `${tools}<hr><div class="group-label">Bloque</div>${blocks}<hr><div class="group-label">Capas</div>${layers}<hr>
+    bar.innerHTML = `${tools}<button class="small" data-act="undo" title="Deshacer la última obra (Ctrl+Z)">↶ Deshacer</button><hr><div class="group-label">Bloque</div>${blocks}<hr><div class="group-label">Capas</div>${layers}<hr>
       <button class="small" data-act="rotl" title="Rotar a la izquierda (Q)">⟲ Rotar</button>
       <button class="small" data-act="rotr" title="Rotar a la derecha (E)">Rotar ⟳</button>
       <button class="small" data-act="zin" title="Acercar (+)">＋ Zoom</button>
@@ -404,6 +426,7 @@ export class Game implements PointerTarget {
       if (b.dataset.tool) this.setTool(b.dataset.tool as ToolId);
       else if (b.dataset.block) this.setBlock(Number(b.dataset.block));
       else if (b.dataset.layer) this.setLayer(b.dataset.layer as Layer);
+      else if (b.dataset.act === 'undo') this.undo();
       else if (b.dataset.act === 'rotl') this.rotate(-1);
       else if (b.dataset.act === 'rotr') this.rotate(1);
       else if (b.dataset.act === 'zin') this.zoom(1, this.view.width / 2, this.view.height / 2);
