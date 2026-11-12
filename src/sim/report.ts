@@ -52,6 +52,14 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   if (tile === TILE.LINE) return { title: 'Tendido eléctrico', lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía'] };
   if (tile === TILE.PARK) return { title: 'Plaza', lines: [height, `Valor del suelo: ${w.landValue[i]}/100`], hint: 'Las plazas suben el valor del suelo alrededor.' };
 
+  if (zone && level > 0 && w.abandoned[i]) {
+    lines.push('Nadie vive ni trabaja acá: no paga tasas y baja el valor del suelo de alrededor');
+    lines.push(w.powered[i] ? 'Con luz' : 'Sin luz');
+    lines.push(w.roadAccess[i] ? 'Tiene calle cerca' : `Sin calle a menos de ${ROAD_REACH} lotes`);
+    lines.push(`Delito: ${w.crime[i]}/100`, `Contaminación: ${w.pollution[i]}/100`);
+    return { title: `${buildingName(zone, level, w.variant[i])} abandonado`, lines, hint: abandonHint(w, sim, i, zone) };
+  }
+
   if (zone) {
     const title = buildingName(zone, level, w.variant[i]);
     if (level > 0) {
@@ -68,6 +76,18 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
 
   lines.push(height, `Valor del suelo: ${w.landValue[i]}/100`, `Contaminación: ${w.pollution[i]}/100`);
   return { title: w.terrain.trees[i] ? 'Arboleda' : 'Terreno libre', lines };
+}
+
+function abandonHint(w: World, sim: Simulation, i: number, zone: ZoneKind): string {
+  const why: string[] = [];
+  if (!w.powered[i]) why.push('falta luz');
+  if (!w.roadAccess[i]) why.push('falta una calle cerca');
+  if (sim.state.crisis) why.push('la caja está en rojo');
+  if (w.crime[i] > 60) why.push('hay mucho delito');
+  if (zone === 'R' && w.pollution[i] > 70) why.push('hay mucho humo');
+  if (sim.demand[zone] <= 0) why.push('no hay demanda');
+  const cause = why.length ? `Se vació porque ${why.join(', ')}.` : 'Las condiciones ya mejoraron: de a poco puede volver a ocuparse.';
+  return `${cause} Arreglalo para que vuelvan, o demolelo.`;
 }
 
 function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level: number): string | undefined {

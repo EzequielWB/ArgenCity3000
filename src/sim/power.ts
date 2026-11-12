@@ -14,6 +14,11 @@ export function buildingPowerUse(tile: number, level: number): number {
   return z && level > 0 ? POWER_USE[z] * level : 0;
 }
 
+/** Power a cell asks for right now: empty and abandoned buildings ask for nothing. */
+export function powerNeed(w: World, i: number): number {
+  return w.isOccupied(i) ? buildingPowerUse(w.tiles[i], w.level[i]) : 0;
+}
+
 /**
  * Flood-fills each power network from its plants through every built cell (roads, lines,
  * zones, parks, plants). Buildings take power in BFS order until the network runs out;
@@ -62,7 +67,7 @@ export function computePower(w: World): PowerReport {
     let netUse = 0;
     for (let k = 0; k < tail; k++) {
       const i = queue[k];
-      const need = buildingPowerUse(w.tiles[i], w.level[i]);
+      const need = powerNeed(w, i);
       if (need === 0) continue;
       netUse += need;
       if (need <= remaining) {
@@ -74,7 +79,7 @@ export function computePower(w: World): PowerReport {
     }
     for (let k = 0; k < tail; k++) {
       const i = queue[k];
-      if (buildingPowerUse(w.tiles[i], w.level[i]) === 0) powered[i] = remaining > 0 ? 1 : 0;
+      if (powerNeed(w, i) === 0) powered[i] = remaining > 0 ? 1 : 0;
     }
     capacity += cap;
     use += netUse;

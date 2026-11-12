@@ -3,7 +3,7 @@ import { Rng } from '../core/rng';
 import { World, zoneOf, type ZoneKind } from '../world/world';
 import { monthlyBudget, type BudgetReport } from './budget';
 import { dateLabel, dateOf } from './calendar';
-import { addBuilding, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
+import { GROWTH_APPETITE, addBuilding, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
 import { computeLandValue, computePollution, computeRoadAccess } from './fields';
 import { FILLERS, headlinesFor, type CitySnapshot, type NewsItem } from './news';
 import { computePower, type PowerReport } from './power';
@@ -38,6 +38,19 @@ export function newSimState(seed: number): SimState {
 }
 
 const GROWTH_RATE = 0.01;
+/** Above this tax rate the city stops attracting extra newcomers. */
+const APPETITE_MAX_TAX = 9;
+/** Share of abandoned buildings that scares newcomers away. */
+const ABANDON_LIMIT = 0.05;
+/** Crime level above which people start leaving. */
+const CRIME_ABANDON = 60;
+const REOCCUPY_RATE = 0.003;
+
+function countAbandoned(w: World): number {
+  let c = 0;
+  for (let i = 0; i < w.abandoned.length; i++) if (w.abandoned[i] && w.level[i] > 0) c++;
+  return c;
+}
 const MAX_NEWS = 50;
 const MAX_HISTORY = 240;
 const HINT_COOLDOWN = TICKS_PER_MONTH * 6;
@@ -49,6 +62,9 @@ export class Simulation {
   totals: Totals = { pop: 0, cJobs: 0, iJobs: 0 };
   demand: Demand = { R: 0, C: 0, I: 0 };
   power: PowerReport = { capacity: 0, use: 0, shortage: false };
+  /** Above 1 the city attracts newcomers beyond what its jobs justify (see `updateAppetite`). */
+  appetite = GROWTH_APPETITE;
+  abandonedCount = 0;
 
   private rng: Rng;
   private seenNetwork = -1;
@@ -75,7 +91,20 @@ export class Simulation {
     computePollution(w);
     computeLandValue(w);
     this.totals = cityTotals(w);
-    this.demand = computeDemand(this.totals, this.state.tax);
+    this.abandonedCount = countAbandoned(w);
+    this.updateAppetite();
+  }
+
+  /**
+   * A thriving city (no blackouts, reasonable taxes, little abandonment) attracts more people
+   * than its jobs justify; otherwise it only grows as far as its own economy goes.
+   */
+  private updateAppetite(): void {
+    let built = 0;
+    for (let i = 0; i < this.world.level.length; i++) if (this.world.level[i] > 0) built++;
+    const blighted = built > 20 && this.abandonedCount / built > ABANDON_LIMIT;
+    this.appetite = !this.power.shortage && this.state.tax <= APPETITE_MAX_TAX && !blighted ? GROWTH_APPETITE : 1;
+    this.demand = computeDemand(this.totals, this.state.tax, this.appetite);
   }
 
   /** Charges `cost` if the city can afford it. */
@@ -87,7 +116,7 @@ export class Simulation {
 
   setTax(tax: number): void {
     this.state.tax = Math.max(MIN_TAX, Math.min(MAX_TAX, Math.round(tax)));
-    this.demand = computeDemand(this.totals, this.state.tax);
+    this.updateAppetite();
   }
 
   tick(): void {
@@ -96,7 +125,10 @@ export class Simulation {
     if (w.networkVersion !== this.seenNetwork) {
       this.refresh();
     } else {
-      if (s.tick % 5 === 0) this.power = computePower(w);
+      if (s.tick % 5 === 0) {
+        this.power = computePower(w);
+        this.updateAppetite();
+      }
       if (s.tick % 30 === 0) {
         computePollution(w);
         computeLandValue(w);
@@ -120,13 +152,24 @@ export class Simulation {
       const tile = w.tiles[i];
       const zone = zoneOf(tile);
       if (!zone) continue;
+      if (w.fire[i]) continue;
       const level = w.level[i];
       const served = w.powered[i] === 1 && w.roadAccess[i] === 1;
       const d = this.demand[zone];
-      if (level > 0 && (!served || d < -20)) {
-        const p = served ? 0.002 * (-d / 100) : 0.004;
-        if (rng.chance(p)) this.changeLevel(i, level - 1);
+      if (level > 0 && w.abandoned[i]) {
+        if (served && d > 0 && !this.state.crisis && w.crime[i] < CRIME_ABANDON && rng.chance(REOCCUPY_RATE)) this.setAbandoned(i, false);
         continue;
+      }
+      if (level > 0) {
+        const risk = this.abandonRisk(i, zone, served);
+        if (risk > 0 && rng.chance(risk)) {
+          this.setAbandoned(i, true);
+          continue;
+        }
+        if (d < -20 && rng.chance(0.002 * (-d / 100))) {
+          this.changeLevel(i, level - 1);
+          continue;
+        }
       }
       if (!served || this.state.crisis || d <= 0) continue;
       const cap = levelCap(zone, w.landValue[i], t.pop);
@@ -142,13 +185,33 @@ export class Simulation {
     }
   }
 
+  /** Chance per tick that an occupied building empties out, from what is wrong around it. */
+  private abandonRisk(i: number, zone: ZoneKind, served: boolean): number {
+    const w = this.world;
+    let p = 0;
+    if (!served) p += 0.004;
+    if (this.state.crisis) p += 0.0015;
+    if (w.crime[i] > CRIME_ABANDON) p += (0.002 * (w.crime[i] - CRIME_ABANDON)) / (100 - CRIME_ABANDON);
+    if (zone === 'R' && w.pollution[i] > 70) p += 0.0015;
+    return p;
+  }
+
   private changeLevel(i: number, level: number): void {
     const w = this.world;
     const tile = w.tiles[i];
     addBuilding(this.totals, tile, w.level[i], -1);
     w.setLevel(i, level);
     addBuilding(this.totals, tile, level, 1);
-    this.demand = computeDemand(this.totals, this.state.tax);
+    this.demand = computeDemand(this.totals, this.state.tax, this.appetite);
+  }
+
+  private setAbandoned(i: number, abandoned: boolean): void {
+    const w = this.world;
+    addBuilding(this.totals, w.tiles[i], w.level[i], abandoned ? -1 : 1);
+    w.abandoned[i] = abandoned ? 1 : 0;
+    this.abandonedCount += abandoned ? 1 : -1;
+    w.markDirty(i);
+    this.demand = computeDemand(this.totals, this.state.tax, this.appetite);
   }
 
   private endOfMonth(): void {
@@ -159,7 +222,8 @@ export class Simulation {
     s.cash += budget.balance;
     s.crisis = s.cash < 0;
     this.totals = cityTotals(w);
-    this.demand = computeDemand(this.totals, s.tax);
+    this.abandonedCount = countAbandoned(w);
+    this.updateAppetite();
     s.history.push({ pop: this.totals.pop, cash: s.cash });
     if (s.history.length > MAX_HISTORY) s.history.shift();
 
@@ -200,6 +264,8 @@ export class Simulation {
     hint('needC', this.demand.C > 50 && free.C === 0 && zoned > 0, 'Los comerciantes buscan locales y no encuentran');
     hint('needI', this.demand.I > 50 && free.I === 0 && zoned > 0, 'Industriales buscan terrenos para instalarse');
     hint('power', this.power.shortage, 'La usina no da abasto: los vecinos piden otra usina');
+    hint('appetite', this.appetite === 1 && !this.power.shortage && s.tax > APPETITE_MAX_TAX, 'Con tasas tan altas, nadie quiere mudarse: la ciudad dejó de atraer gente');
+    hint('blight', this.appetite === 1 && !this.power.shortage && s.tax <= APPETITE_MAX_TAX && this.abandonedCount > 0, 'El abandono espanta a los nuevos vecinos: hay que recuperar o demoler los edificios vacíos');
     hint('smog', smog > 5, 'Vecinos se quejan del humo de las fábricas');
     return out;
   }
@@ -218,6 +284,7 @@ export class Simulation {
       month,
       year,
       cash: this.state.cash,
+      abandoned: this.abandonedCount,
     };
   }
 

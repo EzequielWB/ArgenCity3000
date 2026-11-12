@@ -16,6 +16,9 @@ Plan legible para el usuario: `PLAN-DE-TRABAJO.txt`. Spec anterior (referencia d
 - **S8 — Stack:** TypeScript + Vite + Canvas 2D + Vitest.
 - **S9 — Deshacer (verbatim):** "Exacto, el deshacer". Ctrl+Z deshace la última construcción o demolición y devuelve lo pagado.
 - **S10 — Bug de autos (verbatim):** "los autos que pasan medio que desaparecen y se bugean, además que se ven por encima de las casas en caso de tener que pasar por detras de estas". Los autos se mueven de forma continua por las calles y quedan tapados por lo que esté delante.
+- **S12 — Paquete A (aprobado, verbatim):** "Dale, hace A y B". El empuje de crecimiento (×1,1) solo actúa sin apagones, con tasa ≤ 9 % y poco abandono. Un edificio sin luz, sin calle, con la caja en rojo, con mucho delito o con mucho humo puede quedar **abandonado**: no paga, no aporta vecinos ni empleos y baja el valor del suelo alrededor. Puede volver a ocuparse si se arreglan las condiciones.
+- **S13 — Paquete B (aprobado):** escuela, salita, comisaría y cuartel de bomberos, con radio, capacidad (vecinos atendidos), costo y mantenimiento, y necesitan luz. Salud y educación habilitan los niveles altos. El delito crece con la densidad y lo baja la policía. Los incendios aparecen sin cobertura de bomberos. El gasto genérico pasa a ser "Administración municipal", más chico.
+- **S14 — Sonidos (verbatim):** "agregá sonidos genericos si podes de ciudad como para acompañar". Generados con Web Audio (sin archivos), con botón de silencio.
 - **S11 — Dificultad (verbatim):** "es muy facil, ,me gusta tus ideas y estaria bueno una investigación sobre como los juegos de gestionar ciudades afrontan esos problemas". Primero se investiga; el cambio de diseño sale de la investigación.
 
 ## Tasks
@@ -30,6 +33,9 @@ Plan legible para el usuario: `PLAN-DE-TRABAJO.txt`. Spec anterior (referencia d
 | T6 Balance y pulido | S1 | inline | hecho | `848dba4`; sonda de 15 años + partida en Chrome |
 | T7 Deshacer | S9 | inline | hecho | RED observado (`world/history` inexistente, después reembolso parcial); Chrome: demoler un bloque y Ctrl+Z restauran la población exacta (1318 → 1188 → 1318) |
 | T8 Tránsito continuo con oclusión | S10 | inline | hecho | RED observado (`Traffic` inexistente); 147 autos en Chrome sin errores; tapados por los sprites de adelante |
+| T10 Paquete A: crecimiento condicionado y abandono | S12 | inline | en curso | — |
+| T11 Paquete B: servicios, delito e incendios | S13 | inline | pendiente | — |
+| T12 Sonidos | S14 | inline | pendiente | — |
 | T9 Investigación de dificultad | S11 | delegado (investigación web, solo lectura) | hecho | informe con fuentes; resumen en L5 |
 
 Ruta: inline en todas, porque no hay motivo de writer. Son unidades dependientes que comparten `main.ts`, sin paralelismo real.
@@ -48,3 +54,4 @@ Ruta: inline en todas, porque no hay motivo de writer. Son unidades dependientes
 - **L4 (2026-11-12), pedido del usuario (verbatim):** "Exacto, el deshacer y es muy facil, ,me gusta tus ideas y estaria bueno una investigación sobre como los juegos de gestionar ciudades afrontan esos problemas. Otra cosa, los autos que pasan medio que desaparecen y se bugean, además que se ven por encima de las casas en caso de tener que pasar por detras de estas"
   - Diagnóstico de S10: cada auto se dibujaba por celda con su propia fase, sin continuidad entre celdas, y por encima de toda la cache. El parche de ocultarlos detrás de edificios de nivel 3 o más los hacía desaparecer. Solución: autos como agentes sobre la red de calles, intercalados en el orden de pintor con los sprites que tienen delante.
 - **L5 (2026-11-12), investigación de dificultad (resumen):** CS1 recibió críticas de prensa por "dinero demasiado fácil" (Expert Reviews, bit-tech, TechSpot). CS2 Economy 2.0 quitó los subsidios y subió el mantenimiento por lo mismo (diario de desarrollo de Paradox). SC4 genera presión con servicios de radio limitado y presupuesto por edificio, topes de demanda y abandono por crimen, viaje y valor del suelo, pero se lo critica por opaco. Ranking recomendado: 1) crecimiento condicionado y topes de demanda; 2) abandono en lugar de congelar; 3) servicios con radio y capacidad; 4) presupuesto por servicio e impuestos por zona; 5) préstamos con interés. Para deshacer, el patrón del género es reembolso completo solo en una ventana corta: se aplicó 100 % dentro del mes y 50 % hasta un año.
+- **L6 (2026-11-12), pedido del usuario (verbatim):** "Dale, hace A y B, y agregá sonidos genericos si podes de ciudad como para acompañar"

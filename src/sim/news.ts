@@ -11,6 +11,7 @@ export interface CitySnapshot {
   month: number;
   year: number;
   cash: number;
+  abandoned: number;
 }
 
 export interface NewsItem {
@@ -35,6 +36,8 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   if (prev.shortage && !next.shortage) out.push('Volvió la luz: se normalizó el suministro eléctrico');
   if (!prev.crisis && next.crisis) out.push('Crisis en la Municipalidad: la caja quedó en rojo y se frenan las obras');
   if (prev.crisis && !next.crisis) out.push('La Municipalidad salió del rojo: vuelven las obras');
+  if (prev.abandoned < 10 && next.abandoned >= 10) out.push(`Crece el abandono: ya son ${next.abandoned} los edificios vacíos en ${city}`);
+  if (prev.abandoned >= 10 && next.abandoned < 5) out.push('Vuelven los vecinos: se recuperan los barrios abandonados');
   if (next.tax > prev.tax) out.push(`Suben las tasas municipales al ${next.tax} %: malestar en los barrios`);
   if (next.tax < prev.tax) out.push(`Bajan las tasas al ${next.tax} %: alivio en los comercios`);
   if (prev.month === 12 && next.month === 1) {

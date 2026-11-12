@@ -4,7 +4,9 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
+/** Versions this build can still read. Version 1 had no abandoned buildings or fires. */
+const READABLE_VERSIONS = [1, 2];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -52,6 +54,8 @@ export function serialize(d: SaveData): string {
     tiles: toBase64(w.tiles),
     level: toBase64(w.level),
     variant: toBase64(w.variant),
+    abandoned: toBase64(w.abandoned),
+    fire: toBase64(w.fire),
     plants: w.plants,
     sim: d.sim,
   });
@@ -72,7 +76,7 @@ export function deserialize(text: string): SaveData {
     throw new Error('Eso no es una partida de ArgentinaCity 3000');
   }
   if (!data || typeof data !== 'object' || data.game !== GAME_ID) throw new Error('Eso no es una partida de ArgentinaCity 3000');
-  need(data.version === SAVE_VERSION, 'Esta partida es de otra versión del juego');
+  need(READABLE_VERSIONS.includes(data.version as number), 'Esta partida es de otra versión del juego');
   const n = data.n;
   need(isInt(n) && n >= 8 && n <= 512, 'El tamaño del mapa es inválido');
   const size = (n as number) * (n as number);
@@ -86,6 +90,10 @@ export function deserialize(text: string): SaveData {
   world.tiles.set(tiles);
   world.level.set(level);
   world.variant.set(variant);
+  if (data.version !== 1) {
+    world.abandoned.set(fromBase64(data.abandoned, size, 1, 'Los edificios abandonados'));
+    world.fire.set(fromBase64(data.fire, size, 255, 'Los incendios'));
+  }
   for (let i = 0; i < size; i++) need(level[i] === 0 || zoneOf(tiles[i]) !== null, 'Hay edificios fuera de las zonas');
 
   need(Array.isArray(data.plants), 'Faltan las usinas');
@@ -138,6 +146,7 @@ function parseSim(raw: unknown): SimState {
   if (s.lastBudget !== null && s.lastBudget !== undefined) {
     const b = s.lastBudget as Record<string, unknown>;
     const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'income', 'expenses', 'balance'];
+    if (b.services === undefined) b.services = 0; // Version 1 budgets had no services line.
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }

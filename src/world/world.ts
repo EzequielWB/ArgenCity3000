@@ -43,12 +43,18 @@ export class World {
   readonly tiles: Uint8Array;
   readonly level: Uint8Array;
   readonly variant: Uint8Array;
+  /** 1 when a building stands empty: nobody lives or works there. */
+  readonly abandoned: Uint8Array;
+  /** Ticks left of a fire burning in the cell (0 = no fire). */
+  readonly fire: Uint8Array;
   plants: Plant[] = [];
 
   readonly powered: Uint8Array;
   readonly pollution: Uint8Array;
   readonly landValue: Uint8Array;
   readonly roadAccess: Uint8Array;
+  /** 0–100, how unsafe the cell is. */
+  readonly crime: Uint8Array;
 
   /** Bumped whenever something that conducts power or gives road access changes. */
   networkVersion = 0;
@@ -61,6 +67,9 @@ export class World {
     this.tiles = new Uint8Array(size);
     this.level = new Uint8Array(size);
     this.variant = new Uint8Array(size);
+    this.abandoned = new Uint8Array(size);
+    this.fire = new Uint8Array(size);
+    this.crime = new Uint8Array(size);
     this.powered = new Uint8Array(size);
     this.pollution = new Uint8Array(size);
     this.landValue = new Uint8Array(size);
@@ -92,6 +101,8 @@ export class World {
     const i = this.idx(x, y);
     this.tiles[i] = tile;
     this.level[i] = level;
+    this.abandoned[i] = 0;
+    this.fire[i] = 0;
     this.markDirty(i);
   }
 
@@ -99,6 +110,11 @@ export class World {
     if (this.level[i] === level) return;
     this.level[i] = level;
     this.markDirty(i);
+  }
+
+  /** A building with people in it: built, not abandoned and not burning. */
+  isOccupied(i: number): boolean {
+    return this.level[i] > 0 && this.abandoned[i] === 0 && this.fire[i] === 0;
   }
 
   plantAt(x: number, y: number): Plant | undefined {

@@ -108,8 +108,10 @@ export function computeLandValue(w: World): void {
   const n = w.n;
   const water = waterDistance(w);
   const parks = new Float32Array(n * n);
+  const blight = new Float32Array(n * n);
   for (let i = 0; i < n * n; i++) {
     if (w.tiles[i] === TILE.PARK) splat(parks, n, i % n, Math.floor(i / n), 4, 14);
+    if (w.abandoned[i] && w.level[i] > 0) splat(blight, n, i % n, Math.floor(i / n), 2, 8);
   }
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
@@ -129,6 +131,7 @@ export function computeLandValue(w: World): void {
       const [, max] = w.minMax(x, y);
       v += Math.max(0, max - SEA_LEVEL) * 1.5;
       v -= w.pollution[i] * 0.7;
+      v -= Math.min(30, blight[i]);
       w.landValue[i] = clamp100(v);
     }
   }

@@ -5,7 +5,7 @@ import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
 import { TILE, World, zoneOf } from '../world/world';
 import { PAL, mix, rgb, hexToRgb } from './color';
 import { surfaceHeights, viewCornerHeights, plantHeight, type Pt } from './geometry';
-import { buildingSprite, parkSpriteFor, plantSprite, poleSpriteFor, treeSpriteFor, type Sprite } from './sprites';
+import { abandonedBuildingSprite, buildingSprite, parkSpriteFor, plantSprite, poleSpriteFor, treeSpriteFor, type Sprite } from './sprites';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
 const PAD_TOP = MAX_HEIGHT * HEIGHT_STEP + 120;
@@ -221,7 +221,8 @@ export class MapRenderer {
     const hs = surfaceHeights(w, vx, vy, rot);
     if (level > 0 && zoneOf(tile)) {
       const [ax, ay] = this.toCache(vx, vy, hs[0]);
-      return { sprite: buildingSprite(zoneOf(tile)!, level, w.variant[i]), ax, ay };
+      const make = w.abandoned[i] ? abandonedBuildingSprite : buildingSprite;
+      return { sprite: make(zoneOf(tile)!, level, w.variant[i]), ax, ay };
     }
     const [ax, ay] = this.toCache(vx, vy, avg(hs));
     if (tile === TILE.PARK) return { sprite: parkSpriteFor(w.variant[i]), ax, ay };

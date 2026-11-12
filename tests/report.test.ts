@@ -66,6 +66,17 @@ describe('describeCell', () => {
     expect(plant.lines.join(' ')).toMatch(/600/);
   });
 
+  it('explains why a building was abandoned', () => {
+    const { w, sim, b } = setup();
+    b('zoneR', 5, 5);
+    w.level[w.idx(5, 5)] = 2;
+    w.abandoned[w.idx(5, 5)] = 1;
+    sim.refresh();
+    const r = describeCell(w, sim, 5, 5);
+    expect(r.title).toMatch(/abandonad/);
+    expect(r.hint).toMatch(/falta luz/);
+  });
+
   it('reports residents of a built lot', () => {
     const { w, sim, b } = setup();
     b('zoneR', 5, 5);

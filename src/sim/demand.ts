@@ -11,7 +11,7 @@ export type Demand = Record<ZoneKind, number>;
 
 export function cityTotals(w: World): Totals {
   const t: Totals = { pop: 0, cJobs: 0, iJobs: 0 };
-  for (let i = 0; i < w.tiles.length; i++) addBuilding(t, w.tiles[i], w.level[i], 1);
+  for (let i = 0; i < w.tiles.length; i++) if (w.isOccupied(i)) addBuilding(t, w.tiles[i], w.level[i], 1);
   return t;
 }
 
@@ -31,20 +31,21 @@ function pressure(target: number, current: number): number {
   return ((target - current) / Math.max(target, 1)) * 100;
 }
 
-/** How much bigger than today the city wants to be: a served city keeps growing. */
-const GROWTH_APPETITE = 1.1;
+/** How much bigger than today a thriving city wants to be (see `Simulation.appetite`). */
+export const GROWTH_APPETITE = 1.1;
 
 /**
  * Residents come when there are jobs (two residents per job plus a few pioneers);
- * commerce follows the population and industry follows the workforce. Every target is
- * a bit above today's numbers, so a city with lots, power and streets keeps growing.
+ * commerce follows the population and industry follows the workforce. With an appetite
+ * above 1 every target is a bit above today's numbers, so a thriving city keeps growing;
+ * at 1 it only grows as far as its own jobs and residents justify.
  * Taxes above the default push every demand down, below it push them up.
  */
-export function computeDemand(t: Totals, tax: number): Demand {
+export function computeDemand(t: Totals, tax: number, appetite = GROWTH_APPETITE): Demand {
   const taxEffect = (tax - DEFAULT_TAX) * 6;
-  const targetPop = (t.cJobs + t.iJobs) * 2 * GROWTH_APPETITE + 80;
-  const targetC = t.pop * 0.15 * GROWTH_APPETITE + 10;
-  const targetI = t.pop * 0.35 * GROWTH_APPETITE + 20;
+  const targetPop = (t.cJobs + t.iJobs) * 2 * appetite + 80;
+  const targetC = t.pop * 0.15 * appetite + 10;
+  const targetI = t.pop * 0.35 * appetite + 20;
   return {
     R: clamp(pressure(targetPop, t.pop) - taxEffect),
     C: clamp(pressure(targetC, t.cJobs) - taxEffect),

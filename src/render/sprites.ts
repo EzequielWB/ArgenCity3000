@@ -480,6 +480,29 @@ function poleSprite(): Sprite {
   return done(p, [0, 8 - 17]);
 }
 
+/** Same building, emptied: darker, washed out, with boarded windows. */
+function abandonedOf(base: Sprite): Sprite {
+  const c = makeCanvas(base.canvas.width, base.canvas.height);
+  const g = c.getContext('2d')!;
+  g.filter = 'grayscale(0.75) brightness(0.72) sepia(0.25)';
+  g.drawImage(base.canvas, 0, 0);
+  g.filter = 'none';
+  g.globalCompositeOperation = 'source-atop';
+  g.fillStyle = 'rgba(70,52,38,0.28)';
+  g.fillRect(0, 0, c.width, c.height);
+  // A few planks across the facade.
+  g.strokeStyle = '#7a5a3a';
+  g.lineWidth = 1;
+  for (let k = 0; k < 3; k++) {
+    const y = base.ay + 4 - k * 7;
+    g.beginPath();
+    g.moveTo(base.ax - 10 + k * 3, y);
+    g.lineTo(base.ax - 3 + k * 3, y + 4);
+    g.stroke();
+  }
+  return { canvas: c, ax: base.ax, ay: base.ay, smoke: [] };
+}
+
 const cache = new Map<string, Sprite>();
 
 function cached(key: string, make: () => Sprite): Sprite {
@@ -499,6 +522,11 @@ export function buildingSprite(zone: ZoneKind, level: number, variant: number): 
   return cached(`${zone}${level}:${v}`, () =>
     zone === 'R' ? residential(level, v * 7 + 3) : zone === 'C' ? commercial(level, v * 5 + 1) : industrial(level, v),
   );
+}
+
+export function abandonedBuildingSprite(zone: ZoneKind, level: number, variant: number): Sprite {
+  const v = variant % VARIANTS;
+  return cached(`x${zone}${level}:${v}`, () => abandonedOf(buildingSprite(zone, level, variant)));
 }
 
 export function plantSprite(): Sprite {

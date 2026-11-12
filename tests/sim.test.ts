@@ -187,6 +187,7 @@ describe('headlinesFor', () => {
     month: 1,
     year: 1990,
     cash: 1000,
+    abandoned: 0,
   };
 
   it('announces the first plant and the first residents', () => {
@@ -212,6 +213,11 @@ describe('headlinesFor', () => {
   it('summarises the year in January', () => {
     const lines = headlinesFor({ ...base, month: 12 }, { ...base, month: 1, year: 1991, pop: 500 }, 'X');
     expect(lines.some((l) => l.includes('1990'))).toBe(true);
+  });
+
+  it('reports a wave of abandonment and the recovery', () => {
+    expect(headlinesFor({ ...base, abandoned: 4 }, { ...base, abandoned: 12 }, 'X').some((l) => l.includes('abandono'))).toBe(true);
+    expect(headlinesFor({ ...base, abandoned: 12 }, { ...base, abandoned: 2 }, 'X').some((l) => l.includes('Vuelven'))).toBe(true);
   });
 
   it('says nothing when nothing changed', () => {

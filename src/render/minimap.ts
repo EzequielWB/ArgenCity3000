@@ -84,7 +84,7 @@ export class Minimap {
         const t = w.tiles[i];
         let c: [number, number, number];
         if (TILE_COLORS[t]) c = TILE_COLORS[t];
-        else if (ZONE_BUILT[t]) c = w.level[i] > 0 ? ZONE_BUILT[t] : ZONE_EMPTY[t];
+        else if (ZONE_BUILT[t]) c = w.abandoned[i] ? [95, 85, 75] : w.level[i] > 0 ? ZONE_BUILT[t] : ZONE_EMPTY[t];
         else c = terrainColor(w.terrain, x, y);
         const o = (vy * n + vx) * 4;
         d[o] = c[0];
