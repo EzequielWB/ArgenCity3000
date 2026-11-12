@@ -2,7 +2,7 @@
  * Pure geometry used to turn real-world data into a game map. Build-time only: the game
  * ships the baked result, not this code.
  */
-import { MAX_HEIGHT, SEA_LEVEL, constrainSlopes } from '../../src/world/terrain';
+import { MAX_HEIGHT, SEA_LEVEL, constrainSlopes, smoothCorners } from '../../src/world/terrain';
 
 export type Segment = [number, number, number, number];
 
@@ -131,5 +131,7 @@ export function cornersFromElevation(elev: Float32Array, water: Uint8Array, n: n
     else corners[i] = Math.min(MAX_HEIGHT, SEA_LEVEL + Math.max(0, Math.round((elev[i] - base) / metersPerLevel)));
   }
   constrainSlopes(corners, s);
+  // The data has a few metres of noise: drop the lone one-level bumps it leaves.
+  smoothCorners(corners, s);
   return corners;
 }

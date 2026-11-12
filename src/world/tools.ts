@@ -1,4 +1,5 @@
 import { COSTS, PLANT_SIZE, SERVICES, type ServiceKind } from '../config';
+import { levelBlocks } from './leveling';
 import { TILE, World, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
 export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | ServiceKind;
@@ -233,5 +234,7 @@ export function applyPlan(w: World, plan: Plan): void {
     const [x, y] = plan.cells[0];
     w.plants.push({ x, y });
   }
+  // Zoning or placing a service levels the block it belongs to (see `levelBlocks`).
+  if (zone || isServiceTool(plan.tool)) levelBlocks(w, plan.cells);
   w.bumpNetwork();
 }

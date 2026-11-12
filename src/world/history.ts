@@ -13,12 +13,35 @@ interface CellBefore {
   fire: number;
 }
 
+/** Puts back the terrain heights and redraws the lots whose ground moves. */
+function restoreCorners(w: World, corners: Uint8Array): void {
+  const n = w.n;
+  const s = n + 1;
+  const c = w.terrain.corners;
+  for (let k = 0; k < s * s; k++) {
+    if (c[k] === corners[k]) continue;
+    c[k] = corners[k];
+    const x = k % s;
+    const y = (k - x) / s;
+    for (const [cx, cy] of [
+      [x - 1, y - 1],
+      [x, y - 1],
+      [x - 1, y],
+      [x, y],
+    ]) {
+      if (cx >= 0 && cy >= 0 && cx < n && cy < n) w.markDirty(cy * n + cx);
+    }
+  }
+}
+
 interface Entry {
   tool: ToolId;
   cost: number;
   tick: number;
   cells: CellBefore[];
   plants: Plant[];
+  /** Terrain before the action: zoning may level the ground around the cells it changes. */
+  corners: Uint8Array;
 }
 
 export interface Undone {
@@ -60,7 +83,7 @@ export class UndoHistory {
         fire: w.fire[i],
       };
     });
-    this.entries.push({ tool: plan.tool, cost: plan.cost, tick, cells, plants: w.plants.map((p) => ({ ...p })) });
+    this.entries.push({ tool: plan.tool, cost: plan.cost, tick, cells, plants: w.plants.map((p) => ({ ...p })), corners: w.terrain.corners.slice() });
     if (this.entries.length > UndoHistory.MAX_ENTRIES) this.entries.shift();
   }
 
@@ -82,6 +105,7 @@ export class UndoHistory {
       w.fire[c.i] = c.fire;
     }
     w.plants = e.plants.map((p) => ({ ...p }));
+    restoreCorners(w, e.corners);
     w.bumpNetwork();
     const age = now - e.tick;
     return { tool: e.tool, refund: age <= UndoHistory.FULL_REFUND_TICKS ? e.cost : Math.floor(e.cost / 2) };

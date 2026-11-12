@@ -107,6 +107,7 @@ export function generateTerrain(seed: number, n: number): Terrain {
     corners[i] = Math.max(SEA_LEVEL - 1, Math.min(MAX_HEIGHT, Math.round(raw[i])));
   }
   constrainSlopes(corners, s);
+  smoothCorners(corners, s);
 
   const trees = new Uint8Array(n * n);
   const t: Terrain = { n, corners, trees };
@@ -121,6 +122,65 @@ export function generateTerrain(seed: number, n: number): Terrain {
     }
   }
   return t;
+}
+
+/**
+ * Removes the lone one-level bumps and pits that make streets look like roller coasters,
+ * keeping hills, slopes and shores: every land corner that does not touch a water cell moves
+ * to the median of its 3×3 neighbourhood of land corners, a few times, and then slopes are
+ * constrained again. Corners touching water never move, so water stays water and land stays
+ * land.
+ */
+export function smoothCorners(c: Uint8Array, s: number, passes = 2): void {
+  const n = s - 1;
+  const frozen = new Uint8Array(s * s);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const k = [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1];
+      if (Math.min(c[k[0]], c[k[1]], c[k[2]], c[k[3]]) < SEA_LEVEL) for (const i of k) frozen[i] = 1;
+    }
+  }
+  const around: number[] = [];
+  for (let pass = 0; pass < passes; pass++) {
+    const next = c.slice();
+    for (let y = 0; y < s; y++) {
+      for (let x = 0; x < s; x++) {
+        const i = y * s + x;
+        if (frozen[i]) continue;
+        around.length = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < s && ny < s && c[ny * s + nx] >= SEA_LEVEL) around.push(c[ny * s + nx]);
+          }
+        }
+        around.sort((a, b) => a - b);
+        next[i] = Math.max(SEA_LEVEL, around[around.length >> 1]);
+      }
+    }
+    c.set(next);
+  }
+  // The median can leave a few: a corner above (or below) all its neighbours joins the nearest.
+  for (let y = 1; y < s - 1; y++) {
+    for (let x = 1; x < s - 1; x++) {
+      const i = y * s + x;
+      if (frozen[i]) continue;
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const v = c[(y + dy) * s + x + dx];
+          lo = Math.min(lo, v);
+          hi = Math.max(hi, v);
+        }
+      }
+      if (c[i] > hi) c[i] = hi;
+      else if (c[i] < lo) c[i] = Math.max(SEA_LEVEL, lo);
+    }
+  }
+  constrainSlopes(c, s);
 }
 
 /** Lowers corners until every 8-neighbour pair differs by at most 1. Monotone, so it terminates. */
