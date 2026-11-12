@@ -1,6 +1,6 @@
 import './ui/style.css';
 import { Sound, browserAudio, browserStorage } from './audio/sound';
-import { MAP_SIZE } from './config';
+import { MAP_SIZES, PLAYABLE_SIZES, type MapSizeId } from './config';
 import { hashString } from './core/rng';
 import { Game } from './game';
 import { paintTerrainPreview } from './render/minimap';
@@ -8,7 +8,8 @@ import type { SaveData } from './save/save';
 import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
 import { closeModal, initModal, isModalOpen, openBudget, openHelp, openSaves } from './ui/panels';
-import { generateTerrain } from './world/terrain';
+import { MAP_KINDS, generateMap, type MapKind } from './world/mapkinds';
+import type { Terrain } from './world/terrain';
 import { TOOLS } from './world/tools';
 import { PRESETS, loadPreset, worldFromPreset, type MapPreset } from './world/presets';
 import { World } from './world/world';
@@ -26,6 +27,12 @@ const CITY_NAMES = [
   'Pampa Linda',
   'Villa Dulce de Leche',
   'General Alfajor',
+];
+
+const SIZE_LABELS: readonly (readonly [MapSizeId, string])[] = [
+  ['small', 'Chico'],
+  ['medium', 'Mediano'],
+  ['large', 'Grande'],
 ];
 
 let game: Game | null = null;
@@ -48,6 +55,13 @@ let previewTimer = 0;
 let preset: MapPreset | null = null;
 const presetCache = new Map<string, MapPreset>();
 
+/** The invented map chosen on the start screen: its kind and its size in cells per side. */
+function pickedTerrain(seed: number): Terrain {
+  const kind = $<HTMLSelectElement>('#startKind').value as MapKind;
+  const size = MAP_SIZES[$<HTMLSelectElement>('#startSize').value as MapSizeId];
+  return generateMap(seed, size, kind);
+}
+
 function refreshPreview(): void {
   clearTimeout(previewTimer);
   previewTimer = window.setTimeout(() => {
@@ -55,13 +69,15 @@ function refreshPreview(): void {
     if (preset) {
       const p = preset;
       paintTerrainPreview(canvas, { n: p.n, corners: p.corners, trees: p.trees }, $<HTMLInputElement>('#startStreets').checked ? p.roads : undefined);
-    } else paintTerrainPreview(canvas, generateTerrain(parseSeed($<HTMLInputElement>('#startSeed').value), MAP_SIZE));
+    } else paintTerrainPreview(canvas, pickedTerrain(parseSeed($<HTMLInputElement>('#startSeed').value)));
   }, 120);
 }
 
 async function pickMap(id: string): Promise<void> {
   const real = id !== '';
   $('#seedField').classList.toggle('hidden', real);
+  $('#kindFields').classList.toggle('hidden', real);
+  $('#kindNote').classList.toggle('hidden', real);
   $('#streetsField').classList.toggle('hidden', !real);
   $('#mapNote').classList.toggle('hidden', !real);
   $<HTMLButtonElement>('#startNew').disabled = real;
@@ -88,6 +104,11 @@ async function pickMap(id: string): Promise<void> {
   }
 }
 
+function showKindNote(): void {
+  const kind = $<HTMLSelectElement>('#startKind').value;
+  $('#kindNote').textContent = MAP_KINDS.find((k) => k.id === kind)?.blurb ?? '';
+}
+
 function showStart(): void {
   game?.destroy();
   game = null;
@@ -98,6 +119,7 @@ function showStart(): void {
   name.value = CITY_NAMES[Math.floor(Math.random() * CITY_NAMES.length)];
   $<HTMLInputElement>('#startSeed').value = String(randomSeed());
   $<HTMLSelectElement>('#startMapKind').value = '';
+  showKindNote(); // the kind and size picked last time stay selected
   void pickMap('');
   name.focus();
   name.select();
@@ -122,7 +144,7 @@ function startNew(): void {
     return;
   }
   const seed = parseSeed($<HTMLInputElement>('#startSeed').value);
-  const world = new World(generateTerrain(seed, MAP_SIZE));
+  const world = new World(pickedTerrain(seed));
   launch({ name, seed, world, sim: newSimState(seed) });
 }
 
@@ -134,6 +156,21 @@ $('#startSeed').addEventListener('input', refreshPreview);
 const mapKind = $<HTMLSelectElement>('#startMapKind');
 for (const p of PRESETS) mapKind.add(new Option(`${p.name} (mapa real)`, p.id));
 mapKind.addEventListener('change', () => void pickMap(mapKind.value));
+const kindSelect = $<HTMLSelectElement>('#startKind');
+for (const k of MAP_KINDS) kindSelect.add(new Option(k.label, k.id));
+const sizeSelect = $<HTMLSelectElement>('#startSize');
+for (const [id, label] of SIZE_LABELS) {
+  const playable = PLAYABLE_SIZES.includes(id);
+  const cells = `${MAP_SIZES[id]} × ${MAP_SIZES[id]}`;
+  const option = new Option(playable ? `${label} (${cells})` : `${label} (${cells}) · pronto`, id);
+  option.disabled = !playable;
+  sizeSelect.add(option);
+}
+kindSelect.addEventListener('change', () => {
+  showKindNote();
+  refreshPreview();
+});
+sizeSelect.addEventListener('change', refreshPreview);
 $('#startStreets').addEventListener('change', refreshPreview);
 $('#startNew').addEventListener('click', startNew);
 $('#startLoad').addEventListener('click', () => openSaves(null, launch));

@@ -2,6 +2,18 @@
 
 export const MAP_SIZE = 128;
 
+/** Map sizes the player can pick, in cells per side. `small` is the historical size. */
+export const MAP_SIZES = { small: 128, medium: 192, large: 256 } as const;
+export type MapSizeId = keyof typeof MAP_SIZES;
+/**
+ * Sizes the renderer can draw within budget. The map is drawn into one canvas of
+ * (n * 32 + 48) x (n * 16 + 360) pixels, plus a same-sized layer canvas. Measured in headless
+ * Chrome (T18): 128 redraws in about 0.6 s, 192 in 1.3 to 1.5 s (21 M pixels, 162 MB) and 256
+ * in 2.5 s (37 M pixels, 280 MB), over the 0.7 s budget. The terrain generators, saves and
+ * simulation already handle every size, so a size joins this list once the renderer is chunked.
+ */
+export const PLAYABLE_SIZES: readonly MapSizeId[] = ['small'];
+
 export const INITIAL_CASH = 30000;
 export const DEFAULT_TAX = 7;
 export const MIN_TAX = 0;

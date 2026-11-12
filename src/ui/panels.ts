@@ -303,6 +303,7 @@ export function openHelp(): void {
       <span><kbd>Esc</kbd> cancelar o cerrar</span>
     </div>
     <p><small>Con la herramienta Consulta (1) un clic muestra la ficha del lote y por qué crece o no; arrastrando movés el mapa.</small></p>
+    <p><small>Al fundar una ciudad inventada elegís el tipo de mapa: Con salida al mar (lomas suaves, un río ancho al este y un arroyo), Llanura (casi llano, con arroyo y laguna), Con gran relieve (cerros y valles por todo el mapa) o Sierras (cordones de montañas con valles anchos para construir). Por ahora el tamaño es Chico (128 × 128 lotes); Mediano y Grande llegan cuando el dibujado del mapa los banque. Los mapas reales ignoran estas opciones.</small></p>
     <p><small>Mapas reales: calles, agua y parques © colaboradores de OpenStreetMap (ODbL); relieve de Terrain Tiles (Mapzen y AWS, con datos de SRTM y otros).</small></p>
   `);
 }

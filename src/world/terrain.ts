@@ -37,7 +37,7 @@ export function isFlatCell(t: Terrain, x: number, y: number): boolean {
   return min === max;
 }
 
-function smooth(t: number): number {
+export function smooth(t: number): number {
   return t * t * (3 - 2 * t);
 }
 
@@ -109,19 +109,24 @@ export function generateTerrain(seed: number, n: number): Terrain {
   constrainSlopes(corners, s);
   smoothCorners(corners, s);
 
-  const trees = new Uint8Array(n * n);
-  const t: Terrain = { n, corners, trees };
+  const t: Terrain = { n, corners, trees: new Uint8Array(n * n) };
+  scatterTrees(t, seed);
+  return t;
+}
+
+/** Fills `t.trees`: copses on forest noise plus a few lone trees, never on water. */
+export function scatterTrees(t: Terrain, seed: number): void {
+  const n = t.n;
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
       if (isWaterCell(t, x, y)) continue;
       const forest = fbm(x / 11, y / 11, seed + 301, 3);
       const r = hash2(x, y, seed + 999);
       if ((forest > 0.66 && r < 0.55) || r < 0.008) {
-        trees[y * n + x] = 1 + Math.floor(hash2(y, x, seed + 7) * 4);
+        t.trees[y * n + x] = 1 + Math.floor(hash2(y, x, seed + 7) * 4);
       }
     }
   }
-  return t;
 }
 
 /**

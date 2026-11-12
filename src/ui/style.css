@@ -670,6 +670,12 @@ select {
   accent-color: var(--gold);
 }
 
+.start-form .pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 .start-form .map-note {
   margin: -6px 0 0;
   font-size: 12px;
