@@ -1,7 +1,7 @@
 import { PLANT_SIZE } from '../config';
 import { fromView, project, unproject, type Rotation } from '../core/iso';
 import { MAX_HEIGHT, SEA_LEVEL, cornerAt } from '../world/terrain';
-import { TILE, World } from '../world/world';
+import { TILE, World, serviceOf } from '../world/world';
 
 export type Pt = [number, number];
 
@@ -18,7 +18,7 @@ export function viewCornerHeights(w: World, vx: number, vy: number, rot: Rotatio
 /** True when the cell is drawn as a flat platform (buildings, plants) instead of following the terrain. */
 export function isPlatform(w: World, i: number): boolean {
   const t = w.tiles[i];
-  return t === TILE.PLANT || (w.level[i] > 0 && t >= TILE.R && t <= TILE.I);
+  return t === TILE.PLANT || serviceOf(t) !== null || (w.level[i] > 0 && t >= TILE.R && t <= TILE.I);
 }
 
 /**

@@ -8,6 +8,10 @@ const TILE_COLORS: Record<number, [number, number, number]> = {
   [TILE.LINE]: [140, 110, 70],
   [TILE.PLANT]: [150, 50, 40],
   [TILE.PARK]: [120, 190, 80],
+  [TILE.SCHOOL]: [245, 240, 230],
+  [TILE.CLINIC]: [60, 160, 100],
+  [TILE.POLICE]: [60, 90, 140],
+  [TILE.FIREHOUSE]: [200, 50, 40],
 };
 const ZONE_EMPTY: Record<number, [number, number, number]> = {
   [TILE.R]: [150, 200, 130],

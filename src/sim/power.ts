@@ -1,5 +1,5 @@
-import { PLANT_CAPACITY, POWER_USE } from '../config';
-import { TILE, World, zoneOf } from '../world/world';
+import { PLANT_CAPACITY, POWER_USE, SERVICES } from '../config';
+import { TILE, World, serviceOf, zoneOf } from '../world/world';
 
 export interface PowerReport {
   capacity: number;
@@ -16,6 +16,8 @@ export function buildingPowerUse(tile: number, level: number): number {
 
 /** Power a cell asks for right now: empty and abandoned buildings ask for nothing. */
 export function powerNeed(w: World, i: number): number {
+  const service = serviceOf(w.tiles[i]);
+  if (service) return SERVICES[service].power;
   return w.isOccupied(i) ? buildingPowerUse(w.tiles[i], w.level[i]) : 0;
 }
 

@@ -29,8 +29,23 @@ const addRow = () => {
   const kind: ToolId[] = ['zoneR', 'zoneR', 'zoneC', 'zoneR', 'zoneI'];
   kind.forEach((k, j) => build(k, 5 + j * 12, row + 1, 15 + j * 12, row + 5));
   build('park', 52, row + 2, 53, row + 3);
+  // Every other row gets a set of public services (each covers about two rows around it).
+  if (rows % 2 === 0) {
+    const services: [ToolId, number][] = [
+      ['clinic', 10],
+      ['school', 22],
+      ['police', 34],
+      ['fire', 46],
+    ];
+    for (const [t, x] of services) {
+      build('bulldoze', x, row + 3);
+      build(t, x, row + 3);
+    }
+  }
+  rows++;
   row += 6;
 };
+let rows = 0;
 addRow();
 
 for (let year = 1; year <= 15; year++) {
@@ -48,6 +63,6 @@ for (let year = 1; year <= 15; year++) {
   for (let i = 0; i < w.level.length; i++) if (w.level[i]) levels[w.level[i]]++;
   const b = sim.state.lastBudget!;
   console.log(
-    `año ${year}: pop ${sim.totals.pop} C ${sim.totals.cJobs} I ${sim.totals.iJobs} caja ${sim.state.cash} saldo ${b.balance}/mes usinas ${w.plants.length} niveles ${levels.slice(1).join('/')} demanda ${JSON.stringify(sim.demand)}`,
+    `año ${year}: pop ${sim.totals.pop} C ${sim.totals.cJobs} I ${sim.totals.iJobs} caja ${sim.state.cash} saldo ${b.balance}/mes servicios ${b.schools + b.clinics + b.police + b.firefighters} usinas ${w.plants.length} niveles ${levels.slice(1).join('/')} abandonados ${sim.abandonedCount} incendios ${sim.stats.firesStarted}/${sim.stats.buildingsBurned} demanda ${JSON.stringify(sim.demand)}`,
   );
 }

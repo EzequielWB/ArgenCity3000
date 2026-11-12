@@ -2,10 +2,20 @@ import { PLANT_SIZE } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
-import { TILE, World, zoneOf } from '../world/world';
+import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { PAL, mix, rgb, hexToRgb } from './color';
-import { surfaceHeights, viewCornerHeights, plantHeight, type Pt } from './geometry';
-import { abandonedBuildingSprite, buildingSprite, parkSpriteFor, plantSprite, poleSpriteFor, treeSpriteFor, type Sprite } from './sprites';
+import { isPlatform, surfaceHeights, viewCornerHeights, plantHeight, type Pt } from './geometry';
+import {
+  abandonedBuildingSprite,
+  buildingSprite,
+  burningBuildingSprite,
+  parkSpriteFor,
+  plantSprite,
+  poleSpriteFor,
+  serviceSprite,
+  treeSpriteFor,
+  type Sprite,
+} from './sprites';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
 const PAD_TOP = MAX_HEIGHT * HEIGHT_STEP + 120;
@@ -169,7 +179,7 @@ export class MapRenderer {
     if (water) {
       this.drawWater(vx, vy, x, y);
       if (tile === TILE.ROAD) this.drawBridge(vx, vy, pts);
-    } else if (hs[0] === hs[1] && hs[1] === hs[2] && hs[2] === hs[3] && (tile === TILE.PLANT || level > 0)) {
+    } else if (hs[0] === hs[1] && hs[1] === hs[2] && hs[2] === hs[3] && isPlatform(w, i)) {
       this.drawPlatform(vx, vy, hs[0], tile);
     } else {
       this.drawGround(vx, vy, x, y);
@@ -221,8 +231,13 @@ export class MapRenderer {
     const hs = surfaceHeights(w, vx, vy, rot);
     if (level > 0 && zoneOf(tile)) {
       const [ax, ay] = this.toCache(vx, vy, hs[0]);
-      const make = w.abandoned[i] ? abandonedBuildingSprite : buildingSprite;
+      const make = w.fire[i] ? burningBuildingSprite : w.abandoned[i] ? abandonedBuildingSprite : buildingSprite;
       return { sprite: make(zoneOf(tile)!, level, w.variant[i]), ax, ay };
+    }
+    const service = serviceOf(tile);
+    if (service) {
+      const [ax, ay] = this.toCache(vx, vy, hs[0]);
+      return { sprite: serviceSprite(service), ax, ay };
     }
     const [ax, ay] = this.toCache(vx, vy, avg(hs));
     if (tile === TILE.PARK) return { sprite: parkSpriteFor(w.variant[i]), ax, ay };

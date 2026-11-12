@@ -1,8 +1,8 @@
-import { CAPACITY, PLANT_CAPACITY, ROAD_REACH } from '../config';
+import { CAPACITY, FIRE_SAFE_COVER, PLANT_CAPACITY, ROAD_REACH, SERVICES, type ServiceKind } from '../config';
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
-import { TILE, World, zoneOf, type ZoneKind } from '../world/world';
-import { levelCap } from './demand';
+import { TILE, World, serviceOf, zoneOf, type ZoneKind } from '../world/world';
+import { SERVICE_NEED, levelCap } from './demand';
 import type { Simulation } from './simulation';
 
 const NAMES: Record<ZoneKind, string[]> = {
@@ -14,6 +14,25 @@ const NAMES: Record<ZoneKind, string[]> = {
 export function buildingName(zone: ZoneKind, level: number, variant: number): string {
   if (zone === 'R' && level === 2 && variant % 2 === 1) return 'Casa chorizo';
   return NAMES[zone][level];
+}
+
+export const SERVICE_NAMES: Record<ServiceKind, string> = {
+  school: 'Escuela',
+  clinic: 'Salita',
+  police: 'Comisaría',
+  fire: 'Cuartel de bomberos voluntarios',
+};
+
+const SERVICE_ROLE: Record<ServiceKind, string> = {
+  school: 'Sin escuela cerca no se levantan torres ni oficinas.',
+  clinic: 'Sin salita cerca las casas no pasan de chalet.',
+  police: 'Baja el delito de los barrios que cubre.',
+  fire: 'Los incendios dentro de su radio se apagan a tiempo.',
+};
+
+/** Coverage of every service on a cell, as report lines. */
+function coverageLines(w: World, i: number): string[] {
+  return [`Educación: ${w.edu[i]}/100 · Salud: ${w.health[i]}/100`, `Delito: ${w.crime[i]}/100 · Bomberos: ${w.fireCover[i]}/100`];
 }
 
 export interface CellReport {
@@ -50,7 +69,32 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
     };
   }
   if (tile === TILE.LINE) return { title: 'Tendido eléctrico', lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía'] };
+  const service = serviceOf(tile);
+  if (service) {
+    const info = SERVICES[service];
+    return {
+      title: SERVICE_NAMES[service],
+      lines: [
+        w.powered[i] ? 'Con luz' : 'Sin luz: no atiende a nadie',
+        `Radio: ${info.radius} lotes · Atiende hasta ${formatNumber(info.capacity)} vecinos`,
+        `Mantenimiento: $${formatNumber(info.upkeep)} por mes`,
+        SERVICE_ROLE[service],
+      ],
+      hint: w.powered[i] ? undefined : 'Necesita luz: conectala a la red con calles, zonas o tendido.',
+    };
+  }
   if (tile === TILE.PARK) return { title: 'Plaza', lines: [height, `Valor del suelo: ${w.landValue[i]}/100`], hint: 'Las plazas suben el valor del suelo alrededor.' };
+
+  if (zone && level > 0 && w.fire[i]) {
+    return {
+      title: `${buildingName(zone, level, w.variant[i])} en llamas`,
+      lines: [`Bomberos: ${w.fireCover[i]}/100`],
+      hint:
+        w.fireCover[i] >= FIRE_SAFE_COVER
+          ? 'Los bomberos voluntarios ya están trabajando.'
+          : 'No hay bomberos cerca: se va a quemar entero y puede pasar a los vecinos. Construí un cuartel de bomberos.',
+    };
+  }
 
   if (zone && level > 0 && w.abandoned[i]) {
     lines.push('Nadie vive ni trabaja acá: no paga tasas y baja el valor del suelo de alrededor');
@@ -70,6 +114,7 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
     lines.push(w.roadAccess[i] ? 'Tiene calle cerca' : `Sin calle a menos de ${ROAD_REACH} lotes`);
     lines.push(`Valor del suelo: ${w.landValue[i]}/100`);
     lines.push(`Contaminación: ${w.pollution[i]}/100`);
+    lines.push(...coverageLines(w, i));
     lines.push(height);
     return { title, lines, hint: growthHint(w, sim, i, zone, level) };
   }
@@ -97,8 +142,12 @@ function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level:
   if (sim.demand[zone] <= 0) {
     return zone === 'R' ? 'No hay demanda de viviendas: hacen falta trabajos (comercio o industria).' : 'No hay demanda: hace falta más población.';
   }
-  const cap = levelCap(zone, w.landValue[i], sim.totals.pop);
+  const cap = levelCap(zone, w.landValue[i], sim.totals.pop, { edu: w.edu[i], health: w.health[i] });
   if (level >= cap && level < 4) {
+    if (levelCap(zone, w.landValue[i], sim.totals.pop) > cap) {
+      if (zone === 'R' && cap < 3 && w.health[i] < SERVICE_NEED) return 'Para pasar de chalet necesita una salita cerca (con luz).';
+      return 'Para crecer más necesita una escuela cerca (con luz).';
+    }
     return zone === 'I' ? 'Para crecer más necesita una ciudad más grande.' : 'Para crecer más necesita más valor del suelo (plazas, agua, menos humo) o más población.';
   }
   return undefined;

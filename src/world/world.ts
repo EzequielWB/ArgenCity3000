@@ -1,4 +1,4 @@
-import { PLANT_SIZE } from '../config';
+import { PLANT_SIZE, type ServiceKind } from '../config';
 import { isWaterCell, cellMinMax, type Terrain } from './terrain';
 
 /** What occupies a cell. Zones keep their building level in `World.level`. */
@@ -11,7 +11,12 @@ export const TILE = {
   I: 5,
   PLANT: 6,
   PARK: 7,
+  SCHOOL: 8,
+  CLINIC: 9,
+  POLICE: 10,
+  FIREHOUSE: 11,
 } as const;
+export const MAX_TILE = TILE.FIREHOUSE;
 export type TileId = (typeof TILE)[keyof typeof TILE];
 
 export type ZoneKind = 'R' | 'C' | 'I';
@@ -20,6 +25,20 @@ export function zoneOf(tile: number): ZoneKind | null {
   if (tile === TILE.R) return 'R';
   if (tile === TILE.C) return 'C';
   if (tile === TILE.I) return 'I';
+  return null;
+}
+
+const SERVICE_TILES: Record<ServiceKind, TileId> = { school: TILE.SCHOOL, clinic: TILE.CLINIC, police: TILE.POLICE, fire: TILE.FIREHOUSE };
+
+export function serviceTile(k: ServiceKind): TileId {
+  return SERVICE_TILES[k];
+}
+
+export function serviceOf(tile: number): ServiceKind | null {
+  if (tile === TILE.SCHOOL) return 'school';
+  if (tile === TILE.CLINIC) return 'clinic';
+  if (tile === TILE.POLICE) return 'police';
+  if (tile === TILE.FIREHOUSE) return 'fire';
   return null;
 }
 
@@ -55,6 +74,11 @@ export class World {
   readonly roadAccess: Uint8Array;
   /** 0–100, how unsafe the cell is. */
   readonly crime: Uint8Array;
+  /** 0–100 coverage of each public service. */
+  readonly edu: Uint8Array;
+  readonly health: Uint8Array;
+  readonly safety: Uint8Array;
+  readonly fireCover: Uint8Array;
 
   /** Bumped whenever something that conducts power or gives road access changes. */
   networkVersion = 0;
@@ -70,6 +94,10 @@ export class World {
     this.abandoned = new Uint8Array(size);
     this.fire = new Uint8Array(size);
     this.crime = new Uint8Array(size);
+    this.edu = new Uint8Array(size);
+    this.health = new Uint8Array(size);
+    this.safety = new Uint8Array(size);
+    this.fireCover = new Uint8Array(size);
     this.powered = new Uint8Array(size);
     this.pollution = new Uint8Array(size);
     this.landValue = new Uint8Array(size);

@@ -1,10 +1,11 @@
-import { DEFAULT_TAX, INITIAL_CASH, MAX_TAX, MIN_TAX, TICKS_PER_MONTH } from '../config';
+import { DEFAULT_TAX, FIRE_SAFE_COVER, INITIAL_CASH, MAX_TAX, MIN_TAX, TICKS_PER_MONTH } from '../config';
 import { Rng } from '../core/rng';
 import { World, zoneOf, type ZoneKind } from '../world/world';
+import { buildingName } from './report';
 import { monthlyBudget, type BudgetReport } from './budget';
 import { dateLabel, dateOf } from './calendar';
 import { GROWTH_APPETITE, addBuilding, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
-import { computeLandValue, computePollution, computeRoadAccess } from './fields';
+import { computeCrime, computeLandValue, computePollution, computeRoadAccess, computeServices } from './fields';
 import { FILLERS, headlinesFor, type CitySnapshot, type NewsItem } from './news';
 import { computePower, type PowerReport } from './power';
 
@@ -45,6 +46,14 @@ const ABANDON_LIMIT = 0.05;
 /** Crime level above which people start leaving. */
 const CRIME_ABANDON = 60;
 const REOCCUPY_RATE = 0.003;
+/** Monthly chance of a fire per 10 points of risk in an uncovered building. */
+const FIRE_RATE = 0.00025;
+/**
+ * Chance that an uncovered fire jumps to each neighbour, checked every 15 ticks while it burns
+ * (6 checks × up to 4 neighbours). Keeps the expected spread per fire near 0.5: above 1 every
+ * fire would become an endless chain.
+ */
+const FIRE_SPREAD = 0.02;
 
 function countAbandoned(w: World): number {
   let c = 0;
@@ -65,6 +74,10 @@ export class Simulation {
   /** Above 1 the city attracts newcomers beyond what its jobs justify (see `updateAppetite`). */
   appetite = GROWTH_APPETITE;
   abandonedCount = 0;
+  /** Counters for this session (not saved). */
+  stats = { firesStarted: 0, firesSaved: 0, buildingsBurned: 0 };
+  private burning = new Set<number>();
+  private fireNews = 0;
 
   private rng: Rng;
   private seenNetwork = -1;
@@ -88,11 +101,21 @@ export class Simulation {
     this.seenNetwork = w.networkVersion;
     computeRoadAccess(w);
     this.power = computePower(w);
-    computePollution(w);
-    computeLandValue(w);
     this.totals = cityTotals(w);
+    this.updateFields();
     this.abandonedCount = countAbandoned(w);
+    this.burning.clear();
+    for (let i = 0; i < w.fire.length; i++) if (w.fire[i]) this.burning.add(i);
     this.updateAppetite();
+  }
+
+  /** Services, pollution, crime and land value, in that order (each needs the previous). */
+  private updateFields(): void {
+    const w = this.world;
+    computeServices(w);
+    computePollution(w);
+    computeCrime(w, this.totals.pop);
+    computeLandValue(w);
   }
 
   /**
@@ -129,12 +152,10 @@ export class Simulation {
         this.power = computePower(w);
         this.updateAppetite();
       }
-      if (s.tick % 30 === 0) {
-        computePollution(w);
-        computeLandValue(w);
-      }
+      if (s.tick % 30 === 0) this.updateFields();
     }
     s.crisis = s.cash < 0;
+    this.burn();
     this.grow();
     s.tick++;
     if (s.tick % TICKS_PER_MONTH === 0) this.endOfMonth();
@@ -172,7 +193,7 @@ export class Simulation {
         }
       }
       if (!served || this.state.crisis || d <= 0) continue;
-      const cap = levelCap(zone, w.landValue[i], t.pop);
+      const cap = levelCap(zone, w.landValue[i], t.pop, { edu: w.edu[i], health: w.health[i] });
       if (level >= cap) {
         if (level > cap && rng.chance(0.002)) this.changeLevel(i, level - 1);
         continue;
@@ -214,9 +235,71 @@ export class Simulation {
     this.demand = computeDemand(this.totals, this.state.tax, this.appetite);
   }
 
+  /** Fires burn down; covered ones are put out and the building survives. Fires spread without cover. */
+  private burn(): void {
+    const w = this.world;
+    const n = w.n;
+    for (const i of Array.from(this.burning)) {
+      w.fire[i]--;
+      const covered = w.fireCover[i] >= FIRE_SAFE_COVER;
+      if (!covered && w.fire[i] % 15 === 0) {
+        const x = i % n;
+        const y = (i - x) / n;
+        for (const j of [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < n - 1 ? i + n : -1]) {
+          if (j >= 0 && w.isOccupied(j) && zoneOf(w.tiles[j]) && w.fireCover[j] < FIRE_SAFE_COVER && this.rng.chance(FIRE_SPREAD)) this.ignite(j);
+        }
+      }
+      if (w.fire[i] > 0) continue;
+      this.burning.delete(i);
+      if (covered) {
+        addBuilding(this.totals, w.tiles[i], w.level[i], 1);
+        this.stats.firesSaved++;
+      } else {
+        w.level[i] = 0;
+        this.stats.buildingsBurned++;
+      }
+      w.markDirty(i);
+      this.demand = computeDemand(this.totals, this.state.tax, this.appetite);
+    }
+  }
+
+  private ignite(i: number): void {
+    const w = this.world;
+    if (w.fire[i] || !w.isOccupied(i)) return;
+    addBuilding(this.totals, w.tiles[i], w.level[i], -1);
+    const covered = w.fireCover[i] >= FIRE_SAFE_COVER;
+    w.fire[i] = covered ? 20 : 90;
+    w.markDirty(i);
+    this.burning.add(i);
+    this.stats.firesStarted++;
+    if (this.fireNews < 2) {
+      this.fireNews++;
+      const name = buildingName(zoneOf(w.tiles[i])!, w.level[i], w.variant[i]).toLowerCase();
+      this.publish(covered ? `Los bomberos voluntarios apagaron a tiempo un incendio en un ${name}` : `Incendio en un ${name}: los vecinos piden un cuartel de bomberos`);
+    }
+    this.demand = computeDemand(this.totals, this.state.tax, this.appetite);
+  }
+
+  /** Each month a few dense buildings may catch fire; fire coverage makes it much rarer. */
+  private igniteFires(): void {
+    const w = this.world;
+    const cityFactor = Math.min(1, this.totals.pop / 1500);
+    if (cityFactor === 0) return;
+    for (let i = 0; i < w.tiles.length; i++) {
+      const zone = zoneOf(w.tiles[i]);
+      if (!zone || w.level[i] < 2 || !w.isOccupied(i)) continue;
+      const risk = w.level[i] * 10 + (zone === 'I' ? 20 : zone === 'C' ? 5 : 0);
+      // Coverage makes fires rarer but never impossible; covered ones get put out (see `burn`).
+      const exposure = 1 - (0.7 * w.fireCover[i]) / 100;
+      if (this.rng.chance(((FIRE_RATE * risk) / 10) * cityFactor * exposure * exposure)) this.ignite(i);
+    }
+  }
+
   private endOfMonth(): void {
     const s = this.state;
     const w = this.world;
+    this.fireNews = 0;
+    this.igniteFires();
     const budget = monthlyBudget(w, s.tax);
     s.lastBudget = budget;
     s.cash += budget.balance;

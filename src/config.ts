@@ -30,7 +30,7 @@ export const UPKEEP = {
   line: 0.3,
   park: 2,
   plant: 350,
-  servicesPerResident: 0.08,
+  servicesPerResident: 0.05,
   /** Population at which the cost per resident of municipal services doubles. */
   servicesScale: 15000,
 } as const;
@@ -48,6 +48,24 @@ export const CAPACITY = {
 } as const;
 /** Power units consumed per building level. */
 export const POWER_USE = { R: 2, C: 3, I: 5 } as const;
+
+export type ServiceKind = 'school' | 'clinic' | 'police' | 'fire';
+export const SERVICE_KINDS: readonly ServiceKind[] = ['school', 'clinic', 'police', 'fire'];
+
+/**
+ * Public services. Each covers the residents within `radius` cells; when more than
+ * `capacity` residents live there, its coverage drops proportionally, and overlapping
+ * services of the same kind add up (up to 100 %). They need power.
+ */
+export const SERVICES: Record<ServiceKind, { cost: number; upkeep: number; radius: number; capacity: number; power: number }> = {
+  school: { cost: 1500, upkeep: 120, radius: 11, capacity: 6000, power: 8 },
+  clinic: { cost: 1200, upkeep: 100, radius: 11, capacity: 6000, power: 8 },
+  police: { cost: 1000, upkeep: 90, radius: 10, capacity: 8000, power: 6 },
+  fire: { cost: 1000, upkeep: 80, radius: 11, capacity: 10000, power: 6 },
+};
+
+/** Fire coverage at which firefighters put a fire out before the building is lost. */
+export const FIRE_SAFE_COVER = 50;
 
 /** A zone needs a road within this many cells (Manhattan distance). */
 export const ROAD_REACH = 3;

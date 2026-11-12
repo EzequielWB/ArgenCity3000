@@ -1,7 +1,7 @@
-import { COSTS, PLANT_SIZE } from '../config';
-import { TILE, World, zoneOf, zoneTile, type ZoneKind } from './world';
+import { COSTS, PLANT_SIZE, SERVICES, type ServiceKind } from '../config';
+import { TILE, World, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant';
+export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | ServiceKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -23,7 +23,15 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'zoneI', label: 'Industrial', key: '7', shape: 'rect', help: 'Zona para talleres y fábricas. Contamina.' },
   { id: 'park', label: 'Plaza', key: '8', shape: 'rect', help: 'Sube el valor del suelo alrededor.' },
   { id: 'plant', label: 'Usina', key: '9', shape: 'anchor', help: 'Usina térmica de 2×2. Genera energía y contamina.' },
+  { id: 'school', label: 'Escuela', key: 'y', shape: 'point', help: 'Educación: sin escuela no se levantan torres ni oficinas.' },
+  { id: 'clinic', label: 'Salita', key: 'u', shape: 'point', help: 'Salud: sin salita las casas no pasan de chalet.' },
+  { id: 'police', label: 'Comisaría', key: 'i', shape: 'point', help: 'Seguridad: baja el delito en los barrios densos.' },
+  { id: 'fire', label: 'Bomberos', key: 'o', shape: 'point', help: 'Cuartel de bomberos voluntarios: apaga incendios.' },
 ];
+
+export function isServiceTool(tool: ToolId): tool is ServiceKind {
+  return tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire';
+}
 
 export function toolInfo(id: ToolId): ToolInfo {
   return TOOLS.find((t) => t.id === id)!;
@@ -169,6 +177,13 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
         break;
       }
       default:
+        if (isServiceTool(tool)) {
+          if (!water && isFreeLot(w, x, y)) {
+            out.push([x, y]);
+            cost += SERVICES[tool].cost;
+          }
+          break;
+        }
         if (zone && !water && isFreeLot(w, x, y) && t !== zoneTile(zone)) {
           out.push([x, y]);
           cost += COSTS.zone;
@@ -208,7 +223,10 @@ export function applyPlan(w: World, plan: Plan): void {
         w.terrain.trees[i] = 0;
         break;
       default:
-        if (zone) w.setTile(x, y, zoneTile(zone));
+        if (isServiceTool(plan.tool)) {
+          w.setTile(x, y, serviceTile(plan.tool));
+          w.terrain.trees[i] = 0;
+        } else if (zone) w.setTile(x, y, zoneTile(zone));
     }
   }
   if (plan.tool === 'plant') {

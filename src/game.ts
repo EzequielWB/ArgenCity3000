@@ -1,4 +1,4 @@
-import { TICKS_PER_MONTH } from './config';
+import { TICKS_PER_MONTH, type ServiceKind } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
 import { attachPointer, type PointerTarget } from './input/controls';
@@ -13,7 +13,7 @@ import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { TOOL_ICONS } from './ui/icons';
 import { $, escapeHtml, toast } from './ui/dom';
-import { applyPlan, dragCells, planTool, plantFootprint, toolInfo, TOOLS, type ToolId } from './world/tools';
+import { applyPlan, dragCells, isServiceTool, planTool, plantFootprint, toolInfo, TOOLS, type ToolId } from './world/tools';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
 
@@ -26,6 +26,10 @@ const LAYERS: { id: Layer; label: string }[] = [
   { id: 'power', label: 'Luz' },
   { id: 'pollution', label: 'Humo' },
   { id: 'landValue', label: 'Valor' },
+  { id: 'crime', label: 'Delito' },
+  { id: 'edu', label: 'Educación' },
+  { id: 'health', label: 'Salud' },
+  { id: 'fireCover', label: 'Bomberos' },
 ];
 const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   bulldoze: 'rgba(224,165,38,0.45)',
@@ -36,7 +40,13 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   zoneI: 'rgba(224,181,66,0.55)',
   park: 'rgba(127,181,90,0.6)',
   plant: 'rgba(200,70,47,0.5)',
+  school: 'rgba(80,150,230,0.55)',
+  clinic: 'rgba(60,180,110,0.55)',
+  police: 'rgba(63,95,138,0.6)',
+  fire: 'rgba(200,50,40,0.55)',
 };
+
+const SERVICE_LAYERS: Record<ServiceKind, Layer> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover' };
 
 export interface GameHooks {
   isModalOpen(): boolean;
@@ -54,6 +64,7 @@ export class Game implements PointerTarget {
 
   tool: ToolId = 'query';
   block = 1;
+  private layerBeforeService: Layer = 'none';
   speed = 2;
 
   private history = new UndoHistory();
@@ -176,6 +187,11 @@ export class Game implements PointerTarget {
   // ---------------------------------------------------------------- tools
 
   setTool(tool: ToolId): void {
+    // Service tools show the coverage they provide; leaving them restores the player's layer.
+    if (isServiceTool(tool)) {
+      if (!isServiceTool(this.tool)) this.layerBeforeService = this.view.layer;
+      this.setLayer(SERVICE_LAYERS[tool]);
+    } else if (isServiceTool(this.tool)) this.setLayer(this.layerBeforeService);
     this.tool = tool;
     this.dragCancel();
     document.querySelectorAll<HTMLButtonElement>('#toolbar .tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === tool)));

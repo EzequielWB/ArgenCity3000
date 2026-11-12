@@ -33,8 +33,8 @@ Plan legible para el usuario: `PLAN-DE-TRABAJO.txt`. Spec anterior (referencia d
 | T6 Balance y pulido | S1 | inline | hecho | `848dba4`; sonda de 15 años + partida en Chrome |
 | T7 Deshacer | S9 | inline | hecho | RED observado (`world/history` inexistente, después reembolso parcial); Chrome: demoler un bloque y Ctrl+Z restauran la población exacta (1318 → 1188 → 1318) |
 | T8 Tránsito continuo con oclusión | S10 | inline | hecho | RED observado (`Traffic` inexistente); 147 autos en Chrome sin errores; tapados por los sprites de adelante |
-| T10 Paquete A: crecimiento condicionado y abandono | S12 | inline | en curso | — |
-| T11 Paquete B: servicios, delito e incendios | S13 | inline | pendiente | — |
+| T10 Paquete A: crecimiento condicionado y abandono | S12 | inline | hecho | `f5d7db5` |
+| T11 Paquete B: servicios, delito e incendios | S13 | inline | hecho | commit `feat(sim): public services…` (ver L7); RED observado en la ficha (4 tests) y en incendios cubiertos; Chrome sin errores |
 | T12 Sonidos | S14 | inline | pendiente | — |
 | T9 Investigación de dificultad | S11 | delegado (investigación web, solo lectura) | hecho | informe con fuentes; resumen en L5 |
 
@@ -55,3 +55,9 @@ Ruta: inline en todas, porque no hay motivo de writer. Son unidades dependientes
   - Diagnóstico de S10: cada auto se dibujaba por celda con su propia fase, sin continuidad entre celdas, y por encima de toda la cache. El parche de ocultarlos detrás de edificios de nivel 3 o más los hacía desaparecer. Solución: autos como agentes sobre la red de calles, intercalados en el orden de pintor con los sprites que tienen delante.
 - **L5 (2026-11-12), investigación de dificultad (resumen):** CS1 recibió críticas de prensa por "dinero demasiado fácil" (Expert Reviews, bit-tech, TechSpot). CS2 Economy 2.0 quitó los subsidios y subió el mantenimiento por lo mismo (diario de desarrollo de Paradox). SC4 genera presión con servicios de radio limitado y presupuesto por edificio, topes de demanda y abandono por crimen, viaje y valor del suelo, pero se lo critica por opaco. Ranking recomendado: 1) crecimiento condicionado y topes de demanda; 2) abandono en lugar de congelar; 3) servicios con radio y capacidad; 4) presupuesto por servicio e impuestos por zona; 5) préstamos con interés. Para deshacer, el patrón del género es reembolso completo solo en una ventana corta: se aplicó 100 % dentro del mes y 50 % hasta un año.
 - **L6 (2026-11-12), pedido del usuario (verbatim):** "Dale, hace A y B, y agregá sonidos genericos si podes de ciudad como para acompañar"
+- **L7 (2026-11-12), Paquete B terminado.** Pedido del usuario al retomar: "Hola, Queres seguir".
+  - Escuela (Y), salita (U), comisaría (I) y bomberos (O): sprites propios, íconos, capas de cobertura que se activan solas al elegir la herramienta, partidas separadas en el presupuesto y ficha de consulta con cobertura y la pista "falta salita / falta escuela". El gasto genérico pasó a "Administración municipal" (0,08 → 0,05 por vecino).
+  - Los edificios en llamas se ven chamuscados, con fuego y humo. El rayo de "sin luz" ya no aparece sobre edificios en llamas y sí sobre servicios sin luz.
+  - Corrección de diseño: la propagación de incendios era supercrítica (~3,6 contagios por incendio, 602 incendios en 15 años en la sonda). Ahora es ~0,5 (`FIRE_SPREAD = 0,02`): unos 3 incendios por año. Con cobertura total los incendios siguen pasando, pero se apagan.
+  - Evidencia: `npm test` 109 verdes; `tsc` limpio; `npm run build` OK; Chrome headless con una partida de 4.000 habitantes: los 4 sprites, el fuego, la capa de Educación y el presupuesto, sin errores de consola. Sonda de 15 años: 13.056 habitantes, 40 incendios, 18 abandonados.
+  - **Pendiente detectado:** la caja sigue disparándose a largo plazo (sonda: +$3.659/mes y $372.000 al año 15). Queda para un ajuste de economía aparte.

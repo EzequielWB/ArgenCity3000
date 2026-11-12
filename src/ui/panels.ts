@@ -55,7 +55,11 @@ function budgetTable(b: BudgetReport): string {
     ${row('Tendido eléctrico', b.lines)}
     ${row('Plazas', b.parks)}
     ${row('Usinas', b.plants)}
-    ${row('Servicios municipales', b.services)}
+    ${row('Escuelas', b.schools)}
+    ${row('Salitas', b.clinics)}
+    ${row('Comisarías', b.police)}
+    ${row('Bomberos voluntarios', b.firefighters)}
+    ${row('Administración municipal', b.services)}
     ${row('Total gastos', b.expenses, 'total')}
     <tr class="total"><td>Saldo del mes</td><td>${money(b.balance, true)}</td></tr>
   </table>`;
@@ -237,10 +241,14 @@ export function openHelp(): void {
       <li><strong>Cuidá la caja.</strong> Cada mes cobrás tasas y pagás mantenimiento. Con la caja en rojo no se construye nada.</li>
       <li><strong>Plazas</strong> (8), agua y árboles suben el valor del suelo y dejan crecer edificios más altos. La industria contamina: alejala de las casas.</li>
       <li>Si una usina no da abasto, aparecen rayos rojos sobre los edificios sin luz: hacé otra.</li>
+      <li><strong>Servicios públicos</strong> (necesitan luz y cubren un radio): sin <strong>salita</strong> (U) las casas no pasan de chalet, y sin
+        <strong>escuela</strong> (Y) no hay torres ni oficinas. La <strong>comisaría</strong> (I) baja el delito de los barrios densos y los
+        <strong>bomberos</strong> (O) apagan los incendios antes de que se pierda el edificio. Al elegirlos se ve la capa de cobertura.</li>
+      <li>Un edificio sin luz, sin calle, con mucho delito o con la caja en rojo puede quedar <strong>abandonado</strong>: no paga y baja el valor de alrededor.</li>
     </ol>
     <h3>Controles</h3>
     <div class="help-grid">
-      <span><kbd>1</kbd>–<kbd>9</kbd> herramientas</span>
+      <span><kbd>1</kbd>–<kbd>9</kbd> herramientas · <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>O</kbd> servicios</span>
       <span><kbd>B</kbd> tamaño de bloque</span>
       <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer la última obra (devuelve todo dentro del mes, la mitad hasta un año)</span>
       <span>Arrastrar con clic izquierdo: construir</span>

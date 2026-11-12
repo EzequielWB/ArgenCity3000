@@ -77,6 +77,67 @@ describe('describeCell', () => {
     expect(r.hint).toMatch(/falta luz/);
   });
 
+  it('describes a service building, its coverage and whether it has power', () => {
+    const { w, sim, b } = setup();
+    b('school', 8, 8);
+    sim.refresh();
+    const off = describeCell(w, sim, 8, 8);
+    expect(off.title).toBe('Escuela');
+    expect(off.lines.join(' ')).toMatch(/Sin luz/);
+    expect(off.hint).toMatch(/luz/);
+    b('plant', 0, 0);
+    b('road', 2, 0, 2, 8);
+    b('road', 3, 8, 7, 8);
+    sim.refresh();
+    const on = describeCell(w, sim, 8, 8);
+    expect(on.lines.join(' ')).toMatch(/Con luz/);
+    expect(on.lines.join(' ')).toMatch(/Radio: 11 lotes/);
+    expect(on.lines.join(' ')).toMatch(/6\.000 vecinos/);
+  });
+
+  it('shows the coverage of every service on a lot', () => {
+    const { w, sim, b } = setup();
+    b('zoneR', 5, 5);
+    w.level[w.idx(5, 5)] = 1;
+    sim.refresh();
+    const text = describeCell(w, sim, 5, 5).lines.join(' ');
+    expect(text).toMatch(/Educación: 0\/100/);
+    expect(text).toMatch(/Salud: 0\/100/);
+    expect(text).toMatch(/Delito: \d+\/100/);
+  });
+
+  it('says a burning building needs firefighters', () => {
+    const { w, sim, b } = setup();
+    b('zoneR', 5, 5);
+    w.level[w.idx(5, 5)] = 2;
+    w.fire[w.idx(5, 5)] = 40;
+    sim.refresh();
+    const r = describeCell(w, sim, 5, 5);
+    expect(r.title).toMatch(/en llamas/);
+    expect(r.hint).toMatch(/bomberos/i);
+  });
+
+  it('asks for a clinic, then a school, when they are what holds homes back', () => {
+    const { w, sim, b } = setup();
+    b('plant', 0, 0);
+    b('road', 2, 0, 2, 10);
+    b('zoneR', 3, 5);
+    const i = w.idx(3, 5);
+    w.level[i] = 2;
+    sim.refresh();
+    const rich = () => {
+      w.landValue[i] = 100;
+      sim.totals.pop = 50000;
+      sim.demand.R = 50;
+    };
+    rich();
+    expect(describeCell(w, sim, 3, 5).hint).toMatch(/salita/i);
+    w.health[i] = 100;
+    w.level[i] = 3;
+    rich();
+    expect(describeCell(w, sim, 3, 5).hint).toMatch(/escuela/i);
+  });
+
   it('reports residents of a built lot', () => {
     const { w, sim, b } = setup();
     b('zoneR', 5, 5);

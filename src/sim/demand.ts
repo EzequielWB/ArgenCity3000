@@ -53,12 +53,27 @@ export function computeDemand(t: Totals, tax: number, appetite = GROWTH_APPETITE
   };
 }
 
-/** Highest level a lot can reach given its land value and the city size. */
-export function levelCap(zone: ZoneKind, landValue: number, pop: number): number {
+export interface ServiceLevels {
+  edu: number;
+  health: number;
+}
+
+/** Coverage a lot needs to reach a level: health for the third, education for the fourth. */
+export const SERVICE_NEED = 40;
+
+/**
+ * Highest level a lot can reach given its land value, the city size and the services around:
+ * homes need a clinic nearby to go past level 2 and a school to go past 3; offices need a school.
+ */
+export function levelCap(zone: ZoneKind, landValue: number, pop: number, services: ServiceLevels = { edu: 100, health: 100 }): number {
   const byValue = (step: number) => 1 + Math.floor((landValue + 15) / step);
   let cap: number;
   if (zone === 'R') cap = Math.min(byValue(22), pop < 150 ? 2 : pop < 700 ? 3 : 4);
   else if (zone === 'C') cap = Math.min(byValue(20), pop < 250 ? 1 : pop < 900 ? 2 : pop < 2500 ? 3 : 4);
   else cap = pop < 200 ? 1 : pop < 900 ? 2 : pop < 2500 ? 3 : 4;
+  if (zone === 'R') {
+    if (services.health < SERVICE_NEED) cap = Math.min(cap, 2);
+    if (services.edu < SERVICE_NEED) cap = Math.min(cap, 3);
+  } else if (zone === 'C' && services.edu < SERVICE_NEED) cap = Math.min(cap, 3);
   return Math.max(1, Math.min(MAX_LEVEL, cap));
 }

@@ -24,6 +24,7 @@ Otros comandos:
 3. **Zonas** residencial (`5`), comercial (`6`) e industrial (`7`): todo tiene que tocar la red, porque la luz viaja por calles, zonas y tendido eléctrico (`4`).
 4. Mirá la **demanda R C I** arriba y la **caja**. Con la caja en rojo no se construye.
 5. Las **plazas** (`8`), el agua y los árboles suben el valor del suelo, y eso permite edificios más altos. La industria contamina.
+6. **Servicios públicos** (necesitan luz y cubren un radio): sin **salita** (`U`) las casas no pasan de chalet y sin **escuela** (`Y`) no hay torres ni oficinas. La **comisaría** (`I`) baja el delito y los **bomberos** (`O`) apagan incendios.
 
 En el juego, `H` abre la ayuda completa con todos los controles.
 
@@ -31,10 +32,10 @@ En el juego, `H` abre la ayuda completa con todos los controles.
 
 - Mapa procedural de 128×128 a partir de una semilla: lomas, la costa de un río ancho, un arroyo y arboledas de jacarandás, palos borrachos, ombúes y eucaliptos.
 - Cámara isométrica con 4 rotaciones, zoom de 0,25× a 3×, minimapa y picking que respeta el relieve.
-- Herramientas: consulta, topadora, calles (con puentes), tendido eléctrico, zonas R/C/I, plazas y usinas, con costo visible antes de soltar el mouse, bloques de 1×1, 2×2 o 4×4 y deshacer (`Ctrl+Z`): devuelve todo lo pagado dentro del mes de la obra y la mitad hasta un año después.
-- Simulación: red eléctrica con capacidad y apagones, acceso a calles, contaminación, valor del suelo, demanda R/C/I, crecimiento en 4 niveles por zona, tasas ajustables y presupuesto mensual.
+- Herramientas: consulta, topadora, calles (con puentes), tendido eléctrico, zonas R/C/I, plazas, usinas, escuelas, salitas, comisarías y cuarteles de bomberos, con costo visible antes de soltar el mouse, bloques de 1×1, 2×2 o 4×4 y deshacer (`Ctrl+Z`): devuelve todo lo pagado dentro del mes de la obra y la mitad hasta un año después.
+- Simulación: red eléctrica con capacidad y apagones, acceso a calles, contaminación, valor del suelo, demanda R/C/I, crecimiento en 4 niveles por zona, tasas ajustables y presupuesto mensual. Servicios con radio y capacidad, delito según la densidad, incendios que se propagan sin bomberos y edificios que quedan abandonados cuando faltan luz, calle o seguridad.
 - Edificios: casitas, chalets, casas chorizo, PH con tanque de agua, torres, kioscos y almacenes con toldo, galerías, oficinas, talleres, galpones, fábricas y plantas industriales. También hay humo animado y tránsito con taxis negros y amarillos y colectivos.
-- Interfaz con fileteado, El Diario del Conurbano, panel de presupuesto con historia, capas de luz, humo y valor del suelo, y ficha de cada lote que explica por qué crece o no.
+- Interfaz con fileteado, El Diario del Conurbano, panel de presupuesto con historia, capas de luz, humo, valor del suelo, delito, educación, salud y bomberos (la de cada servicio se muestra sola al elegirlo), y ficha de cada lote que explica por qué crece o no.
 - Guardado en 3 ranuras más un autoguardado anual, y exportar o importar como archivo `.json`.
 
 ## Arquitectura

@@ -1,6 +1,6 @@
-import { ROAD_REACH } from '../config';
+import { CAPACITY, ROAD_REACH, SERVICES, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
-import { TILE, World } from '../world/world';
+import { TILE, World, serviceOf } from '../world/world';
 
 const clamp100 = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
 
@@ -103,6 +103,78 @@ function waterDistance(w: World): Uint8Array {
   return dist;
 }
 
+function coverageField(w: World, kind: ServiceKind): Uint8Array {
+  return kind === 'school' ? w.edu : kind === 'clinic' ? w.health : kind === 'police' ? w.safety : w.fireCover;
+}
+
+/**
+ * Coverage of every public service. A powered service covers a disc of its radius, fading a
+ * little towards the edge; if more residents live in the disc than it can serve, its
+ * coverage drops in proportion. Overlapping services of the same kind add up to 100.
+ */
+export function computeServices(w: World): void {
+  const n = w.n;
+  w.edu.fill(0);
+  w.health.fill(0);
+  w.safety.fill(0);
+  w.fireCover.fill(0);
+  for (let i = 0; i < n * n; i++) {
+    const kind = serviceOf(w.tiles[i]);
+    if (!kind || !w.powered[i]) continue;
+    const { radius, capacity } = SERVICES[kind];
+    const cx = i % n;
+    const cy = (i - cx) / n;
+    const r2 = radius * radius;
+    let residents = 0;
+    for (let y = Math.max(0, cy - radius); y <= Math.min(n - 1, cy + radius); y++) {
+      for (let x = Math.max(0, cx - radius); x <= Math.min(n - 1, cx + radius); x++) {
+        if ((x - cx) ** 2 + (y - cy) ** 2 > r2) continue;
+        const j = y * n + x;
+        if (w.tiles[j] === TILE.R && w.isOccupied(j)) residents += CAPACITY.R[w.level[j]];
+      }
+    }
+    const efficiency = Math.min(1, capacity / Math.max(1, residents));
+    const field = coverageField(w, kind);
+    for (let y = Math.max(0, cy - radius); y <= Math.min(n - 1, cy + radius); y++) {
+      for (let x = Math.max(0, cx - radius); x <= Math.min(n - 1, cx + radius); x++) {
+        const d2 = (x - cx) ** 2 + (y - cy) ** 2;
+        if (d2 > r2) continue;
+        const v = Math.round(100 * efficiency * (1 - (0.35 * Math.sqrt(d2)) / radius));
+        const j = y * n + x;
+        field[j] = Math.min(100, field[j] + v);
+      }
+    }
+  }
+}
+
+/**
+ * Crime grows with how dense the neighbourhood is (commerce counts a bit more) and with the
+ * size of the city; police coverage takes most of it away. Needs services first.
+ */
+export function computeCrime(w: World, pop: number): void {
+  const n = w.n;
+  const cityFactor = Math.min(1, pop / 2500);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      let density = 0;
+      for (let dy = -2; dy <= 2; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= n) continue;
+        for (let dx = -2; dx <= 2; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= n) continue;
+          const j = ny * n + nx;
+          if (!w.isOccupied(j)) continue;
+          density += w.level[j] * (w.tiles[j] === TILE.C ? 1.3 : 1);
+        }
+      }
+      const i = y * n + x;
+      const raw = density * cityFactor;
+      w.crime[i] = clamp100(raw * (1 - (0.85 * w.safety[i]) / 100));
+    }
+  }
+}
+
 /** Land value: views of the water, plazas, trees and height add; pollution subtracts. Needs pollution first. */
 export function computeLandValue(w: World): void {
   const n = w.n;
@@ -132,6 +204,8 @@ export function computeLandValue(w: World): void {
       v += Math.max(0, max - SEA_LEVEL) * 1.5;
       v -= w.pollution[i] * 0.7;
       v -= Math.min(30, blight[i]);
+      v += (w.edu[i] + w.health[i]) * 0.08;
+      v -= w.crime[i] * 0.35;
       w.landValue[i] = clamp100(v);
     }
   }

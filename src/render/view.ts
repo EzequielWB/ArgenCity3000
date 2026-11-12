@@ -1,12 +1,12 @@
 import { fromView, toView } from '../core/iso';
 import { hash2 } from '../core/rng';
-import { TILE, World, zoneOf } from '../world/world';
+import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { PAL } from './color';
 import { cellScreenCorners, type Pt } from './geometry';
 import { MapRenderer } from './mapRenderer';
 import { Traffic, drawTraffic } from './traffic';
 
-export type Layer = 'none' | 'power' | 'pollution' | 'landValue';
+export type Layer = 'none' | 'power' | 'pollution' | 'landValue' | 'crime' | 'edu' | 'health' | 'fireCover';
 
 export const ZOOMS = [0.25, 0.5, 1, 2, 3] as const;
 
@@ -217,7 +217,10 @@ export class View {
     const w = this.world;
     const n = w.n;
     for (let i = 0; i < n * n; i++) {
-      if (w.level[i] === 0 || w.powered[i] || !zoneOf(w.tiles[i])) continue;
+      if (w.powered[i]) continue;
+      // Buildings and services that would work with power; a burning building needs firefighters, not power.
+      const t = w.tiles[i];
+      if (!serviceOf(t) && (!zoneOf(t) || w.level[i] === 0 || w.fire[i])) continue;
       const x = i % n;
       const [vx, vy] = toView(x, (i - x) / n, this.map.rot, n);
       const [cx, cy] = this.map.toCache(vx + 0.5, vy + 0.5, w.minMax(x, (i - x) / n)[1]);
@@ -276,6 +279,19 @@ export class View {
         const r = Math.round(220 - 170 * v);
         const gg = Math.round(70 + 140 * v);
         return `rgba(${r},${gg},60,0.5)`;
+      }
+      case 'crime': {
+        const c = w.crime[i];
+        return c > 3 ? `rgba(150,30,60,${Math.min(0.75, c / 110)})` : null;
+      }
+      case 'edu':
+      case 'health':
+      case 'fireCover': {
+        if (w.isWater(x, y)) return null;
+        const v = w[this.layer][i];
+        if (v === 0) return zoneOf(tile) && w.level[i] > 0 ? 'rgba(120,120,120,0.35)' : null;
+        const rgbBase = this.layer === 'edu' ? '80,150,230' : this.layer === 'health' ? '60,180,110' : '230,90,40';
+        return `rgba(${rgbBase},${(0.15 + (0.5 * v) / 100).toFixed(2)})`;
       }
       default:
         return null;

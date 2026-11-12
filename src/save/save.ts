@@ -2,7 +2,7 @@ import { MAX_LEVEL, MAX_TAX, MIN_TAX, PLANT_SIZE } from '../config';
 import type { BudgetReport } from '../sim/budget';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
-import { TILE, World, zoneOf } from '../world/world';
+import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
 export const SAVE_VERSION = 2;
 /** Versions this build can still read. Version 1 had no abandoned buildings or fires. */
@@ -82,7 +82,7 @@ export function deserialize(text: string): SaveData {
   const size = (n as number) * (n as number);
   const corners = fromBase64(data.corners, ((n as number) + 1) ** 2, MAX_HEIGHT, 'El terreno');
   const trees = fromBase64(data.trees, size, 4, 'La arboleda');
-  const tiles = fromBase64(data.tiles, size, TILE.PARK, 'El plano de la ciudad');
+  const tiles = fromBase64(data.tiles, size, MAX_TILE, 'El plano de la ciudad');
   const level = fromBase64(data.level, size, MAX_LEVEL, 'Los edificios');
   const variant = fromBase64(data.variant, size, 255, 'Los edificios');
 
@@ -145,8 +145,9 @@ function parseSim(raw: unknown): SimState {
   let lastBudget: BudgetReport | null = null;
   if (s.lastBudget !== null && s.lastBudget !== undefined) {
     const b = s.lastBudget as Record<string, unknown>;
-    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'income', 'expenses', 'balance'];
-    if (b.services === undefined) b.services = 0; // Version 1 budgets had no services line.
+    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'income', 'expenses', 'balance'];
+    // Older budgets had no lines for services; they count as zero.
+    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters']) if (b[k] === undefined) b[k] = 0;
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }

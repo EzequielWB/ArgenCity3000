@@ -1,4 +1,5 @@
 import { PAL, shade } from './color';
+import type { ServiceKind } from '../config';
 import type { ZoneKind } from '../world/world';
 
 /**
@@ -414,6 +415,127 @@ function plant(): Sprite {
   return done(p);
 }
 
+/** Public school: white walls, celeste trim and the flag on a pole. */
+function school(): Sprite {
+  const p = painter(1, 40);
+  p.box(0.06, 0.12, 0.94, 0.88, 0, 13, '#f4f0e6');
+  p.left(0.88, 0.06, 0.94, 5, 6.5, '#6fb7e0');
+  p.right(0.94, 0.12, 0.88, 5, 6.5, '#6fb7e0');
+  p.windows(0.06, 0.12, 0.94, 0.88, 7.5, 12, 6, PAL.glass, 4, 3);
+  p.left(0.88, 0.42, 0.58, 0, 4.5, '#5b3b26');
+  p.gableRoof(0.04, 0.1, 0.96, 0.9, 13, 5, '#b4532f', '#f4f0e6');
+  const [x, y] = p.P(0.12, 0.3, 18);
+  p.g.fillStyle = '#d9d4cc';
+  p.g.fillRect(x - 0.5, y - 18, 1, 18);
+  for (const [k, color] of [
+    [0, '#74acdf'],
+    [1, '#ffffff'],
+    [2, '#74acdf'],
+  ] as const) {
+    p.g.fillStyle = color;
+    p.g.fillRect(x + 0.5, y - 18 + k * 1.6, 7, 1.6);
+  }
+  p.g.fillStyle = '#f6b40e';
+  p.g.fillRect(x + 3.5, y - 16.2, 1, 1);
+  return done(p);
+}
+
+/** Neighbourhood health centre: low white building with a green cross. */
+function clinic(): Sprite {
+  const p = painter(1, 30);
+  p.box(0.12, 0.12, 0.88, 0.88, 0, 11, '#f4f0e6');
+  p.left(0.88, 0.12, 0.88, 0, 2, '#3a8f5c');
+  p.right(0.88, 0.12, 0.88, 0, 2, '#3a8f5c');
+  p.left(0.88, 0.2, 0.45, 3, 8, PAL.glass);
+  p.right(0.88, 0.25, 0.75, 4, 8, PAL.glass);
+  p.box(0.12, 0.12, 0.88, 0.88, 11, 1.5, '#d8d2c4', false);
+  // Green cross standing on the roof.
+  const [x, y] = p.P(0.5, 0.5, 12.5);
+  p.g.fillStyle = '#2f9a55';
+  p.g.fillRect(x - 1.5, y - 11, 3, 9);
+  p.g.fillRect(x - 4.5, y - 8, 9, 3);
+  return done(p);
+}
+
+/** Police station: blue-grey block with a white band and a light bar on the roof. */
+function police(): Sprite {
+  const p = painter(1, 34);
+  p.box(0.1, 0.1, 0.9, 0.9, 0, 15, '#3f5f8a');
+  p.left(0.9, 0.1, 0.9, 9, 11, '#f4f0e6');
+  p.right(0.9, 0.1, 0.9, 9, 11, '#f4f0e6');
+  p.windows(0.1, 0.1, 0.9, 0.9, 3, 8, 6, '#cfe0ea', 3, 3);
+  p.windows(0.1, 0.1, 0.9, 0.9, 12, 15, 6, '#cfe0ea', 3, 2);
+  p.box(0.35, 0.4, 0.65, 0.6, 15, 3, '#d9d4cc');
+  const [x, y] = p.P(0.5, 0.5, 18);
+  p.g.fillStyle = '#2f63e0';
+  p.g.fillRect(x - 4, y - 2, 4, 2);
+  p.g.fillStyle = '#e03a2f';
+  p.g.fillRect(x, y - 2, 4, 2);
+  return done(p);
+}
+
+/** Volunteer fire station: red block with garage doors and a hose tower. */
+function firehouse(): Sprite {
+  const p = painter(1, 46);
+  p.box(0.08, 0.1, 0.92, 0.9, 0, 14, '#b8322a');
+  for (const [a, b] of [
+    [0.14, 0.42],
+    [0.5, 0.78],
+  ]) {
+    p.left(0.9, a, b, 0, 9, '#efe6d8');
+    for (let z = 2; z < 9; z += 2) p.left(0.9, a, b, z, z + 0.4, '#b9ae9c');
+  }
+  p.right(0.92, 0.3, 0.7, 6, 10, PAL.glassDark);
+  p.box(0.08, 0.1, 0.92, 0.9, 14, 1.5, '#efe6d8', false);
+  p.box(0.66, 0.12, 0.9, 0.36, 15.5, 14, '#a52b24');
+  p.right(0.9, 0.16, 0.32, 23, 27, PAL.glassDark);
+  p.hipRoof(0.64, 0.1, 0.92, 0.38, 29.5, 4, '#7d6a5e');
+  return done(p);
+}
+
+/** A building on fire: scorched, with flames on top and smoke rising from them. */
+function burningOf(base: Sprite): Sprite {
+  const c = makeCanvas(base.canvas.width, base.canvas.height);
+  const g = c.getContext('2d')!;
+  g.filter = 'brightness(0.55) sepia(0.4)';
+  g.drawImage(base.canvas, 0, 0);
+  g.filter = 'none';
+  // Find the top of the building to put the flames on.
+  const data = g.getImageData(0, 0, c.width, c.height).data;
+  let top = base.ay;
+  scan: for (let y = 0; y < c.height; y++) {
+    for (let x = Math.max(0, base.ax - 8); x < Math.min(c.width, base.ax + 8); x++) {
+      if (data[(y * c.width + x) * 4 + 3] > 0) {
+        top = y;
+        break scan;
+      }
+    }
+  }
+  const flames: [number, number, number][] = [
+    [-6, 2, 5],
+    [0, 0, 8],
+    [6, 3, 5],
+  ];
+  for (const [dx, dy, h] of flames) {
+    const x = base.ax + dx;
+    const y = top + 4 + dy;
+    for (const [color, s] of [
+      ['#e0461f', 1],
+      ['#f59a23', 0.65],
+      ['#ffe066', 0.3],
+    ] as const) {
+      g.beginPath();
+      g.moveTo(x - 3.5 * s, y);
+      g.quadraticCurveTo(x - 3 * s, y - h * s * 0.6, x, y - h * s - 2);
+      g.quadraticCurveTo(x + 3 * s, y - h * s * 0.6, x + 3.5 * s, y);
+      g.closePath();
+      g.fillStyle = color;
+      g.fill();
+    }
+  }
+  return { canvas: c, ax: base.ax, ay: base.ay, smoke: [[0, top - base.ay - 6]] };
+}
+
 function treeSprite(kind: number, v: number): Sprite {
   const p = painter(1, 26);
   const spots: [number, number][] = [
@@ -527,6 +649,17 @@ export function buildingSprite(zone: ZoneKind, level: number, variant: number): 
 export function abandonedBuildingSprite(zone: ZoneKind, level: number, variant: number): Sprite {
   const v = variant % VARIANTS;
   return cached(`x${zone}${level}:${v}`, () => abandonedOf(buildingSprite(zone, level, variant)));
+}
+
+export function burningBuildingSprite(zone: ZoneKind, level: number, variant: number): Sprite {
+  const v = variant % VARIANTS;
+  return cached(`f${zone}${level}:${v}`, () => burningOf(buildingSprite(zone, level, variant)));
+}
+
+const SERVICE_SPRITES: Record<ServiceKind, () => Sprite> = { school, clinic, police, fire: firehouse };
+
+export function serviceSprite(kind: ServiceKind): Sprite {
+  return cached(`svc:${kind}`, SERVICE_SPRITES[kind]);
 }
 
 export function plantSprite(): Sprite {
