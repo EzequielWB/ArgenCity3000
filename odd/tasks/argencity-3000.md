@@ -39,7 +39,7 @@ Plan legible para el usuario: `PLAN-DE-TRABAJO.txt`. Spec anterior (referencia d
 | T11 Paquete B: servicios, delito e incendios | S13 | inline | hecho | `e11ca89`; RED observado en la ficha (4 tests) y en incendios cubiertos; Chrome sin errores; verificador independiente por el formato de guardado (ítem 1) |
 | T12 Sonidos | S14 | inline | hecho | commit `feat(audio)…` (ver L8); RED observado (`audio/sound` inexistente); Chrome: botón y tecla M alternan, preferencia guardada, sin errores |
 | T13 Mapas reales predeterminados | S15 | inline | hecho | commit `feat(maps)…` (ver L11); RED observado (`scripts/mapgen/geo` y `world/presets` inexistentes, después el mapa faltante); Chrome: inicio y partida en Mar del Plata sin errores |
-| T14 Economía: presupuesto por servicio y tasas por zona | S16 | inline | hecho (a verificar) | commit `feat(economy)…` (ver L12); RED observado (12 tests de economía y 3 de calles heredadas); Chrome: panel con 7 reguladores sin errores; formato de guardado v3 (ítem 1), con verificador independiente |
+| T14 Economía: presupuesto por servicio y tasas por zona | S16 | inline | hecho; verificador independiente PASS (S15, S16 e ítem 1) | commit `feat(economy)…` (ver L12); RED observado (12 tests de economía y 3 de calles heredadas); Chrome: panel con 7 reguladores sin errores; formato de guardado v3 (ítem 1), con verificador independiente |
 | T9 Investigación de dificultad | S11 | delegado (investigación web, solo lectura) | hecho | informe con fuentes; resumen en L5 |
 
 Ruta: inline en todas, porque no hay motivo de writer. Son unidades dependientes que comparten `main.ts`, sin paralelismo real.

@@ -66,7 +66,8 @@ export class World {
   readonly abandoned: Uint8Array;
   /**
    * 1 on streets that came with a real-place map: they are only charged once buildings use
-   * them. Building anything on the cell (the same street included) clears it.
+   * them. Any change of tile on the cell clears it, so a street bulldozed and built again is
+   * the player's own (building a street over a street changes nothing).
    */
   readonly inherited: Uint8Array;
   /** Ticks left of a fire burning in the cell (0 = no fire). */
