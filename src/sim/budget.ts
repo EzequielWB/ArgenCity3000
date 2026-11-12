@@ -1,0 +1,50 @@
+import { UPKEEP } from '../config';
+import { TILE, World } from '../world/world';
+import { cityTotals } from './demand';
+
+export interface BudgetReport {
+  taxR: number;
+  taxC: number;
+  taxI: number;
+  roads: number;
+  lines: number;
+  parks: number;
+  plants: number;
+  income: number;
+  expenses: number;
+  balance: number;
+}
+
+/** Monthly income and expenses for the current city. Whole pesos only. */
+export function monthlyBudget(w: World, tax: number): BudgetReport {
+  const t = cityTotals(w);
+  let roads = 0;
+  let bridges = 0;
+  let lines = 0;
+  let parks = 0;
+  for (let y = 0; y < w.n; y++) {
+    for (let x = 0; x < w.n; x++) {
+      const tile = w.tiles[w.idx(x, y)];
+      if (tile === TILE.ROAD) {
+        if (w.isWater(x, y)) bridges++;
+        else roads++;
+      } else if (tile === TILE.LINE) lines++;
+      else if (tile === TILE.PARK) parks++;
+    }
+  }
+  const taxR = Math.round(t.pop * tax * 0.07);
+  const taxC = Math.round(t.cJobs * tax * 0.09);
+  const taxI = Math.round(t.iJobs * tax * 0.09);
+  const r = {
+    taxR,
+    taxC,
+    taxI,
+    roads: Math.round(roads * UPKEEP.road + bridges * UPKEEP.bridge),
+    lines: Math.round(lines * UPKEEP.line),
+    parks: Math.round(parks * UPKEEP.park),
+    plants: w.plants.length * UPKEEP.plant,
+  };
+  const income = r.taxR + r.taxC + r.taxI;
+  const expenses = r.roads + r.lines + r.parks + r.plants;
+  return { ...r, income, expenses, balance: income - expenses };
+}
