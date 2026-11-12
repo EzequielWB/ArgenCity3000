@@ -1,4 +1,5 @@
 import './ui/style.css';
+import { Sound, browserAudio, browserStorage } from './audio/sound';
 import { MAP_SIZE } from './config';
 import { hashString } from './core/rng';
 import { Game } from './game';
@@ -27,6 +28,7 @@ const CITY_NAMES = [
 ];
 
 let game: Game | null = null;
+const sound = new Sound(browserAudio, browserStorage());
 
 function randomSeed(): number {
   return 100000 + Math.floor(Math.random() * 900000);
@@ -66,7 +68,7 @@ function launch(data: SaveData): void {
   game?.destroy();
   $('#start').classList.add('hidden');
   $('#app').classList.remove('hidden');
-  game = new Game(data, { isModalOpen });
+  game = new Game(data, { isModalOpen, sound });
   if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
   if (data.sim.tick === 0) toast(`¡Bienvenido, Intendente! Empezá por una usina (9) y unas calles (3).`);
   else toast(`Partida cargada: ${data.name}`);
@@ -95,6 +97,21 @@ $('#startName').addEventListener('keydown', (e) => {
 $('#btnBudget').addEventListener('click', () => game && openBudget(game));
 $('#btnSave').addEventListener('click', () => game && openSaves(game, launch));
 $('#btnHelp').addEventListener('click', openHelp);
+
+function showSound(): void {
+  const b = $('#btnSound');
+  b.textContent = sound.muted ? 'Sin sonido' : 'Sonido';
+  b.setAttribute('aria-pressed', String(!sound.muted));
+}
+function toggleSound(): void {
+  sound.unlock();
+  toast(sound.toggle() ? 'Sonido apagado' : 'Sonido encendido');
+  showSound();
+}
+$('#btnSound').addEventListener('click', toggleSound);
+showSound();
+// Browsers only start audio after a gesture: the first click or key does it.
+for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(type, () => sound.unlock(), { capture: true });
 $('#btnMenu').addEventListener('click', () => {
   if (confirm('¿Volver al inicio? Lo que no guardaste se pierde.')) showStart();
 });
@@ -178,6 +195,9 @@ window.addEventListener('keydown', (e) => {
       break;
     case 'h':
       openHelp();
+      break;
+    case 'm':
+      toggleSound();
       break;
     case 'n':
       $('#app').classList.toggle('no-news');

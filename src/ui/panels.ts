@@ -260,6 +260,7 @@ export function openHelp(): void {
       <span><kbd>C</kbd> cambiar capa</span>
       <span><kbd>P</kbd> presupuesto · <kbd>G</kbd> partidas</span>
       <span><kbd>N</kbd> mostrar u ocultar el diario</span>
+      <span><kbd>M</kbd> sonido sí o no</span>
       <span><kbd>Esc</kbd> cancelar o cerrar</span>
     </div>
     <p><small>Con la herramienta Consulta (1) un clic muestra la ficha del lote y por qué crece o no; arrastrando movés el mapa.</small></p>

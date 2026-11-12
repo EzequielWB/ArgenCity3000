@@ -36,6 +36,7 @@ En el juego, `H` abre la ayuda completa con todos los controles.
 - Simulación: red eléctrica con capacidad y apagones, acceso a calles, contaminación, valor del suelo, demanda R/C/I, crecimiento en 4 niveles por zona, tasas ajustables y presupuesto mensual. Servicios con radio y capacidad, delito según la densidad, incendios que se propagan sin bomberos y edificios que quedan abandonados cuando faltan luz, calle o seguridad.
 - Edificios: casitas, chalets, casas chorizo, PH con tanque de agua, torres, kioscos y almacenes con toldo, galerías, oficinas, talleres, galpones, fábricas y plantas industriales. También hay humo animado y tránsito con taxis negros y amarillos y colectivos.
 - Interfaz con fileteado, El Diario del Conurbano, panel de presupuesto con historia, capas de luz, humo, valor del suelo, delito, educación, salud y bomberos (la de cada servicio se muestra sola al elegirlo), y ficha de cada lote que explica por qué crece o no.
+- Sonido generado en el navegador (sin archivos): murmullo de ciudad y tránsito que crecen con la ciudad, bocinas y pajaritos, y efectos al construir, demoler, deshacer, salir el diario o arrancar un incendio. Se silencia con el botón "Sonido" o la tecla `M`, y la elección se recuerda.
 - Guardado en 3 ranuras más un autoguardado anual, y exportar o importar como archivo `.json`.
 
 ## Arquitectura

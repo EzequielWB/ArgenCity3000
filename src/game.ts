@@ -1,3 +1,4 @@
+import type { Sound } from './audio/sound';
 import { TICKS_PER_MONTH, type ServiceKind } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
@@ -50,6 +51,7 @@ const SERVICE_LAYERS: Record<ServiceKind, Layer> = { school: 'edu', clinic: 'hea
 
 export interface GameHooks {
   isModalOpen(): boolean;
+  sound: Sound;
 }
 
 /** One running city: simulation, rendering, input and HUD. */
@@ -81,6 +83,8 @@ export class Game implements PointerTarget {
   private detach: () => void;
   private shownNews = '';
   private keyboardPan = { x: 0, y: 0 };
+  /** Fires already announced with the siren. */
+  private firesHeard = 0;
 
   constructor(data: SaveData, private hooks: GameHooks) {
     this.world = data.world;
@@ -104,6 +108,7 @@ export class Game implements PointerTarget {
   }
 
   destroy(): void {
+    this.hooks.sound.update({ pop: 0, cars: 0, running: false }, 0);
     cancelAnimationFrame(this.raf);
     this.detach();
     window.removeEventListener('resize', this.onResize);
@@ -144,8 +149,10 @@ export class Game implements PointerTarget {
     }
     this.view.render(t);
     if (t - this.lastHud > 250) {
+      const since = this.lastHud ? (t - this.lastHud) / 1000 : 0;
       this.lastHud = t;
       this.updateHud(false);
+      this.updateSound(running, since);
     }
     if (this.minimapDirty && t - this.lastMinimap > 700) {
       this.lastMinimap = t;
@@ -153,6 +160,13 @@ export class Game implements PointerTarget {
       this.drawMinimap();
     }
   };
+
+  private updateSound(running: boolean, dt: number): void {
+    const sound = this.hooks.sound;
+    sound.update({ pop: this.sim.totals.pop, cars: this.view.traffic.cars.length, running }, dt);
+    if (this.sim.stats.firesStarted > this.firesHeard) sound.play('fire');
+    this.firesHeard = this.sim.stats.firesStarted;
+  }
 
   private onNewMonth(): void {
     this.view.invalidateLayer();
@@ -298,15 +312,18 @@ export class Game implements PointerTarget {
     this.view.preview = null;
     this.hideTooltip();
     if (plan.cells.length === 0) {
+      this.hooks.sound.play('deny');
       toast(this.tool === 'bulldoze' ? 'No hay nada para demoler ahí' : 'No se puede construir ahí', true);
       return;
     }
     if (!this.sim.spend(plan.cost)) {
+      this.hooks.sound.play('deny');
       toast(`No alcanza la plata: hace falta ${formatMoney(plan.cost)}`, true);
       return;
     }
     this.history.record(this.world, plan, this.sim.state.tick);
     applyPlan(this.world, plan);
+    this.hooks.sound.play(this.tool === 'bulldoze' ? 'bulldoze' : 'build');
     this.afterEdit();
   }
 
@@ -315,9 +332,11 @@ export class Game implements PointerTarget {
     this.dragCancel();
     const r = this.history.undo(this.world, this.sim.state.tick);
     if (!r) {
+      this.hooks.sound.play('deny');
       toast('No hay nada reciente para deshacer', true);
       return;
     }
+    this.hooks.sound.play('undo');
     this.sim.state.cash += r.refund;
     this.afterEdit();
     toast(`Deshecho: ${toolInfo(r.tool).label}${r.refund ? ` (se devolvieron ${formatMoney(r.refund)})` : ''}`);
@@ -492,6 +511,7 @@ export class Game implements PointerTarget {
     if (force || head !== this.shownNews) {
       const fresh = !force && this.shownNews !== '';
       this.shownNews = head;
+      if (fresh) this.hooks.sound.play('news');
       $('#news').innerHTML = s.news
         .map((n, k) => `<li class="${k === 0 && fresh ? 'fresh' : ''}"><time>${escapeHtml(n.date)}</time>${escapeHtml(n.text)}</li>`)
         .join('');

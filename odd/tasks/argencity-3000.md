@@ -34,8 +34,8 @@ Plan legible para el usuario: `PLAN-DE-TRABAJO.txt`. Spec anterior (referencia d
 | T7 Deshacer | S9 | inline | hecho | RED observado (`world/history` inexistente, después reembolso parcial); Chrome: demoler un bloque y Ctrl+Z restauran la población exacta (1318 → 1188 → 1318) |
 | T8 Tránsito continuo con oclusión | S10 | inline | hecho | RED observado (`Traffic` inexistente); 147 autos en Chrome sin errores; tapados por los sprites de adelante |
 | T10 Paquete A: crecimiento condicionado y abandono | S12 | inline | hecho | `f5d7db5` |
-| T11 Paquete B: servicios, delito e incendios | S13 | inline | hecho | commit `feat(sim): public services…` (ver L7); RED observado en la ficha (4 tests) y en incendios cubiertos; Chrome sin errores |
-| T12 Sonidos | S14 | inline | pendiente | — |
+| T11 Paquete B: servicios, delito e incendios | S13 | inline | hecho | `e11ca89`; RED observado en la ficha (4 tests) y en incendios cubiertos; Chrome sin errores; verificador independiente por el formato de guardado (ítem 1) |
+| T12 Sonidos | S14 | inline | hecho | commit `feat(audio)…` (ver L8); RED observado (`audio/sound` inexistente); Chrome: botón y tecla M alternan, preferencia guardada, sin errores |
 | T9 Investigación de dificultad | S11 | delegado (investigación web, solo lectura) | hecho | informe con fuentes; resumen en L5 |
 
 Ruta: inline en todas, porque no hay motivo de writer. Son unidades dependientes que comparten `main.ts`, sin paralelismo real.
@@ -61,3 +61,4 @@ Ruta: inline en todas, porque no hay motivo de writer. Son unidades dependientes
   - Corrección de diseño: la propagación de incendios era supercrítica (~3,6 contagios por incendio, 602 incendios en 15 años en la sonda). Ahora es ~0,5 (`FIRE_SPREAD = 0,02`): unos 3 incendios por año. Con cobertura total los incendios siguen pasando, pero se apagan.
   - Evidencia: `npm test` 109 verdes; `tsc` limpio; `npm run build` OK; Chrome headless con una partida de 4.000 habitantes: los 4 sprites, el fuego, la capa de Educación y el presupuesto, sin errores de consola. Sonda de 15 años: 13.056 habitantes, 40 incendios, 18 abandonados.
   - **Pendiente detectado:** la caja sigue disparándose a largo plazo (sonda: +$3.659/mes y $372.000 al año 15). Queda para un ajuste de economía aparte.
+- **L8 (2026-11-12), sonidos (S14).** `src/audio/sound.ts` con Web Audio y sin archivos: murmullo (ruido marrón con pasabajos) y tránsito (pasabanda) que siguen a la población y a los autos en pantalla, bocinas y pajaritos al azar (los pájaros desaparecen en ciudades grandes), y efectos de construir, demoler, error, deshacer, diario e incendio (sirena con un intervalo mínimo de 12 s). En pausa queda solo un murmullo bajo. Botón "Sonido" en la barra y tecla `M`; la elección se guarda en el navegador. El audio arranca con el primer clic o tecla, por la política de autoplay. Evidencia: `npm test` 117 verdes; build OK; Chrome sin errores. Falta una escucha real con parlantes (headless no reproduce audio).
