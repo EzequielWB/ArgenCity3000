@@ -78,6 +78,15 @@ export function dragCells(tool: ToolId, ax: number, ay: number, bx: number, by: 
   return cells;
 }
 
+/** The 2×2 cells a power plant placed at (x, y) would cover, kept inside the map. */
+export function plantFootprint(n: number, x: number, y: number): Cell[] {
+  const fx = clamp(x, 0, n - PLANT_SIZE);
+  const fy = clamp(y, 0, n - PLANT_SIZE);
+  const foot: Cell[] = [];
+  for (let dy = 0; dy < PLANT_SIZE; dy++) for (let dx = 0; dx < PLANT_SIZE; dx++) foot.push([fx + dx, fy + dy]);
+  return foot;
+}
+
 export interface Plan {
   tool: ToolId;
   /** Cells the action will actually change. */
@@ -109,10 +118,7 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
 
   if (tool === 'plant') {
     const [ax, ay] = cells[0] ?? [-1, -1];
-    const fx = clamp(ax, 0, w.n - PLANT_SIZE);
-    const fy = clamp(ay, 0, w.n - PLANT_SIZE);
-    const foot: Cell[] = [];
-    for (let dy = 0; dy < PLANT_SIZE; dy++) for (let dx = 0; dx < PLANT_SIZE; dx++) foot.push([fx + dx, fy + dy]);
+    const foot = plantFootprint(w.n, ax, ay);
     const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.isWater(x, y) && isFreeLot(w, x, y));
     return ok ? { tool, cells: foot, cost: COSTS.plant } : { tool, cells: [], cost: 0 };
   }

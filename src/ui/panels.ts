@@ -1,0 +1,257 @@
+import { MAX_TAX, MIN_TAX, PLANT_CAPACITY } from '../config';
+import { formatMoney, formatNumber } from '../core/format';
+import type { Game } from '../game';
+import { deserialize, serialize, type SaveData } from '../save/save';
+import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
+import { monthlyBudget, type BudgetReport } from '../sim/budget';
+import { $, escapeHtml, toast } from './dom';
+
+let closeHook: (() => void) | null = null;
+
+export function isModalOpen(): boolean {
+  return !$('#modal').classList.contains('hidden');
+}
+
+export function openModal(html: string, onClose?: () => void): HTMLElement {
+  const body = $('#modalBody');
+  body.innerHTML = html;
+  $('#modal').classList.remove('hidden');
+  closeHook = onClose ?? null;
+  $('#modalClose').focus();
+  return body;
+}
+
+export function closeModal(): void {
+  if (!isModalOpen()) return;
+  $('#modal').classList.add('hidden');
+  $('#modalBody').innerHTML = '';
+  const hook = closeHook;
+  closeHook = null;
+  hook?.();
+}
+
+export function initModal(): void {
+  $('#modalClose').addEventListener('click', closeModal);
+  $('#modal').addEventListener('pointerdown', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+}
+
+// ---------------------------------------------------------------- budget
+
+function money(v: number, sign = false): string {
+  const cls = sign ? (v >= 0 ? 'pos' : 'neg') : '';
+  return `<span class="${cls}">${sign && v > 0 ? '+' : ''}${formatMoney(v)}</span>`;
+}
+
+function budgetTable(b: BudgetReport): string {
+  const row = (label: string, v: number, cls = '') => `<tr class="${cls}"><td>${label}</td><td>${money(v)}</td></tr>`;
+  return `<table class="budget">
+    ${row('Tasas residenciales', b.taxR)}
+    ${row('Tasas comerciales', b.taxC)}
+    ${row('Tasas industriales', b.taxI)}
+    ${row('Total ingresos', b.income, 'total')}
+    ${row('Calles y puentes', b.roads)}
+    ${row('Tendido eléctrico', b.lines)}
+    ${row('Plazas', b.parks)}
+    ${row('Usinas', b.plants)}
+    ${row('Total gastos', b.expenses, 'total')}
+    <tr class="total"><td>Saldo del mes</td><td>${money(b.balance, true)}</td></tr>
+  </table>`;
+}
+
+export function openBudget(game: Game): void {
+  const sim = game.sim;
+  const body = openModal(`
+    <h2>Presupuesto municipal</h2>
+    <div class="budget-grid">
+      <section>
+        <h3>Este mes (estimado)</h3>
+        <div id="budgetNow"></div>
+      </section>
+      <section>
+        <h3>Tasa municipal</h3>
+        <div class="tax"><input type="range" id="taxRange" min="${MIN_TAX}" max="${MAX_TAX}" step="1" value="${sim.state.tax}" aria-label="Tasa municipal"><output id="taxOut">${sim.state.tax} %</output></div>
+        <p id="taxNote"></p>
+        <h3>Caja y energía</h3>
+        <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
+        Saldo anual estimado: <strong id="yearly"></strong><br>
+        Energía: ${formatNumber(sim.power.use)} de ${formatNumber(sim.power.capacity)} MW (${game.world.plants.length} usina${game.world.plants.length === 1 ? '' : 's'} de ${PLANT_CAPACITY} MW)</p>
+        <h3>Historia</h3>
+        <canvas class="chart" id="chart" width="560" height="200" aria-label="Población y caja por mes"></canvas>
+        <p><small><span style="color:#9fdc8a">━</span> población · <span style="color:#e0a526">━</span> caja</small></p>
+      </section>
+    </div>
+    ${sim.state.lastBudget ? `<h3>Mes pasado</h3>${budgetTable(sim.state.lastBudget)}` : ''}
+  `);
+  const refresh = () => {
+    const b = monthlyBudget(game.world, sim.state.tax);
+    $('#budgetNow').innerHTML = budgetTable(b);
+    $('#yearly').innerHTML = money(b.balance * 12, true);
+    $('#taxOut').textContent = `${sim.state.tax} %`;
+    const d = sim.demand;
+    $('#taxNote').textContent =
+      sim.state.tax > 9
+        ? `Tasas altas: entra más plata pero baja la demanda (R ${d.R} · C ${d.C} · I ${d.I}).`
+        : sim.state.tax < 5
+          ? `Tasas bajas: la ciudad crece más rápido pero entra menos plata (R ${d.R} · C ${d.C} · I ${d.I}).`
+          : `Tasas moderadas (R ${d.R} · C ${d.C} · I ${d.I}).`;
+  };
+  body.querySelector<HTMLInputElement>('#taxRange')!.addEventListener('input', (e) => {
+    sim.setTax(Number((e.target as HTMLInputElement).value));
+    refresh();
+  });
+  refresh();
+  drawHistory(body.querySelector<HTMLCanvasElement>('#chart')!, sim.state.history);
+}
+
+function drawHistory(c: HTMLCanvasElement, history: { pop: number; cash: number }[]): void {
+  const g = c.getContext('2d')!;
+  g.clearRect(0, 0, c.width, c.height);
+  if (history.length < 2) {
+    g.fillStyle = '#c9b79a';
+    g.font = '22px sans-serif';
+    g.fillText('Todavía no pasó ni un mes', 20, 100);
+    return;
+  }
+  const line = (values: number[], color: string) => {
+    const min = Math.min(0, ...values);
+    const max = Math.max(1, ...values);
+    g.strokeStyle = color;
+    g.lineWidth = 3;
+    g.beginPath();
+    values.forEach((v, k) => {
+      const x = 10 + (k / (values.length - 1)) * (c.width - 20);
+      const y = c.height - 10 - ((v - min) / (max - min)) * (c.height - 20);
+      if (k === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    });
+    g.stroke();
+  };
+  line(
+    history.map((h) => h.cash),
+    '#e0a526',
+  );
+  line(
+    history.map((h) => h.pop),
+    '#9fdc8a',
+  );
+}
+
+// ---------------------------------------------------------------- saves
+
+const SLOT_NAMES: Record<SlotId, string> = { '1': 'Ranura 1', '2': 'Ranura 2', '3': 'Ranura 3', auto: 'Autoguardado' };
+
+/** Save/load dialog. `game` is null on the start screen (load only). */
+export function openSaves(game: Game | null, onLoad: (data: SaveData) => void): void {
+  const render = () => {
+    const rows = SLOTS.map((slot) => {
+      const info = slotInfo(slot);
+      const meta = info
+        ? `<strong>${escapeHtml(info.name)}</strong><small>${escapeHtml(info.date)} · ${formatNumber(info.pop)} habitantes${info.savedAt ? ` · guardada ${new Date(info.savedAt).toLocaleString('es-AR')}` : ''}</small>`
+        : '<strong>Vacía</strong>';
+      const canSave = game && slot !== 'auto';
+      return `<div class="slot"><div class="meta"><small>${SLOT_NAMES[slot]}</small>${meta}</div>
+        ${canSave ? `<button data-save="${slot}">Guardar acá</button>` : ''}
+        ${info ? `<button data-load="${slot}" class="primary">Cargar</button><button data-del="${slot}" title="Borrar">Borrar</button>` : ''}</div>`;
+    }).join('');
+    const body = openModal(`
+      <h2>${game ? 'Guardar o cargar' : 'Cargar partida'}</h2>
+      <div class="slots">${rows}</div>
+      <h3>Archivo</h3>
+      <div class="row">
+        ${game ? '<button id="exportFile">Descargar partida (.json)</button>' : ''}
+        <label class="row"><button id="importBtn" type="button">Abrir archivo…</button><input id="importFile" type="file" accept=".json,application/json" class="hidden"></label>
+      </div>
+      <p><small>Las partidas se guardan en este navegador. Descargalas para no perderlas.</small></p>
+    `);
+    body.querySelectorAll<HTMLButtonElement>('[data-save]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const slot = b.dataset.save as SlotId;
+        if (slotInfo(slot) && !confirm('¿Pisar la partida guardada en esta ranura?')) return;
+        try {
+          saveToSlot(slot, game!.saveData());
+          toast('Partida guardada');
+          render();
+        } catch (err) {
+          toast((err as Error).message, true);
+        }
+      }),
+    );
+    body.querySelectorAll<HTMLButtonElement>('[data-load]').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (game && !confirm('¿Cargar esa partida? Lo que no guardaste se pierde.')) return;
+        try {
+          const data = loadFromSlot(b.dataset.load as SlotId);
+          closeModal();
+          onLoad(data);
+        } catch (err) {
+          toast((err as Error).message, true);
+        }
+      }),
+    );
+    body.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (!confirm('¿Borrar esta partida? No se puede deshacer.')) return;
+        deleteSlot(b.dataset.del as SlotId);
+        render();
+      }),
+    );
+    body.querySelector('#exportFile')?.addEventListener('click', () => {
+      const blob = new Blob([serialize(game!.saveData())], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${game!.name.replace(/[^\w\- áéíóúñÁÉÍÓÚÑ]/g, '').trim() || 'ciudad'}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    const file = body.querySelector<HTMLInputElement>('#importFile')!;
+    body.querySelector('#importBtn')!.addEventListener('click', () => file.click());
+    file.addEventListener('change', async () => {
+      const f = file.files?.[0];
+      if (!f) return;
+      try {
+        const data = deserialize(await f.text());
+        closeModal();
+        onLoad(data);
+      } catch (err) {
+        toast((err as Error).message, true);
+      }
+    });
+  };
+  render();
+}
+
+// ---------------------------------------------------------------- help
+
+export function openHelp(): void {
+  openModal(`
+    <h2>Cómo se juega</h2>
+    <ol class="steps">
+      <li><strong>Construí una usina</strong> (tecla 9). Sin luz no se levanta ni una casita.</li>
+      <li><strong>Trazá calles</strong> (3) arrastrando. Los lotes necesitan una calle a 3 lotes o menos.</li>
+      <li><strong>Zonificá</strong> residencial (5), comercial (6) e industrial (7) pegado a las calles.
+        La luz viaja por calles, zonas y tendido eléctrico (4), así que todo tiene que estar conectado a la usina.</li>
+      <li><strong>Mirá la demanda</strong> (barras R C I arriba): la gente viene si hay trabajo, y el comercio y la industria siguen a la gente.</li>
+      <li><strong>Cuidá la caja.</strong> Cada mes cobrás tasas y pagás mantenimiento. Con la caja en rojo no se construye nada.</li>
+      <li><strong>Plazas</strong> (8), agua y árboles suben el valor del suelo y dejan crecer edificios más altos. La industria contamina: alejala de las casas.</li>
+      <li>Si una usina no da abasto, aparecen rayos rojos sobre los edificios sin luz: hacé otra.</li>
+    </ol>
+    <h3>Controles</h3>
+    <div class="help-grid">
+      <span><kbd>1</kbd>–<kbd>9</kbd> herramientas</span>
+      <span><kbd>B</kbd> tamaño de bloque</span>
+      <span>Arrastrar con clic izquierdo: construir</span>
+      <span>Clic derecho o rueda apretada: mover el mapa</span>
+      <span>Rueda: zoom · <kbd>+</kbd> <kbd>−</kbd></span>
+      <span><kbd>Q</kbd> <kbd>E</kbd> rotar la vista</span>
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o flechas: mover</span>
+      <span><kbd>Espacio</kbd> pausa</span>
+      <span><kbd>C</kbd> cambiar capa</span>
+      <span><kbd>P</kbd> presupuesto · <kbd>G</kbd> partidas</span>
+      <span><kbd>N</kbd> mostrar u ocultar el diario</span>
+      <span><kbd>Esc</kbd> cancelar o cerrar</span>
+    </div>
+    <p><small>Con la herramienta Consulta (1) un clic muestra la ficha del lote y por qué crece o no; arrastrando movés el mapa.</small></p>
+  `);
+}
