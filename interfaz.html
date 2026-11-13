@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ArgentinaCity 3000 · Maqueta de interfaz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Chakra+Petch:wght@400;600;700&family=Bungee&family=Barlow+Condensed:wght@500;700&family=Rye&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --gold: #e0a526;
+        --gold-light: #ffe08a;
+        --gold-dark: #8f5f12;
+        --red: #c9342c;
+        --paper: #f1e6cf;
+        --ink: #1b1410;
+        --enamel: #1f4f8a;
+        --enamel-dark: #0e2a4a;
+      }
+      /* Interface size: the bars are zoomed and the ornaments use a whole pixel scale (3x or 2x). */
+      body[data-ui='100'] {
+        --ui: 1;
+        --orn: 3;
+      }
+      body[data-ui='70'] {
+        --ui: 0.7;
+        --orn: 2;
+      }
+      body[data-font='pixel'] {
+        --font-body: 'VT323', monospace;
+        --font-title: 'Press Start 2P', monospace;
+        --font-label: 'Silkscreen', monospace;
+        --k: 1;
+        --kt: 1;
+        --kl: 1;
+      }
+      /* Squared letters with straight cuts: they sit well next to pixels without being pixels. */
+      body[data-font='medioA'] {
+        --font-body: 'Chakra Petch', sans-serif;
+        --font-title: 'Bungee', sans-serif;
+        --font-label: 'Chakra Petch', sans-serif;
+        --k: 0.8;
+        --kt: 1.2;
+        --kl: 1.2;
+      }
+      /* Narrow sign-painter letters with the display face the game already uses for titles. */
+      body[data-font='medioB'] {
+        --font-body: 'Barlow Condensed', sans-serif;
+        --font-title: 'Rye', serif;
+        --font-label: 'Barlow Condensed', sans-serif;
+        --k: 0.9;
+        --kt: 1.45;
+        --kl: 1.3;
+      }
+      body[data-scheme='verde'] {
+        --base: #12382b;
+        --deep: #0a241b;
+        --raised: #1d5440;
+        --line: #2f7a5c;
+      }
+      body[data-scheme='bordo'] {
+        --base: #4a1420;
+        --deep: #2e0b13;
+        --raised: #6b1f30;
+        --line: #94344a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 20px;
+        background: #100c0a;
+        color: #f6f2e8;
+        font-family: var(--font-body);
+        font-size: calc(20px * var(--k));
+        line-height: 1.05;
+        font-weight: 500;
+      }
+      h1 {
+        font-size: calc(20px * var(--k));
+        margin: 0 0 4px;
+      }
+      .note {
+        color: #c9b79a;
+        margin: 0 0 12px;
+        max-width: 80ch;
+      }
+      .switch {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      .switch button,
+      .btn {
+        font: inherit;
+        color: #f6f2e8;
+        background: var(--raised, #333);
+        border: 2px solid var(--gold-dark);
+        box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.18), inset -2px -2px 0 rgba(0, 0, 0, 0.35);
+        padding: 5px 9px;
+        cursor: pointer;
+      }
+      .switch button[aria-pressed='true'],
+      .btn.on {
+        background: var(--gold);
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      /* Lettering with volume: a highlight above, a coloured drop and a black one under it. */
+      .filete {
+        font-family: var(--font-title);
+        font-weight: 400;
+        color: var(--gold);
+        text-shadow: 0 -2px 0 var(--gold-light), 2px 2px 0 var(--red), 4px 4px 0 #000;
+        letter-spacing: 1px;
+      }
+
+      /* ---------------- the screen ---------------- */
+      .screen {
+        width: 1280px;
+        height: 760px;
+        display: grid;
+        grid-template-columns: calc(108px * var(--ui)) 1fr calc(306px * var(--ui));
+        grid-template-rows: calc(66px * var(--ui)) 1fr calc(30px * var(--ui));
+        grid-template-areas: 'top top top' 'tools map news' 'status status status';
+        background: var(--base);
+        border: 4px solid var(--gold-dark);
+        outline: 4px solid #000;
+      }
+      .top,
+      .tools,
+      .news,
+      .status {
+        zoom: var(--ui);
+      }
+      .top {
+        grid-area: top;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        background: var(--deep);
+        border-bottom: 4px solid var(--gold-dark);
+      }
+      .logo {
+        font-size: calc(14px * var(--kt));
+        margin-right: 2px;
+        white-space: nowrap;
+      }
+      .logo b {
+        color: #74acdf;
+      }
+      /* Enamel street-sign plaques. */
+      .chapa {
+        position: relative;
+        flex: none;
+        min-width: 104px;
+        padding: 3px 14px 3px;
+        background: var(--enamel);
+        border: 2px solid #f6f2e8;
+        outline: 2px solid var(--enamel-dark);
+        box-shadow: 3px 3px 0 #000;
+        line-height: 1.05;
+      }
+      .chapa::before,
+      .chapa::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 3px;
+        height: 3px;
+        background: #c9d6e6;
+        box-shadow: 1px 1px 0 var(--enamel-dark);
+      }
+      .chapa::before {
+        left: 3px;
+      }
+      .chapa::after {
+        right: 3px;
+      }
+      .chapa label {
+        display: block;
+        font: 400 calc(9px * var(--kl)) var(--font-label);
+        letter-spacing: 1px;
+        color: #bcd3ee;
+      }
+      .chapa strong,
+      .chapa small {
+        white-space: nowrap;
+      }
+      .chapa strong {
+        display: block;
+        font-size: calc(26px * var(--k));
+        font-weight: 700;
+      }
+      .chapa small {
+        display: block;
+        font-size: calc(16px * var(--k));
+        color: #bfe9c4;
+      }
+      .chapa small.warn {
+        color: #ffd27a;
+      }
+      .rci {
+        display: flex;
+        gap: 4px;
+        align-items: flex-end;
+        height: 44px;
+        padding: 3px 5px;
+        background: #000;
+        border: 2px solid var(--gold-dark);
+      }
+      .rci i {
+        display: block;
+        width: 10px;
+      }
+      .speed {
+        display: flex;
+        gap: 3px;
+      }
+      .speed .btn {
+        padding: 4px 8px;
+      }
+      .menu {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+      }
+
+      /* ---------------- tools ---------------- */
+      .tools {
+        grid-area: tools;
+        position: relative;
+        padding: 10px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: var(--deep);
+        border-right: 4px solid var(--gold-dark);
+      }
+      .cat {
+        font: inherit;
+        font-size: calc(17px * var(--k));
+        color: #f6f2e8;
+        display: grid;
+        justify-items: center;
+        gap: 3px;
+        padding: 6px 2px 5px;
+        background: var(--raised);
+        border: 2px solid var(--gold-dark);
+        box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.18), inset -2px -2px 0 rgba(0, 0, 0, 0.35);
+        cursor: pointer;
+      }
+      .cat svg {
+        width: 40px;
+        height: 40px;
+        shape-rendering: crispEdges;
+      }
+      .cat[aria-expanded='true'] {
+        background: var(--gold);
+        color: var(--ink);
+        font-weight: 700;
+      }
+      .fly {
+        display: none;
+        position: absolute;
+        left: 104px;
+        top: 150px;
+        z-index: 5;
+        width: 250px;
+        padding: 10px;
+        background: var(--base);
+        border: 3px solid var(--gold);
+        box-shadow: 5px 5px 0 #000;
+      }
+      .cat[aria-expanded='true'] + .fly {
+        display: block;
+      }
+      .fly h3 {
+        margin: 0 0 10px;
+        font-size: calc(13px * var(--kt));
+      }
+      .fly .tool {
+        display: grid;
+        grid-template-columns: 22px 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 5px 6px;
+        border: 2px solid transparent;
+      }
+      .fly .tool:hover {
+        border-color: var(--gold);
+        background: var(--raised);
+      }
+      .fly .tool kbd {
+        font: 700 calc(10px * var(--kl)) var(--font-label);
+        text-align: center;
+        background: #000;
+        color: var(--gold);
+        padding: 3px 0;
+      }
+      .fly .tool span {
+        color: var(--gold-light);
+        font-size: calc(18px * var(--k));
+      }
+      .fly .tool.locked {
+        opacity: 0.5;
+      }
+
+      /* ---------------- map and its frame ---------------- */
+      .map {
+        grid-area: map;
+        position: relative;
+        overflow: hidden;
+        background: #d9d6cc;
+        box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 0 6px #000;
+      }
+      #mapCanvas {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -52%);
+        max-width: none;
+        image-rendering: pixelated;
+      }
+      .cor {
+        position: absolute;
+        width: calc(56px * var(--orn));
+        height: calc(56px * var(--orn));
+        background: var(--corner) no-repeat;
+        background-size: 100% 100%;
+        image-rendering: pixelated;
+        filter: drop-shadow(3px 3px 0 #000);
+        pointer-events: none;
+      }
+      .cor.tl {
+        left: 4px;
+        top: 4px;
+      }
+      .cor.tr {
+        right: 4px;
+        top: 4px;
+        transform: scaleX(-1);
+      }
+      .cor.bl {
+        left: 4px;
+        bottom: 4px;
+        transform: scaleY(-1);
+      }
+      .cor.br {
+        right: 4px;
+        bottom: 4px;
+        transform: scale(-1, -1);
+      }
+      .ribbon {
+        position: absolute;
+        left: 50%;
+        top: 8px;
+        width: calc(150px * var(--orn));
+        height: calc(22px * var(--orn));
+        margin-left: calc(-75px * var(--orn));
+        background: var(--ribbon) no-repeat;
+        background-size: 100% 100%;
+        image-rendering: pixelated;
+        filter: drop-shadow(3px 3px 0 #000);
+        text-align: center;
+        font: 700 calc(13px * var(--kl)) var(--font-label);
+        color: #173a66;
+        font-size: calc(4.4px * var(--orn) * var(--kl));
+        line-height: calc(20.6px * var(--orn));
+      }
+
+      /* ---------------- newspaper ---------------- */
+      .news {
+        grid-area: news;
+        margin: 8px;
+        padding: 10px 12px;
+        background: var(--paper);
+        color: var(--ink);
+        border: 3px solid var(--gold-dark);
+        box-shadow: 4px 4px 0 #000;
+        overflow: hidden;
+      }
+      .news h2 {
+        margin: 6px 0 2px;
+        font: 400 calc(13px * var(--kt))/1.5 var(--font-title);
+        text-align: center;
+        color: #8f1d17;
+        text-shadow: 2px 2px 0 var(--gold);
+      }
+      .news .edition {
+        font: 400 calc(9px * var(--kl)) var(--font-label);
+        text-align: center;
+        letter-spacing: 2px;
+      }
+      .flourish {
+        height: 30px;
+        margin: 4px 0 6px;
+        background: var(--divider) center / 240px 30px no-repeat;
+        image-rendering: pixelated;
+      }
+      .news time {
+        display: block;
+        font: 400 calc(9px * var(--kl)) var(--font-label);
+        color: #7a5a3a;
+      }
+      .news p {
+        margin: 0 0 9px;
+        padding-bottom: 8px;
+        border-bottom: 2px dotted #b99f78;
+        font-size: calc(19px * var(--k));
+        line-height: 1;
+      }
+      .news p.big {
+        font-size: calc(25px * var(--k));
+      }
+
+      .status {
+        grid-area: status;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 12px;
+        background: var(--deep);
+        border-top: 4px solid var(--gold-dark);
+        font-size: calc(19px * var(--k));
+      }
+      #phrase {
+        color: var(--gold-light);
+        cursor: pointer;
+      }
+
+      /* ---------------- full screen: the game fills the tab ---------------- */
+      body.full {
+        padding: 0;
+        overflow: hidden;
+      }
+      body.full .screen {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        border: 0;
+        outline: 0;
+      }
+      body.full > h1,
+      body.full > .note,
+      body.full > .panels {
+        display: none;
+      }
+      body.full > .controls {
+        position: fixed;
+        z-index: 20;
+        left: 50%;
+        bottom: calc(40px * var(--ui));
+        transform: translateX(-50%);
+        margin: 0;
+        padding: 6px 10px;
+        background: rgba(0, 0, 0, 0.82);
+        border: 2px solid var(--gold-dark);
+        opacity: 0.35;
+      }
+      body.full > .controls:hover {
+        opacity: 1;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        margin-bottom: 14px;
+      }
+      .controls .switch {
+        margin: 0;
+      }
+
+      /* ---------------- sample panels ---------------- */
+      .panels {
+        display: flex;
+        gap: 22px;
+        flex-wrap: wrap;
+        margin-top: 22px;
+        align-items: flex-start;
+      }
+      .card h4 {
+        margin: 0 0 6px;
+        color: #c9b79a;
+        font-weight: 400;
+      }
+      .boleta {
+        width: 300px;
+        padding: 14px 16px;
+        background: #f6f2e8;
+        color: var(--ink);
+        border: 3px solid #000;
+        box-shadow: 5px 5px 0 #000;
+        position: relative;
+      }
+      .boleta .band {
+        height: 18px;
+        margin: -14px -16px 10px;
+        background: linear-gradient(#74acdf 0 6px, #fff 6px 12px, #74acdf 12px 18px);
+      }
+      .boleta .lista {
+        font: 700 calc(10px * var(--kl)) var(--font-label);
+        letter-spacing: 1px;
+      }
+      .boleta .num {
+        font: 400 calc(34px * var(--kt))/1.5 var(--font-title);
+        color: #173a66;
+      }
+      .boleta .votes {
+        height: 14px;
+        margin: 8px 0 4px;
+        background: #d9d4cc;
+        border: 2px solid #000;
+      }
+      .boleta .votes i {
+        display: block;
+        height: 100%;
+        width: 58%;
+        background: #74acdf;
+      }
+      .stamp {
+        position: absolute;
+        right: 8px;
+        top: 66px;
+        padding: 3px 8px;
+        border: 3px solid var(--red);
+        color: var(--red);
+        font: 700 calc(15px * var(--kl)) var(--font-label);
+        transform: rotate(-12deg);
+      }
+      .plaqueta {
+        width: 330px;
+        padding: 18px 20px;
+        text-align: center;
+        background: #a8703f;
+        color: #2e1a0c;
+        border: 4px solid #6b3f22;
+        box-shadow: inset 3px 3px 0 #d09a60, inset -3px -3px 0 #7a4c26, 5px 5px 0 #000;
+        text-shadow: 1px 1px 0 #d09a60;
+        position: relative;
+      }
+      .plaqueta b {
+        display: block;
+        font: 400 calc(22px * var(--kt))/1.6 var(--font-title);
+        letter-spacing: 3px;
+      }
+      .plaqueta .screw {
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: #6b3f22;
+        box-shadow: 1px 1px 0 #d09a60;
+      }
+      .planilla {
+        width: 330px;
+        padding: 0 14px 0 34px;
+        color: #1b2a4a;
+        background:
+          linear-gradient(90deg, transparent 24px, #d9777a 24px 26px, transparent 26px),
+          repeating-linear-gradient(#f4eeda 0 26px, #9fbfe0 26px 28px);
+        border: 3px solid #000;
+        box-shadow: 5px 5px 0 #000;
+        line-height: 28px;
+      }
+      .planilla div {
+        display: flex;
+        justify-content: space-between;
+      }
+      .planilla .total {
+        font-weight: 700;
+      }
+      .planilla .neg {
+        color: #b3261e;
+      }
+      .planilla .pos {
+        color: #1f7a3a;
+      }
+    </style>
+  </head>
+  <body data-scheme="verde" data-ui="70" data-font="medioA">
+    <h1>Maqueta de interfaz</h1>
+    <p class="note">Es un dibujo de la pantalla, no el juego: los números son de ejemplo y casi nada responde. Probá los fondos, el tamaño y la letra; tocá las categorías de la izquierda y la frase de abajo. Con «Pantalla completa» la pantalla ocupa toda la pestaña (Esc para salir).</p>
+    <div class="controls">
+      <div class="switch">
+        Fondo:
+        <button data-set="scheme" data-value="verde" aria-pressed="true">Verde inglés</button>
+        <button data-set="scheme" data-value="bordo" aria-pressed="false">Bordó</button>
+      </div>
+      <div class="switch">
+        Tamaño:
+        <button data-set="ui" data-value="100" aria-pressed="false">100 %</button>
+        <button data-set="ui" data-value="70" aria-pressed="true">70 %</button>
+      </div>
+      <div class="switch">
+        Letra:
+        <button data-set="font" data-value="pixel" aria-pressed="false">Pixel</button>
+        <button data-set="font" data-value="medioA" aria-pressed="true">Intermedia A</button>
+        <button data-set="font" data-value="medioB" aria-pressed="false">Intermedia B</button>
+      </div>
+      <div class="switch"><button id="fullBtn">Pantalla completa</button></div>
+    </div>
+
+    <div class="screen">
+      <header class="top">
+        <div class="logo filete">ArgentinaCity <b>3000</b></div>
+        <div class="chapa"><label>Caja</label><strong>$ 27.450</strong><small>+$ 412/mes</small></div>
+        <div class="chapa"><label>Población</label><strong>1.790</strong><small>→ Ciudad pujante: 2.500</small></div>
+        <div class="chapa"><label>Aprobación</label><strong>54 %</strong><small>vota en oct 1997</small></div>
+        <div class="rci" title="Demanda"><i style="height: 70%; background: #7cc06a"></i><i style="height: 35%; background: #6fb7e0"></i><i style="height: 55%; background: #e0b542"></i></div>
+        <div class="speed"><button class="btn">❚❚</button><button class="btn on">▶</button><button class="btn">▶▶</button></div>
+        <nav class="menu"><button class="btn">Presupuesto</button><button class="btn">Partidas</button><button class="btn">Ayuda</button></nav>
+      </header>
+
+      <aside class="tools">
+        <button class="cat" aria-expanded="false">
+          <svg viewBox="0 0 10 10"><rect x="3" y="1" width="4" height="4" fill="#bcd3ee" /><rect x="4" y="2" width="2" height="2" fill="#1f4f8a" /><rect x="6" y="5" width="1" height="1" fill="#e0a526" /><rect x="7" y="6" width="1" height="1" fill="#e0a526" /><rect x="8" y="7" width="1" height="2" fill="#e0a526" /></svg>
+          Consulta
+        </button>
+        <div class="fly"><h3 class="filete">Consulta</h3><div class="tool"><kbd>1</kbd>Ver un lote<span></span></div><div class="tool"><kbd>2</kbd>Topadora<span>$ 2</span></div></div>
+        <button class="cat" aria-expanded="false">
+          <svg viewBox="0 0 10 10"><rect x="0" y="4" width="10" height="3" fill="#5a5560" /><rect x="1" y="5" width="2" height="1" fill="#f6f2e8" /><rect x="5" y="5" width="2" height="1" fill="#f6f2e8" /><rect x="7" y="0" width="1" height="4" fill="#6b4a2e" /><rect x="5" y="1" width="5" height="1" fill="#ffd84a" /></svg>
+          Calles y luz
+        </button>
+        <div class="fly"><h3 class="filete">Calles y luz</h3><div class="tool"><kbd>3</kbd>Calle<span>$ 10</span></div><div class="tool"><kbd>4</kbd>Tendido<span>$ 5</span></div></div>
+        <button class="cat" aria-expanded="false">
+          <svg viewBox="0 0 10 10"><rect x="0" y="1" width="4" height="4" fill="#7cc06a" /><rect x="5" y="1" width="4" height="4" fill="#6fb7e0" /><rect x="0" y="6" width="4" height="3" fill="#e0b542" /><rect x="5" y="6" width="4" height="3" fill="#8e6cc2" /></svg>
+          Zonas
+        </button>
+        <div class="fly"><h3 class="filete">Zonas</h3><div class="tool"><kbd>5</kbd>Residencial<span>$ 5</span></div><div class="tool"><kbd>6</kbd>Comercial<span>$ 5</span></div><div class="tool"><kbd>7</kbd>Industrial<span>$ 5</span></div><div class="tool"><kbd>8</kbd>Plaza<span>$ 20</span></div></div>
+        <button class="cat" aria-expanded="true">
+          <svg viewBox="0 0 10 10"><rect x="1" y="4" width="8" height="5" fill="#f4f0e6" /><rect x="0" y="3" width="10" height="1" fill="#b4532f" /><rect x="4" y="5" width="2" height="4" fill="#2f9a55" /><rect x="3" y="6" width="4" height="2" fill="#2f9a55" /><rect x="2" y="0" width="1" height="3" fill="#d9d4cc" /><rect x="3" y="0" width="3" height="1" fill="#74acdf" /></svg>
+          Servicios
+        </button>
+        <div class="fly">
+          <h3 class="filete">Servicios</h3>
+          <div class="tool"><kbd>U</kbd>Salita<span>$ 1.200</span></div>
+          <div class="tool"><kbd>O</kbd>Bomberos<span>$ 1.000</span></div>
+          <div class="tool"><kbd>Y</kbd>Escuela<span>$ 1.500</span></div>
+          <div class="tool locked"><kbd>I</kbd>Comisaría<span>Pueblo: 200</span></div>
+        </div>
+        <button class="cat" aria-expanded="false">
+          <svg viewBox="0 0 10 10"><rect x="1" y="5" width="8" height="4" fill="#b36a45" /><rect x="2" y="0" width="2" height="5" fill="#c8462f" /><rect x="2" y="2" width="2" height="1" fill="#f6f2e8" /><rect x="6" y="3" width="1" height="2" fill="#ffd84a" /><rect x="5" y="5" width="2" height="1" fill="#ffd84a" /><rect x="5" y="6" width="1" height="2" fill="#ffd84a" /></svg>
+          Usinas
+        </button>
+        <div class="fly"><h3 class="filete">Usinas</h3><div class="tool"><kbd>9</kbd>A carbón<span>$ 3.000</span></div><div class="tool"><kbd>J</kbd>A gas<span>$ 5.500</span></div><div class="tool locked"><kbd>K</kbd>Eólica<span>2.500 hab.</span></div></div>
+      </aside>
+
+      <main class="map" id="map">
+        <div class="cor tl"></div>
+        <div class="cor tr"></div>
+        <div class="cor bl"></div>
+        <div class="cor br"></div>
+        <div class="ribbon">SAN BANDONEÓN · MAR 1994</div>
+      </main>
+
+      <aside class="news">
+        <div class="edition">EDICIÓN DEL DÍA</div>
+        <h2>El Diario del Conurbano</h2>
+        <div class="flourish"></div>
+        <time>MAR 1994</time>
+        <p class="big">San Bandoneón ya es Ciudad: la Provincia gira $ 5.000 y habilita la usina a gas</p>
+        <time>FEB 1994</time>
+        <p>Embotellamientos camino al trabajo: los vecinos piden avenidas u otro camino</p>
+        <time>OCT 1993</time>
+        <p>Elecciones 1993: el Intendente fue reelecto con el 58 % de los votos</p>
+        <time>SEP 1993</time>
+        <p>El colectivo pasó a horario y nadie lo podía creer</p>
+      </aside>
+
+      <footer class="status"><span>Servicios: elegí uno y hacé clic en el mapa.</span><span id="phrase"></span></footer>
+    </div>
+
+    <div class="panels">
+      <div class="card">
+        <h4>Noche de elecciones: una boleta</h4>
+        <div class="boleta">
+          <div class="band"></div>
+          <div class="lista">ELECCIONES 1993 · LISTA 3000</div>
+          <div>Intendente de San Bandoneón</div>
+          <div class="num">58 %</div>
+          <div class="votes"><i></i></div>
+          <div>Hacía falta el 50 %. Próxima votación: octubre de 1997.</div>
+          <div class="stamp">REELECTO</div>
+        </div>
+      </div>
+      <div class="card">
+        <h4>Hito alcanzado: una plaqueta de bronce</h4>
+        <div class="plaqueta">
+          <i class="screw" style="left: 8px; top: 8px"></i><i class="screw" style="right: 8px; top: 8px"></i><i class="screw" style="left: 8px; bottom: 8px"></i><i class="screw" style="right: 8px; bottom: 8px"></i>
+          San Bandoneón fue declarada
+          <b>CIUDAD</b>
+          con 1.000 habitantes · marzo de 1994<br />
+          La Provincia gira $ 5.000<br />
+          Se habilita: usina a gas
+        </div>
+      </div>
+      <div class="card">
+        <h4>Presupuesto: una planilla</h4>
+        <div class="planilla">
+          <div><span>Tasas residenciales</span><span>$ 689</span></div>
+          <div><span>Tasas comerciales</span><span>$ 141</span></div>
+          <div><span>Tasas industriales</span><span>$ 330</span></div>
+          <div class="total"><span>Total ingresos</span><span>$ 1.160</span></div>
+          <div><span>Calles y puentes</span><span class="neg">$ 212</span></div>
+          <div><span>Usinas</span><span class="neg">$ 350</span></div>
+          <div><span>Servicios</span><span class="neg">$ 186</span></div>
+          <div class="total"><span>Saldo del mes</span><span class="pos">+$ 412</span></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/lab/interfaz.ts"></script>
+  </body>
+</html>
