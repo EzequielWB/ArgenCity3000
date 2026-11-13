@@ -29,11 +29,11 @@ Rama: `feat/vertical-slice` · Entrega: commits por unidad en la rama (sin PR pe
 
 | ID | Specs | Ruta | Estado | Evidencia |
 |----|-------|------|--------|-----------|
-| T1 Créditos y cuotas (puro) | S1, S2, S4 | inline | pendiente | — |
-| T2 La cuota dentro del presupuesto | S3 | inline | pendiente | — |
-| T3 Pedir, descontar y cerrar en la simulación | S1, S2, S4 | inline | pendiente | — |
-| T4 Guardado v5 | S5 | inline | pendiente | — |
-| T5 Interfaz, diario y documentación | S1, S3 | inline | pendiente | — |
+| T1 Créditos y cuotas (puro) | S1, S2, S4 | inline | hecho | `b532b03`, 20 tests |
+| T2 La cuota dentro del presupuesto | S3 | inline | hecho | `1e875a6`, 369 tests |
+| T3 Pedir, descontar y cerrar en la simulación | S1, S2, S4 | inline | hecho | `2f6000d`, 378 tests |
+| T4 Guardado v5 | S5 | inline | fusionada en T3 | `2f6000d` |
+| T5 Interfaz, diario y documentación | S1, S3 | inline | hecho | pendiente |
 
 ## Log
 
@@ -48,3 +48,12 @@ Rama: `feat/vertical-slice` · Entrega: commits por unidad en la rama (sin PR pe
   restada por afuera. Si entra ahí, el panel de presupuesto, el saldo de la barra superior, el runway de
   `outlook.ts` (que sale del `balance`) y el titular del diario se actualizan solos. Restarla a mano en
   `settleWeek` dejaría dos contabilidades paralelas.
+- **L4 (2026-11-13):** T4 se fusionó con T3. El árbol no compila sin el campo `loan` en `SimState` y en
+  `parseSim`, así que separar el guardado habría dejado un commit que no compila. El formato de guardado sube
+  a v5 y `READABLE_VERSIONS` pasa a `[1,2,3,4,5]`: las partidas viejas abren y no deben nada. `parseLoan`
+  rechaza `paid === months` a propósito — la simulación ya habría soltado el crédito en ese punto.
+- **L5 (2026-11-13):** T5. El diario compara solo el **tipo** de crédito en el `CitySnapshot`, no el objeto:
+  `advanceLoan` muta `paid` y una copia quedaría vieja. Un cambio de tipo en el mismo mes son dos noticias
+  (se terminó uno y se pidió otro), y el panel se redibuja entero al pedir o cancelar, así que el presupuesto
+  de arriba nunca muestra una cuota vieja. Verificación: 379 tests verdes, `npx tsc --noEmit` limpio y
+  `npm run build` en 891 ms.

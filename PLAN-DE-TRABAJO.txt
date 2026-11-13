@@ -43,6 +43,9 @@ QUE VAS A PODER HACER (v1)
    - Presupuesto mensual: impuestos ajustables (0-20 %), mantenimiento de calles,
      cables, usinas y plazas. Caja inicial SIEMPRE. Con caja en rojo no se puede
      construir y la ciudad deja de crecer hasta recuperarse.
+   - Creditos: tres montos (10.000 / 25.000 / 50.000) con plazo fijo y total a
+     devolver a la vista. La cuota se descuenta sola todos los meses y es una linea
+     mas del presupuesto; uno por vez, y se puede cancelar lo que queda.
    - Fecha en pantalla (Ene 1990 en adelante), velocidades: pausa / lento / normal / rapido.
 6. Interfaz con paleta calida y fileteado porteno sutil:
    barra superior (fecha, caja, poblacion, demanda RCI), barra de herramientas,

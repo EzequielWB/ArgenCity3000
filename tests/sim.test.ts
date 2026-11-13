@@ -192,6 +192,7 @@ describe('headlinesFor', () => {
     year: 1990,
     cash: 1000,
     abandoned: 0,
+    loan: null,
   };
 
   it('announces the first plant and the first residents', () => {
@@ -222,6 +223,18 @@ describe('headlinesFor', () => {
   it('reports a wave of abandonment and the recovery', () => {
     expect(headlinesFor({ ...base, abandoned: 4 }, { ...base, abandoned: 12 }, 'X').some((l) => l.includes('abandono'))).toBe(true);
     expect(headlinesFor({ ...base, abandoned: 12 }, { ...base, abandoned: 2 }, 'X').some((l) => l.includes('Vuelven'))).toBe(true);
+  });
+
+  it('reports taking a loan and finishing it, and stays quiet while it runs', () => {
+    const taken = headlinesFor(base, { ...base, loan: 1 }, 'X').join(' ');
+    expect(taken).toMatch(/crédito/i);
+    expect(taken).toMatch(/\$ 25\.000/); // what the middle loan hands over
+    expect(headlinesFor({ ...base, loan: 1 }, base, 'X').join(' ')).toMatch(/crédito/i);
+    expect(headlinesFor({ ...base, loan: 1 }, { ...base, loan: 1 }, 'X').join(' ')).not.toMatch(/crédito/i);
+    // Paying one off and taking another in the same month is two pieces of news.
+    const swapped = headlinesFor({ ...base, loan: 1 }, { ...base, loan: 2 }, 'X').join(' ');
+    expect(swapped).toMatch(/terminó de pagar/i);
+    expect(swapped).toMatch(/\$ 50\.000/);
   });
 
   it('says nothing when nothing changed', () => {

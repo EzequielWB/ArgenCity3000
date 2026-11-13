@@ -39,6 +39,7 @@ En el juego, `H` abre la ayuda completa con todos los controles.
 - Simulación: red eléctrica con capacidad y apagones, acceso a calles, contaminación, valor del suelo, demanda R/C/I, crecimiento en 4 niveles por zona, una tasa por zona (cada una mueve la demanda de su zona), presupuesto por servicio (financiar al X % cuesta y cubre el X %) y presupuesto mensual. En los mapas reales, las calles que trae el mapa solo se cobran cuando hay edificios a su alcance.
 - Tiempo y plata: el tiempo corre por semanas (4 por mes; una semana dura 1,5 s en velocidad Normal) y la plata se cobra y se paga cada semana. El diario, los incendios, el gráfico y el autoguardado siguen siendo mensuales. Al lado de la Caja se ve el saldo estimado del mes y, si la caja no va a durar un año, cuántos meses alcanza (ámbar con menos de 12, rojo con menos de 6). Los servicios públicos pagan una parte fija (`FIXED_SHARE`, 25 %) y el resto según cuántos vecinos atienden. `npx vite-node scripts/early-probe.ts` reproduce una primera ciudad con los cuatro servicios desde el principio.
 - El Diario del Conurbano publica la fundación y recién sale a la calle, con una noticia de apertura, cuando hay al menos dos viviendas, dos comercios y dos fábricas construidas. Hasta entonces los avisos de plata están solo en la barra superior.
+- Créditos municipales: cuando la caja se queda sin resto, en el Presupuesto se puede pedir un crédito. Hay tres (`LOANS`, `src/config.ts`): $ 10.000 en 24 cuotas, $ 25.000 en 36 y $ 50.000 en 48, cada uno con el total a devolver a la vista antes de aceptar. La cuota entra como **una línea más del presupuesto mensual** (`src/sim/loans.ts`), así que baja el saldo del mes, acorta el "alcanza para N meses" de la barra superior y sale en el diario sin que ninguno de ellos sepa de créditos. Uno por vez, y con la caja de por medio se puede cancelar lo que queda.
 - Avenidas: las calles pegadas una al lado de la otra forman una franja que se dibuja como avenida (2 = doble línea amarilla, 3 o más = más carriles, veredas solo en los bordes). Es solo visual: cada celda sigue siendo una calle común, con el mismo costo, luz y acceso. La lógica está en `src/render/avenue.ts`.
 - Terreno prolijo: el relieve generado (inventado o real) no tiene escalones sueltos, y al zonificar o poner un servicio la manzana se rellena hasta quedar plana (nunca más de 2 niveles por vez y sin tocar costas); las calles alrededor hacen de rampa. Deshacer devuelve el terreno. Servicios con radio y capacidad, delito según la densidad, incendios que se propagan sin bomberos y edificios que quedan abandonados cuando faltan luz, calle o seguridad.
 - Edificios: casitas, chalets, casas chorizo, PH con tanque de agua, torres, kioscos y almacenes con toldo, galerías, oficinas, talleres, galpones, fábricas y plantas industriales. También hay humo animado y tránsito con taxis negros y amarillos y colectivos.
@@ -54,7 +55,7 @@ src/
   core/              rng con semilla, matemática isométrica, formato de números
   world/             terreno procedural, grilla de la ciudad, herramientas (planificar y aplicar)
   sim/               energía, campos (calles, contaminación, valor), demanda, presupuesto,
-                     calendario, diario, ficha de consulta y el bucle de simulación
+                     créditos, calendario, diario, ficha de consulta y el bucle de simulación
   render/            sprites procedurales, cache isométrica del mapa, vista, minimapa, tránsito,
                      pintor de pixeles para los ornamentos
   save/              serialización validada y ranuras en localStorage
@@ -80,5 +81,6 @@ Algunas decisiones que conviene conocer:
 - Especificación viva y bitácora: `odd/tasks/argencity-3000.md`. El plan legible para el jugador está en `PLAN-DE-TRABAJO.txt`.
 - Antes de cambiar algo: `npm test` y `npm run build` tienen que pasar.
 - El balance se ajusta en `src/config.ts`, `src/sim/demand.ts` (demanda y techo de niveles) y `src/sim/budget.ts` (tasas). Después de tocarlo, correr `npm run probe`.
+- Los créditos salen de `LOANS` (`config.ts`); todo lo demás —total, cuota, deuda, mes final— se deriva en `src/sim/loans.ts`. La cuota se cobra **dentro de `monthlyBudget()`**, nunca restada aparte en `settleWeek`: si se resta a mano quedan dos contabilidades que se contradicen.
 - Para agregar un edificio: un nivel en `CAPACITY` (`config.ts`), su dibujo en `src/render/sprites.ts` y su nombre en `src/sim/report.ts`.
 - Copy de la interfaz: español rioplatense. El jugador es **"Intendente"**, nunca "Alcalde".

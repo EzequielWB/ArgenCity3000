@@ -1,4 +1,4 @@
-import { MAX_FUNDING, MAX_TAX, MIN_TAX, type ServiceKind } from '../config';
+import { LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, type ServiceKind } from '../config';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
 import { formatMoney, formatNumber } from '../core/format';
@@ -7,6 +7,7 @@ import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
 import { dateOf } from '../sim/calendar';
+import { loanEndLabel, loanInstalment, loanOwed, loanTotal } from '../sim/loans';
 import { MILESTONES, unlockNames } from '../sim/milestones';
 import { APPROVAL, monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
 import { toolInfo } from '../world/tools';
@@ -81,6 +82,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Salitas', b.clinics)}
     ${row('Comisarías', b.police)}
     ${row('Bomberos voluntarios', b.firefighters)}
+    ${row('Cuota del crédito', b.loan)}
     ${row('Administración municipal', b.services)}
     ${row('Total gastos', b.expenses, 'total')}
     <tr class="total"><td>Saldo del mes</td><td>${money(b.balance, true)}</td></tr>
@@ -113,6 +115,8 @@ export function openBudget(game: Game): void {
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
         Saldo anual estimado: <strong id="yearly"></strong><br>
         Energía: ${formatNumber(sim.power.use)} de ${formatNumber(sim.power.capacity)} MW (${game.world.plants.length} usina${game.world.plants.length === 1 ? '' : 's'})</p>
+        <h3>Créditos</h3>
+        <div id="loans"></div>
         <h3>Historia</h3>
         <canvas class="chart" id="chart" width="560" height="200" aria-label="Población y caja por mes"></canvas>
         <p><small><span class="key pop" aria-hidden="true"></span> población · <span class="key cash" aria-hidden="true"></span> caja</small></p>
@@ -133,6 +137,45 @@ export function openBudget(game: Game): void {
         : avg < 5
           ? `Tasas bajas: la ciudad crece más rápido pero entra menos plata. ${demand}`
           : `Cada tasa mueve la demanda de su zona. ${demand}`;
+    renderLoans();
+    // Rewired on every redraw: `renderLoans` replaces the buttons it just drew.
+    body.querySelectorAll<HTMLButtonElement>('button[data-loan]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        if (sim.takeLoan(Number(btn.dataset.loan))) refresh();
+      }),
+    );
+    body.querySelector<HTMLButtonElement>('#payOff')?.addEventListener('click', () => {
+      if (sim.payOffLoan()) refresh();
+    });
+  };
+  /**
+   * The offers while nothing is owed, and the running loan otherwise. Taking one or cancelling the
+   * rest redraws the panel, so the budget above it never shows a stale instalment.
+   */
+  const renderLoans = () => {
+    const loan = sim.state.loan;
+    if (!loan) {
+      const offer = (kind: number) => {
+        const l = LOANS[kind];
+        const fresh = { kind, paid: 0 };
+        return `<button type="button" class="loan" data-loan="${kind}">
+          <strong>${l.label}</strong>
+          <span>${money(l.amount)} ahora</span>
+          <span>${l.months} cuotas de ${money(loanInstalment(fresh))}</span>
+          <span>Devolvés ${money(loanTotal(fresh))}</span>
+        </button>`;
+      };
+      $('#loans').innerHTML = `<p><small>Cuando la caja no alcance, un crédito entra de una y se devuelve en cuotas fijas que se descuentan solas cada mes. Uno por vez.</small></p>
+        <div class="loans">${LOANS.map((_, kind) => offer(kind)).join('')}</div>`;
+      return;
+    }
+    const l = LOANS[loan.kind];
+    const owed = loanOwed(loan);
+    const short = owed > sim.state.cash;
+    $('#loans').innerHTML = `<p><strong>${l.label} en curso.</strong> Recibiste ${money(l.amount)} y devolvés ${money(loanTotal(loan))}.
+      Van ${loan.paid} de ${l.months} cuotas; la última cae en <strong>${loanEndLabel(loan, sim.state.tick)}</strong>.</p>
+      <p>Te queda por pagar ${money(owed)}.${short ? ` <small>No alcanza la caja: tenés ${money(sim.state.cash)}.</small>` : ''}</p>
+      <button type="button" class="loan" id="payOff"${short ? ' disabled' : ''}>Cancelar el resto (${money(owed)})</button>`;
   };
   body.querySelectorAll<HTMLInputElement>('input[data-tax]').forEach((input) =>
     input.addEventListener('input', () => {
@@ -392,7 +435,8 @@ export function openHelp(): void {
       <li><strong>Mirá la demanda</strong> (barras R C I arriba): la gente viene si hay trabajo, y el comercio y la industria siguen a la gente. Con apagones, con tasas de más de 9 % en promedio o con muchos edificios abandonados la ciudad deja de atraer gente nueva y la demanda se queda en cero: al lado de las barras aparece el motivo.</li>
       <li><strong>Cuidá la caja.</strong> Cada semana cobrás tasas y pagás mantenimiento. Al lado de la Caja ves el saldo estimado del mes y, si la caja no va a durar un año, cuántos meses alcanza. Con la caja en rojo no se construye nada y los vecinos empiezan a irse. Los servicios públicos cuestan una parte fija (el 25 %) y el resto según cuántos vecinos atienden.
         En el <strong>Presupuesto</strong> (P) ponés una tasa para cada zona (cada una mueve solo la demanda de su zona) y decidís cuánto financiar cada servicio:
-        al 50 % cuesta la mitad y cubre la mitad.</li>
+        al 50 % cuesta la mitad y cubre la mitad.
+        Si la caja se queda sin resto, en el mismo panel podés <strong>pedir un crédito</strong>: entra la plata de una y se devuelve en cuotas fijas que se descuentan solas todos los meses. Uno por vez, y podés cancelar lo que queda cuando te sobre.</li>
       <li><strong>Plazas</strong> (8), agua y árboles suben el valor del suelo y dejan crecer edificios más altos. La industria contamina: alejala de las casas.</li>
       <li>Si una usina no da abasto, aparecen rayos rojos sobre los edificios sin luz: hacé otra. Hay tres: <strong>a carbón</strong> (9), barata y con mucho humo; <strong>a gas</strong> (J), más cara y casi sin humo; y el <strong>parque eólico</strong> (K), sin humo y barato de mantener, que rinde más en lo alto de una loma y cerca del agua.</li>
       <li><strong>Servicios públicos</strong> (necesitan luz y cubren un radio): sin <strong>salita</strong> (U) las casas no pasan de chalet, y sin

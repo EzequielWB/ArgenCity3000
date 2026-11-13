@@ -1,4 +1,4 @@
-import { SERVICE_KINDS, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
+import { LOANS, SERVICE_KINDS, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { formatMoney, formatNumber, settlementType } from '../core/format';
 import { TILE, type World } from '../world/world';
 
@@ -15,6 +15,8 @@ export interface CitySnapshot {
   year: number;
   cash: number;
   abandoned: number;
+  /** Kind of the municipal loan being paid off, or null. Only the kind: the amount and the term come from `LOANS`. */
+  loan: number | null;
 }
 
 /** Built lots (level above 0, not burning) of each basic zone. */
@@ -72,6 +74,14 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   if (prev.shortage && !next.shortage) out.push('Volvió la luz: se normalizó el suministro eléctrico');
   if (!prev.crisis && next.crisis) out.push('Crisis en la Municipalidad: la caja quedó en rojo y se frenan las obras');
   if (prev.crisis && !next.crisis) out.push('La Municipalidad salió del rojo: vuelven las obras');
+  // A change of kind is one loan ending and another starting, so both pieces of news go out.
+  if (next.loan !== prev.loan) {
+    if (prev.loan !== null) out.push('La Municipalidad terminó de pagar el crédito: se libera la cuota del presupuesto');
+    if (next.loan !== null) {
+      const { amount, months } = LOANS[next.loan];
+      out.push(`Crédito aprobado: la Municipalidad recibió ${formatMoney(amount)} y lo devuelve en ${months} cuotas`);
+    }
+  }
   if (prev.abandoned < 10 && next.abandoned >= 10) out.push(`Crece el abandono: ya son ${next.abandoned} los edificios vacíos en ${city}`);
   if (prev.abandoned >= 10 && next.abandoned < 5) out.push('Vuelven los vecinos: se recuperan los barrios abandonados');
   for (const z of ['R', 'C', 'I'] as const) {

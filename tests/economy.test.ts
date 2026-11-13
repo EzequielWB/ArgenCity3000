@@ -136,6 +136,7 @@ describe('the newspaper', () => {
     year: 1990,
     cash: 1000,
     abandoned: 0,
+    loan: null,
   };
 
   it('reports which tax went up or down', () => {

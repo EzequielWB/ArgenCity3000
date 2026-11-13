@@ -587,6 +587,8 @@ export class Simulation {
       year,
       cash: this.state.cash,
       abandoned: this.abandonedCount,
+      // Only the kind: a copy would go stale as `advanceLoan` moves `paid`, and the rest comes from `LOANS`.
+      loan: this.state.loan ? this.state.loan.kind : null,
     };
   }
 
