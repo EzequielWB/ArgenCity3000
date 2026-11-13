@@ -31,6 +31,9 @@ function pressure(target: number, current: number): number {
   return ((target - current) / Math.max(target, 1)) * 100;
 }
 
+/** Demand points a zone loses for each point of tax above the default (and gains below it). */
+export const TAX_DEMAND_POINTS = 6;
+
 /** How much bigger than today a thriving city wants to be (see `Simulation.appetite`). */
 export const GROWTH_APPETITE = 1.1;
 
@@ -43,7 +46,7 @@ export const GROWTH_APPETITE = 1.1;
  */
 export function computeDemand(t: Totals, tax: ZoneTaxes | number, appetite = GROWTH_APPETITE): Demand {
   const taxes = zoneTaxes(tax);
-  const taxEffect = (z: ZoneKind) => (taxes[z] - DEFAULT_TAX) * 6;
+  const taxEffect = (z: ZoneKind) => (taxes[z] - DEFAULT_TAX) * TAX_DEMAND_POINTS;
   const targetPop = (t.cJobs + t.iJobs) * 2 * appetite + 80;
   const targetC = t.pop * 0.15 * appetite + 10;
   const targetI = t.pop * 0.35 * appetite + 20;

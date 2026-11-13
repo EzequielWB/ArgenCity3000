@@ -66,7 +66,7 @@ describe('describeCell', () => {
     const dark = describeCell(w, sim, 12, 0);
     expect(dark.lines.join(' ')).toMatch(/Sin luz.*no lleva la luz/);
     expect(describeCell(w, sim, 0, 0).lines.join(' ')).toMatch(/hasta 3 lotes/);
-    expect(describeCell(w, sim, 0, 4).lines.join(' ')).toMatch(/de celda en celda/);
+    expect(describeCell(w, sim, 0, 4).lines.join(' ')).toMatch(/hasta 3 lotes/);
   });
 
   it('asks for a street when the lot has power but no road access', () => {

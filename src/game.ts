@@ -57,6 +57,8 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   fire: 'rgba(200,50,40,0.55)',
 };
 
+const STALL_LABELS = { shortage: 'apagones', taxes: 'tasas altas', blight: 'abandono' } as const;
+
 /** Tools that show a coverage layer while they are picked: each service shows what it covers, the plants and the line show the light, the street shows the traffic. */
 const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', plantGas: 'power', plantWind: 'power', line: 'power', road: 'traffic' };
 
@@ -546,7 +548,15 @@ export class Game implements PointerTarget {
       el.style.top = v >= 0 ? `${50 - v / 2}%` : '50%';
       el.style.opacity = v >= 0 ? '1' : '0.45';
     });
-    $('#rci').title = `Demanda — Residencial: ${d[0]} · Comercial: ${d[1]} · Industrial: ${d[2]}`;
+    const stalled = this.sim.stallText();
+    $('#rci').title = `Demanda — Residencial: ${d[0]} · Comercial: ${d[1]} · Industrial: ${d[2]}${stalled ? `
+${stalled}` : ''}`;
+    const stall = $('#stall');
+    stall.classList.toggle('hidden', !stalled);
+    if (stalled) {
+      stall.textContent = `⚠ No llega gente nueva: ${STALL_LABELS[this.sim.stall!]}`;
+      stall.title = stalled;
+    }
     $('#newsDate').textContent = `${this.name} · ${dateLabel(s.tick)}`;
     const head = s.news[0] ? s.news[0].date + s.news[0].text + s.news.length : '';
     if (force || head !== this.shownNews) {

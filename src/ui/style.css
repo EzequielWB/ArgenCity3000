@@ -225,6 +225,16 @@ select {
   color: var(--muted);
 }
 
+/* Why the city attracts nobody new, next to the demand bars (see Simulation.stall). */
+.stall {
+  max-width: 130px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #f0b34a;
+  cursor: help;
+}
+
 /* The approval is a stat you can click to see what the neighbours complain about. */
 #approvalBox {
   background: none;

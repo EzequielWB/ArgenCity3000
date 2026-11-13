@@ -34,7 +34,18 @@ function lit(w: World, x: number, y: number): boolean {
 describe('light reach', () => {
   it('exposes the reach constants', () => {
     expect(POWER_REACH).toBe(3);
-    expect(LINE_REACH).toBe(1);
+    expect(LINE_REACH).toBe(3);
+  });
+
+  it('a power line lights 3 lots around it, like a building does', () => {
+    const w = new World(flat());
+    plant(w, 2, 2);
+    for (let x = 4; x <= 30; x++) w.setTile(x, 2, TILE.LINE);
+    house(w, 30, 5); // 3 lots from the end of the line
+    house(w, 40, 6); // 10 lots from it
+    computePower(w);
+    expect(lit(w, 30, 5)).toBe(true);
+    expect(lit(w, 40, 6)).toBe(false);
   });
 
   it('roads do not conduct: a house at the far end of a long road stays dark', () => {
@@ -119,17 +130,6 @@ describe('light reach', () => {
     computePower(w);
     expect(w.isWater(15, 2)).toBe(true);
     expect(lit(w, 25, 2)).toBe(true);
-  });
-
-  it('a line cell lights the lot next to it but not two cells away', () => {
-    const w = new World(flat());
-    plant(w, 2, 2);
-    for (let x = 4; x <= 20; x++) w.setTile(x, 2, TILE.LINE);
-    house(w, 20, 3);
-    house(w, 12, 4);
-    computePower(w);
-    expect(lit(w, 20, 3)).toBe(true);
-    expect(lit(w, 12, 4)).toBe(false);
   });
 
   it('a dark building (capacity shortage) still relays: everything behind it is still part of the network', () => {

@@ -119,7 +119,7 @@ describe('placement text', () => {
 
   it('tells how far the light goes when choosing the plant or the power line', () => {
     expect(placementNote('plant')).toBe('luz hasta 3 lotes');
-    expect(placementNote('line')).toBe('el tendido lleva la luz de celda en celda');
+    expect(placementNote('line')).toBe('el tendido alumbra hasta 3 lotes a su alrededor');
     expect(placementNote('road')).toBeNull();
   });
 });

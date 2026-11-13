@@ -89,6 +89,14 @@ const FIRE_RATE = 0.00025;
  */
 const FIRE_SPREAD = 0.02;
 
+export type StallReason = 'shortage' | 'taxes' | 'blight';
+
+const STALL_TEXT: Record<StallReason, string> = {
+  shortage: 'Hay apagones: mientras falte luz la ciudad no atrae gente nueva. Hace falta otra usina.',
+  taxes: `Las tasas están altas: con un promedio de más de ${APPETITE_MAX_TAX} % la ciudad deja de atraer gente nueva. Bajalas en el Presupuesto.`,
+  blight: 'Hay demasiados edificios abandonados (más del 5 %): hasta recuperarlos o demolerlos la ciudad no atrae gente nueva.',
+};
+
 function countAbandoned(w: World): number {
   let c = 0;
   for (let i = 0; i < w.abandoned.length; i++) if (w.abandoned[i] && w.level[i] > 0) c++;
@@ -114,6 +122,8 @@ export class Simulation {
   approval: ApprovalReport = { target: 50, factors: [] };
   /** Above 1 the city attracts newcomers beyond what its jobs justify (see `updateAppetite`). */
   appetite = GROWTH_APPETITE;
+  /** Why the city attracts nobody new (the appetite is off), or null while it does. */
+  stall: StallReason | null = null;
   abandonedCount = 0;
   /**
    * True when a building appeared or disappeared since the light was last computed: buildings
@@ -207,8 +217,14 @@ export class Simulation {
     let built = 0;
     for (let i = 0; i < this.world.level.length; i++) if (this.world.level[i] > 0) built++;
     const blighted = built > 20 && this.abandonedCount / built > ABANDON_LIMIT;
-    this.appetite = !this.power.shortage && averageTax(this.state.taxes) <= APPETITE_MAX_TAX && !blighted ? GROWTH_APPETITE : 1;
+    this.stall = this.power.shortage ? 'shortage' : averageTax(this.state.taxes) > APPETITE_MAX_TAX ? 'taxes' : blighted ? 'blight' : null;
+    this.appetite = this.stall ? 1 : GROWTH_APPETITE;
     this.demand = computeDemand(this.totals, this.state.taxes, this.appetite);
+  }
+
+  /** What holds the city back, in words for the player, or null while it attracts people. */
+  stallText(): string | null {
+    return this.stall ? STALL_TEXT[this.stall] : null;
   }
 
   /** Charges `cost` if the city can afford it. */

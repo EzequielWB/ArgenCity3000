@@ -1,9 +1,9 @@
-import { CAPACITY, FIRE_SAFE_COVER, PLANTS, POWER_REACH, ROAD_REACH, SERVICES, TRAFFIC, WIND, type ServiceKind } from '../config';
+import { CAPACITY, DEFAULT_TAX, FIRE_SAFE_COVER, LINE_REACH, PLANTS, POWER_REACH, ROAD_REACH, SERVICES, TRAFFIC, WIND, type ServiceKind } from '../config';
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf, zoneOf, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
-import { SERVICE_NEED, levelCap } from './demand';
+import { SERVICE_NEED, TAX_DEMAND_POINTS, levelCap } from './demand';
 import { residentsServed, utilization } from './fields';
 import { plantCapacity } from './plants';
 import type { Simulation } from './simulation';
@@ -64,7 +64,7 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
     };
   }
   if (water) {
-    if (tile === TILE.LINE) return { title: 'Tendido eléctrico sobre el agua', lines: [w.powered[i] ? 'Con energía' : 'Sin energía', 'Lleva la luz de celda en celda'] };
+    if (tile === TILE.LINE) return { title: 'Tendido eléctrico sobre el agua', lines: [w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_REACH} lotes a su alrededor`] };
     return { title: 'Río', lines: ['Agua. Se puede cruzar con calles (puentes) o con tendido eléctrico.'] };
   }
   if (tile === TILE.PLANT) {
@@ -82,7 +82,7 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
       hint: p.shortage ? 'La red no da abasto: construí otra usina conectada.' : undefined,
     };
   }
-  if (tile === TILE.LINE) return { title: 'Tendido eléctrico', lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía', 'Lleva la luz de celda en celda'] };
+  if (tile === TILE.LINE) return { title: 'Tendido eléctrico', lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_REACH} lotes a su alrededor`] };
   const service = serviceOf(tile);
   if (service) {
     const info = SERVICES[service];
@@ -145,6 +145,8 @@ function noLightHint(sim: Simulation, lead: string, pronoun: 'lo' | 'la'): strin
   return sim.power.shortage ? `${lead}: ${near}; o la usina no da abasto, y hace falta otra.` : `${lead}: ${near}.`;
 }
 
+const ZONE_TAX_NAME: Record<ZoneKind, string> = { R: 'residencial', C: 'comercial', I: 'industrial' };
+
 function abandonHint(w: World, sim: Simulation, i: number, zone: ZoneKind): string {
   const why: string[] = [];
   if (!w.powered[i]) why.push('falta luz');
@@ -163,6 +165,13 @@ function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level:
   if (sim.state.crisis) return 'Con la caja en rojo no se construye nada.';
   if (w.jam[i] > TRAFFIC.slowFrom + 30) return 'La calle de acceso está saturada y el lote crece despacio: ensanchala o abrí otro camino.';
   if (sim.demand[zone] <= 0) {
+    // Say what really holds the city back before sending the lot to wait for the other zones.
+    const stalled = sim.stallText();
+    if (stalled) return stalled;
+    const tax = sim.state.taxes[zone];
+    if (tax > DEFAULT_TAX && sim.demand[zone] + (tax - DEFAULT_TAX) * TAX_DEMAND_POINTS > 0) {
+      return `La tasa ${ZONE_TAX_NAME[zone]} está en ${tax} %: bajala en el Presupuesto para que vuelva la demanda.`;
+    }
     return zone === 'R' ? 'No hay demanda de viviendas: hacen falta trabajos (comercio o industria).' : 'No hay demanda: hace falta más población.';
   }
   const cap = levelCap(zone, w.landValue[i], sim.totals.pop, { edu: w.edu[i], health: w.health[i] });

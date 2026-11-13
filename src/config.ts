@@ -88,11 +88,11 @@ export const WIND = { base: 160, perLevel: 80, coast: 80, radius: 6, min: 80, ma
  * How far the light reaches around a cell that passes it on, in lots (a disc: a lot is reached
  * when dx² + dy² <= reach², like the services). Plants, built zones and services pass the light
  * on with `POWER_REACH`; roads, parks, empty land and zoned lots without a building never do.
- * A power-line cell reaches only its `LINE_REACH` neighbours, so a line carries the light cell by
- * cell over any distance (and over water).
+ * A power-line cell passes it on with `LINE_REACH`, the same distance: a line carries the light
+ * over any distance (and over water) and lights the lots along its way.
  */
 export const POWER_REACH = 3;
-export const LINE_REACH = 1;
+export const LINE_REACH = 3;
 
 export const MAX_LEVEL = 4;
 /** Residents (R) or jobs (C, I) per building level, index = level. */
