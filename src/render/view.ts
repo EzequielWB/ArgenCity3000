@@ -1,14 +1,30 @@
 import { fromView, toView } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import { CHUNK_PAD, FrameBudget, chunkRect, paddedRect, pickEvictions, renderOrder, visibleRect, type Rect } from './chunks';
 import { PAL } from './color';
 import { cellScreenCorners, type Pt } from './geometry';
-import { MapRenderer } from './mapRenderer';
+import { FRAME_BUDGET_MS, MapRenderer } from './mapRenderer';
 import { Traffic, drawTraffic } from './traffic';
 
 export type Layer = 'none' | 'power' | 'pollution' | 'landValue' | 'crime' | 'edu' | 'health' | 'fireCover';
 
 export const ZOOMS = [0.25, 0.5, 1, 2, 3] as const;
+
+/** Milliseconds per frame for drawing overlay chunks (they are flat polygons: cheap). */
+const LAYER_BUDGET_MS = 8;
+/** Most overlay chunk canvases kept alive; the ones in view are never dropped. */
+const MAX_LIVE_LAYER_CHUNKS = 110;
+
+/** One chunk of the overlay layer, in the same grid as the map's chunks. */
+interface LayerChunk {
+  canvas: HTMLCanvasElement;
+  /** `layerGen` when it was drawn: older means out of date. */
+  gen: number;
+  /** Rotation it was drawn for. */
+  rot: number;
+  lastUsed: number;
+}
 
 export interface Preview {
   /** World cells covered by the drag. */
@@ -16,6 +32,8 @@ export interface Preview {
   /** Indexes of the cells the action will actually change. */
   valid: Set<number>;
   color: string;
+  /** Cells around the drag that the new building will reach (the light of a plant), drawn faintly. */
+  halo?: [number, number][];
 }
 
 /** Draws the cached map plus per-frame overlays onto the visible canvas. */
@@ -30,8 +48,14 @@ export class View {
   hover: [number, number] | null = null;
   preview: Preview | null = null;
 
-  private layerCanvas: HTMLCanvasElement;
-  private layerDirty = true;
+  /** Overlay layer drawn in chunks, only where it is on screen. */
+  private readonly layerChunks = new Map<number, LayerChunk>();
+  /** Bumped whenever the overlay's content changes; chunks drawn under an older one are redrawn. */
+  private layerGen = 0;
+  private layerTick = 0;
+  private layerMissing = 0;
+  private lastTime = 0;
+  private lastCam = { x: -1, y: -1, zoom: 0 };
   readonly traffic: Traffic;
 
   constructor(
@@ -40,9 +64,6 @@ export class View {
     readonly world: World,
   ) {
     this.ctx = canvas.getContext('2d')!;
-    this.layerCanvas = document.createElement('canvas');
-    this.layerCanvas.width = map.canvas.width;
-    this.layerCanvas.height = map.canvas.height;
     this.traffic = new Traffic(world, 12345);
     this.refreshTraffic();
     this.resize();
@@ -59,11 +80,26 @@ export class View {
 
   setLayer(layer: Layer): void {
     this.layer = layer;
-    this.layerDirty = true;
+    this.layerGen++;
+    if (layer === 'none') this.dropLayerChunks();
   }
 
   invalidateLayer(): void {
-    this.layerDirty = true;
+    this.layerGen++;
+  }
+
+  /** Overlay chunks in view that are still being drawn: 0 when the last frame showed all of it. */
+  layerPending(): number {
+    return this.layerMissing;
+  }
+
+  private dropLayerChunks(): void {
+    for (const c of this.layerChunks.values()) {
+      c.canvas.width = 0;
+      c.canvas.height = 0;
+    }
+    this.layerChunks.clear();
+    this.layerMissing = 0;
   }
 
   /** Recounts cars per street; call after edits and every month. */
@@ -121,9 +157,29 @@ export class View {
   }
 
   private clamp(): void {
-    const c = this.map.canvas;
-    this.cam.x = Math.max(0, Math.min(c.width, this.cam.x));
-    this.cam.y = Math.max(0, Math.min(c.height, this.cam.y));
+    this.cam.x = Math.max(0, Math.min(this.map.width, this.cam.x));
+    this.cam.y = Math.max(0, Math.min(this.map.height, this.cam.y));
+  }
+
+  /** What the camera shows, in cache coordinates. */
+  private visibleArea(): Rect {
+    return visibleRect(this.cam.x, this.cam.y, this.cam.zoom, this.width, this.height);
+  }
+
+  /**
+   * Draws a chunk image (its own area, without the margin) at its place on the screen, (x0, y0)
+   * being where that area starts in cache coordinates. Both edges are snapped to whole device
+   * pixels, so neighbouring chunks meet exactly (no seam, no overlap) at any zoom and pixel ratio.
+   */
+  private drawChunk(g: CanvasRenderingContext2D, img: HTMLCanvasElement, x0: number, y0: number, tx: number, ty: number): void {
+    const s = this.dpr * this.cam.zoom;
+    const w = img.width - 2 * CHUNK_PAD;
+    const h = img.height - 2 * CHUNK_PAD;
+    const dx0 = Math.round(x0 * s + tx);
+    const dy0 = Math.round(y0 * s + ty);
+    const dx1 = Math.round((x0 + w) * s + tx);
+    const dy1 = Math.round((y0 + h) * s + ty);
+    g.drawImage(img, CHUNK_PAD, CHUNK_PAD, w, h, dx0, dy0, dx1 - dx0, dy1 - dy0);
   }
 
   render(time: number): void {
@@ -136,16 +192,31 @@ export class View {
     g.fillStyle = sky;
     g.fillRect(0, 0, this.width, this.height);
 
-    const tx = Math.round((this.width / 2 - this.cam.x * z) * this.dpr) / this.dpr;
-    const ty = Math.round((this.height / 2 - this.cam.y * z) * this.dpr) / this.dpr;
-    g.setTransform(this.dpr * z, 0, 0, this.dpr * z, tx * this.dpr, ty * this.dpr);
+    // Where cache coordinates (0, 0) land on the canvas, in whole device pixels.
+    const txd = Math.round((this.width / 2 - this.cam.x * z) * this.dpr);
+    const tyd = Math.round((this.height / 2 - this.cam.y * z) * this.dpr);
+    const area = this.visibleArea();
+    // When frames are already slow (a far zoom draws a lot of chunks), draw fewer new chunks per frame.
+    const sinceLast = this.lastTime > 0 ? time - this.lastTime : 0;
+    this.lastTime = time;
+    const still = this.cam.x === this.lastCam.x && this.cam.y === this.lastCam.y && this.cam.zoom === this.lastCam.zoom;
+    this.lastCam = { ...this.cam };
+    this.map.ensure(area, [this.cam.x, this.cam.y], sinceLast > 50 ? FRAME_BUDGET_MS / 3 : sinceLast > 34 ? FRAME_BUDGET_MS * 0.6 : FRAME_BUDGET_MS, still);
+    g.setTransform(1, 0, 0, 1, 0, 0);
     g.imageSmoothingEnabled = z < 1;
-    g.drawImage(this.map.canvas, 0, 0);
+    this.map.forEachChunk(area, (img, x0, y0) => this.drawChunk(g, img, x0, y0, txd, tyd));
 
     if (this.layer !== 'none') {
-      if (this.layerDirty) this.renderLayer();
-      g.drawImage(this.layerCanvas, 0, 0);
+      this.ensureLayer(area);
+      for (const id of this.map.contentChunks(area)) {
+        const c = this.layerChunks.get(id);
+        // An out-of-date chunk of the right rotation still shows while it is being redrawn.
+        if (!c || (c.gen !== this.layerGen && c.rot !== this.map.rot)) continue;
+        const r = chunkRect(this.map.grid, id);
+        this.drawChunk(g, c.canvas, r.x0, r.y0, txd, tyd);
+      }
     }
+    g.setTransform(this.dpr * z, 0, 0, this.dpr * z, txd, tyd);
 
     const [vx0, vy0] = this.screenToCache(0, 0);
     const [vx1, vy1] = this.screenToCache(this.width, this.height);
@@ -181,6 +252,13 @@ export class View {
   private drawPreview(g: CanvasRenderingContext2D): void {
     const p = this.preview;
     if (!p) return;
+    if (p.halo) {
+      g.fillStyle = 'rgba(255,214,60,0.28)';
+      for (const [x, y] of p.halo) {
+        this.path(g, this.corners(x, y));
+        g.fill();
+      }
+    }
     for (const [x, y] of p.cells) {
       const ok = p.valid.has(this.world.idx(x, y));
       this.path(g, this.corners(x, y));
@@ -243,14 +321,57 @@ export class View {
     }
   }
 
-  private renderLayer(): void {
-    this.layerDirty = false;
-    const g = this.layerCanvas.getContext('2d')!;
-    g.clearRect(0, 0, this.layerCanvas.width, this.layerCanvas.height);
+  /** Draws, within a small time budget, the overlay chunks in view that are missing or out of date. */
+  private ensureLayer(area: Rect): void {
+    const tick = ++this.layerTick;
+    const visible = this.map.contentChunks(area);
+    const fresh = (id: number) => this.layerChunks.get(id)?.gen === this.layerGen;
+    const budget = new FrameBudget(LAYER_BUDGET_MS);
+    for (const item of renderOrder(this.map.grid, visible, [], fresh, [this.cam.x, this.cam.y])) {
+      if (!budget.allow(true)) break;
+      const t0 = performance.now();
+      this.renderLayerChunk(item.id, tick);
+      budget.spent(performance.now() - t0);
+    }
+    this.layerMissing = visible.filter((id) => !fresh(id)).length;
+    for (const id of visible) {
+      const c = this.layerChunks.get(id);
+      if (c) c.lastUsed = tick;
+    }
+    const live = [...this.layerChunks].map(([id, c]) => ({ id, lastUsed: c.lastUsed }));
+    for (const id of pickEvictions(live, new Set(visible), MAX_LIVE_LAYER_CHUNKS)) {
+      const c = this.layerChunks.get(id)!;
+      c.canvas.width = 0;
+      c.canvas.height = 0;
+      this.layerChunks.delete(id);
+    }
+  }
+
+  /** Paints the overlay of the cells that reach one chunk, in the same cell order as the whole map would. */
+  private renderLayerChunk(id: number, tick: number): void {
+    const r = paddedRect(this.map.grid, id);
+    let c = this.layerChunks.get(id);
+    if (!c) {
+      const canvas = document.createElement('canvas');
+      canvas.width = r.x1 - r.x0;
+      canvas.height = r.y1 - r.y0;
+      c = { canvas, gen: -1, rot: this.map.rot, lastUsed: tick };
+      this.layerChunks.set(id, c);
+    }
+    c.gen = this.layerGen;
+    c.rot = this.map.rot;
+    c.lastUsed = tick;
+    const g = c.canvas.getContext('2d')!;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, c.canvas.width, c.canvas.height);
+    g.translate(-r.x0, -r.y0);
     const w = this.world;
     const n = w.n;
-    for (let y = 0; y < n; y++) {
-      for (let x = 0; x < n; x++) {
+    const [vx0, vy0, vx1, vy1] = this.map.cellRange(r.x0, r.y0, r.x1, r.y1);
+    const [ax, ay] = fromView(vx0, vy0, this.map.rot, n);
+    const [bx, by] = fromView(vx1, vy1, this.map.rot, n);
+    for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++) {
+      for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) {
         const i = w.idx(x, y);
         const color = this.layerColor(i, x, y);
         if (!color) continue;
@@ -266,7 +387,8 @@ export class View {
     const tile = w.tiles[i];
     switch (this.layer) {
       case 'power':
-        if (tile === TILE.EMPTY) return null;
+        // Empty ground shows only where the light reaches: that is where a new lot would be lit.
+        if (tile === TILE.EMPTY) return w.powered[i] && !w.isWater(x, y) ? 'rgba(255,214,60,0.18)' : null;
         if (zoneOf(tile)) return w.powered[i] ? 'rgba(255,214,60,0.55)' : 'rgba(210,40,30,0.55)';
         return w.powered[i] ? 'rgba(255,214,60,0.3)' : 'rgba(120,120,120,0.3)';
       case 'pollution': {

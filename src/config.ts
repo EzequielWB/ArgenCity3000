@@ -6,13 +6,15 @@ export const MAP_SIZE = 128;
 export const MAP_SIZES = { small: 128, medium: 192, large: 256 } as const;
 export type MapSizeId = keyof typeof MAP_SIZES;
 /**
- * Sizes the renderer can draw within budget. The map is drawn into one canvas of
- * (n * 32 + 48) x (n * 16 + 360) pixels, plus a same-sized layer canvas. Measured in headless
- * Chrome (T18): 128 redraws in about 0.6 s, 192 in 1.3 to 1.5 s (21 M pixels, 162 MB) and 256
- * in 2.5 s (37 M pixels, 280 MB), over the 0.7 s budget. The terrain generators, saves and
- * simulation already handle every size, so a size joins this list once the renderer is chunked.
+ * Sizes the renderer can draw within budget. The map is drawn in 512 x 512 px chunks, a few per
+ * frame and only where they are on screen (see render/chunks.ts), so no canvas is bigger than
+ * a phone can allocate. Measured in headless Chrome with software rendering: the first view
+ * takes 0.25 to 0.3 s at 128, 192 and 256 (a single canvas needed 0.35, 0.63 and 1.15 s), a
+ * rotation redraws the view in 0.25 to 0.35 s, panning and zooming keep every frame under 60 ms,
+ * and the canvases hold 40 MB at 128, 64 MB at 192 and 75 to 117 MB at 256 (210 MB with an
+ * overlay layer and the whole map in view; a single canvas pair was 80, 170 and 294 MB).
  */
-export const PLAYABLE_SIZES: readonly MapSizeId[] = ['small'];
+export const PLAYABLE_SIZES: readonly MapSizeId[] = ['small', 'medium', 'large'];
 
 export const INITIAL_CASH = 30000;
 export const DEFAULT_TAX = 7;
@@ -61,6 +63,16 @@ export const UPKEEP = {
 /** Power plant output and footprint. */
 export const PLANT_SIZE = 2;
 export const PLANT_CAPACITY = 600;
+
+/**
+ * How far the light reaches around a cell that passes it on, in lots (a disc: a lot is reached
+ * when dx² + dy² <= reach², like the services). Plants, built zones and services pass the light
+ * on with `POWER_REACH`; roads, parks, empty land and zoned lots without a building never do.
+ * A power-line cell reaches only its `LINE_REACH` neighbours, so a line carries the light cell by
+ * cell over any distance (and over water).
+ */
+export const POWER_REACH = 3;
+export const LINE_REACH = 1;
 
 export const MAX_LEVEL = 4;
 /** Residents (R) or jobs (C, I) per building level, index = level. */

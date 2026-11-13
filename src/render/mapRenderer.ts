@@ -4,6 +4,23 @@ import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { KIND, analyzeRoads, indexOf, kindOf, laneLine, widthOf, type LaneLine } from './avenue';
+import {
+  CHUNK_PAD,
+  CHUNK_SIZE,
+  FrameBudget,
+  chunkMayHaveContent,
+  chunkRect,
+  chunksIntersecting,
+  expandRect,
+  makeGrid,
+  paddedRect,
+  pickEvictions,
+  renderOrder,
+  splitRect,
+  type ChunkGrid,
+  type ContentShape,
+  type Rect,
+} from './chunks';
 import { PAL, mix, rgb, hexToRgb } from './color';
 import { isPlatform, surfaceHeights, viewCornerHeights, plantHeight, type Pt } from './geometry';
 import {
@@ -24,6 +41,14 @@ const PAD_BOTTOM = MAX_HEIGHT * HEIGHT_STEP + 48;
 const PAD_SIDE = 24;
 /** Tallest thing that can stick up above a cell's top corner. */
 const SPRITE_REACH = 112;
+/** Most chunk canvases kept alive (about 1 MB each); the ones in view are never dropped. */
+const MAX_LIVE_CHUNKS = 110;
+/** Milliseconds of chunk drawing allowed per frame while the picture catches up with the camera. */
+export const FRAME_BUDGET_MS = 30;
+/** Budget of the frame after the whole map was invalidated (new game, load, rotation). */
+export const URGENT_BUDGET_MS = 450;
+/** Chunks this far outside the view are drawn ahead of time while the camera is still and the view is complete. */
+const PREFETCH_PX = CHUNK_SIZE * 2;
 const BASE_HEIGHT = 0;
 /** Paint of the centre lines of an avenue. */
 const AVENUE_LINE = '#e0b53c';
@@ -37,26 +62,47 @@ export interface PlacedSprite {
   ay: number;
 }
 
-interface Rect {
+interface Chunk {
+  id: number;
+  /** Where the canvas's top left corner is in cache coordinates (CHUNK_PAD before the chunk's own area). */
   x0: number;
   y0: number;
-  x1: number;
-  y1: number;
+  canvas: HTMLCanvasElement;
+  g: CanvasRenderingContext2D;
+  /** False once something changed that a redraw of the chunk has not caught up with. */
+  valid: boolean;
+  lastUsed: number;
 }
 
 /**
- * Renders the whole map into one big offscreen canvas (one rotation at a time) and keeps it
- * up to date by redrawing only the regions around changed cells, in painter's order.
+ * Renders the map (one rotation at a time) into a grid of chunk canvases in "cache
+ * coordinates" and keeps them up to date. A chunk is drawn the first time it comes into view,
+ * a few per frame, and the ones far from the camera are dropped to bound memory; an edit
+ * redraws only the regions around the changed cells in the chunks that are alive, in painter's
+ * order.
  */
 export class MapRenderer {
-  readonly canvas: HTMLCanvasElement;
+  /** Size of the cache space (the map plus room for tall buildings and the walls). */
+  readonly width: number;
+  readonly height: number;
   readonly originX: number;
   readonly originY: number;
+  readonly grid: ChunkGrid;
   rot: Rotation = 0;
   /** Smoke sources in cache coordinates, by cell index. */
   readonly smoke = new Map<number, Pt[]>();
 
-  private g: CanvasRenderingContext2D;
+  private g!: CanvasRenderingContext2D;
+  private readonly shape: ContentShape;
+  private readonly chunks = new Map<number, Chunk>();
+  /** Whether each chunk can hold any drawing at all (the corners of the cache space cannot). */
+  private readonly hasContent: Uint8Array;
+  private tick = 0;
+  /** The next frame may spend a long time drawing the view (after a full invalidation). */
+  private urgent = true;
+  /** Chunks in or near the view at the last `ensure`. */
+  private lastKeep = new Set<number>();
+  private missing = 0;
   /** Whether each world cell was a road when `bands` was computed. */
   private roadSnap: Uint8Array;
   /** Avenue analysis of every world cell (see avenue.ts), kept in step with the road layout. */
@@ -66,12 +112,121 @@ export class MapRenderer {
     const n = world.n;
     this.roadSnap = new Uint8Array(n * n);
     this.bands = new Uint16Array(n * n);
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = n * TILE_W + PAD_SIDE * 2;
-    this.canvas.height = n * TILE_H + PAD_TOP + PAD_BOTTOM;
+    this.width = n * TILE_W + PAD_SIDE * 2;
+    this.height = n * TILE_H + PAD_TOP + PAD_BOTTOM;
     this.originX = (n * TILE_W) / 2 + PAD_SIDE;
     this.originY = PAD_TOP;
-    this.g = this.canvas.getContext('2d')!;
+    this.grid = makeGrid(this.width, this.height);
+    this.shape = {
+      originX: this.originX,
+      originY: this.originY,
+      halfW: (n * TILE_W) / 2,
+      halfH: (n * TILE_H) / 2,
+      wide: TILE_W * (PLANT_SIZE + 0.2) + TILE_W / 2,
+      up: MAX_HEIGHT * HEIGHT_STEP + SPRITE_REACH + 16,
+      down: 16,
+    };
+    this.hasContent = new Uint8Array(this.grid.cols * this.grid.rows);
+    for (let id = 0; id < this.hasContent.length; id++) this.hasContent[id] = chunkMayHaveContent(this.shape, chunkRect(this.grid, id)) ? 1 : 0;
+  }
+
+  /** Visible chunks that are still being drawn: 0 when the last frame showed the whole view. */
+  pending(): number {
+    return this.missing;
+  }
+
+  /** Live chunk canvases and the memory they hold. */
+  stats(): { live: number; bytes: number } {
+    let bytes = 0;
+    for (const c of this.chunks.values()) bytes += c.canvas.width * c.canvas.height * 4;
+    return { live: this.chunks.size, bytes };
+  }
+
+  /** Ids of the chunks in the rectangle that can hold any drawing. */
+  contentChunks(r: Rect): number[] {
+    return chunksIntersecting(this.grid, r).filter((id) => this.hasContent[id] === 1);
+  }
+
+  /**
+   * Draws, within a time budget, the chunks of the view that are missing (and, when the view
+   * is complete, a few just outside it), and drops the chunks far from the camera.
+   * `view` is the visible rectangle in cache coordinates, `focus` the middle of the screen and
+   * `budgetMs` the time to spend this frame (a chunk in view is drawn even if it costs more).
+   * The chunks around the view are only drawn ahead when `prefetch` is set (the camera is still).
+   */
+  ensure(view: Rect, focus: readonly [number, number], budgetMs: number = FRAME_BUDGET_MS, prefetch = true): void {
+    const tick = ++this.tick;
+    const urgent = this.urgent;
+    this.urgent = false;
+    const visible = this.contentChunks(view);
+    const seen = new Set(visible);
+    const ring = this.contentChunks(expandRect(view, PREFETCH_PX, PREFETCH_PX)).filter((id) => !seen.has(id));
+    this.lastKeep = new Set([...visible, ...ring]);
+    for (const id of this.lastKeep) {
+      const c = this.chunks.get(id);
+      if (c) c.lastUsed = tick;
+    }
+    const valid = (id: number) => this.chunks.get(id)?.valid === true;
+    // Copying a lot of chunks to the screen already takes time (far zooms show most of the map).
+    const budget = new FrameBudget(urgent ? URGENT_BUDGET_MS : Math.max(8, budgetMs - 0.25 * visible.length));
+    for (const item of renderOrder(this.grid, visible, urgent || !prefetch ? [] : ring, valid, focus)) {
+      if (!budget.allow(item.visible)) break;
+      budget.spent(this.renderChunk(item.id, tick));
+    }
+    this.missing = visible.filter((id) => !valid(id)).length;
+    const live = [...this.chunks.values()].map((c) => ({ id: c.id, lastUsed: c.lastUsed }));
+    for (const id of pickEvictions(live, this.lastKeep, MAX_LIVE_CHUNKS)) this.drop(id);
+  }
+
+  /**
+   * Calls `draw` with every drawn chunk in the rectangle: its canvas and where the chunk's own
+   * area starts in cache coordinates (the canvas has CHUNK_PAD more on every side).
+   */
+  forEachChunk(view: Rect, draw: (canvas: HTMLCanvasElement, x0: number, y0: number) => void): void {
+    for (const id of this.contentChunks(view)) {
+      const c = this.chunks.get(id);
+      if (c?.valid) draw(c.canvas, c.x0 + CHUNK_PAD, c.y0 + CHUNK_PAD);
+    }
+  }
+
+  /** Draws a chunk from scratch and returns what it cost, in milliseconds. */
+  private renderChunk(id: number, tick: number): number {
+    const r = paddedRect(this.grid, id);
+    let c = this.chunks.get(id);
+    if (!c) {
+      const canvas = document.createElement('canvas');
+      canvas.width = r.x1 - r.x0;
+      canvas.height = r.y1 - r.y0;
+      c = { id, x0: r.x0, y0: r.y0, canvas, g: canvas.getContext('2d')!, valid: false, lastUsed: tick };
+      this.chunks.set(id, c);
+    }
+    c.lastUsed = tick;
+    const t0 = performance.now();
+    this.paint(c, r);
+    c.valid = true;
+    // A canvas does its drawing later (when it is read or copied). Reading a pixel makes it finish
+    // now, so the clock sees the whole cost and the frame budget holds, instead of the bill
+    // arriving all at once the first time many freshly drawn chunks are copied to the screen.
+    c.g.getImageData(0, 0, 1, 1);
+    return performance.now() - t0;
+  }
+
+  private drop(id: number): void {
+    const c = this.chunks.get(id);
+    if (!c) return;
+    c.canvas.width = 0;
+    c.canvas.height = 0;
+    this.chunks.delete(id);
+  }
+
+  /** Marks every chunk as out of date: the ones in view are redrawn next frame, the rest freed. */
+  private invalidateAll(): void {
+    for (const c of [...this.chunks.values()]) {
+      if (this.lastKeep.has(c.id)) c.valid = false;
+      else this.drop(c.id);
+    }
+    this.urgent = true;
+    this.missing = 1;
   }
 
   setRotation(rot: Rotation): void {
@@ -115,13 +270,11 @@ export class MapRenderer {
     return changed;
   }
 
+  /** Throws the drawing away; the chunks in view come back on the next `ensure`. */
   redrawAll(): void {
     this.refreshBands();
-    const g = this.g;
-    g.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.smoke.clear();
-    const n = this.world.n;
-    for (let vy = 0; vy < n; vy++) for (let vx = 0; vx < n; vx++) this.drawCell(vx, vy);
+    this.invalidateAll();
   }
 
   /** Redraws everything around the given changed world cells. */
@@ -159,8 +312,41 @@ export class MapRenderer {
       const x = i % n;
       const [vx, vy] = toView(x, (i - x) / n, this.rot, n);
       addRect(rects, this.cellBounds(vx, vy));
+      this.smoke.delete(i);
     }
-    for (const r of rects) this.redrawRect(r);
+    // A chunk that is not drawn (yet) needs nothing: it will be drawn from the world as it is.
+    for (const r of rects) {
+      const whole = { x0: Math.floor(r.x0), y0: Math.floor(r.y0), x1: Math.ceil(r.x1), y1: Math.ceil(r.y1) };
+      for (const piece of this.piecesOf(whole)) {
+        const c = this.chunks.get(piece.id);
+        if (c?.valid) this.patch(c, piece.rect);
+      }
+    }
+  }
+
+  /**
+   * Redraws part of a chunk that is already drawn. The area is painted on a scratch canvas with
+   * a margin and only its inside is copied over the chunk: painting straight into the chunk
+   * would cut the polygons along the edge of the area, and their rasterization there would
+   * differ from a whole redraw by a few levels of colour (see CHUNK_PAD).
+   */
+  private patch(chunk: Chunk, r: Rect): void {
+    const x0 = Math.floor(r.x0);
+    const y0 = Math.floor(r.y0);
+    const w = Math.ceil(r.x1) - x0;
+    const h = Math.ceil(r.y1) - y0;
+    if (w <= 0 || h <= 0) return;
+    const scratch = scratchCanvas(w + 2 * CHUNK_PAD, h + 2 * CHUNK_PAD);
+    const area = { x0: x0 - CHUNK_PAD, y0: y0 - CHUNK_PAD, x1: x0 + w + CHUNK_PAD, y1: y0 + h + CHUNK_PAD };
+    this.paint({ ...chunk, x0: area.x0, y0: area.y0, canvas: scratch.canvas, g: scratch.g }, area);
+    const g = chunk.g;
+    g.clearRect(x0 - chunk.x0, y0 - chunk.y0, w, h);
+    g.drawImage(scratch.canvas, CHUNK_PAD, CHUNK_PAD, w, h, x0 - chunk.x0, y0 - chunk.y0, w, h);
+  }
+
+  /** The chunks an area touches, each with the part of the area inside it. */
+  private piecesOf(r: Rect): { id: number; rect: Rect }[] {
+    return splitRect(this.grid, r, CHUNK_PAD);
   }
 
   private cellBounds(vx: number, vy: number): Rect {
@@ -168,22 +354,76 @@ export class MapRenderer {
     const [, topY] = this.toCache(vx, vy, MAX_HEIGHT);
     const [, botY] = this.toCache(vx + 1, vy + 1, BASE_HEIGHT);
     const wide = TILE_W * (PLANT_SIZE + 0.2);
-    return { x0: tx - wide, x1: tx + wide, y0: topY - SPRITE_REACH, y1: botY + 2 };
+    return { x0: tx - wide, x1: tx + wide, y0: topY - SPRITE_REACH, y1: botY + 10 };
   }
 
-  private redrawRect(r: Rect): void {
-    const g = this.g;
-    const n = this.world.n;
+  /**
+   * Draws, inside a chunk, the part of the map that falls in `r` (cache coordinates, within the
+   * chunk): clears it and paints again every cell whose drawing could reach it, in painter's
+   * order, so the result is what a single canvas over the whole map would show there. Returns
+   * how many cells it drew.
+   */
+  private paint(chunk: Chunk, r: Rect): number {
+    const g = chunk.g;
+    this.g = g;
     const x0 = Math.floor(r.x0);
     const y0 = Math.floor(r.y0);
     const x1 = Math.ceil(r.x1);
     const y1 = Math.ceil(r.y1);
     g.save();
+    g.translate(-chunk.x0, -chunk.y0);
     g.beginPath();
     g.rect(x0, y0, x1 - x0, y1 - y0);
     g.clip();
     g.clearRect(x0, y0, x1 - x0, y1 - y0);
-    // Every cell whose drawing could reach the rectangle.
+    const [vx0, vy0, vx1, vy1] = this.cellRange(x0, y0, x1, y1);
+    let drawn = 0;
+    for (let vy = vy0; vy <= vy1; vy++) {
+      for (let vx = vx0; vx <= vx1; vx++) {
+        const b = this.cellReach(vx, vy);
+        if (b.x1 < x0 || b.x0 > x1 || b.y1 < y0 || b.y0 > y1) continue;
+        this.drawCell(vx, vy);
+        drawn++;
+      }
+    }
+    g.restore();
+    return drawn;
+  }
+
+  /**
+   * The area `drawCell` paints for a cell as it is now: its ground up to its highest corner,
+   * plus the sprite standing on it. Tighter than `cellBounds`, which must also cover what the
+   * cell used to look like; this is only for choosing which cells to paint into a chunk.
+   */
+  private cellReach(vx: number, vy: number): Rect {
+    const w = this.world;
+    const rot = this.rot;
+    const [x, y] = fromView(vx, vy, rot, w.n);
+    // A pole's wires run to the neighbouring poles, which may stand at other heights.
+    if (w.tiles[w.idx(x, y)] === TILE.LINE) return this.cellBounds(vx, vy);
+    const hs = surfaceHeights(w, vx, vy, rot);
+    const hc = viewCornerHeights(w, vx, vy, rot);
+    let top = Math.max(hs[0], hs[1], hs[2], hs[3], hc[0], hc[1], hc[2], hc[3]);
+    if (w.isWater(x, y)) top = Math.max(top, SEA_LEVEL + 1);
+    const [tx, ty] = this.toCache(vx, vy, 0);
+    const [, botY] = this.toCache(vx + 1, vy + 1, BASE_HEIGHT);
+    // The ground spans half a tile either side of its top corner; a few pixels cover the strokes.
+    const r: Rect = { x0: tx - TILE_W / 2 - 2, x1: tx + TILE_W / 2 + 2, y0: ty - top * HEIGHT_STEP - 2, y1: botY + 10 };
+    const obj = this.objectAt(vx, vy);
+    if (obj) {
+      const left = Math.round(obj.ax - obj.sprite.ax);
+      const upper = Math.round(obj.ay - obj.sprite.ay);
+      r.x0 = Math.min(r.x0, left);
+      r.y0 = Math.min(r.y0, upper);
+      r.x1 = Math.max(r.x1, left + obj.sprite.canvas.width);
+      r.y1 = Math.max(r.y1, upper + obj.sprite.canvas.height);
+    }
+    return r;
+  }
+
+  /** View cells (inclusive range) whose drawing could reach the rectangle, from its corners at every height. */
+  cellRange(x0: number, y0: number, x1: number, y1: number): [number, number, number, number] {
+    const n = this.world.n;
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
@@ -202,18 +442,7 @@ export class MapRenderer {
         maxY = Math.max(maxY, py);
       }
     }
-    const vx0 = Math.max(0, Math.floor(minX) - 2);
-    const vy0 = Math.max(0, Math.floor(minY) - 2);
-    const vx1 = Math.min(n - 1, Math.ceil(maxX) + 2);
-    const vy1 = Math.min(n - 1, Math.ceil(maxY) + 2);
-    for (let vy = vy0; vy <= vy1; vy++) {
-      for (let vx = vx0; vx <= vx1; vx++) {
-        const b = this.cellBounds(vx, vy);
-        if (b.x1 < x0 || b.x0 > x1 || b.y1 < y0 || b.y0 > y1) continue;
-        this.drawCell(vx, vy);
-      }
-    }
-    g.restore();
+    return [Math.max(0, Math.floor(minX) - 2), Math.max(0, Math.floor(minY) - 2), Math.min(n - 1, Math.ceil(maxX) + 2), Math.min(n - 1, Math.ceil(maxY) + 2)];
   }
 
   private drawCell(vx: number, vy: number): void {
@@ -635,6 +864,19 @@ export class MapRenderer {
     if (vy === n - 1) face([vx, vy + 1, terrain[3]], [vx + 1, vy + 1, terrain[2]], 0.84);
     if (vx === n - 1) face([vx + 1, vy, terrain[1]], [vx + 1, vy + 1, terrain[2]], 0.64);
   }
+}
+
+let scratch: { canvas: HTMLCanvasElement; g: CanvasRenderingContext2D } | null = null;
+
+/** A shared offscreen canvas of at least w x h (contents are not kept between uses). */
+function scratchCanvas(w: number, h: number): { canvas: HTMLCanvasElement; g: CanvasRenderingContext2D } {
+  if (!scratch) {
+    const canvas = document.createElement('canvas');
+    scratch = { canvas, g: canvas.getContext('2d')! };
+  }
+  if (scratch.canvas.width < w) scratch.canvas.width = w;
+  if (scratch.canvas.height < h) scratch.canvas.height = h;
+  return scratch;
 }
 
 function avg(hs: readonly number[]): number {
