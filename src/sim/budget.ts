@@ -2,6 +2,7 @@ import { DEFAULT_FUNDING, FIXED_SHARE, ROAD_REACH, SERVICES, UPKEEP, type Servic
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { cityTotals, zoneTaxes } from './demand';
 import { utilization } from './fields';
+import { loanInstalment, loanPaidOff, type Loan } from './loans';
 import { plantsUpkeep } from './plants';
 
 export interface BudgetReport {
@@ -18,6 +19,8 @@ export interface BudgetReport {
   clinics: number;
   police: number;
   firefighters: number;
+  /** This month's loan instalment; zero when the city owes nothing. */
+  loan: number;
   income: number;
   expenses: number;
   balance: number;
@@ -54,8 +57,12 @@ export function serviceUpkeep(kind: ServiceKind, utilization: number): number {
   return SERVICES[kind].upkeep * (FIXED_SHARE + (1 - FIXED_SHARE) * utilization);
 }
 
-/** The month's income and expenses. `tax` is per zone, or one number for every zone. */
-export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING): BudgetReport {
+/**
+ * The month's income and expenses. `tax` is per zone, or one number for every zone. `loan` is the
+ * credit being paid off, if any: its instalment is an expense like any other, so the balance, the
+ * runway and the newspaper all account for it without knowing about loans.
+ */
+export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING, loan: Loan | null = null): BudgetReport {
   const taxes = zoneTaxes(tax);
   const t = cityTotals(w);
   let roads = 0;
@@ -84,6 +91,7 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
   const taxC = Math.round(t.cJobs * taxes.C * 0.075);
   const taxI = Math.round(t.iJobs * taxes.I * 0.075);
   const funded = (k: ServiceKind) => Math.round((upkeep[k] * funding[k]) / 100);
+  const loanDue = loan && !loanPaidOff(loan) ? loanInstalment(loan) : 0;
   const r = {
     taxR,
     taxC,
@@ -97,8 +105,9 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
     clinics: funded('clinic'),
     police: funded('police'),
     firefighters: funded('fire'),
+    loan: loanDue,
   };
   const income = r.taxR + r.taxC + r.taxI;
-  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters;
+  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan;
   return { ...r, income, expenses, balance: income - expenses };
 }

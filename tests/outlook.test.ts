@@ -17,9 +17,9 @@ import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools'
 import { World } from '../src/world/world';
 
 function report(over: Partial<BudgetReport> = {}): BudgetReport {
-  const b = { taxR: 0, taxC: 0, taxI: 0, roads: 0, lines: 0, parks: 0, plants: 0, services: 0, schools: 0, clinics: 0, police: 0, firefighters: 0, income: 0, expenses: 0, balance: 0, ...over };
+  const b = { taxR: 0, taxC: 0, taxI: 0, roads: 0, lines: 0, parks: 0, plants: 0, services: 0, schools: 0, clinics: 0, police: 0, firefighters: 0, loan: 0, income: 0, expenses: 0, balance: 0, ...over };
   b.income = b.taxR + b.taxC + b.taxI;
-  b.expenses = b.roads + b.lines + b.parks + b.plants + b.services + b.schools + b.clinics + b.police + b.firefighters;
+  b.expenses = b.roads + b.lines + b.parks + b.plants + b.services + b.schools + b.clinics + b.police + b.firefighters + b.loan;
   b.balance = b.income - b.expenses;
   return b;
 }
