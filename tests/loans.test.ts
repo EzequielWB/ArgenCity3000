@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FUNDING, DEFAULT_TAX, LOANS, TICKS_PER_MONTH } from '../src/config';
+import { DEFAULT_FUNDING, DEFAULT_TAX, LOANS, TICKS_PER_MONTH, TICKS_PER_WEEK } from '../src/config';
 import { monthlyBudget } from '../src/sim/budget';
 import { dateLabel } from '../src/sim/calendar';
 import { loanEndLabel, loanInstalment, loanOwed, loanPaidOff, loanTotal, type Loan } from '../src/sim/loans';
+import { Simulation, newSimState } from '../src/sim/simulation';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { World } from '../src/world/world';
@@ -102,5 +103,76 @@ describe('the instalment as a budget line', () => {
     for (let paid = 0; paid < months; paid++) charged.push(monthlyBudget(w, DEFAULT_TAX, DEFAULT_FUNDING, { kind: 1, paid }).loan);
     expect(charged.reduce((a, b) => a + b, 0)).toBe(loanTotal(fresh(1)));
     expect(charged).toEqual(Array.from({ length: months }, (_, paid) => loanInstalment({ kind: 1, paid })));
+  });
+});
+
+describe('taking and paying a loan', () => {
+  it('hands the amount over at once and starts the term', () => {
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    const before = sim.state.cash;
+    expect(sim.takeLoan(1)).toBe(true);
+    expect(sim.state.cash).toBe(before + LOANS[1].amount);
+    expect(sim.state.loan).toEqual({ kind: 1, paid: 0 });
+  });
+
+  it('allows only one at a time', () => {
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    expect(sim.takeLoan(0)).toBe(true);
+    const cash = sim.state.cash;
+    expect(sim.takeLoan(2)).toBe(false);
+    expect(sim.state.cash).toBe(cash);
+    expect(sim.state.loan).toEqual({ kind: 0, paid: 0 });
+  });
+
+  it('charges the instalment every month and closes the loan at the end of the term', () => {
+    const w = staticCity(7);
+    const sim = new Simulation(w, newSimState(1), 'X');
+    const base = monthlyBudget(w, sim.state.taxes, sim.state.funding).balance;
+    const months = LOANS[0].months;
+    const start = sim.state.cash;
+    sim.takeLoan(0);
+    for (let m = 1; m <= months; m++) {
+      for (let t = 0; t < TICKS_PER_MONTH; t++) sim.tick();
+      if (m < months) expect(sim.state.loan!.paid).toBe(m);
+    }
+    expect(sim.state.loan).toBeNull();
+    // the amount handed over, plus the ordinary months, minus exactly the total of the loan
+    expect(sim.state.cash - start).toBe(LOANS[0].amount + months * base - loanTotal(fresh(0)));
+  });
+
+  it('clears the rest of the debt in one payment, and stops charging', () => {
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    sim.state.cash = 100000;
+    sim.takeLoan(2);
+    for (let t = 0; t < TICKS_PER_MONTH * 5; t++) sim.tick();
+    const owed = loanOwed(sim.state.loan!);
+    const before = sim.state.cash;
+    expect(sim.payOffLoan()).toBe(true);
+    expect(sim.state.loan).toBeNull();
+    expect(sim.state.cash).toBe(before - owed);
+    const after = sim.state.cash;
+    for (let t = 0; t < TICKS_PER_MONTH; t++) sim.tick();
+    expect(sim.state.cash - after).toBe(monthlyBudget(sim.world, sim.state.taxes, sim.state.funding).balance);
+  });
+
+  it('refuses to pay off more than the cash in hand, and with nothing owed', () => {
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    expect(sim.payOffLoan()).toBe(false);
+    sim.takeLoan(2);
+    sim.state.cash = 10;
+    expect(sim.payOffLoan()).toBe(false);
+    expect(sim.state.loan).not.toBeNull();
+    expect(sim.state.cash).toBe(10);
+  });
+
+  it('lifts the city out of the crisis it borrowed for', () => {
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    sim.state.cash = 10;
+    for (let t = 0; t < TICKS_PER_WEEK; t++) sim.tick();
+    expect(sim.state.crisis).toBe(true);
+    sim.takeLoan(0);
+    expect(sim.state.cash).toBeGreaterThan(0);
+    for (let t = 0; t < TICKS_PER_WEEK; t++) sim.tick();
+    expect(sim.state.crisis).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import {
   DEFAULT_TAX,
   FIRE_SAFE_COVER,
   INITIAL_CASH,
+  LOANS,
   MAX_FUNDING,
   MAX_TAX,
   MIN_TAX,
@@ -23,6 +24,7 @@ import { cumulativeShare, dateLabel, dateOf } from './calendar';
 import { computeCongestion, jamGrowthFactor, type CongestionReport } from './congestion';
 import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computePollution, computeRoadAccess, computeServices } from './fields';
+import { loanPaidOff, loanOwed, type Loan } from './loans';
 import { advanceMilestones, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
@@ -51,6 +53,8 @@ export interface SimState {
   terms: number;
   /** True once an election was lost: the city goes on in free mode, with no more elections. */
   lostElection: boolean;
+  /** The municipal loan being paid off, or null. One at a time. */
+  loan: Loan | null;
 }
 
 export function newSimState(seed: number): SimState {
@@ -69,6 +73,7 @@ export function newSimState(seed: number): SimState {
     approval: APPROVAL.start,
     terms: 0,
     lostElection: false,
+    loan: null,
   };
 }
 
@@ -231,6 +236,29 @@ export class Simulation {
   spend(cost: number): boolean {
     if (cost > this.state.cash) return false;
     this.state.cash -= cost;
+    return true;
+  }
+
+  /**
+   * Takes a municipal loan: the amount lands in the cash at once and the instalments start at the
+   * end of this month. One at a time. False with a loan already running or an unknown kind.
+   */
+  takeLoan(kind: number): boolean {
+    const offer = LOANS[kind];
+    if (this.state.loan || !offer) return false;
+    this.state.loan = { kind, paid: 0 };
+    this.state.cash += offer.amount;
+    return true;
+  }
+
+  /** Clears what is left of the loan in one payment. False with no loan, or without the cash. */
+  payOffLoan(): boolean {
+    const loan = this.state.loan;
+    if (!loan) return false;
+    const owed = loanOwed(loan);
+    if (owed > this.state.cash) return false;
+    this.state.cash -= owed;
+    this.state.loan = null;
     return true;
   }
 
@@ -412,7 +440,7 @@ export class Simulation {
   private settleWeek(): void {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
-    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding).balance, week);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan).balance, week);
     s.cash += due - this.monthPaid;
     this.monthPaid = due;
     s.crisis = s.cash < 0;
@@ -426,7 +454,15 @@ export class Simulation {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
     if (week === 0) return 0;
-    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+  }
+
+  /** Counts the instalment this month paid, and closes the loan once the term is done. */
+  private advanceLoan(): void {
+    const loan = this.state.loan;
+    if (!loan) return;
+    loan.paid++;
+    if (loanPaidOff(loan)) this.state.loan = null;
   }
 
   private endOfMonth(): void {
@@ -435,11 +471,12 @@ export class Simulation {
     this.fireNews = 0;
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
-    const budget = monthlyBudget(w, s.taxes, s.funding);
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan);
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
     s.crisis = s.cash < 0;
+    this.advanceLoan();
     this.totals = cityTotals(w);
     this.abandonedCount = countAbandoned(w);
     this.updateAppetite();

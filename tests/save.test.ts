@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { LOANS } from '../src/config';
 import { generateTerrain } from '../src/world/terrain';
 import { World, TILE } from '../src/world/world';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
@@ -88,3 +89,52 @@ function serializeBytes(bytes: Uint8Array): string {
   for (const b of bytes) s += String.fromCharCode(b);
   return btoa(s);
 }
+
+describe('the loan in the save', () => {
+  it('round-trips a loan in progress, and goes on paying it the same', () => {
+    const { world, sim } = city();
+    sim.takeLoan(2);
+    for (let i = 0; i < 200; i++) sim.tick();
+    expect(sim.state.loan!.paid).toBeGreaterThan(0);
+    const back = deserialize(serialize({ name: 'X', seed: 11, world, sim: sim.state }));
+    expect(back.sim.loan).toEqual(sim.state.loan);
+    const resumed = new Simulation(back.world, back.sim, 'X');
+    for (let i = 0; i < 400; i++) {
+      sim.tick();
+      resumed.tick();
+    }
+    expect(resumed.state.loan).toEqual(sim.state.loan);
+    expect(resumed.state.cash).toBe(sim.state.cash);
+  });
+
+  it('opens a version 4 save, which owes nothing and has no loan line in its budget', () => {
+    const { world, sim } = city();
+    const data = JSON.parse(serialize({ name: 'X', seed: 11, world, sim: sim.state }));
+    data.version = 4;
+    delete data.sim.loan;
+    delete data.sim.lastBudget.loan;
+    const back = deserialize(JSON.stringify(data));
+    expect(back.sim.loan).toBeNull();
+    expect(back.sim.lastBudget!.loan).toBe(0);
+  });
+
+  it('rejects an impossible loan', () => {
+    const { world, sim } = city();
+    sim.takeLoan(0);
+    const good = JSON.parse(serialize({ name: 'X', seed: 11, world, sim: sim.state }));
+    const impossible = [
+      { kind: LOANS.length, paid: 0 },
+      { kind: -1, paid: 0 },
+      { kind: 0, paid: -1 },
+      // Already paid off: the simulation would have dropped the loan at the end of that month.
+      { kind: 0, paid: LOANS[0].months },
+      { kind: 0, paid: 1.5 },
+      { kind: 'uno', paid: 0 },
+    ];
+    for (const loan of impossible) {
+      const data = structuredClone(good);
+      data.sim.loan = loan;
+      expect(() => deserialize(JSON.stringify(data))).toThrow(/crédito/i);
+    }
+  });
+});

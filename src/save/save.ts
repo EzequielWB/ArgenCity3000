@@ -1,5 +1,6 @@
 import {
   DEFAULT_FUNDING,
+  LOANS,
   MAX_FUNDING,
   MAX_LEVEL,
   MAX_TAX,
@@ -12,19 +13,21 @@ import {
   type ZoneTaxes,
 } from '../config';
 import type { BudgetReport } from '../sim/budget';
+import type { Loan } from '../sim/loans';
 import { MILESTONES, milestoneForPop } from '../sim/milestones';
 import { APPROVAL } from '../sim/politics';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
- * versions 1 to 3 had only coal plants (a plant without a kind is a coal one).
+ * versions 1 to 3 had only coal plants (a plant without a kind is a coal one); versions 1 to 4
+ * had no municipal loan, so they owe nothing.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -206,6 +209,8 @@ function parseSim(raw: unknown): SimState {
   need(s.approval === undefined || (isInt(s.approval) && s.approval >= 0 && s.approval <= 100), 'La aprobación de la partida es inválida');
   need(s.terms === undefined || (isInt(s.terms) && s.terms >= 0), 'El mandato de la partida es inválido');
   need(s.lostElection === undefined || typeof s.lostElection === 'boolean', 'El mandato de la partida es inválido');
+  // The municipal loan exists from version 5 on: older saves owe nothing.
+  const loan = parseLoan(s.loan);
   return {
     tick: s.tick as number,
     cash: s.cash as number,
@@ -221,5 +226,19 @@ function parseSim(raw: unknown): SimState {
     approval: (s.approval as number | undefined) ?? APPROVAL.start,
     terms: (s.terms as number | undefined) ?? 0,
     lostElection: (s.lostElection as boolean | undefined) ?? false,
+    loan,
   };
+}
+
+/**
+ * A loan in progress, or null. `paid` has to be short of the term: a save where it reached the term
+ * would mean the simulation did not drop the loan at the end of that month.
+ */
+function parseLoan(raw: unknown): Loan | null {
+  if (raw === undefined || raw === null) return null;
+  const { kind, paid } = (raw ?? {}) as { kind?: unknown; paid?: unknown };
+  need(isInt(kind) && kind >= 0 && kind < LOANS.length, 'El crédito de la partida es inválido');
+  const months = LOANS[kind as number].months;
+  need(isInt(paid) && (paid as number) >= 0 && (paid as number) < months, 'El crédito de la partida es inválido');
+  return { kind: kind as number, paid: paid as number };
 }

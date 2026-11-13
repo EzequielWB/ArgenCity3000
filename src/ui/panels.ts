@@ -121,7 +121,7 @@ export function openBudget(game: Game): void {
     ${sim.state.lastBudget ? `<h3>Mes pasado</h3>${budgetTable(sim.state.lastBudget)}` : ''}
   `);
   const refresh = () => {
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding);
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan);
     $('#budgetNow').innerHTML = budgetTable(b);
     $('#yearly').innerHTML = money(b.balance * 12, true);
     const d = sim.demand;
