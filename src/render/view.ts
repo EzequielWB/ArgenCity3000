@@ -7,7 +7,7 @@ import { cellScreenCorners, type Pt } from './geometry';
 import { FRAME_BUDGET_MS, MapRenderer } from './mapRenderer';
 import { Traffic, drawTraffic } from './traffic';
 
-export type Layer = 'none' | 'power' | 'pollution' | 'landValue' | 'crime' | 'edu' | 'health' | 'fireCover';
+export type Layer = 'none' | 'power' | 'traffic' | 'pollution' | 'landValue' | 'crime' | 'edu' | 'health' | 'fireCover';
 
 export const ZOOMS = [0.25, 0.5, 1, 2, 3] as const;
 
@@ -391,6 +391,11 @@ export class View {
         if (tile === TILE.EMPTY) return w.powered[i] && !w.isWater(x, y) ? 'rgba(255,214,60,0.18)' : null;
         if (zoneOf(tile)) return w.powered[i] ? 'rgba(255,214,60,0.55)' : 'rgba(210,40,30,0.55)';
         return w.powered[i] ? 'rgba(255,214,60,0.3)' : 'rgba(120,120,120,0.3)';
+      case 'traffic': {
+        if (tile !== TILE.ROAD) return null;
+        const t = w.traffic[i];
+        return t > 100 ? 'rgba(215,40,30,0.8)' : t > 60 ? 'rgba(240,170,40,0.75)' : 'rgba(90,190,90,0.6)';
+      }
       case 'pollution': {
         const p = w.pollution[i];
         return p > 2 ? `rgba(110,60,40,${Math.min(0.75, p / 110)})` : null;

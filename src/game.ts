@@ -29,6 +29,7 @@ const SPEED_NAMES = ['Pausa', 'Lento', 'Normal', 'Rápido'];
 const LAYERS: { id: Layer; label: string }[] = [
   { id: 'none', label: 'Sin capa' },
   { id: 'power', label: 'Luz' },
+  { id: 'traffic', label: 'Tránsito' },
   { id: 'pollution', label: 'Humo' },
   { id: 'landValue', label: 'Valor' },
   { id: 'crime', label: 'Delito' },
@@ -53,8 +54,8 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   fire: 'rgba(200,50,40,0.55)',
 };
 
-/** Tools that show a coverage layer while they are picked: each service shows what it covers, the plant and the line show the light. */
-const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', plantGas: 'power', plantWind: 'power', line: 'power' };
+/** Tools that show a coverage layer while they are picked: each service shows what it covers, the plants and the line show the light, the street shows the traffic. */
+const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', plantGas: 'power', plantWind: 'power', line: 'power', road: 'traffic' };
 
 export interface GameHooks {
   isModalOpen(): boolean;

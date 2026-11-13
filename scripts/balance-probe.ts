@@ -115,6 +115,6 @@ for (let year = 1; year <= 15; year++) {
   const b = sim.state.lastBudget!;
   const f = sim.state.funding;
   console.log(
-    `año ${year}: pop ${sim.totals.pop} caja ${sim.state.cash} saldo ${b.balance}/mes servicios ${b.schools + b.clinics + b.police + b.firefighters} tasa ${sim.state.taxes.R} % policía/bomberos ${f.police}/${f.fire} % usinas ${w.plants.length} niveles ${levels.slice(1).join('/')} abandonados ${sim.abandonedCount} incendios ${sim.stats.firesStarted}/${sim.stats.buildingsBurned}`,
+    `año ${year}: pop ${sim.totals.pop} caja ${sim.state.cash} saldo ${b.balance}/mes servicios ${b.schools + b.clinics + b.police + b.firefighters} tasa ${sim.state.taxes.R} % policía/bomberos ${f.police}/${f.fire} % usinas ${w.plants.length} niveles ${levels.slice(1).join('/')} abandonados ${sim.abandonedCount} incendios ${sim.stats.firesStarted}/${sim.stats.buildingsBurned} tránsito peor ${sim.congestion.worst} % atascados ${Math.round(sim.congestion.jammedShare * 100)} %`,
   );
 }

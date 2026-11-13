@@ -143,5 +143,13 @@ export const MAX_FUNDING = 120;
 /** Fire coverage at which firefighters put a fire out before the building is lost. */
 export const FIRE_SAFE_COVER = 50;
 
+/**
+ * Estimated congestion (see sim/congestion.ts). `laneCapacity` is how many commuting residents
+ * one lane of street carries before it saturates (100 %). A lot on a street loaded above
+ * `valueFrom` percent loses `valuePerPoint` of land value per point, and above `slowFrom` it
+ * grows more slowly, down to `slowest` of its usual pace.
+ */
+export const TRAFFIC = { laneCapacity: 1200, valueFrom: 60, valuePerPoint: 0.3, slowFrom: 90, slowest: 0.25 } as const;
+
 /** A zone needs a road within this many cells (Manhattan distance). */
 export const ROAD_REACH = 3;

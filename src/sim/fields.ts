@@ -1,4 +1,4 @@
-import { CAPACITY, DEFAULT_FUNDING, PLANTS, ROAD_REACH, SERVICES, type ServiceFunding, type ServiceKind } from '../config';
+import { CAPACITY, DEFAULT_FUNDING, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf } from '../world/world';
 
@@ -199,7 +199,7 @@ export function computeCrime(w: World, pop: number): void {
   }
 }
 
-/** Land value: views of the water, plazas, trees and height add; pollution subtracts. Needs pollution first. */
+/** Land value: views of the water, plazas, trees and height add; pollution, crime and a saturated street subtract. Needs pollution, crime and congestion first. */
 export function computeLandValue(w: World): void {
   const n = w.n;
   const water = waterDistance(w);
@@ -230,6 +230,7 @@ export function computeLandValue(w: World): void {
       v -= Math.min(30, blight[i]);
       v += (w.edu[i] + w.health[i]) * 0.08;
       v -= w.crime[i] * 0.35;
+      v -= Math.max(0, w.jam[i] - TRAFFIC.valueFrom) * TRAFFIC.valuePerPoint;
       w.landValue[i] = clamp100(v);
     }
   }

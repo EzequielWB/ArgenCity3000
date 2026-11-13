@@ -272,7 +272,7 @@ export function openHelp(): void {
     <ol class="steps">
       <li><strong>Construí una usina</strong> (tecla 9). Sin luz no se levanta ni una casita.</li>
       <li><strong>Trazá calles</strong> (3) arrastrando. Los lotes necesitan una calle a 3 lotes o menos.
-        Si ponés calles pegadas una al lado de la otra, se dibujan como una <strong>avenida</strong> con más carriles cuanto más ancha sea (es solo visual: cada celda sigue siendo una calle común).</li>
+        Si ponés calles pegadas una al lado de la otra, forman una <strong>avenida</strong> con más carriles cuanto más ancha sea, y aguanta más tránsito.</li>
       <li><strong>Zonificá</strong> residencial (5), comercial (6) e industrial (7) pegado a las calles. Al zonificar, la manzana se nivela sola y las calles hacen de rampa.
         La luz viaja por calles, zonas y tendido eléctrico (4), así que todo tiene que estar conectado a la usina.</li>
       <li><strong>Mirá la demanda</strong> (barras R C I arriba): la gente viene si hay trabajo, y el comercio y la industria siguen a la gente.</li>
@@ -284,6 +284,7 @@ export function openHelp(): void {
       <li><strong>Servicios públicos</strong> (necesitan luz y cubren un radio): sin <strong>salita</strong> (U) las casas no pasan de chalet, y sin
         <strong>escuela</strong> (Y) no hay torres ni oficinas. La <strong>comisaría</strong> (I) baja el delito de los barrios densos y los
         <strong>bomberos</strong> (O) apagan los incendios antes de que se pierda el edificio. Al elegirlos se ve la capa de cobertura.</li>
+      <li><strong>Tránsito.</strong> Cada vecino va a trabajar al comercio y a la industria más cercanos por las calles. Si pasa más gente de la que la calle aguanta, se satura (rojo en la capa Tránsito): baja el valor del suelo, los lotes crecen despacio y los vecinos se quejan. Se arregla con avenidas, con más caminos o acercando el trabajo a las casas.</li>
       <li>Un edificio sin luz, sin calle, con mucho delito o con la caja en rojo puede quedar <strong>abandonado</strong>: no paga y baja el valor de alrededor.</li>
     </ol>
     <h3>Controles</h3>

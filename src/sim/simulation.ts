@@ -18,6 +18,7 @@ import { World, zoneOf, type ZoneKind } from '../world/world';
 import { buildingName } from './report';
 import { monthlyBudget, type BudgetReport } from './budget';
 import { cumulativeShare, dateLabel, dateOf } from './calendar';
+import { computeCongestion, jamGrowthFactor, type CongestionReport } from './congestion';
 import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computePollution, computeRoadAccess, computeServices } from './fields';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
@@ -79,6 +80,8 @@ function countAbandoned(w: World): number {
 }
 /** A changed light network is recomputed at the next tick, but no more often than every this many ticks. */
 const POWER_DIRTY_GAP = 3;
+/** Share of the commuters stuck in a saturated street from which the newspaper complains. */
+const JAM_NEWS_SHARE = 0.25;
 const MAX_NEWS = 50;
 const MAX_HISTORY = 240;
 const HINT_COOLDOWN = TICKS_PER_MONTH * 6;
@@ -90,6 +93,7 @@ export class Simulation {
   totals: Totals = { pop: 0, cJobs: 0, iJobs: 0 };
   demand: Demand = { R: 0, C: 0, I: 0 };
   power: PowerReport = { capacity: 0, use: 0, shortage: false };
+  congestion: CongestionReport = { trips: 0, worst: 0, jammedShare: 0 };
   /** Above 1 the city attracts newcomers beyond what its jobs justify (see `updateAppetite`). */
   appetite = GROWTH_APPETITE;
   abandonedCount = 0;
@@ -146,12 +150,13 @@ export class Simulation {
     this.lightTick = this.state.tick;
   }
 
-  /** Services, pollution, crime and land value, in that order (each needs the previous). */
+  /** Services, pollution, crime, congestion and land value, in that order (each needs the previous). */
   private updateFields(): void {
     const w = this.world;
     computeServices(w, this.state.funding);
     computePollution(w);
     computeCrime(w, this.totals.pop);
+    this.congestion = computeCongestion(w);
     computeLandValue(w);
   }
 
@@ -246,7 +251,7 @@ export class Simulation {
         if (level > cap && rng.chance(0.002)) this.changeLevel(i, level - 1);
         continue;
       }
-      if (rng.chance((GROWTH_RATE * d) / 100 / (1 + level * 0.5))) {
+      if (rng.chance(((GROWTH_RATE * d) / 100 / (1 + level * 0.5)) * jamGrowthFactor(w.jam[i]))) {
         this.changeLevel(i, level + 1);
         w.variant[i] = rng.int(256);
         w.terrain.trees[i] = 0;
@@ -433,6 +438,7 @@ export class Simulation {
     hint('appetite', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) > APPETITE_MAX_TAX, 'Con tasas tan altas, nadie quiere mudarse: la ciudad dejó de atraer gente');
     hint('blight', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) <= APPETITE_MAX_TAX && this.abandonedCount > 0, 'El abandono espanta a los nuevos vecinos: hay que recuperar o demoler los edificios vacíos');
     hint('smog', smog > 5, 'Vecinos se quejan del humo de las fábricas');
+    hint('jam', this.congestion.jammedShare > JAM_NEWS_SHARE, 'Embotellamientos camino al trabajo: los vecinos piden avenidas u otro camino');
     const b = s.lastBudget;
     if (b) {
       const runway = runwayHeadline(b, s.cash);

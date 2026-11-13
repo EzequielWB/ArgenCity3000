@@ -1,4 +1,4 @@
-import { CAPACITY, FIRE_SAFE_COVER, PLANTS, POWER_REACH, ROAD_REACH, SERVICES, WIND, type ServiceKind } from '../config';
+import { CAPACITY, FIRE_SAFE_COVER, PLANTS, POWER_REACH, ROAD_REACH, SERVICES, TRAFFIC, WIND, type ServiceKind } from '../config';
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf, zoneOf, type ZoneKind } from '../world/world';
@@ -57,7 +57,11 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   const zone = zoneOf(tile);
 
   if (tile === TILE.ROAD) {
-    return { title: water ? 'Puente' : 'Calle', lines: [height, w.powered[i] ? 'Con luz (la calle no lleva la luz)' : 'Sin luz (la calle no lleva la luz)'] };
+    return {
+      title: water ? 'Puente' : 'Calle',
+      lines: [height, `Tránsito: ${w.traffic[i]} % de su capacidad`, w.powered[i] ? 'Con luz (la calle no lleva la luz)' : 'Sin luz (la calle no lleva la luz)'],
+      hint: w.traffic[i] > 100 ? 'Calle saturada: poné otra calle pegada para hacerla avenida, o abrí otro camino entre las casas y el trabajo.' : undefined,
+    };
   }
   if (water) {
     if (tile === TILE.LINE) return { title: 'Tendido eléctrico sobre el agua', lines: [w.powered[i] ? 'Con energía' : 'Sin energía', 'Lleva la luz de celda en celda'] };
@@ -157,6 +161,7 @@ function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level:
   if (!w.powered[i]) return noLightHint(sim, 'Sin luz', 'lo');
   if (!w.roadAccess[i]) return 'Falta una calle cerca para que llegue la gente.';
   if (sim.state.crisis) return 'Con la caja en rojo no se construye nada.';
+  if (w.jam[i] > TRAFFIC.slowFrom + 30) return 'La calle de acceso está saturada y el lote crece despacio: ensanchala o abrí otro camino.';
   if (sim.demand[zone] <= 0) {
     return zone === 'R' ? 'No hay demanda de viviendas: hacen falta trabajos (comercio o industria).' : 'No hay demanda: hace falta más población.';
   }

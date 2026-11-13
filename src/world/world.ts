@@ -86,6 +86,10 @@ export class World {
   readonly health: Uint8Array;
   readonly safety: Uint8Array;
   readonly fireCover: Uint8Array;
+  /** Load of each street cell in percent of its capacity (over 100 = saturated; capped at 255). */
+  readonly traffic: Uint8Array;
+  /** For every lot near a street, the traffic of the street it opens onto. */
+  readonly jam: Uint8Array;
 
   /** Bumped whenever something that conducts power or gives road access changes. */
   networkVersion = 0;
@@ -106,6 +110,8 @@ export class World {
     this.health = new Uint8Array(size);
     this.safety = new Uint8Array(size);
     this.fireCover = new Uint8Array(size);
+    this.traffic = new Uint8Array(size);
+    this.jam = new Uint8Array(size);
     this.powered = new Uint8Array(size);
     this.pollution = new Uint8Array(size);
     this.landValue = new Uint8Array(size);
