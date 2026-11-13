@@ -37,14 +37,28 @@ plantX += 3;
 let row = 22;
 let rows = 0;
 const addRow = () => {
-  build('road', 4, row, 64, row);
+  // Roads carry no light (S25): a building lights 3 lots around it, so homes alone would stop growing
+  // (no jobs) before their light reached the shops and factories farther along the row. The first row
+  // therefore gets a power line through the middle (a gap in the road marks where the plant's link
+  // crosses it, and the cross streets leave a gap for the line); later rows are lit by the row above.
+  if (rows === 0) {
+    build('road', 4, row, 5, row);
+    build('road', 7, row, 64, row);
+    build('line', 6, row, 6, row + 2);
+    build('line', 4, row + 3, 64, row + 3);
+  } else build('road', 4, row, 64, row);
   build('road', 4, row + 6, 64, row + 6);
-  for (let x = 4; x <= 64; x += 12) build('road', x, row, x, row + 6);
+  for (let x = 4; x <= 64; x += 12) {
+    if (rows === 0) {
+      build('road', x, row, x, row + 2);
+      build('road', x, row + 4, x, row + 6);
+    } else build('road', x, row, x, row + 6);
+  }
   const kind: ToolId[] = ['zoneR', 'zoneR', 'zoneC', 'zoneR', 'zoneI'];
   kind.forEach((k, j) => build(k, 5 + j * 12, row + 1, 15 + j * 12, row + 5));
   build('park', 52, row + 2, 53, row + 3);
   // Every other row reserves a lot for each service (each covers about two rows around it).
-  if (rows % 2 === 0) for (const [k, minPop, x] of SERVICE_PLAN) pending.push({ kind: k, minPop, x, y: row + 3 });
+  if (rows % 2 === 0) for (const [k, minPop, x] of SERVICE_PLAN) pending.push({ kind: k, minPop, x, y: row + (rows === 0 ? 2 : 3) });
   rows++;
   row += 6;
 };

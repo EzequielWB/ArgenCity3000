@@ -1,4 +1,4 @@
-import { PLANT_CAPACITY, POWER_USE, SERVICES } from '../config';
+import { LINE_REACH, PLANT_CAPACITY, POWER_REACH, POWER_USE, SERVICES } from '../config';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 
 export interface PowerReport {
@@ -21,10 +21,67 @@ export function powerNeed(w: World, i: number): number {
   return w.isOccupied(i) ? buildingPowerUse(w.tiles[i], w.level[i]) : 0;
 }
 
+/** The cells of a disc of the given radius around a cell, as dx/dy pairs (the centre excluded). */
+function discOffsets(reach: number): { dx: Int8Array; dy: Int8Array } {
+  const dx: number[] = [];
+  const dy: number[] = [];
+  for (let y = -reach; y <= reach; y++) {
+    for (let x = -reach; x <= reach; x++) {
+      if ((x || y) && x * x + y * y <= reach * reach) {
+        dx.push(x);
+        dy.push(y);
+      }
+    }
+  }
+  return { dx: Int8Array.from(dx), dy: Int8Array.from(dy) };
+}
+
+const BUILDING_DISC = discOffsets(POWER_REACH);
+const LINE_DISC = discOffsets(LINE_REACH);
+
 /**
- * Flood-fills each power network from its plants through every built cell (roads, lines,
- * zones, parks, plants). Buildings take power in BFS order until the network runs out;
- * empty lots count as powered only when their network has spare capacity.
+ * The lots that relays standing on `cells` would light with the given reach: every cell of the
+ * map inside the disc of one of them, without the cells themselves. For the placement preview.
+ */
+export function reachCells(n: number, cells: readonly (readonly [number, number])[], reach: number): [number, number][] {
+  const disc = reach === POWER_REACH ? BUILDING_DISC : discOffsets(reach);
+  const own = new Set(cells.map(([x, y]) => y * n + x));
+  const seen = new Set<number>();
+  const out: [number, number][] = [];
+  for (const [x, y] of cells) {
+    for (let k = 0; k < disc.dx.length; k++) {
+      const nx = x + disc.dx[k];
+      const ny = y + disc.dy[k];
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      const j = ny * n + nx;
+      if (own.has(j) || seen.has(j)) continue;
+      seen.add(j);
+      out.push([nx, ny]);
+    }
+  }
+  return out;
+}
+
+/**
+ * True for the cells that pass the light on: plants, power-line cells, services and zone
+ * buildings (abandoned and burning ones too, so that an abandonment or a fire does not switch
+ * off a chain; they stop only when the building is gone). Roads, parks, empty land and zoned
+ * lots without a building only receive light.
+ */
+export function isRelay(w: World, i: number): boolean {
+  const tile = w.tiles[i];
+  if (tile === TILE.PLANT || tile === TILE.LINE) return true;
+  if (zoneOf(tile)) return w.level[i] > 0;
+  return serviceOf(tile) !== null;
+}
+
+/**
+ * Lights the map from each plant. A relay lights every cell inside its reach (a disc of
+ * POWER_REACH lots, or LINE_REACH for a power-line cell), whatever is on it; a lit cell passes the
+ * light on only if it is a relay itself (see `isRelay`), so roads carry nothing and the light
+ * travels over distance only through buildings or a power line. Buildings take power in BFS order
+ * until the network runs out (a dark building still relays: connectivity does not depend on
+ * capacity); cells that ask for nothing are lit when the network has spare capacity.
  */
 export function computePower(w: World): PowerReport {
   const n = w.n;
@@ -46,12 +103,19 @@ export function computePower(w: World): PowerReport {
     visited[start] = 1;
     while (head < tail) {
       const i = queue[head++];
+      if (!isRelay(w, i)) continue;
       const x = i % n;
       const y = (i - x) / n;
-      if (x > 0) tail = visit(i - 1, tail);
-      if (x < n - 1) tail = visit(i + 1, tail);
-      if (y > 0) tail = visit(i - n, tail);
-      if (y < n - 1) tail = visit(i + n, tail);
+      const disc = w.tiles[i] === TILE.LINE ? LINE_DISC : BUILDING_DISC;
+      for (let k = 0; k < disc.dx.length; k++) {
+        const nx = x + disc.dx[k];
+        const ny = y + disc.dy[k];
+        if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+        const j = ny * n + nx;
+        if (visited[j]) continue;
+        visited[j] = 1;
+        queue[tail++] = j;
+      }
     }
     let cap = 0;
     const seenPlants = new Set<object>();
@@ -87,11 +151,4 @@ export function computePower(w: World): PowerReport {
     use += netUse;
   }
   return { capacity, use, shortage };
-
-  function visit(j: number, tail: number): number {
-    if (visited[j] || w.tiles[j] === TILE.EMPTY) return tail;
-    visited[j] = 1;
-    queue[tail] = j;
-    return tail + 1;
-  }
 }

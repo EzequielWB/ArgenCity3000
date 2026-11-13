@@ -77,6 +77,8 @@ function countAbandoned(w: World): number {
   for (let i = 0; i < w.abandoned.length; i++) if (w.abandoned[i] && w.level[i] > 0) c++;
   return c;
 }
+/** A changed light network is recomputed at the next tick, but no more often than every this many ticks. */
+const POWER_DIRTY_GAP = 3;
 const MAX_NEWS = 50;
 const MAX_HISTORY = 240;
 const HINT_COOLDOWN = TICKS_PER_MONTH * 6;
@@ -91,6 +93,13 @@ export class Simulation {
   /** Above 1 the city attracts newcomers beyond what its jobs justify (see `updateAppetite`). */
   appetite = GROWTH_APPETITE;
   abandonedCount = 0;
+  /**
+   * True when a building appeared or disappeared since the light was last computed: buildings
+   * pass the light on, so the network changed. It is recomputed once, however many buildings
+   * changed, within `POWER_DIRTY_GAP` ticks (a level change between built levels never sets it).
+   */
+  powerDirty = false;
+  private lightTick = 0;
   /** Counters for this session (not saved). */
   stats = { firesStarted: 0, firesSaved: 0, buildingsBurned: 0 };
   private burning = new Set<number>();
@@ -122,13 +131,19 @@ export class Simulation {
     const w = this.world;
     this.seenNetwork = w.networkVersion;
     computeRoadAccess(w);
-    this.power = computePower(w);
+    this.recomputePower();
     this.totals = cityTotals(w);
     this.updateFields();
     this.abandonedCount = countAbandoned(w);
     this.burning.clear();
     for (let i = 0; i < w.fire.length; i++) if (w.fire[i]) this.burning.add(i);
     this.updateAppetite();
+  }
+
+  private recomputePower(): void {
+    this.power = computePower(this.world);
+    this.powerDirty = false;
+    this.lightTick = this.state.tick;
   }
 
   /** Services, pollution, crime and land value, in that order (each needs the previous). */
@@ -178,8 +193,10 @@ export class Simulation {
     if (w.networkVersion !== this.seenNetwork) {
       this.refresh();
     } else {
-      if (s.tick % 5 === 0) {
-        this.power = computePower(w);
+      // Consumption changes all the time, so the light is recomputed every 5 ticks; a building
+      // that appeared or vanished (a change of the network itself) does not wait for the 5th.
+      if (s.tick % 5 === 0 || (this.powerDirty && s.tick - this.lightTick >= POWER_DIRTY_GAP)) {
+        this.recomputePower();
         this.updateAppetite();
       }
       if (s.tick % 30 === 0) this.updateFields();
@@ -251,6 +268,7 @@ export class Simulation {
   private changeLevel(i: number, level: number): void {
     const w = this.world;
     const tile = w.tiles[i];
+    if ((w.level[i] === 0) !== (level === 0)) this.powerDirty = true; // a building appears or goes: the light network changes
     addBuilding(this.totals, tile, w.level[i], -1);
     w.setLevel(i, level);
     addBuilding(this.totals, tile, level, 1);
@@ -287,6 +305,7 @@ export class Simulation {
         this.stats.firesSaved++;
       } else {
         w.level[i] = 0;
+        this.powerDirty = true; // the building no longer passes the light on
         this.stats.buildingsBurned++;
       }
       w.markDirty(i);
@@ -384,6 +403,7 @@ export class Simulation {
     const out: string[] = [];
     let zoned = 0;
     let noRoad = 0;
+    let unlit = 0;
     const free: Record<ZoneKind, number> = { R: 0, C: 0, I: 0 };
     let smog = 0;
     for (let i = 0; i < w.tiles.length; i++) {
@@ -391,6 +411,7 @@ export class Simulation {
       if (!z) continue;
       zoned++;
       if (!w.roadAccess[i]) noRoad++;
+      if (!w.powered[i]) unlit++;
       if (w.level[i] === 0 && w.roadAccess[i] && w.powered[i]) free[z]++;
       if (z === 'R' && w.level[i] > 0 && w.pollution[i] > 60) smog++;
     }
@@ -402,6 +423,8 @@ export class Simulation {
       out.push(text);
     };
     hint('noPower', zoned > 0 && w.plants.length === 0, 'Los lotes esperan la luz: hace falta una usina');
+    // With no shortage, a lot in the dark is simply out of reach of every building and plant.
+    hint('farLots', w.plants.length > 0 && !this.power.shortage && unlit > 8, 'Hay lotes sin luz: la usina y cada edificio alumbran hasta 3 lotes a su alrededor; más lejos hace falta un tendido eléctrico');
     hint('noRoad', noRoad > 8, 'Vecinos reclaman calles para llegar a sus terrenos');
     hint('needR', this.demand.R > 50 && free.R === 0 && zoned > 0, `Faltan viviendas: hay familias que quieren mudarse a ${this.cityName}`);
     hint('needC', this.demand.C > 50 && free.C === 0 && zoned > 0, 'Los comerciantes buscan locales y no encuentran');

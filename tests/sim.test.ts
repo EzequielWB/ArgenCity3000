@@ -33,16 +33,18 @@ describe('calendar', () => {
 });
 
 describe('computePower', () => {
-  it('powers zones connected to a plant through roads and lines, and nothing else', () => {
+  it('powers zones next to a power line from a plant, but not those only joined to it by a road', () => {
     const w = new World(flat());
     build(w, 'plant', 0, 0);
     build(w, 'line', 2, 0, 5, 0);
-    build(w, 'road', 6, 0, 6, 5);
-    build(w, 'zoneR', 7, 3);
+    build(w, 'road', 6, 0, 6, 9);
+    build(w, 'zoneR', 5, 1); // next to the line
+    build(w, 'zoneR', 7, 6); // on the road, out of the reach of the line: roads carry no light
     build(w, 'zoneR', 20, 20); // isolated
     const r = computePower(w);
     expect(r.capacity).toBe(PLANT_CAPACITY);
-    expect(w.powered[w.idx(7, 3)]).toBe(1);
+    expect(w.powered[w.idx(5, 1)]).toBe(1);
+    expect(w.powered[w.idx(7, 6)]).toBe(0);
     expect(w.powered[w.idx(20, 20)]).toBe(0);
   });
 
@@ -232,6 +234,9 @@ describe('Simulation', () => {
     build(w, 'plant', 0, 1);
     build(w, 'road', 0, 3, 31, 3);
     build(w, 'road', 0, 9, 31, 9);
+    // Roads carry no light: a power line runs from the plant along the middle row between the zones.
+    build(w, 'line', 0, 4, 0, 6);
+    build(w, 'line', 1, 6, 31, 6);
     build(w, 'zoneR', 2, 4, 20, 5);
     build(w, 'zoneR', 2, 7, 20, 8);
     build(w, 'zoneI', 22, 4, 31, 8);

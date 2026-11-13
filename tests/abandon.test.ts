@@ -22,6 +22,9 @@ function starter(): World {
   build(w, 'plant', 0, 1);
   build(w, 'road', 0, 3, 31, 3);
   build(w, 'road', 0, 9, 31, 9);
+  // Roads carry no light: a power line runs from the plant along the middle row between the zones.
+  build(w, 'line', 0, 4, 0, 6);
+  build(w, 'line', 1, 6, 31, 6);
   build(w, 'zoneR', 2, 4, 20, 5);
   build(w, 'zoneR', 2, 7, 20, 8);
   build(w, 'zoneI', 22, 4, 31, 8);

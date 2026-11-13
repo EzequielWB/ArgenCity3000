@@ -1,4 +1,4 @@
-import { CAPACITY, FIRE_SAFE_COVER, PLANT_CAPACITY, ROAD_REACH, SERVICES, type ServiceKind } from '../config';
+import { CAPACITY, FIRE_SAFE_COVER, PLANT_CAPACITY, POWER_REACH, ROAD_REACH, SERVICES, type ServiceKind } from '../config';
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf, zoneOf, type ZoneKind } from '../world/world';
@@ -56,21 +56,21 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   const zone = zoneOf(tile);
 
   if (tile === TILE.ROAD) {
-    return { title: water ? 'Puente' : 'Calle', lines: [height, w.powered[i] ? 'Lleva luz' : 'Sin red eléctrica'] };
+    return { title: water ? 'Puente' : 'Calle', lines: [height, w.powered[i] ? 'Con luz (la calle no lleva la luz)' : 'Sin luz (la calle no lleva la luz)'] };
   }
   if (water) {
-    if (tile === TILE.LINE) return { title: 'Tendido eléctrico sobre el agua', lines: [w.powered[i] ? 'Con energía' : 'Sin energía'] };
+    if (tile === TILE.LINE) return { title: 'Tendido eléctrico sobre el agua', lines: [w.powered[i] ? 'Con energía' : 'Sin energía', 'Lleva la luz de celda en celda'] };
     return { title: 'Río', lines: ['Agua. Se puede cruzar con calles (puentes) o con tendido eléctrico.'] };
   }
   if (tile === TILE.PLANT) {
     const p = sim.power;
     return {
       title: 'Usina térmica',
-      lines: [`Capacidad: ${PLANT_CAPACITY} MW`, `Red de la ciudad: ${formatNumber(p.use)} de ${formatNumber(p.capacity)} MW`, `Contaminación local: ${w.pollution[i]}/100`],
+      lines: [`Capacidad: ${PLANT_CAPACITY} MW`, `Alumbra hasta ${POWER_REACH} lotes a su alrededor`, `Red de la ciudad: ${formatNumber(p.use)} de ${formatNumber(p.capacity)} MW`, `Contaminación local: ${w.pollution[i]}/100`],
       hint: p.shortage ? 'La red no da abasto: construí otra usina conectada.' : undefined,
     };
   }
-  if (tile === TILE.LINE) return { title: 'Tendido eléctrico', lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía'] };
+  if (tile === TILE.LINE) return { title: 'Tendido eléctrico', lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía', 'Lleva la luz de celda en celda'] };
   const service = serviceOf(tile);
   if (service) {
     const info = SERVICES[service];
@@ -83,7 +83,7 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
         `Mantenimiento: $${formatNumber(Math.round((serviceUpkeep(service, utilization(w, i, service)) * sim.state.funding[service]) / 100))} por mes`,
         SERVICE_ROLE[service],
       ],
-      hint: w.powered[i] ? undefined : 'Necesita luz: conectala a la red con calles, zonas o tendido.',
+      hint: w.powered[i] ? undefined : noLightHint(sim, 'Necesita luz', 'la'),
     };
   }
   if (tile === TILE.PARK) return { title: 'Plaza', lines: [height, `Valor del suelo: ${w.landValue[i]}/100`], hint: 'Las plazas suben el valor del suelo alrededor.' };
@@ -126,6 +126,13 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   return { title: w.terrain.trees[i] ? 'Arboleda' : 'Terreno libre', lines };
 }
 
+/** What to do about a cell with no light: it must be within the reach of the plant or of a lit building, or get a power line. */
+function noLightHint(sim: Simulation, lead: string, pronoun: 'lo' | 'la'): string {
+  if (sim.world.plants.length === 0) return `${lead}: construí una usina.`;
+  const near = `acerca${pronoun} a la usina o a un edificio con luz (alcance de ${POWER_REACH} lotes), o tendé un tendido eléctrico`;
+  return sim.power.shortage ? `${lead}: ${near}; o la usina no da abasto, y hace falta otra.` : `${lead}: ${near}.`;
+}
+
 function abandonHint(w: World, sim: Simulation, i: number, zone: ZoneKind): string {
   const why: string[] = [];
   if (!w.powered[i]) why.push('falta luz');
@@ -139,7 +146,7 @@ function abandonHint(w: World, sim: Simulation, i: number, zone: ZoneKind): stri
 }
 
 function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level: number): string | undefined {
-  if (!w.powered[i]) return sim.world.plants.length === 0 ? 'Falta luz: construí una usina.' : 'Falta luz: conectala a la red con calles, zonas o tendido.';
+  if (!w.powered[i]) return noLightHint(sim, 'Sin luz', 'lo');
   if (!w.roadAccess[i]) return 'Falta una calle cerca para que llegue la gente.';
   if (sim.state.crisis) return 'Con la caja en rojo no se construye nada.';
   if (sim.demand[zone] <= 0) {

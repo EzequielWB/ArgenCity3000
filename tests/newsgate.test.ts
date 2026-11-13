@@ -38,6 +38,18 @@ const months = (sim: Simulation, m: number) => {
   for (let t = 0; t < TICKS_PER_MONTH * m; t++) sim.tick();
 };
 
+describe('the newspaper explains the reach of the light', () => {
+  it('tells the Intendente about lots that no building or plant lights, once the paper is open', () => {
+    const w = city(3, 3, 3);
+    build(w, 'plant', 20, 20);
+    build(w, 'zoneR', 0, 20, 10, 21); // far from the plant and from every building
+    const sim = new Simulation(w, newSimState(1), 'Villa Test');
+    sim.state.news.push({ date: 'Ene 1990', text: 'x' }); // the paper is open
+    months(sim, 1);
+    expect(sim.state.news.some((n) => /hasta 3 lotes.*tendido eléctrico/.test(n.text))).toBe(true);
+  });
+});
+
 describe('the newspaper opens late', () => {
   it('always starts with the founding headline, even in an empty city', () => {
     const sim = new Simulation(new World(flat()), newSimState(1), 'Villa Test');

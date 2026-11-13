@@ -1,5 +1,5 @@
 import type { Sound } from './audio/sound';
-import { TICKS_PER_MONTH, type ServiceKind } from './config';
+import { POWER_REACH, TICKS_PER_MONTH } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
 import { attachPointer, type PointerTarget } from './input/controls';
@@ -11,12 +11,13 @@ import type { SaveData } from './save/save';
 import { saveToSlot } from './save/slots';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
 import { dateLabel, weekLabel } from './sim/calendar';
-import { describeOutlook, placementUpkeep } from './sim/outlook';
+import { describeOutlook, placementNote, placementUpkeep } from './sim/outlook';
+import { reachCells } from './sim/power';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { TOOL_ICONS } from './ui/icons';
 import { $, escapeHtml, toast } from './ui/dom';
-import { applyPlan, dragCells, isServiceTool, planTool, plantFootprint, toolInfo, TOOLS, type ToolId } from './world/tools';
+import { applyPlan, dragCells, planTool, plantFootprint, toolInfo, TOOLS, type ToolId } from './world/tools';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
 
@@ -49,7 +50,8 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   fire: 'rgba(200,50,40,0.55)',
 };
 
-const SERVICE_LAYERS: Record<ServiceKind, Layer> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover' };
+/** Tools that show a coverage layer while they are picked: each service shows what it covers, the plant and the line show the light. */
+const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', line: 'power' };
 
 export interface GameHooks {
   isModalOpen(): boolean;
@@ -68,7 +70,7 @@ export class Game implements PointerTarget {
 
   tool: ToolId = 'query';
   block = 1;
-  private layerBeforeService: Layer = 'none';
+  private layerBeforeTool: Layer = 'none';
   speed = 2;
 
   private history = new UndoHistory();
@@ -206,11 +208,12 @@ export class Game implements PointerTarget {
   // ---------------------------------------------------------------- tools
 
   setTool(tool: ToolId): void {
-    // Service tools show the coverage they provide; leaving them restores the player's layer.
-    if (isServiceTool(tool)) {
-      if (!isServiceTool(this.tool)) this.layerBeforeService = this.view.layer;
-      this.setLayer(SERVICE_LAYERS[tool]);
-    } else if (isServiceTool(this.tool)) this.setLayer(this.layerBeforeService);
+    // Some tools show the layer they feed; leaving them for one that shows none restores the player's layer.
+    const shown = TOOL_LAYERS[tool];
+    if (shown) {
+      if (!TOOL_LAYERS[this.tool]) this.layerBeforeTool = this.view.layer;
+      this.setLayer(shown);
+    } else if (TOOL_LAYERS[this.tool]) this.setLayer(this.layerBeforeTool);
     this.tool = tool;
     this.dragCancel();
     document.querySelectorAll<HTMLButtonElement>('#toolbar .tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === tool)));
@@ -393,6 +396,7 @@ export class Game implements PointerTarget {
       cells: shown,
       valid: new Set(plan.cells.map(([x, y]) => this.world.idx(x, y))),
       color: PREVIEW_COLORS[this.tool] ?? 'rgba(255,255,255,0.4)',
+      halo: this.tool === 'plant' ? reachCells(this.world.n, shown, POWER_REACH) : undefined,
     };
     const tip = $('#tooltip');
     tip.classList.remove('hidden');
@@ -406,7 +410,8 @@ export class Game implements PointerTarget {
       tip.classList.add('bad');
     } else {
       const upkeep = placementUpkeep(this.tool);
-      tip.textContent = `${formatMoney(plan.cost)}${plan.cells.length > 1 ? ` · ${plan.cells.length} lotes` : ''}${upkeep ? ` · ${upkeep}` : ''}`;
+      const note = placementNote(this.tool);
+      tip.textContent = `${formatMoney(plan.cost)}${plan.cells.length > 1 ? ` · ${plan.cells.length} lotes` : ''}${upkeep ? ` · ${upkeep}` : ''}${note ? ` · ${note}` : ''}`;
       tip.classList.remove('bad');
     }
   }

@@ -43,12 +43,38 @@ describe('describeCell', () => {
     expect(r.hint).toMatch(/usina|luz/i);
   });
 
+  it('tells an unlit lot to come closer to the light or to run a power line, not to connect roads', () => {
+    const { w, sim, b } = setup();
+    b('plant', 0, 0);
+    b('zoneR', 10, 10);
+    sim.refresh();
+    const r = describeCell(w, sim, 10, 10);
+    expect(r.lines.join(' ')).toMatch(/Sin luz/);
+    expect(r.hint).toMatch(/alcance de 3 lotes/);
+    expect(r.hint).toMatch(/tendido eléctrico/);
+    expect(r.hint).not.toMatch(/calles/);
+  });
+
+  it('says a street can be lit but does not carry the light, and the plant and the line say how far they go', () => {
+    const { w, sim, b } = setup();
+    b('plant', 0, 0);
+    b('road', 2, 0, 12, 0);
+    b('line', 0, 3, 0, 5);
+    sim.refresh();
+    const lit = describeCell(w, sim, 3, 0);
+    expect(lit.lines.join(' ')).toMatch(/Con luz.*no lleva la luz/);
+    const dark = describeCell(w, sim, 12, 0);
+    expect(dark.lines.join(' ')).toMatch(/Sin luz.*no lleva la luz/);
+    expect(describeCell(w, sim, 0, 0).lines.join(' ')).toMatch(/hasta 3 lotes/);
+    expect(describeCell(w, sim, 0, 4).lines.join(' ')).toMatch(/de celda en celda/);
+  });
+
   it('asks for a street when the lot has power but no road access', () => {
     const { w, sim, b } = setup();
     b('plant', 0, 0);
-    b('zoneR', 2, 0, 12, 0);
+    b('zoneR', 4, 0); // inside the reach of the plant
     sim.refresh();
-    const r = describeCell(w, sim, 12, 0);
+    const r = describeCell(w, sim, 4, 0);
     expect(r.lines.join(' ')).toMatch(/Con luz/);
     expect(r.hint).toMatch(/calle/i);
   });
@@ -86,8 +112,8 @@ describe('describeCell', () => {
     expect(off.lines.join(' ')).toMatch(/Sin luz/);
     expect(off.hint).toMatch(/luz/);
     b('plant', 0, 0);
-    b('road', 2, 0, 2, 8);
-    b('road', 3, 8, 7, 8);
+    b('line', 2, 0, 2, 8); // roads carry no light
+    b('line', 3, 8, 7, 8);
     sim.refresh();
     const on = describeCell(w, sim, 8, 8);
     expect(on.lines.join(' ')).toMatch(/Con luz/);
@@ -98,8 +124,8 @@ describe('describeCell', () => {
   it('shows how many neighbours a service attends and what it costs to keep today', () => {
     const { w, sim, b } = setup();
     b('plant', 0, 0);
-    b('road', 2, 0, 2, 8);
-    b('road', 3, 8, 7, 8);
+    b('line', 2, 0, 2, 8); // roads carry no light
+    b('line', 3, 8, 7, 8);
     b('school', 8, 8);
     sim.refresh();
     const empty = describeCell(w, sim, 8, 8).lines.join(' | ');
@@ -142,7 +168,8 @@ describe('describeCell', () => {
   it('asks for a clinic, then a school, when they are what holds homes back', () => {
     const { w, sim, b } = setup();
     b('plant', 0, 0);
-    b('road', 2, 0, 2, 10);
+    b('line', 2, 0, 2, 10); // roads carry no light
+    b('road', 4, 0, 4, 10);
     b('zoneR', 3, 5);
     const i = w.idx(3, 5);
     w.level[i] = 2;

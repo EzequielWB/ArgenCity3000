@@ -67,7 +67,7 @@ describe('service buildings', () => {
   it('cover a radius only while powered, and less when crowded', () => {
     const w = new World(flat());
     build(w, 'plant', 0, 0);
-    build(w, 'road', 2, 0, 2, 20);
+    build(w, 'line', 2, 0, 2, 20); // roads carry no light
     build(w, 'school', 3, 10);
     fields(w);
     const r = SERVICES.school.radius;

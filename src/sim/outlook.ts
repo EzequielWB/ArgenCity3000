@@ -3,7 +3,7 @@
  * bar, how many months the cash lasts, the upkeep shown when choosing a building, and the
  * newspaper's cause headlines. No DOM and no simulation state in here.
  */
-import { FIXED_SHARE, SERVICES, UPKEEP, type ServiceKind } from '../config';
+import { FIXED_SHARE, POWER_REACH, SERVICES, UPKEEP, type ServiceKind } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { BudgetReport } from './budget';
 
@@ -80,6 +80,13 @@ export function placementUpkeep(tool: string): string | null {
   if (tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire') {
     return `mantenimiento desde ${formatMoney(serviceUpkeepRange(tool).min)}/mes`;
   }
+  return null;
+}
+
+/** What a tool does that its price does not say, for the placement tooltip: how far the light goes. */
+export function placementNote(tool: string): string | null {
+  if (tool === 'plant') return `luz hasta ${POWER_REACH} lotes`;
+  if (tool === 'line') return 'el tendido lleva la luz de celda en celda';
   return null;
 }
 

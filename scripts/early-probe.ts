@@ -42,13 +42,20 @@ function run(withServices: boolean, player: Player): void {
     if (p.cells.length && sim.spend(p.cost)) applyPlan(w, p);
   };
   b('plant', 2, 3);
-  b('road', 4, 4, 30, 4);
-  b('road', 4, 4, 4, 20);
-  b('road', 4, 12, 30, 12);
+  // Roads carry no light (S25): the light reaches 3 lots from the plant and from every building,
+  // so the jobs zones, farther than that from the homes, get a power line (x = 21 is the line, the
+  // roads leave a gap where it crosses them), and another one runs down the west side of the homes.
+  b('road', 4, 4, 20, 4);
+  b('road', 22, 4, 30, 4);
+  b('line', 4, 3, 21, 3);
+  b('line', 21, 4, 21, 16);
+  b('line', 4, 5, 4, 14);
+  b('road', 5, 12, 20, 12);
+  b('road', 22, 12, 30, 12);
   b('zoneR', 5, 5, 20, 8); // homes
   b('zoneR', 5, 13, 14, 16);
-  b('zoneC', 21, 5, 26, 8); // a little commerce
-  b('zoneI', 21, 13, 26, 16); // workshops
+  b('zoneC', 22, 5, 27, 8); // a little commerce
+  b('zoneI', 22, 13, 27, 16); // workshops
   if (withServices) {
     b('school', 28, 5);
     b('clinic', 28, 7);

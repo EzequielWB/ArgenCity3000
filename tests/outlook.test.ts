@@ -4,6 +4,7 @@ import type { BudgetReport } from '../src/sim/budget';
 import {
   describeOutlook,
   formatBalance,
+  placementNote,
   placementUpkeep,
   runwayHeadline,
   runwayMonths,
@@ -114,6 +115,12 @@ describe('placement text', () => {
     expect(placementUpkeep('plant')).toBe('mantenimiento $ 350/mes');
     expect(placementUpkeep('road')).toBeNull();
     expect(placementUpkeep('zoneR')).toBeNull();
+  });
+
+  it('tells how far the light goes when choosing the plant or the power line', () => {
+    expect(placementNote('plant')).toBe('luz hasta 3 lotes');
+    expect(placementNote('line')).toBe('el tendido lleva la luz de celda en celda');
+    expect(placementNote('road')).toBeNull();
   });
 });
 
