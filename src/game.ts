@@ -11,6 +11,7 @@ import type { SaveData } from './save/save';
 import { saveToSlot } from './save/slots';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
 import { dateLabel, weekLabel } from './sim/calendar';
+import { MILESTONES, isUnlocked, milestoneOfTool, nextMilestone, unlockNames } from './sim/milestones';
 import { describeOutlook, placementNote, placementUpkeep } from './sim/outlook';
 import { windOutput } from './sim/plants';
 import { reachCells } from './sim/power';
@@ -94,6 +95,8 @@ export class Game implements PointerTarget {
   private outlookBudget: BudgetReport | null = null;
   private outlookAt = 0;
   private keyboardPan = { x: 0, y: 0 };
+  /** Milestone the toolbar and the goal were last drawn for (-1 = never). */
+  private shownMilestone = -1;
   /** Fires already announced with the siren. */
   private firesHeard = 0;
 
@@ -212,6 +215,12 @@ export class Game implements PointerTarget {
   // ---------------------------------------------------------------- tools
 
   setTool(tool: ToolId): void {
+    if (!isUnlocked(tool, this.sim.state.milestone)) {
+      const m = MILESTONES[milestoneOfTool(tool)];
+      toast(`${toolInfo(tool).label}: se habilita cuando la ciudad sea ${m.name} (${formatNumber(m.pop)} habitantes)`, true);
+      this.hooks.sound.play('deny');
+      return;
+    }
     // Some tools show the layer they feed; leaving them for one that shows none restores the player's layer.
     const shown = TOOL_LAYERS[tool];
     if (shown) {
@@ -517,6 +526,7 @@ export class Game implements PointerTarget {
     this.updateOutlook(force);
     $('#pop').textContent = formatNumber(this.sim.totals.pop);
     $('#cityType').textContent = settlementType(this.sim.totals.pop);
+    this.updateMilestone();
     const bars = document.querySelectorAll<HTMLElement>('#rci .bar i');
     const d = [this.sim.demand.R, this.sim.demand.C, this.sim.demand.I];
     bars.forEach((el, k) => {
@@ -538,6 +548,35 @@ export class Game implements PointerTarget {
     }
     if (this.queried) this.renderInfo();
     if (force) this.updateStatus();
+  }
+
+  /** The next goal under the population, the locked tools, and a notice when a milestone is reached. */
+  private updateMilestone(): void {
+    const reached = this.sim.state.milestone;
+    if (reached === this.shownMilestone) return;
+    const label = (t: ToolId) => toolInfo(t).label;
+    if (this.shownMilestone >= 0 && reached > this.shownMilestone) {
+      const m = MILESTONES[reached];
+      const opens = unlockNames(m, label);
+      toast(`¡${this.name} ya es ${m.name}! La Provincia giró ${formatMoney(m.grant)}${opens ? `. Nuevo: ${opens}` : ''}`);
+      this.hooks.sound.play('news');
+    }
+    this.shownMilestone = reached;
+    const next = nextMilestone(reached);
+    const goal = $('#goal');
+    goal.textContent = next ? `→ ${next.name}: ${formatNumber(next.pop)}` : '';
+    if (next) {
+      const opens = unlockNames(next, label);
+      goal.title = `Próximo hito: ${next.name}, con ${formatNumber(next.pop)} habitantes. La Provincia gira ${formatMoney(next.grant)}${opens ? ` y se habilita ${opens}` : ''}.`;
+    }
+    document.querySelectorAll<HTMLButtonElement>('#toolbar .tool').forEach((b) => {
+      const tool = b.dataset.tool as ToolId;
+      const info = toolInfo(tool);
+      const locked = !isUnlocked(tool, reached);
+      const m = MILESTONES[milestoneOfTool(tool)];
+      b.classList.toggle('locked', locked);
+      b.title = locked ? `${info.label}: se habilita cuando la ciudad sea ${m.name} (${formatNumber(m.pop)} habitantes)` : `${info.label} (${info.key}) — ${info.help}`;
+    });
   }
 
   /** Estimated monthly balance next to the cash, with how long the cash lasts when it is short. */

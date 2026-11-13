@@ -142,7 +142,7 @@ select {
 
 #app {
   display: grid;
-  grid-template-columns: 76px 1fr 300px;
+  grid-template-columns: 132px 1fr 300px;
   grid-template-rows: 58px 1fr 28px;
   grid-template-areas:
     'top top top'
@@ -152,7 +152,7 @@ select {
 }
 
 #app.no-news {
-  grid-template-columns: 76px 1fr 0;
+  grid-template-columns: 132px 1fr 0;
 }
 
 #app.no-news #diario {
@@ -219,6 +219,10 @@ select {
 
 #cash.neg {
   color: #ff7a6b;
+}
+
+#goal {
+  color: var(--muted);
 }
 
 /* Estimated monthly balance under the cash: green when the city earns, red when it loses, and the
@@ -331,8 +335,11 @@ select {
   grid-area: tools;
   margin: 8px 0 8px 8px;
   padding: 10px 6px;
-  display: flex;
-  flex-direction: column;
+  /* Two columns of buttons when the bar is wide enough, one on narrow screens. */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 52px);
+  justify-content: center;
+  align-content: start;
   gap: 4px;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -360,6 +367,22 @@ select {
   font-size: 9px;
   color: var(--muted);
   font-family: inherit;
+}
+
+/* A tool the city has not earned yet (see sim/milestones.ts). */
+#toolbar .tool.locked {
+  opacity: 0.38;
+  filter: grayscale(1);
+}
+
+#toolbar hr,
+#toolbar .group-label,
+#toolbar [data-act='undo'] {
+  grid-column: 1 / -1;
+}
+
+#toolbar [data-act='undo'] {
+  width: auto;
 }
 
 #toolbar .tool[aria-pressed='true'] {

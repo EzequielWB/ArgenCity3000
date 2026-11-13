@@ -13,7 +13,9 @@ import {
   type ServiceKind,
   type ZoneTaxes,
 } from '../config';
+import { formatMoney } from '../core/format';
 import { Rng } from '../core/rng';
+import { toolInfo } from '../world/tools';
 import { World, zoneOf, type ZoneKind } from '../world/world';
 import { buildingName } from './report';
 import { monthlyBudget, type BudgetReport } from './budget';
@@ -21,6 +23,7 @@ import { cumulativeShare, dateLabel, dateOf } from './calendar';
 import { computeCongestion, jamGrowthFactor, type CongestionReport } from './congestion';
 import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computePollution, computeRoadAccess, computeServices } from './fields';
+import { advanceMilestones, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
 import { computePower, type PowerReport } from './power';
@@ -39,6 +42,8 @@ export interface SimState {
   history: { pop: number; cash: number }[];
   /** Tick at which each advice headline was last published. */
   hints: Record<string, number>;
+  /** Index in `MILESTONES` of the highest milestone the city has reached. */
+  milestone: number;
 }
 
 export function newSimState(seed: number): SimState {
@@ -53,6 +58,7 @@ export function newSimState(seed: number): SimState {
     news: [],
     history: [],
     hints: {},
+    milestone: 0,
   };
 }
 
@@ -388,12 +394,17 @@ export class Simulation {
     this.totals = cityTotals(w);
     this.abandonedCount = countAbandoned(w);
     this.updateAppetite();
+    const reached = advanceMilestones(s, this.totals.pop);
     s.history.push({ pop: this.totals.pop, cash: s.cash });
     if (s.history.length > MAX_HISTORY) s.history.shift();
 
     const snap = this.snapshot();
     if (this.paperOpen()) {
       const lines = headlinesFor(this.prevSnapshot, snap, this.cityName);
+      for (const m of reached) {
+        const opens = unlockNames(m, (t) => toolInfo(t).label.toLowerCase());
+        lines.push(`${this.cityName} ya es ${m.name}: la Provincia gira ${formatMoney(m.grant)}${opens ? ` y habilita ${opens}` : ''}`);
+      }
       lines.push(...this.hints());
       if (lines.length === 0 && this.rng.chance(0.3)) lines.push(this.rng.pick(FILLERS));
       for (const l of lines) this.publish(l, true); // the paper is open here

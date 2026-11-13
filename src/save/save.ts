@@ -12,6 +12,7 @@ import {
   type ZoneTaxes,
 } from '../config';
 import type { BudgetReport } from '../sim/budget';
+import { MILESTONES, milestoneForPop } from '../sim/milestones';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
@@ -194,6 +195,12 @@ function parseSim(raw: unknown): SimState {
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }
+  // Saves before version 4 had no milestones: the city keeps what its best month earned.
+  let milestone = milestoneForPop(Math.max(0, ...history.map((h) => h.pop)));
+  if (s.milestone !== undefined) {
+    need(isInt(s.milestone) && s.milestone >= 0 && s.milestone < MILESTONES.length, 'El hito de la partida es inválido');
+    milestone = s.milestone as number;
+  }
   return {
     tick: s.tick as number,
     cash: s.cash as number,
@@ -205,5 +212,6 @@ function parseSim(raw: unknown): SimState {
     news,
     history,
     hints,
+    milestone,
   };
 }

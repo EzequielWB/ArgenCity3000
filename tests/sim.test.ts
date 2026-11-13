@@ -9,6 +9,7 @@ import { computeRoadAccess, computePollution, computeLandValue } from '../src/si
 import { cityTotals, computeDemand } from '../src/sim/demand';
 import { monthlyBudget } from '../src/sim/budget';
 import { headlinesFor, type CitySnapshot } from '../src/sim/news';
+import { MILESTONES } from '../src/sim/milestones';
 import { Simulation, newSimState } from '../src/sim/simulation';
 
 function flat(n = 32, waterFromX = n): Terrain {
@@ -286,7 +287,9 @@ describe('Simulation', () => {
     const before = sim.state.cash;
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
     expect(sim.state.lastBudget).not.toBeNull();
-    expect(sim.state.cash).toBe(before + sim.state.lastBudget!.balance);
+    // A milestone reached during the month pays its grant on top of the budget.
+    const grants = MILESTONES.slice(1, sim.state.milestone + 1).reduce((sum, m) => sum + m.grant, 0);
+    expect(sim.state.cash).toBe(before + sim.state.lastBudget!.balance + grants);
   });
 
   it('refuses to spend more than the cash available', () => {
