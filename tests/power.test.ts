@@ -14,7 +14,7 @@ function flat(n = 64, waterFromX = n): Terrain {
 
 function plant(w: World, x: number, y: number): void {
   for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) w.setTile(x + dx, y + dy, TILE.PLANT);
-  w.plants.push({ x, y });
+  w.plants.push({ x, y, kind: 'coal' });
 }
 
 /** A built house (level 1). */

@@ -1,4 +1,4 @@
-import { CAPACITY, DEFAULT_FUNDING, ROAD_REACH, SERVICES, type ServiceFunding, type ServiceKind } from '../config';
+import { CAPACITY, DEFAULT_FUNDING, PLANTS, ROAD_REACH, SERVICES, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf } from '../world/world';
 
@@ -45,7 +45,7 @@ function splat(acc: Float32Array, n: number, cx: number, cy: number, radius: num
   }
 }
 
-/** Industry and power plants pollute their surroundings. */
+/** Industry and power plants pollute their surroundings, each kind of plant in its own measure. */
 export function computePollution(w: World): void {
   const n = w.n;
   const acc = new Float32Array(n * n);
@@ -54,7 +54,10 @@ export function computePollution(w: World): void {
       splat(acc, n, i % n, Math.floor(i / n), 4, 10 * w.level[i]);
     }
   }
-  for (const p of w.plants) splat(acc, n, p.x, p.y, 6, 60);
+  for (const p of w.plants) {
+    const { smoke, smokeRadius } = PLANTS[p.kind];
+    if (smoke > 0) splat(acc, n, p.x, p.y, smokeRadius, smoke);
+  }
   for (let i = 0; i < n * n; i++) w.pollution[i] = clamp100(acc[i]);
 }
 

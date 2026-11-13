@@ -50,7 +50,7 @@ describe('UndoHistory', () => {
     act(w, h, 'bulldoze', 3, 3);
     expect(w.plants).toEqual([]);
     h.undo(w, 0);
-    expect(w.plants).toEqual([{ x: 2, y: 2 }]);
+    expect(w.plants).toEqual([{ x: 2, y: 2, kind: 'coal' }]);
     expect(w.tileAt(3, 3)).toBe(TILE.PLANT);
     h.undo(w, 0);
     expect(w.plants).toEqual([]);

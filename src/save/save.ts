@@ -4,8 +4,10 @@ import {
   MAX_LEVEL,
   MAX_TAX,
   MIN_TAX,
+  PLANT_KINDS,
   PLANT_SIZE,
   SERVICE_KINDS,
+  type PlantKind,
   type ServiceFunding,
   type ZoneTaxes,
 } from '../config';
@@ -14,12 +16,13 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
- * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets.
+ * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
+ * versions 1 to 3 had only coal plants (a plant without a kind is a coal one).
  */
-const READABLE_VERSIONS = [1, 2, 3];
+const READABLE_VERSIONS = [1, 2, 3, 4];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -119,12 +122,13 @@ export function deserialize(text: string): SaveData {
   need(Array.isArray(data.plants), 'Faltan las usinas');
   let plantCells = 0;
   for (const p of data.plants as unknown[]) {
-    const { x, y } = (p ?? {}) as { x?: unknown; y?: unknown };
+    const { x, y, kind } = (p ?? {}) as { x?: unknown; y?: unknown; kind?: unknown };
+    need(kind === undefined || PLANT_KINDS.includes(kind as PlantKind), 'Hay una usina de un tipo desconocido');
     need(isInt(x) && isInt(y) && x >= 0 && y >= 0 && x <= (n as number) - PLANT_SIZE && y <= (n as number) - PLANT_SIZE, 'Hay una usina fuera del mapa');
     for (let dy = 0; dy < PLANT_SIZE; dy++) {
       for (let dx = 0; dx < PLANT_SIZE; dx++) need(world.tileAt((x as number) + dx, (y as number) + dy) === TILE.PLANT, 'Hay una usina sin terreno');
     }
-    world.plants.push({ x: x as number, y: y as number });
+    world.plants.push({ x: x as number, y: y as number, kind: (kind as PlantKind | undefined) ?? 'coal' });
     plantCells += PLANT_SIZE * PLANT_SIZE;
   }
   let tilePlants = 0;

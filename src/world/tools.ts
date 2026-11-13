@@ -1,8 +1,8 @@
-import { COSTS, PLANT_SIZE, SERVICES, type ServiceKind } from '../config';
+import { COSTS, PLANTS, PLANT_SIZE, SERVICES, type PlantKind, type ServiceKind } from '../config';
 import { levelBlocks } from './leveling';
 import { TILE, World, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | ServiceKind;
+export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -23,7 +23,9 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'zoneC', label: 'Comercial', key: '6', shape: 'rect', help: 'Zona para comercios y oficinas.' },
   { id: 'zoneI', label: 'Industrial', key: '7', shape: 'rect', help: 'Zona para talleres y fábricas. Contamina.' },
   { id: 'park', label: 'Plaza', key: '8', shape: 'rect', help: 'Sube el valor del suelo alrededor.' },
-  { id: 'plant', label: 'Usina', key: '9', shape: 'anchor', help: 'Usina térmica de 2×2. Genera energía y contamina.' },
+  { id: 'plant', label: 'Usina a carbón', key: '9', shape: 'anchor', help: 'Usina térmica de 2×2. Barata, pero contamina mucho.' },
+  { id: 'plantGas', label: 'Usina a gas', key: 'j', shape: 'anchor', help: 'Usina de 2×2. Más cara de construir y de mantener, casi no contamina.' },
+  { id: 'plantWind', label: 'Parque eólico', key: 'k', shape: 'anchor', help: 'Molinos de 2×2. No contaminan y cuestan poco de mantener; rinden más en lo alto de una loma y cerca del agua.' },
   { id: 'school', label: 'Escuela', key: 'y', shape: 'point', help: 'Educación: sin escuela no se levantan torres ni oficinas.' },
   { id: 'clinic', label: 'Salita', key: 'u', shape: 'point', help: 'Salud: sin salita las casas no pasan de chalet.' },
   { id: 'police', label: 'Comisaría', key: 'i', shape: 'point', help: 'Seguridad: baja el delito en los barrios densos.' },
@@ -32,6 +34,13 @@ export const TOOLS: readonly ToolInfo[] = [
 
 export function isServiceTool(tool: ToolId): tool is ServiceKind {
   return tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire';
+}
+
+const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
+
+/** The kind of power plant a tool builds, or null for any other tool. */
+export function plantKindOfTool(tool: ToolId): PlantKind | null {
+  return PLANT_TOOLS[tool] ?? null;
 }
 
 export function toolInfo(id: ToolId): ToolInfo {
@@ -124,12 +133,13 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
   const seen = new Set<number>();
   const plantsSeen = new Set<object>();
   const zone = zoneKindOfTool(tool);
+  const plantKind = plantKindOfTool(tool);
 
-  if (tool === 'plant') {
+  if (plantKind) {
     const [ax, ay] = cells[0] ?? [-1, -1];
     const foot = plantFootprint(w.n, ax, ay);
     const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.isWater(x, y) && isFreeLot(w, x, y));
-    return ok ? { tool, cells: foot, cost: COSTS.plant } : { tool, cells: [], cost: 0 };
+    return ok ? { tool, cells: foot, cost: PLANTS[plantKind].cost } : { tool, cells: [], cost: 0 };
   }
 
   for (const [x, y] of cells) {
@@ -198,6 +208,7 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
 export function applyPlan(w: World, plan: Plan): void {
   if (plan.cells.length === 0) return;
   const zone = zoneKindOfTool(plan.tool);
+  const plantKind = plantKindOfTool(plan.tool);
   for (const [x, y] of plan.cells) {
     const i = w.idx(x, y);
     switch (plan.tool) {
@@ -213,6 +224,8 @@ export function applyPlan(w: World, plan: Plan): void {
         w.setTile(x, y, TILE.PARK);
         break;
       case 'plant':
+      case 'plantGas':
+      case 'plantWind':
         w.setTile(x, y, TILE.PLANT);
         w.terrain.trees[i] = 0;
         break;
@@ -230,9 +243,9 @@ export function applyPlan(w: World, plan: Plan): void {
         } else if (zone) w.setTile(x, y, zoneTile(zone));
     }
   }
-  if (plan.tool === 'plant') {
+  if (plantKind) {
     const [x, y] = plan.cells[0];
-    w.plants.push({ x, y });
+    w.plants.push({ x, y, kind: plantKind });
   }
   // Zoning or placing a service levels the block it belongs to (see `levelBlocks`).
   if (zone || isServiceTool(plan.tool)) levelBlocks(w, plan.cells);

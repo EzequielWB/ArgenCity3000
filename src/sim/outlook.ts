@@ -3,7 +3,7 @@
  * bar, how many months the cash lasts, the upkeep shown when choosing a building, and the
  * newspaper's cause headlines. No DOM and no simulation state in here.
  */
-import { FIXED_SHARE, POWER_REACH, SERVICES, UPKEEP, type ServiceKind } from '../config';
+import { FIXED_SHARE, PLANTS, POWER_REACH, SERVICES, type PlantKind, type ServiceKind } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { BudgetReport } from './budget';
 
@@ -74,9 +74,12 @@ export function serviceUpkeepRange(kind: ServiceKind): { min: number; max: numbe
   return { min: Math.round(SERVICES[kind].upkeep * FIXED_SHARE), max: SERVICES[kind].upkeep };
 }
 
+const PLANT_OF_TOOL: Record<string, PlantKind | undefined> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
+
 /** The upkeep part of the placement tooltip for a tool, or null when the tool has none worth showing. */
 export function placementUpkeep(tool: string): string | null {
-  if (tool === 'plant') return `mantenimiento ${formatMoney(UPKEEP.plant)}/mes`;
+  const plant = PLANT_OF_TOOL[tool];
+  if (plant) return `mantenimiento ${formatMoney(PLANTS[plant].upkeep)}/mes`;
   if (tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire') {
     return `mantenimiento desde ${formatMoney(serviceUpkeepRange(tool).min)}/mes`;
   }
@@ -85,7 +88,7 @@ export function placementUpkeep(tool: string): string | null {
 
 /** What a tool does that its price does not say, for the placement tooltip: how far the light goes. */
 export function placementNote(tool: string): string | null {
-  if (tool === 'plant') return `luz hasta ${POWER_REACH} lotes`;
+  if (PLANT_OF_TOOL[tool]) return `luz hasta ${POWER_REACH} lotes`;
   if (tool === 'line') return 'el tendido lleva la luz de celda en celda';
   return null;
 }

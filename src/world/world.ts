@@ -1,4 +1,4 @@
-import { PLANT_SIZE, type ServiceKind } from '../config';
+import { PLANT_SIZE, type PlantKind, type ServiceKind } from '../config';
 import { isWaterCell, cellMinMax, type Terrain } from './terrain';
 
 /** What occupies a cell. Zones keep their building level in `World.level`. */
@@ -50,6 +50,7 @@ export interface Plant {
   /** Top-left (minimum x, y) cell of the 2×2 footprint, in world coordinates. */
   x: number;
   y: number;
+  kind: PlantKind;
 }
 
 /**

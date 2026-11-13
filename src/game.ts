@@ -12,12 +12,13 @@ import { saveToSlot } from './save/slots';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
 import { dateLabel, weekLabel } from './sim/calendar';
 import { describeOutlook, placementNote, placementUpkeep } from './sim/outlook';
+import { windOutput } from './sim/plants';
 import { reachCells } from './sim/power';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { TOOL_ICONS } from './ui/icons';
 import { $, escapeHtml, toast } from './ui/dom';
-import { applyPlan, dragCells, planTool, plantFootprint, toolInfo, TOOLS, type ToolId } from './world/tools';
+import { applyPlan, dragCells, planTool, plantFootprint, plantKindOfTool, toolInfo, TOOLS, type ToolId } from './world/tools';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
 
@@ -44,6 +45,8 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   zoneI: 'rgba(224,181,66,0.55)',
   park: 'rgba(127,181,90,0.6)',
   plant: 'rgba(200,70,47,0.5)',
+  plantGas: 'rgba(120,150,170,0.55)',
+  plantWind: 'rgba(240,240,235,0.6)',
   school: 'rgba(80,150,230,0.55)',
   clinic: 'rgba(60,180,110,0.55)',
   police: 'rgba(63,95,138,0.6)',
@@ -51,7 +54,7 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
 };
 
 /** Tools that show a coverage layer while they are picked: each service shows what it covers, the plant and the line show the light. */
-const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', line: 'power' };
+const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', plantGas: 'power', plantWind: 'power', line: 'power' };
 
 export interface GameHooks {
   isModalOpen(): boolean;
@@ -391,12 +394,13 @@ export class Game implements PointerTarget {
   private showPreview(a: [number, number], b: [number, number], mx: number, my: number): void {
     const cells = this.cellsFor(a, b);
     const plan = planTool(this.world, this.tool, cells);
-    const shown = this.tool === 'plant' ? plantFootprint(this.world.n, b[0], b[1]) : cells;
+    const plantKind = plantKindOfTool(this.tool);
+    const shown = plantKind ? plantFootprint(this.world.n, b[0], b[1]) : cells;
     this.view.preview = {
       cells: shown,
       valid: new Set(plan.cells.map(([x, y]) => this.world.idx(x, y))),
       color: PREVIEW_COLORS[this.tool] ?? 'rgba(255,255,255,0.4)',
-      halo: this.tool === 'plant' ? reachCells(this.world.n, shown, POWER_REACH) : undefined,
+      halo: plantKind ? reachCells(this.world.n, shown, POWER_REACH) : undefined,
     };
     const tip = $('#tooltip');
     tip.classList.remove('hidden');
@@ -410,7 +414,9 @@ export class Game implements PointerTarget {
       tip.classList.add('bad');
     } else {
       const upkeep = placementUpkeep(this.tool);
-      const note = placementNote(this.tool);
+      const reach = placementNote(this.tool);
+      // A wind farm is worth what the land under it gives: say it before the player pays.
+      const note = plantKind === 'wind' ? `rinde ${windOutput(this.world, shown[0][0], shown[0][1])} MW acá · ${reach}` : reach;
       tip.textContent = `${formatMoney(plan.cost)}${plan.cells.length > 1 ? ` · ${plan.cells.length} lotes` : ''}${upkeep ? ` · ${upkeep}` : ''}${note ? ` · ${note}` : ''}`;
       tip.classList.remove('bad');
     }

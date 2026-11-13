@@ -1,4 +1,4 @@
-import { MAX_FUNDING, MAX_TAX, MIN_TAX, PLANT_CAPACITY, type ServiceKind } from '../config';
+import { MAX_FUNDING, MAX_TAX, MIN_TAX, type ServiceKind } from '../config';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
 import { formatMoney, formatNumber } from '../core/format';
@@ -104,7 +104,7 @@ export function openBudget(game: Game): void {
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
         Saldo anual estimado: <strong id="yearly"></strong><br>
-        Energía: ${formatNumber(sim.power.use)} de ${formatNumber(sim.power.capacity)} MW (${game.world.plants.length} usina${game.world.plants.length === 1 ? '' : 's'} de ${PLANT_CAPACITY} MW)</p>
+        Energía: ${formatNumber(sim.power.use)} de ${formatNumber(sim.power.capacity)} MW (${game.world.plants.length} usina${game.world.plants.length === 1 ? '' : 's'})</p>
         <h3>Historia</h3>
         <canvas class="chart" id="chart" width="560" height="200" aria-label="Población y caja por mes"></canvas>
         <p><small><span style="color:#9fdc8a">━</span> población · <span style="color:#e0a526">━</span> caja</small></p>
@@ -280,7 +280,7 @@ export function openHelp(): void {
         En el <strong>Presupuesto</strong> (P) ponés una tasa para cada zona (cada una mueve solo la demanda de su zona) y decidís cuánto financiar cada servicio:
         al 50 % cuesta la mitad y cubre la mitad.</li>
       <li><strong>Plazas</strong> (8), agua y árboles suben el valor del suelo y dejan crecer edificios más altos. La industria contamina: alejala de las casas.</li>
-      <li>Si una usina no da abasto, aparecen rayos rojos sobre los edificios sin luz: hacé otra.</li>
+      <li>Si una usina no da abasto, aparecen rayos rojos sobre los edificios sin luz: hacé otra. Hay tres: <strong>a carbón</strong> (9), barata y con mucho humo; <strong>a gas</strong> (J), más cara y casi sin humo; y el <strong>parque eólico</strong> (K), sin humo y barato de mantener, que rinde más en lo alto de una loma y cerca del agua.</li>
       <li><strong>Servicios públicos</strong> (necesitan luz y cubren un radio): sin <strong>salita</strong> (U) las casas no pasan de chalet, y sin
         <strong>escuela</strong> (Y) no hay torres ni oficinas. La <strong>comisaría</strong> (I) baja el delito de los barrios densos y los
         <strong>bomberos</strong> (O) apagan los incendios antes de que se pierda el edificio. Al elegirlos se ve la capa de cobertura.</li>

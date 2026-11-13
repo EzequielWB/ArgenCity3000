@@ -1,5 +1,6 @@
-import { LINE_REACH, PLANT_CAPACITY, POWER_REACH, POWER_USE, SERVICES } from '../config';
+import { LINE_REACH, POWER_REACH, POWER_USE, SERVICES } from '../config';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import { plantCapacity } from './plants';
 
 export interface PowerReport {
   capacity: number;
@@ -125,7 +126,7 @@ export function computePower(w: World): PowerReport {
         const p = w.plantAt(i % n, Math.floor(i / n));
         if (p && !seenPlants.has(p)) {
           seenPlants.add(p);
-          cap += PLANT_CAPACITY;
+          cap += plantCapacity(w, p);
         }
       }
     }

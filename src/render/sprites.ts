@@ -1,5 +1,5 @@
 import { PAL, shade } from './color';
-import type { ServiceKind } from '../config';
+import type { PlantKind, ServiceKind } from '../config';
 import type { ZoneKind } from '../world/world';
 
 /**
@@ -415,6 +415,62 @@ function plant(): Sprite {
   return done(p);
 }
 
+/** Gas plant: two round tanks, a turbine hall and one slim stack. */
+function gasPlant(): Sprite {
+  const p = painter(2, 70);
+  p.box(0.05, 0.05, 1.95, 1.95, 0, 3, PAL.concrete, false);
+  p.chimney(0.25, 0.2, 0.14, 50, 3, '#9aa3a8', '#e8e4dc');
+  p.cylinder(0.75, 0.45, 0.3, 3, 20, '#e8e4dc');
+  p.cylinder(1.5, 0.45, 0.3, 3, 20, '#d9d4cc');
+  p.box(0.2, 1.0, 1.85, 1.85, 3, 20, '#b9c4cc');
+  for (let u = 0.3; u < 1.75; u += 0.26) p.left(1.85, u, u + 0.12, 8, 18, PAL.glassDark);
+  p.right(1.85, 1.1, 1.75, 6, 10, '#3f6f9f');
+  // Yellow gas pipe from the tanks to the hall.
+  p.box(0.7, 0.75, 0.8, 1.0, 3, 5, '#e0b542', false);
+  p.box(1.45, 0.75, 1.55, 1.0, 3, 5, '#e0b542', false);
+  return done(p);
+}
+
+/** Wind farm: three white turbines on a gravel pad. */
+function windFarm(): Sprite {
+  const p = painter(2, 96);
+  p.box(0.05, 0.05, 1.95, 1.95, 0, 2, '#b8ad8c', false);
+  p.box(1.35, 1.35, 1.8, 1.8, 2, 7, '#e8e4dc');
+  const g = p.g;
+  const turbine = (u: number, v: number, h: number, turn: number) => {
+    const [bx, by] = p.P(u, v, 2);
+    const [tx, ty] = p.P(u, v, 2 + h);
+    p.poly(
+      [
+        [bx - 1.6, by],
+        [bx + 1.6, by],
+        [tx + 0.8, ty],
+        [tx - 0.8, ty],
+      ],
+      '#f4f0e6',
+      '#9aa3a8',
+    );
+    g.strokeStyle = '#ffffff';
+    g.lineCap = 'round';
+    g.lineWidth = 1.6;
+    for (let k = 0; k < 3; k++) {
+      const a = turn + (k * Math.PI * 2) / 3;
+      g.beginPath();
+      g.moveTo(tx, ty);
+      g.lineTo(tx + Math.cos(a) * 17, ty + Math.sin(a) * 17);
+      g.stroke();
+    }
+    g.fillStyle = '#c8462f';
+    g.beginPath();
+    g.arc(tx, ty, 1.8, 0, Math.PI * 2);
+    g.fill();
+  };
+  turbine(0.45, 0.45, 62, 0.4);
+  turbine(1.35, 0.6, 70, 1.3);
+  turbine(0.6, 1.45, 66, 2.2);
+  return done(p);
+}
+
 /** Public school: white walls, celeste trim and the flag on a pole. */
 function school(): Sprite {
   const p = painter(1, 40);
@@ -662,8 +718,10 @@ export function serviceSprite(kind: ServiceKind): Sprite {
   return cached(`svc:${kind}`, SERVICE_SPRITES[kind]);
 }
 
-export function plantSprite(): Sprite {
-  return cached('plant', plant);
+const PLANT_SPRITES: Record<PlantKind, () => Sprite> = { coal: plant, gas: gasPlant, wind: windFarm };
+
+export function plantSprite(kind: PlantKind = 'coal'): Sprite {
+  return cached(`plant:${kind}`, PLANT_SPRITES[kind]);
 }
 
 export function treeSpriteFor(kind: number, variant: number): Sprite {

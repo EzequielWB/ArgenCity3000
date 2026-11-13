@@ -508,7 +508,7 @@ export class MapRenderer {
       }
       if (vx !== fx || vy !== fy) return null;
       const [ax, ay] = this.toCache(fx - (PLANT_SIZE - 1), fy - (PLANT_SIZE - 1), plantHeight(w, p.x, p.y));
-      return { sprite: plantSprite(), ax, ay };
+      return { sprite: plantSprite(p.kind), ax, ay };
     }
     const hs = surfaceHeights(w, vx, vy, rot);
     if (level > 0 && zoneOf(tile)) {

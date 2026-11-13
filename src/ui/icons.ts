@@ -31,6 +31,12 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   plant: svg(
     '<path d="M3 23l13-6.5L29 23l-13 6.5z" fill="#b9b2a4"/><rect x="7" y="4" width="4" height="16" fill="#c8462f"/><rect x="7" y="8" width="4" height="2.5" fill="#efe6d8"/><rect x="7" y="14" width="4" height="2.5" fill="#efe6d8"/><path d="M12 24V15l7-3.5 8 4V24l-7.5 3.5z" fill="#b36a45"/><path d="M20 14l-3 5h3l-2 5 5-7h-3l2-3z" fill="#ffd84a"/>',
   ),
+  plantGas: svg(
+    '<path d="M3 23l13-6.5L29 23l-13 6.5z" fill="#b9b2a4"/><rect x="6" y="6" width="3" height="14" fill="#9aa3a8"/><ellipse cx="15" cy="12" rx="5" ry="2.5" fill="#f4f0e6"/><path d="M10 12v8a5 2.5 0 0010 0v-8" fill="#d9d4cc"/><path d="M19 24v-7l8-2v7l-4 3z" fill="#b9c4cc"/><path d="M13 5c-2-2 0-3 1-4 1 1.5 3 2 1 4z" fill="#3f8fe0"/>',
+  ),
+  plantWind: svg(
+    '<path d="M3 24l13-6.5L29 24l-13 6.5z" fill="#b8ad8c"/><path d="M15 25l.6-15h.8l.6 15z" fill="#f4f0e6" stroke="#9aa3a8" stroke-width=".5"/><path d="M16 10L16 1M16 10l8 4.5M16 10l-8 4.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="10" r="1.6" fill="#c8462f"/>',
+  ),
   school: svg(
     '<path d="M4 22V14l12-6 12 6v8l-12 6z" fill="#f4f0e6" stroke="#5a3a22" stroke-width="1"/><path d="M4 18l12 6 12-6" stroke="#6fb7e0" stroke-width="2" fill="none"/><path d="M3 14l13-7 13 7-13 2z" fill="#b4532f"/><path d="M7 3v11" stroke="#d9d4cc" stroke-width="1.2"/><rect x="7.6" y="3" width="8" height="2" fill="#74acdf"/><rect x="7.6" y="5" width="8" height="2" fill="#fff"/><rect x="7.6" y="7" width="8" height="2" fill="#74acdf"/>',
   ),

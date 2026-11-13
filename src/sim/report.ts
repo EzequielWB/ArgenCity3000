@@ -1,10 +1,11 @@
-import { CAPACITY, FIRE_SAFE_COVER, PLANT_CAPACITY, POWER_REACH, ROAD_REACH, SERVICES, type ServiceKind } from '../config';
+import { CAPACITY, FIRE_SAFE_COVER, PLANTS, POWER_REACH, ROAD_REACH, SERVICES, WIND, type ServiceKind } from '../config';
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf, zoneOf, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
 import { SERVICE_NEED, levelCap } from './demand';
 import { residentsServed, utilization } from './fields';
+import { plantCapacity } from './plants';
 import type { Simulation } from './simulation';
 
 const NAMES: Record<ZoneKind, string[]> = {
@@ -64,9 +65,16 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   }
   if (tile === TILE.PLANT) {
     const p = sim.power;
+    const plant = w.plantAt(x, y);
+    const kind = plant?.kind ?? 'coal';
+    const capacity = plant ? plantCapacity(w, plant) : PLANTS[kind].capacity;
     return {
-      title: 'Usina térmica',
-      lines: [`Capacidad: ${PLANT_CAPACITY} MW`, `Alumbra hasta ${POWER_REACH} lotes a su alrededor`, `Red de la ciudad: ${formatNumber(p.use)} de ${formatNumber(p.capacity)} MW`, `Contaminación local: ${w.pollution[i]}/100`],
+      title: PLANTS[kind].label,
+      lines: [
+        kind === 'wind' ? `Capacidad: ${capacity} MW de ${WIND.max} posibles (rinde más en lomas y cerca del agua)` : `Capacidad: ${capacity} MW`,
+        `Mantenimiento: $${formatNumber(PLANTS[kind].upkeep)} por mes`,
+        `Alumbra hasta ${POWER_REACH} lotes a su alrededor`, `Red de la ciudad: ${formatNumber(p.use)} de ${formatNumber(p.capacity)} MW`, `Contaminación local: ${w.pollution[i]}/100`,
+      ],
       hint: p.shortage ? 'La red no da abasto: construí otra usina conectada.' : undefined,
     };
   }

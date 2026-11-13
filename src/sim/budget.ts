@@ -2,6 +2,7 @@ import { DEFAULT_FUNDING, FIXED_SHARE, ROAD_REACH, SERVICES, UPKEEP, type Servic
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { cityTotals, zoneTaxes } from './demand';
 import { utilization } from './fields';
+import { plantsUpkeep } from './plants';
 
 export interface BudgetReport {
   taxR: number;
@@ -90,7 +91,7 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
     roads: Math.round(roads * UPKEEP.road + bridges * UPKEEP.bridge),
     lines: Math.round(lines * UPKEEP.line),
     parks: Math.round(parks * UPKEEP.park),
-    plants: w.plants.length * UPKEEP.plant,
+    plants: plantsUpkeep(w),
     services: Math.round(t.pop * UPKEEP.servicesPerResident * (1 + t.pop / UPKEEP.servicesScale)),
     schools: funded('school'),
     clinics: funded('clinic'),

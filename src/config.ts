@@ -60,9 +60,29 @@ export const UPKEEP = {
   servicesScale: 9000,
 } as const;
 
-/** Power plant output and footprint. */
+/** Power plant footprint, and the output of the coal plant. */
 export const PLANT_SIZE = 2;
 export const PLANT_CAPACITY = 600;
+
+/**
+ * Kinds of power plant. Coal is the original one: cheap and dirty. Gas costs more to build and
+ * to run and hardly smokes. A wind farm does not smoke and is cheap to run, but its output
+ * depends on where it stands (see `WIND`): `capacity` is its best case.
+ * `smoke` is the pollution at the plant and `smokeRadius` how far it spreads.
+ */
+export type PlantKind = 'coal' | 'gas' | 'wind';
+export const PLANT_KINDS: readonly PlantKind[] = ['coal', 'gas', 'wind'];
+export const PLANTS: Record<PlantKind, { label: string; cost: number; upkeep: number; capacity: number; smoke: number; smokeRadius: number }> = {
+  coal: { label: 'Usina térmica', cost: COSTS.plant, upkeep: UPKEEP.plant, capacity: PLANT_CAPACITY, smoke: 60, smokeRadius: 6 },
+  gas: { label: 'Usina a gas', cost: 5500, upkeep: 520, capacity: 600, smoke: 18, smokeRadius: 4 },
+  wind: { label: 'Parque eólico', cost: 4500, upkeep: 140, capacity: 400, smoke: 0, smokeRadius: 0 },
+};
+/**
+ * Wind farm output in MW: `base` on open flat land, plus `perLevel` for each level its site stands
+ * above the average land within `radius` lots (minus as much in a hollow), plus `coast` when there
+ * is water within that radius; never under `min` nor over `max`. Hilltops and shores pay.
+ */
+export const WIND = { base: 160, perLevel: 80, coast: 80, radius: 6, min: 80, max: PLANTS.wind.capacity } as const;
 
 /**
  * How far the light reaches around a cell that passes it on, in lots (a disc: a lot is reached

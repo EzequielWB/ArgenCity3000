@@ -101,7 +101,7 @@ describe('planTool / applyPlan', () => {
     expect(ok.cells).toHaveLength(4);
     expect(ok.cost).toBe(COSTS.plant);
     applyPlan(w, ok);
-    expect(w.plants).toEqual([{ x: 3, y: 3 }]);
+    expect(w.plants).toEqual([{ x: 3, y: 3, kind: 'coal' }]);
     expect(w.tileAt(4, 4)).toBe(TILE.PLANT);
     expect(planTool(w, 'plant', [[4, 4]]).cells).toHaveLength(0); // occupied
     expect(planTool(w, 'plant', [[9, 3]]).cells).toHaveLength(0); // touches water
