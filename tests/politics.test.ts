@@ -11,7 +11,7 @@ function flat(n = 32): Terrain {
   return { n, corners: new Uint8Array(s * s).fill(SEA_LEVEL + 1), trees: new Uint8Array(n * n) };
 }
 
-/** 2.000 residents in lit towers with average services, and jobs for all of them. */
+/** 2.000 residents in lit towers with just-acceptable services, and jobs for all of them. */
 function town(): World {
   const w = new World(flat());
   for (let k = 0; k < 13; k++) {
@@ -19,13 +19,13 @@ function town(): World {
     w.setTile(k, 7, TILE.I, 4);
   }
   w.powered.fill(1);
-  w.health.fill(50);
-  w.edu.fill(50);
-  w.landValue.fill(40);
+  w.health.fill(APPROVAL.fairCoverage);
+  w.edu.fill(APPROVAL.fairCoverage);
+  w.landValue.fill(APPROVAL.fairLandValue);
   return w;
 }
 
-const calm: ApprovalInputs = { taxes: { R: 7, C: 7, I: 7 }, crisis: false, jammedShare: 0, abandoned: 0, pop: 13 * 160, jobs: 13 * 120 };
+const calm: ApprovalInputs = { taxes: { R: 7, C: 7, I: 7 }, crisis: false, jammedShare: 0, abandoned: 0, pop: 13 * 160, jobs: 13 * 120, growth: 0 };
 const points = (w: World, over: Partial<ApprovalInputs> = {}) => computeApproval(w, { ...calm, ...over }).target;
 
 describe('approval', () => {
@@ -45,6 +45,9 @@ describe('approval', () => {
     const v = town();
     v.landValue.fill(80);
     expect(points(v)).toBeGreaterThan(50);
+    const growing = computeApproval(town(), { ...calm, growth: 0.25 });
+    expect(growing.target).toBeGreaterThan(50);
+    expect(growing.factors).toEqual([{ label: 'Progreso', points: growing.target - 50 }]);
   });
 
   it('goes down with each thing the neighbours complain about, and names it', () => {
@@ -54,6 +57,7 @@ describe('approval', () => {
       ['Tránsito', () => ({ jammedShare: 0.8 })],
       ['Edificios abandonados', () => ({ abandoned: 10 })],
       ['Falta de trabajo', () => ({ jobs: 200 })],
+      ['Progreso', () => ({ growth: -0.2 })],
       ['Apagones', (w) => (w.powered.fill(0), {})],
       ['Delito', (w) => (w.crime.fill(60), {})],
       ['Humo', (w) => (w.pollution.fill(60), {})],
@@ -68,6 +72,13 @@ describe('approval', () => {
       expect(factor, label).toBeDefined();
       expect(factor!.points, label).toBeLessThan(0);
     }
+  });
+
+  it('forgives a little crime and a little smoke', () => {
+    const w = town();
+    w.crime.fill(APPROVAL.tolerated);
+    w.pollution.fill(APPROVAL.tolerated);
+    expect(points(w)).toBe(50);
   });
 
   it('asks little of the services of a very small city and stays between 0 and 100', () => {

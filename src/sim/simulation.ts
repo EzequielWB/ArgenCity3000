@@ -172,7 +172,15 @@ export class Simulation {
       abandoned: this.abandonedCount,
       pop: this.totals.pop,
       jobs: this.totals.cJobs + this.totals.iJobs,
+      growth: this.yearlyGrowth(),
     });
+  }
+
+  /** Growth of the population against twelve months ago (0 for a city too young or too small to compare). */
+  private yearlyGrowth(): number {
+    const h = this.state.history;
+    const before = h.length >= 12 ? h[h.length - 12].pop : 0;
+    return before >= 50 ? (this.totals.pop - before) / before : 0;
   }
 
   private recomputePower(): void {

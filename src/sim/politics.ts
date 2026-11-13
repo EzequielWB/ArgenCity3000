@@ -16,6 +16,12 @@ export const APPROVAL = {
   toWin: 50,
   /** Residents from which the neighbours expect full services (below it they forgive in proportion). */
   fullExpectations: 1000,
+  /** Health and education coverage the neighbours take for granted: more adds points, less takes them. */
+  fairCoverage: 35,
+  /** Land value of an ordinary neighbourhood: nicer ones add points. */
+  fairLandValue: 30,
+  /** Crime and smoke (0 to 100) nobody complains about. */
+  tolerated: 10,
 } as const;
 
 export interface ApprovalInputs {
@@ -29,6 +35,8 @@ export interface ApprovalInputs {
   pop: number;
   /** Commerce plus industry jobs. */
   jobs: number;
+  /** Growth of the population over the last year, as a ratio (0.2 = 20 % more people). */
+  growth: number;
 }
 
 export interface ApprovalFactor {
@@ -75,11 +83,12 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
     const avg = (sum: number) => sum / residents;
     // A hamlet does not expect a hospital: service complaints grow with the city.
     const expects = Math.min(1, inp.pop / APPROVAL.fullExpectations);
-    raw.push(['Salud', expects * ((avg(health) - 50) / 50) * 8]);
-    raw.push(['Educación', expects * ((avg(edu) - 50) / 50) * 6]);
-    raw.push(['Delito', -Math.min(15, avg(crime) * 0.3)]);
-    raw.push(['Humo', -Math.min(12, avg(smoke) * 0.25)]);
-    raw.push(['Barrios lindos', clamp((avg(value) - 40) * 0.15, -5, 8)]);
+    const service = (sum: number) => expects * clamp((avg(sum) - APPROVAL.fairCoverage) / (100 - APPROVAL.fairCoverage), -1, 1);
+    raw.push(['Salud', service(health) * 8]);
+    raw.push(['Educación', service(edu) * 6]);
+    raw.push(['Delito', -Math.min(15, Math.max(0, avg(crime) - APPROVAL.tolerated) * 0.3)]);
+    raw.push(['Humo', -Math.min(12, Math.max(0, avg(smoke) - APPROVAL.tolerated) * 0.25)]);
+    raw.push(['Barrios lindos', clamp((avg(value) - APPROVAL.fairLandValue) * 0.15, -5, 8)]);
     // Two residents per job, as the demand does: fewer jobs than that is unemployment.
     raw.push(['Falta de trabajo', -20 * Math.max(0, 1 - (inp.jobs * 2) / Math.max(1, inp.pop))]);
   }
@@ -89,6 +98,8 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   }
   raw.push(['Tasas', clamp((DEFAULT_TAX - averageTax(inp.taxes)) * 2.5, -20, 10)]);
   raw.push(['Tránsito', -15 * inp.jammedShare]);
+  // A city that keeps receiving people is a city on the move; one that empties is not.
+  raw.push(['Progreso', clamp(inp.growth * 30, -6, 6)]);
   raw.push(['Caja en rojo', inp.crisis ? -15 : 0]);
 
   const factors = raw.map(([label, v]) => ({ label, points: Math.round(v) })).filter((f) => f.points !== 0);
