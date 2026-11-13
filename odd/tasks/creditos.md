@@ -33,7 +33,7 @@ Rama: `feat/vertical-slice` · Entrega: commits por unidad en la rama (sin PR pe
 | T2 La cuota dentro del presupuesto | S3 | inline | hecho | `1e875a6`, 369 tests |
 | T3 Pedir, descontar y cerrar en la simulación | S1, S2, S4 | inline | hecho | `2f6000d`, 378 tests |
 | T4 Guardado v5 | S5 | inline | fusionada en T3 | `2f6000d` |
-| T5 Interfaz, diario y documentación | S1, S3 | inline | hecho | pendiente |
+| T5 Interfaz, diario y documentación | S1, S3 | inline | hecho | `d19b7e8`, 379 tests |
 
 ## Log
 
@@ -57,3 +57,20 @@ Rama: `feat/vertical-slice` · Entrega: commits por unidad en la rama (sin PR pe
   (se terminó uno y se pidió otro), y el panel se redibuja entero al pedir o cancelar, así que el presupuesto
   de arriba nunca muestra una cuota vieja. Verificación: 379 tests verdes, `npx tsc --noEmit` limpio y
   `npm run build` en 891 ms.
+- **L6 (2026-11-13), verificación independiente (baseline `14ba6b8` → `d19b7e8`):** S1–S5 **PASS** y las cinco
+  invariantes **PASS**, sin bloqueantes. Evidencia dura: los totales 13.000 / 36.250 / 80.000 y las cuotas
+  542 / 1.007 / 1.667 para los tres créditos; la suma de las cuotas iguala el total **exacto** para los tres
+  plazos (24 / 36 / 48); `cumulativeShareOf` telescopa exacto en 10 × 9 casos y la corrida de 60 meses es
+  byte-idéntica al baseline; `settleWeek` **no** resta la cuota por afuera (se cobra una sola vez); el
+  presupuesto sin crédito es byte-idéntico a `14ba6b8` salvo `"loan": 0`; un comando rechazado deja el estado
+  bit-idéntico; una ciudad en crisis **sale** de la crisis al tomar el crédito. Comandos: `npm test` 31
+  archivos / 379 tests exit 0, `npx tsc --noEmit` exit 0, `npm run build` exit 0, `npx vite-node
+  scripts/early-probe.ts` exit 0 (byte-idéntico al baseline).
+  Tres advertencias **no bloqueantes**, las tres sin arreglo necesario: (1) `state.crisis` queda un tick
+  atrasado después de `takeLoan` — `tick()` lo recalcula en `simulation.ts:292` **antes** de `grow()`, así que
+  se corrige solo al tick siguiente; (2) `payOffLoan` con `paid === months` cobraría 0 — inalcanzable, porque
+  `takeLoan` arranca en 0, `advanceLoan` suelta el crédito en el plazo y `parseLoan` rechaza ese estado;
+  (3) un crédito pedido en el último tick del mes paga la primera cuota en ese mismo cierre — comportamiento
+  documentado, el plazo sigue siendo exactamente `months`. Las sondas del verificador quedaron como tests de
+  regresión en `075e25c`: `tests/loans.test.ts` (frontera de mes, invariantes, la crisis que se revierte) y
+  `tests/save.test.ts` (cotas de `parseLoan` y todas las versiones legibles). 385 tests verdes.
