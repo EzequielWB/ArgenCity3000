@@ -164,5 +164,14 @@ describe('elections', () => {
     const bad = JSON.parse(text);
     bad.sim.approval = 140;
     expect(() => deserialize(JSON.stringify(bad))).toThrow('La aprobación de la partida es inválida');
+    for (const [field, value] of [
+      ['terms', -1],
+      ['terms', 1.5],
+      ['lostElection', 1],
+    ] as const) {
+      const broken = JSON.parse(text);
+      broken.sim[field] = value;
+      expect(() => deserialize(JSON.stringify(broken)), field).toThrow('El mandato de la partida es inválido');
+    }
   });
 });
