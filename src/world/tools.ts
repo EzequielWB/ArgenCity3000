@@ -47,6 +47,25 @@ export function toolInfo(id: ToolId): ToolInfo {
   return TOOLS.find((t) => t.id === id)!;
 }
 
+export interface ToolGroup {
+  id: 'query' | 'network' | 'zones' | 'services' | 'plants';
+  label: string;
+  tools: readonly ToolId[];
+}
+
+/** The toolbar's categories: every tool belongs to exactly one, in the order it is listed. */
+export const TOOL_GROUPS: readonly ToolGroup[] = [
+  { id: 'query', label: 'Consulta', tools: ['query', 'bulldoze'] },
+  { id: 'network', label: 'Calles y luz', tools: ['road', 'line'] },
+  { id: 'zones', label: 'Zonas', tools: ['zoneR', 'zoneC', 'zoneI', 'park'] },
+  { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire'] },
+  { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
+];
+
+export function groupOfTool(tool: ToolId): ToolGroup {
+  return TOOL_GROUPS.find((g) => g.tools.includes(tool))!;
+}
+
 export type Cell = [number, number];
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));

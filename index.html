@@ -3,33 +3,40 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ArgentinaCity 3000</title>
+    <title>ArgenCity 3000</title>
     <meta name="description" content="City-builder isométrico con identidad argentina." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 10 16 17 3 10z' fill='%23e0a526'/%3E%3Cpath d='M3 10v11l13 7V17z' fill='%23b4532f'/%3E%3Cpath d='M29 10v11l-13 7V17z' fill='%236fb7e0'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Alegreya+Sans:wght@400;700;800&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Bungee&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="app" class="hidden">
       <header id="topbar">
-        <div class="brand"><span class="logo">ArgentinaCity <b>3000</b></span></div>
-        <div class="city"><span id="cityName"></span><small id="cityType"></small></div>
-        <div class="stat"><label>Fecha</label><span id="date">Sem 1 · Ene 1990</span></div>
-        <div class="speed" id="speed" role="group" aria-label="Velocidad"></div>
-        <div class="stat">
-          <label>Caja</label><span id="cash"></span>
-          <span id="balance" class="balance"><span id="balanceText"></span><span id="runway"></span></span>
+        <div class="logo filete">ArgenCity <b>3000</b></div>
+        <div class="chapa">
+          <span class="tag">Caja</span><strong id="cash"></strong>
+          <small id="balance"><span id="balanceText"></span><span id="runway"></span></small>
         </div>
-        <div class="stat"><label>Población</label><span id="pop"></span><span id="goal" class="balance"></span></div>
-        <button class="stat" id="approvalBox" type="button" title="Aprobación de los vecinos: clic para ver el detalle"><label>Aprobación</label><span id="approval"></span><span id="election" class="balance"></span></button>
+        <div class="chapa">
+          <span class="tag">Población<span id="cityType"></span></span><strong id="pop"></strong>
+          <small id="goal"></small>
+        </div>
+        <button class="chapa" id="approvalBox" type="button" title="Aprobación de los vecinos: clic para ver el detalle">
+          <span class="tag">Aprobación</span><strong id="approval"></strong>
+          <small id="election"></small>
+        </button>
+        <div class="clock">
+          <span id="date">Sem 1 · Ene 1990</span>
+          <div class="speed" id="speed" role="group" aria-label="Velocidad"></div>
+        </div>
         <div class="rci" id="rci" title="Demanda: Residencial, Comercial, Industrial">
           <div class="bar r"><i></i><span>R</span></div>
           <div class="bar c"><i></i><span>C</span></div>
           <div class="bar i"><i></i><span>I</span></div>
         </div>
         <span id="stall" class="stall hidden"></span>
-        <nav class="menu">
+        <nav class="menu" aria-label="Menú">
           <button id="btnBudget" title="Presupuesto (P)">Presupuesto</button>
           <button id="btnSave" title="Guardar o cargar (G)">Partidas</button>
           <button id="btnHelp" title="Ayuda (H)">Ayuda</button>
@@ -38,32 +45,43 @@
         </nav>
       </header>
 
-      <aside id="toolbar" class="filete"></aside>
+      <aside id="toolbar" aria-label="Herramientas"></aside>
 
       <main id="stage">
         <canvas id="game"></canvas>
-        <div id="minimapBox" class="filete"><canvas id="minimap" width="200" height="104"></canvas></div>
-        <div id="info" class="card filete hidden" role="dialog" aria-label="Consulta"></div>
+        <div id="frame">
+          <i class="cor tl" aria-hidden="true"></i><i class="cor tr" aria-hidden="true"></i><i class="cor bl" aria-hidden="true"></i><i class="cor br" aria-hidden="true"></i>
+          <div class="ribbon"><span id="ribbonText"></span></div>
+        </div>
+        <div id="flyout" class="hidden"></div>
+        <div id="minimapBox" class="panel"><canvas id="minimap" width="200" height="104"></canvas></div>
+        <div id="info" class="card panel hidden" role="dialog" aria-label="Consulta"></div>
         <div id="tooltip" class="hidden"></div>
         <div id="toasts" aria-live="polite"></div>
       </main>
 
-      <aside id="diario">
+      <aside id="diario" aria-label="Diario">
         <header class="masthead">
-          <span class="kicker">Edición del día</span>
+          <span class="edition">Edición del día</span>
           <h2>El Diario del Conurbano</h2>
+          <div class="flourish" aria-hidden="true"></div>
           <span class="dateline" id="newsDate"></span>
         </header>
         <ol id="news"></ol>
       </aside>
 
-      <footer id="status"><span id="statusTool"></span><span id="statusCell"></span></footer>
+      <footer id="status">
+        <span id="statusTool"></span><span id="statusCell"></span>
+        <button id="phrase" class="phrase" type="button" title="Otra frase"></button>
+      </footer>
     </div>
 
     <section id="start" class="screen">
-      <div class="start-card filete">
-        <h1 class="logo big">ArgentinaCity <b>3000</b></h1>
+      <i class="cor tl" aria-hidden="true"></i><i class="cor tr" aria-hidden="true"></i><i class="cor bl" aria-hidden="true"></i><i class="cor br" aria-hidden="true"></i>
+      <div class="start-card panel">
+        <h1 class="logo big filete">ArgenCity <b>3000</b></h1>
         <p class="tagline">Fundá tu ciudad, Intendente. Calles, luz, barrios y un diario que no perdona.</p>
+        <div class="flourish" aria-hidden="true"></div>
         <div class="start-grid">
           <div class="start-form">
             <label>Nombre de la ciudad
@@ -96,11 +114,12 @@
             <figcaption>Vista del terreno</figcaption>
           </figure>
         </div>
+        <button id="startPhrase" class="phrase" type="button" title="Otra frase"></button>
       </div>
     </section>
 
     <div id="modal" class="screen hidden" role="dialog" aria-modal="true">
-      <div class="modal-card filete">
+      <div class="modal-card panel" id="modalCard">
         <button class="close" id="modalClose" aria-label="Cerrar">✕</button>
         <div id="modalBody"></div>
       </div>

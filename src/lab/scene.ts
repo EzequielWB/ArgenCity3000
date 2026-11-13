@@ -3,7 +3,7 @@
  * factory, a football pitch and trees) drawn in a given style. Used only by estilos.html to
  * choose an art direction; nothing here is part of the game yet.
  */
-import { Pixels, bayer, hex, mix, noise, shade, type Pt, type RGB, type WallPaint } from './pixel';
+import { Pixels, bayer, hex, mix, noise, shade, type Pt, type RGB, type WallPaint } from '../render/pixel';
 
 export interface Style {
   id: string;

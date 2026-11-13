@@ -1,4 +1,4 @@
-# ArgentinaCity 3000
+# ArgenCity 3000
 
 City-builder isométrico para navegador con identidad argentina: fundás una ciudad, trazás calles, llevás la luz, zonificás barrios y la ves crecer mientras El Diario del Conurbano cuenta lo que pasa. Las mecánicas son las del género (zonas, demanda, energía, presupuesto), y el arte, la interfaz y los textos son propios: todo el arte se genera por código.
 
@@ -55,10 +55,12 @@ src/
   world/             terreno procedural, grilla de la ciudad, herramientas (planificar y aplicar)
   sim/               energía, campos (calles, contaminación, valor), demanda, presupuesto,
                      calendario, diario, ficha de consulta y el bucle de simulación
-  render/            sprites procedurales, cache isométrica del mapa, vista, minimapa, tránsito
+  render/            sprites procedurales, cache isométrica del mapa, vista, minimapa, tránsito,
+                     pintor de pixeles para los ornamentos
   save/              serialización validada y ranuras en localStorage
   input/             mouse, rueda y touch
-  ui/                estilos, íconos, paneles (presupuesto, partidas, ayuda)
+  ui/                estilos, íconos, barra de herramientas por categorías, ornamentos fileteados,
+                     frases de filete y paneles (presupuesto, partidas, ayuda, boleta, plaqueta)
   game.ts            una partida en curso: une simulación, render, entrada y HUD
   main.ts            pantalla de inicio, teclado y ciclo de vida de la partida
 tests/               Vitest, solo lógica pura (sin DOM)

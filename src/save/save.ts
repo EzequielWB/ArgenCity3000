@@ -93,9 +93,9 @@ export function deserialize(text: string): SaveData {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error('Eso no es una partida de ArgentinaCity 3000');
+    throw new Error('Eso no es una partida de ArgenCity 3000');
   }
-  if (!data || typeof data !== 'object' || data.game !== GAME_ID) throw new Error('Eso no es una partida de ArgentinaCity 3000');
+  if (!data || typeof data !== 'object' || data.game !== GAME_ID) throw new Error('Eso no es una partida de ArgenCity 3000');
   need(READABLE_VERSIONS.includes(data.version as number), 'Esta partida es de otra versión del juego');
   const n = data.n;
   need(isInt(n) && n >= 8 && n <= 512, 'El tamaño del mapa es inválido');

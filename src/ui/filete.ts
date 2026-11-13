@@ -1,8 +1,8 @@
 /**
- * Pixel "fileteado" ornaments for the interface mock-up: a corner (volute, acanthus leaves, a
- * flower and beads), a divider and a ribbon. Drawn at 1x; the page scales them up.
+ * Pixel "fileteado" ornaments for the interface: a corner (volute, acanthus leaves, a flower and
+ * beads), a divider and a ribbon. Drawn at 1x; the stylesheet scales them up by whole pixels.
  */
-import { Pixels, hex, shade, type Pt, type RGB } from './pixel';
+import { Pixels, hex, shade, type Pt, type RGB } from '../render/pixel';
 
 const GOLD = hex('#e0a526');
 const GOLD_LIGHT = hex('#ffe08a');
@@ -141,4 +141,11 @@ export function toUrl(px: Pixels): string {
   for (let i = 0; i < data.length; i += 4) if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) data[i + 3] = 0;
   c.getContext('2d')!.putImageData(new ImageData(data, px.w, px.h), 0, 0);
   return c.toDataURL('image/png');
+}
+
+/** Draws the ornaments once and hands them to the stylesheet as `--corner`, `--divider` and `--ribbon`. */
+export function installOrnaments(root: HTMLElement = document.documentElement): void {
+  root.style.setProperty('--corner', `url(${toUrl(corner())})`);
+  root.style.setProperty('--divider', `url(${toUrl(divider())})`);
+  root.style.setProperty('--ribbon', `url(${toUrl(ribbon())})`);
 }

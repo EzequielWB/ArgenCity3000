@@ -1,12 +1,10 @@
 /** Interface mock-up: fills in the pixel ornaments and the sample map, and switches the colour scheme. */
-import { corner, divider, ribbon, toUrl } from './filete';
+import { installOrnaments } from '../ui/filete';
+import { PHRASES } from '../ui/phrases';
 import { CHOSEN } from './main-styles';
 import { drawScene } from './scene';
 
-const root = document.documentElement;
-root.style.setProperty('--corner', `url(${toUrl(corner())})`);
-root.style.setProperty('--divider', `url(${toUrl(divider())})`);
-root.style.setProperty('--ribbon', `url(${toUrl(ribbon())})`);
+installOrnaments();
 
 // The sample map: the chosen style, at 1x; CSS scales it with hard pixels to cover the map area.
 const scene = drawScene(CHOSEN);
@@ -53,13 +51,6 @@ document.querySelectorAll<HTMLButtonElement>('.cat').forEach((b) =>
   }),
 );
 
-const PHRASES = [
-  'Intendente que madruga, inaugura dos veces',
-  'Donde hay asfalto, hay esperanza',
-  'Mi ciudad no será grande, pero tiene plaza',
-  'El que apura la obra, la paga dos veces',
-  'Sin luz no hay tango',
-];
 let phrase = 0;
 const phraseEl = document.querySelector('#phrase')!;
 const nextPhrase = () => {

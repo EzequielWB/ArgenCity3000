@@ -11,17 +11,17 @@ import type { SaveData } from './save/save';
 import { saveToSlot } from './save/slots';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
 import { dateLabel, weekLabel } from './sim/calendar';
-import { MILESTONES, isUnlocked, milestoneOfTool, nextMilestone, unlockNames } from './sim/milestones';
+import { isUnlocked, nextMilestone, unlockNames } from './sim/milestones';
 import { describeOutlook, placementNote, placementUpkeep } from './sim/outlook';
 import { windOutput } from './sim/plants';
 import { reachCells } from './sim/power';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { APPROVAL, nextElectionYear } from './sim/politics';
-import { TOOL_ICONS } from './ui/icons';
-import { openApproval, openElectionLost } from './ui/panels';
+import { openApproval, openElectionLost, openElectionWon, openMilestone } from './ui/panels';
 import { $, escapeHtml, toast } from './ui/dom';
-import { applyPlan, dragCells, planTool, plantFootprint, plantKindOfTool, toolInfo, TOOLS, type ToolId } from './world/tools';
+import { Toolbar, lockNotice } from './ui/toolbar';
+import { applyPlan, dragCells, planTool, plantFootprint, plantKindOfTool, toolInfo, type ToolId } from './world/tools';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
 
@@ -101,8 +101,11 @@ export class Game implements PointerTarget {
   private outlookBudget: BudgetReport | null = null;
   private outlookAt = 0;
   private keyboardPan = { x: 0, y: 0 };
+  private toolbar: Toolbar;
   /** Milestone the toolbar and the goal were last drawn for (-1 = never). */
   private shownMilestone = -1;
+  /** Highest milestone the player has already seen the plaque of. */
+  private announcedMilestone: number;
   /** Elections already announced to the player: won ones, and whether the lost one was shown. */
   private shownTerms: number;
   private shownLost: boolean;
@@ -116,16 +119,26 @@ export class Game implements PointerTarget {
     this.sim = new Simulation(this.world, data.sim, data.name);
     this.shownTerms = data.sim.terms;
     this.shownLost = data.sim.lostElection;
+    this.announcedMilestone = data.sim.milestone;
     this.map = new MapRenderer(this.world);
     this.map.redrawAll();
     this.world.takeDirty();
     this.view = new View($<HTMLCanvasElement>('#game'), this.map, this.world);
     this.minimap = new Minimap($<HTMLCanvasElement>('#minimap'), this.world);
     this.detach = attachPointer(this.view.canvas, this);
-    this.buildToolbar();
+    this.toolbar = new Toolbar($('#toolbar'), $('#flyout'), LAYERS, {
+      setTool: (tool) => this.setTool(tool),
+      setBlock: (block) => this.setBlock(block),
+      setLayer: (layer) => this.setLayer(layer),
+      undo: () => this.undo(),
+      rotate: (dir) => this.rotate(dir),
+      zoom: (dir) => this.zoom(dir, this.view.width / 2, this.view.height / 2),
+    });
+    this.toolbar.showTool(this.tool);
+    this.toolbar.showBlock(this.block);
+    this.toolbar.showLayer(this.view.layer);
     this.buildSpeed();
     this.startCamera();
-    $('#cityName').textContent = this.name;
     this.updateHud(true);
     window.addEventListener('resize', this.onResize);
     $<HTMLCanvasElement>('#minimap').addEventListener('pointerdown', this.onMinimap);
@@ -137,6 +150,7 @@ export class Game implements PointerTarget {
     this.hooks.sound.update({ pop: 0, cars: 0, running: false }, 0);
     cancelAnimationFrame(this.raf);
     this.detach();
+    this.toolbar.destroy();
     window.removeEventListener('resize', this.onResize);
     $<HTMLCanvasElement>('#minimap').removeEventListener('pointerdown', this.onMinimap);
     this.closeInfo();
@@ -228,8 +242,7 @@ export class Game implements PointerTarget {
 
   setTool(tool: ToolId): void {
     if (!isUnlocked(tool, this.sim.state.milestone)) {
-      const m = MILESTONES[milestoneOfTool(tool)];
-      toast(`${toolInfo(tool).label}: se habilita cuando la ciudad sea ${m.name} (${formatNumber(m.pop)} habitantes)`, true);
+      toast(lockNotice(tool), true);
       this.hooks.sound.play('deny');
       return;
     }
@@ -241,14 +254,14 @@ export class Game implements PointerTarget {
     } else if (TOOL_LAYERS[this.tool]) this.setLayer(this.layerBeforeTool);
     this.tool = tool;
     this.dragCancel();
-    document.querySelectorAll<HTMLButtonElement>('#toolbar .tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === tool)));
+    this.toolbar.showTool(tool);
     if (this.mouse) this.hover(...this.mouse);
     this.updateStatus();
   }
 
   setBlock(block: number): void {
     this.block = block;
-    document.querySelectorAll<HTMLButtonElement>('#toolbar [data-block]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.block) === block)));
+    this.toolbar.showBlock(block);
     if (this.mouse) this.hover(...this.mouse);
   }
 
@@ -258,7 +271,14 @@ export class Game implements PointerTarget {
 
   setLayer(layer: Layer): void {
     this.view.setLayer(layer);
-    document.querySelectorAll<HTMLButtonElement>('#toolbar [data-layer]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layer === layer)));
+    this.toolbar.showLayer(layer);
+  }
+
+  /** Puts the open tool list away; false when none was open. */
+  closeFlyout(): boolean {
+    const open = this.toolbar.isOpen();
+    this.toolbar.close();
+    return open;
   }
 
   cycleLayer(): void {
@@ -478,37 +498,6 @@ export class Game implements PointerTarget {
 
   // ---------------------------------------------------------------- HUD
 
-  private buildToolbar(): void {
-    const bar = $('#toolbar');
-    const tools = TOOLS.map(
-      (t) =>
-        `<button class="tool" data-tool="${t.id}" title="${escapeHtml(t.label)} (${t.key}) — ${escapeHtml(t.help)}" aria-label="${escapeHtml(t.label)}" aria-pressed="${t.id === this.tool}">${TOOL_ICONS[t.id]}<kbd>${t.key}</kbd></button>`,
-    ).join('');
-    const blocks = [1, 2, 4]
-      .map((b) => `<button class="small" data-block="${b}" aria-pressed="${b === this.block}" title="Bloque de ${b}×${b} para zonas, plazas y topadora (B)">${b}×${b}</button>`)
-      .join('');
-    const layers = LAYERS.map(
-      (l) => `<button class="small" data-layer="${l.id}" aria-pressed="${l.id === 'none'}" title="Capa: ${l.label} (C)">${l.label}</button>`,
-    ).join('');
-    bar.innerHTML = `${tools}<button class="small" data-act="undo" title="Deshacer la última obra (Ctrl+Z)">↶ Deshacer</button><hr><div class="group-label">Bloque</div>${blocks}<hr><div class="group-label">Capas</div>${layers}<hr>
-      <button class="small" data-act="rotl" title="Rotar a la izquierda (Q)">⟲ Rotar</button>
-      <button class="small" data-act="rotr" title="Rotar a la derecha (E)">Rotar ⟳</button>
-      <button class="small" data-act="zin" title="Acercar (+)">＋ Zoom</button>
-      <button class="small" data-act="zout" title="Alejar (−)">− Zoom</button>`;
-    bar.onclick = (e) => {
-      const b = (e.target as HTMLElement).closest('button');
-      if (!b) return;
-      if (b.dataset.tool) this.setTool(b.dataset.tool as ToolId);
-      else if (b.dataset.block) this.setBlock(Number(b.dataset.block));
-      else if (b.dataset.layer) this.setLayer(b.dataset.layer as Layer);
-      else if (b.dataset.act === 'undo') this.undo();
-      else if (b.dataset.act === 'rotl') this.rotate(-1);
-      else if (b.dataset.act === 'rotr') this.rotate(1);
-      else if (b.dataset.act === 'zin') this.zoom(1, this.view.width / 2, this.view.height / 2);
-      else if (b.dataset.act === 'zout') this.zoom(-1, this.view.width / 2, this.view.height / 2);
-    };
-  }
-
   private buildSpeed(): void {
     const box = $('#speed');
     box.innerHTML = SPEED_LABELS.map(
@@ -537,7 +526,7 @@ export class Game implements PointerTarget {
     cash.classList.toggle('neg', s.cash < 0);
     this.updateOutlook(force);
     $('#pop').textContent = formatNumber(this.sim.totals.pop);
-    $('#cityType').textContent = settlementType(this.sim.totals.pop);
+    $('#cityType').textContent = ` · ${settlementType(this.sim.totals.pop)}`;
     this.updateMilestone();
     this.updateApproval();
     const bars = document.querySelectorAll<HTMLElement>('#rci .bar i');
@@ -557,7 +546,9 @@ ${stalled}` : ''}`;
       stall.textContent = `⚠ No llega gente nueva: ${STALL_LABELS[this.sim.stall!]}`;
       stall.title = stalled;
     }
-    $('#newsDate').textContent = `${this.name} · ${dateLabel(s.tick)}`;
+    const cityAndMonth = `${this.name} · ${dateLabel(s.tick)}`;
+    $('#ribbonText').textContent = cityAndMonth;
+    $('#newsDate').textContent = cityAndMonth;
     const head = s.news[0] ? s.news[0].date + s.news[0].text + s.news.length : '';
     if (force || head !== this.shownNews) {
       const fresh = !force && this.shownNews !== '';
@@ -571,35 +562,36 @@ ${stalled}` : ''}`;
     if (force) this.updateStatus();
   }
 
-  /** Approval next to the population, the date of the next election, and the news of an election night. */
+  /** Approval next to the population, the date of the next election, and the ballot of an election night. */
   private updateApproval(): void {
     const s = this.sim.state;
     const el = $('#approval');
     el.textContent = `${s.approval} %`;
     el.className = s.approval >= APPROVAL.toWin ? 'tone-good' : s.approval >= APPROVAL.toWin - 10 ? 'tone-warn' : 'tone-bad';
     $('#election').textContent = s.lostElection ? 'modo libre' : `vota en oct ${nextElectionYear(s.tick)}`;
+    // One panel at a time: a ballot waits for the plaque (or whatever is open) to be closed.
+    if (this.hooks.isModalOpen()) return;
     if (s.terms > this.shownTerms) {
       this.shownTerms = s.terms;
-      toast(`¡Reelecto con el ${s.approval} % de los votos! Próximas elecciones: octubre de ${nextElectionYear(s.tick)}`);
       this.hooks.sound.play('news');
-    }
-    if (s.lostElection && !this.shownLost) {
+      openElectionWon(this);
+    } else if (s.lostElection && !this.shownLost) {
       this.shownLost = true;
       openElectionLost(this, () => this.hooks.leave());
     }
   }
 
-  /** The next goal under the population, the locked tools, and a notice when a milestone is reached. */
+  /** The next goal under the population, the locked tools, and the plaque when a milestone is reached. */
   private updateMilestone(): void {
     const reached = this.sim.state.milestone;
+    // Several milestones reached at once show one plaque, for the highest.
+    if (reached > this.announcedMilestone && !this.hooks.isModalOpen()) {
+      this.announcedMilestone = reached;
+      this.hooks.sound.play('news');
+      openMilestone(this, reached);
+    }
     if (reached === this.shownMilestone) return;
     const label = (t: ToolId) => toolInfo(t).label;
-    if (this.shownMilestone >= 0 && reached > this.shownMilestone) {
-      const m = MILESTONES[reached];
-      const opens = unlockNames(m, label);
-      toast(`¡${this.name} ya es ${m.name}! La Provincia giró ${formatMoney(m.grant)}${opens ? `. Nuevo: ${opens}` : ''}`);
-      this.hooks.sound.play('news');
-    }
     this.shownMilestone = reached;
     const next = nextMilestone(reached);
     const goal = $('#goal');
@@ -608,14 +600,7 @@ ${stalled}` : ''}`;
       const opens = unlockNames(next, label);
       goal.title = `Próximo hito: ${next.name}, con ${formatNumber(next.pop)} habitantes. La Provincia gira ${formatMoney(next.grant)}${opens ? ` y se habilita ${opens}` : ''}.`;
     }
-    document.querySelectorAll<HTMLButtonElement>('#toolbar .tool').forEach((b) => {
-      const tool = b.dataset.tool as ToolId;
-      const info = toolInfo(tool);
-      const locked = !isUnlocked(tool, reached);
-      const m = MILESTONES[milestoneOfTool(tool)];
-      b.classList.toggle('locked', locked);
-      b.title = locked ? `${info.label}: se habilita cuando la ciudad sea ${m.name} (${formatNumber(m.pop)} habitantes)` : `${info.label} (${info.key}) — ${info.help}`;
-    });
+    this.toolbar.showLocks(reached);
   }
 
   /** Estimated monthly balance next to the cash, with how long the cash lasts when it is short. */

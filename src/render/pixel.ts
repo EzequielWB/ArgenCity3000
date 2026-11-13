@@ -1,7 +1,7 @@
 /**
- * Pixel painter for the style lab: everything is drawn at 1x on a pixel buffer with no
- * anti-aliasing, and the page scales it up with nearest-neighbour. Geometry is the game's
- * 2:1 isometric tile (32 x 16 px).
+ * Pixel painter for the interface ornaments and the style lab: everything is drawn at 1x on a
+ * pixel buffer with no anti-aliasing, and the page scales it up with nearest-neighbour. Geometry
+ * is the game's 2:1 isometric tile (32 x 16 px).
  */
 
 export type RGB = [number, number, number];

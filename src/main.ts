@@ -7,6 +7,8 @@ import { paintTerrainPreview } from './render/minimap';
 import type { SaveData } from './save/save';
 import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
+import { installOrnaments } from './ui/filete';
+import { PHRASES, nextPhrase } from './ui/phrases';
 import { closeModal, initModal, isModalOpen, openBudget, openHelp, openSaves } from './ui/panels';
 import { MAP_KINDS, generateMap, type MapKind } from './world/mapkinds';
 import type { Terrain } from './world/terrain';
@@ -37,6 +39,7 @@ const SIZE_LABELS: readonly (readonly [MapSizeId, string])[] = [
 
 let game: Game | null = null;
 const sound = new Sound(browserAudio, browserStorage());
+installOrnaments();
 
 function randomSeed(): number {
   return 100000 + Math.floor(Math.random() * 900000);
@@ -203,6 +206,23 @@ $('#btnMenu').addEventListener('click', () => {
 });
 initModal();
 
+// ---------------------------------------------------------------- filete phrases
+
+/** Shows a phrase on a button; a click brings another one. Returns the function that changes it. */
+function bindPhrase(button: HTMLElement): () => void {
+  let shown = -1;
+  const change = () => {
+    shown = nextPhrase(shown, PHRASES.length);
+    button.textContent = `“${PHRASES[shown]}”`;
+  };
+  change();
+  button.addEventListener('click', change);
+  return change;
+}
+bindPhrase($('#startPhrase'));
+// The one at the foot of the map also changes by itself now and then.
+window.setInterval(bindPhrase($('#phrase')), 45_000);
+
 // ---------------------------------------------------------------- keyboard
 
 const panKeys: Record<string, [number, number]> = {
@@ -290,6 +310,8 @@ window.addEventListener('keydown', (e) => {
       game.view.resize();
       break;
     case 'Escape':
+      // The open tool list goes first; with none open, Esc cancels the drag and closes the card.
+      if (game.closeFlyout()) break;
       game.dragCancel();
       game.closeInfo();
       break;

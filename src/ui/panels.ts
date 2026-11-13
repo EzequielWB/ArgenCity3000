@@ -6,7 +6,10 @@ import type { Game } from '../game';
 import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
+import { dateOf } from '../sim/calendar';
+import { MILESTONES, unlockNames } from '../sim/milestones';
 import { APPROVAL, monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
+import { toolInfo } from '../world/tools';
 import { $, escapeHtml, toast } from './dom';
 
 let closeHook: (() => void) | null = null;
@@ -15,9 +18,13 @@ export function isModalOpen(): boolean {
   return !$('#modal').classList.contains('hidden');
 }
 
-export function openModal(html: string, onClose?: () => void): HTMLElement {
+/** Panels drawn as an object instead of the usual framed card: a ballot paper or a bronze plaque. */
+export type ModalShape = 'boleta' | 'plaqueta';
+
+export function openModal(html: string, onClose?: () => void, shape?: ModalShape): HTMLElement {
   const body = $('#modalBody');
   body.innerHTML = html;
+  $('#modalCard').dataset.shape = shape ?? '';
   $('#modal').classList.remove('hidden');
   closeHook = onClose ?? null;
   $('#modalClose').focus();
@@ -61,7 +68,7 @@ function money(v: number, sign = false): string {
 
 function budgetTable(b: BudgetReport): string {
   const row = (label: string, v: number, cls = '') => `<tr class="${cls}"><td>${label}</td><td>${money(v)}</td></tr>`;
-  return `<table class="budget">
+  return `<div class="planilla"><table class="budget">
     ${row('Tasas residenciales', b.taxR)}
     ${row('Tasas comerciales', b.taxC)}
     ${row('Tasas industriales', b.taxI)}
@@ -77,7 +84,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Administración municipal', b.services)}
     ${row('Total gastos', b.expenses, 'total')}
     <tr class="total"><td>Saldo del mes</td><td>${money(b.balance, true)}</td></tr>
-  </table>`;
+  </table></div>`;
 }
 
 export function openBudget(game: Game): void {
@@ -108,7 +115,7 @@ export function openBudget(game: Game): void {
         Energía: ${formatNumber(sim.power.use)} de ${formatNumber(sim.power.capacity)} MW (${game.world.plants.length} usina${game.world.plants.length === 1 ? '' : 's'})</p>
         <h3>Historia</h3>
         <canvas class="chart" id="chart" width="560" height="200" aria-label="Población y caja por mes"></canvas>
-        <p><small><span style="color:#9fdc8a">━</span> población · <span style="color:#e0a526">━</span> caja</small></p>
+        <p><small><span class="key pop" aria-hidden="true"></span> población · <span class="key cash" aria-hidden="true"></span> caja</small></p>
       </section>
     </div>
     ${sim.state.lastBudget ? `<h3>Mes pasado</h3>${budgetTable(sim.state.lastBudget)}` : ''}
@@ -153,7 +160,7 @@ function drawHistory(c: HTMLCanvasElement, history: { pop: number; cash: number 
   g.clearRect(0, 0, c.width, c.height);
   if (history.length < 2) {
     g.fillStyle = '#c9b79a';
-    g.font = '22px sans-serif';
+    g.font = "22px 'Chakra Petch', sans-serif";
     g.fillText('Todavía no pasó ni un mes', 20, 100);
     return;
   }
@@ -208,22 +215,83 @@ export function openApproval(game: Game): void {
   `);
 }
 
+/** The ballot paper of an election night: the share of the votes, the bar it had to clear, and the stamp. */
+function ballot(game: Game, stamp: string, won: boolean, rest: string): string {
+  const s = game.sim.state;
+  return `<div class="boleta${won ? '' : ' lost'}">
+    <div class="band"></div>
+    <h2 class="lista">Elecciones ${dateOf(s.tick).year} · Lista 3000</h2>
+    <p>Intendente de ${escapeHtml(game.name)}</p>
+    <div class="num">${s.approval} %</div>
+    <div class="votes" role="img" aria-label="${s.approval} % de los votos; hacía falta el ${APPROVAL.toWin} %"><i style="width:${s.approval}%"></i><b style="left:${APPROVAL.toWin}%"></b></div>
+    <div class="stamp">${stamp}</div>
+    ${rest}
+  </div>`;
+}
+
+/** The night of a won election: the ballot with its stamp. Closing it goes back to the city. */
+export function openElectionWon(game: Game): void {
+  const s = game.sim.state;
+  const body = openModal(
+    ballot(
+      game,
+      'Reelecto',
+      true,
+      `<p>Hacía falta el ${APPROVAL.toWin} %. Próxima votación: octubre de ${nextElectionYear(s.tick)}.${s.terms > 1 ? ` Mandatos ganados: ${s.terms}.` : ''}</p>
+      <div class="row"><button id="wonStay" class="primary" type="button">Seguir gobernando</button></div>`,
+    ),
+    undefined,
+    'boleta',
+  );
+  body.querySelector('#wonStay')!.addEventListener('click', closeModal);
+}
+
 /** The night of a lost election: what went wrong, and the choice to go on in free mode or leave. */
 export function openElectionLost(game: Game, onLeave: () => void): void {
-  const s = game.sim.state;
   const complaints = game.sim.approval.factors.filter((f) => f.points < 0).slice(0, 4);
-  const body = openModal(`
-    <h2>Perdiste las elecciones</h2>
-    <p>Los vecinos de ${escapeHtml(game.name)} votaron y solo el <strong>${s.approval} %</strong> te acompañó. Hacía falta el ${APPROVAL.toWin} %.</p>
-    ${complaints.length ? `<h3>De qué se quejaban</h3>${factorRows(complaints)}` : ''}
-    <p>Podés seguir construyendo la ciudad en modo libre (ya no habrá elecciones) o volver al inicio y fundar otra.</p>
-    <div class="row"><button id="lostStay" class="primary" type="button">Seguir en modo libre</button><button id="lostLeave" type="button">Volver al inicio</button></div>
-  `);
+  const body = openModal(
+    ballot(
+      game,
+      'No reelecto',
+      false,
+      `<p>Hacía falta el ${APPROVAL.toWin} %: los vecinos votaron y no te acompañaron.</p>
+      ${complaints.length ? `<h3>De qué se quejaban</h3>${factorRows(complaints)}` : ''}
+      <p>Podés seguir construyendo la ciudad en modo libre (ya no habrá elecciones) o volver al inicio y fundar otra.</p>
+      <div class="row"><button id="lostStay" class="primary" type="button">Seguir en modo libre</button><button id="lostLeave" type="button">Volver al inicio</button></div>`,
+    ),
+    undefined,
+    'boleta',
+  );
   body.querySelector('#lostStay')!.addEventListener('click', closeModal);
   body.querySelector('#lostLeave')!.addEventListener('click', () => {
     closeModal();
     onLeave();
   });
+}
+
+// ---------------------------------------------------------------- milestone
+
+const MONTH_NAMES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** The bronze plaque of a reached milestone (an index of MILESTONES): its name, the grant and what it opens. */
+export function openMilestone(game: Game, reached: number): void {
+  const m = MILESTONES[reached];
+  const { month, year } = dateOf(game.sim.state.tick);
+  const opens = unlockNames(m, (t) => toolInfo(t).label);
+  const screws = ['tl', 'tr', 'bl', 'br'].map((c) => `<i class="screw ${c}"></i>`).join('');
+  const body = openModal(
+    `<div class="plaqueta">${screws}
+      <p>${escapeHtml(game.name)} alcanzó la categoría de</p>
+      <h2>${escapeHtml(m.name)}</h2>
+      <p>con ${formatNumber(m.pop)} habitantes · ${MONTH_NAMES[month - 1]} de ${year}</p>
+      <p>La Provincia gira ${formatMoney(m.grant)}</p>
+      ${opens ? `<p>Se habilita: ${escapeHtml(opens)}</p>` : ''}
+      <div class="row"><button id="plaqueOk" class="primary" type="button">Seguir construyendo</button></div>
+    </div>`,
+    undefined,
+    'plaqueta',
+  );
+  body.querySelector('#plaqueOk')!.addEventListener('click', closeModal);
 }
 
 // ---------------------------------------------------------------- saves

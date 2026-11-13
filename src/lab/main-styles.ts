@@ -1,5 +1,5 @@
 /** Candidate art directions for the style lab, and the one that was chosen. */
-import { hex, type RGB } from './pixel';
+import { hex, type RGB } from '../render/pixel';
 import type { Style } from './scene';
 
 const h = (list: string[]): RGB[] => list.map(hex);

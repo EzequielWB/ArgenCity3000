@@ -1,20 +1,29 @@
 :root {
-  --ink: #1f1611;
-  --ink-2: #2c2019;
-  --ink-3: #3a2a20;
   --gold: #e0a526;
-  --gold-soft: #f2c96b;
-  --red: #c8392f;
-  --celeste: #6fb7e0;
-  --green: #3c8d4a;
-  --cream: #f6ead0;
+  --gold-light: #ffe08a;
+  --gold-dark: #8f5f12;
+  --red: #c9342c;
+  --celeste: #74acdf;
+  --paper: #f1e6cf;
+  --ink: #1b1410;
+  --cream: #f6f2e8;
   --muted: #c9b79a;
-  --paper: #f3e8cf;
-  --paper-ink: #2a2118;
+  --enamel: #1f4f8a;
+  --enamel-dark: #0e2a4a;
+  --base: #12382b;
+  --deep: #0a241b;
+  --raised: #1d5440;
+  --line: #2f7a5c;
   --r: #7cc06a;
   --c: #6fb7e0;
   --i: #e0b542;
-  --filete: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M4 36C4 15 15 4 36 4' fill='none' stroke='%23e0a526' stroke-width='2.2'/%3E%3Cpath d='M10 31C10 19 19 10 31 10' fill='none' stroke='%23c8392f' stroke-width='1.3'/%3E%3Cpath d='M36 4c-6 0-9 4-7 8s7 3 7-1' fill='none' stroke='%23e0a526' stroke-width='2'/%3E%3Cpath d='M4 36c0-6 4-9 8-7s3 7-1 7' fill='none' stroke='%23e0a526' stroke-width='2'/%3E%3Cpath d='M15 16q6-9 13-5q-6 3-13 5z' fill='%233c8d4a'/%3E%3Ccircle cx='14' cy='15' r='2' fill='%236fb7e0'/%3E%3C/svg%3E");
+  --font-body: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+  --font-title: 'Bungee', 'Chakra Petch', 'Segoe UI', sans-serif;
+  /* Raised edge of a button: light from the top left, as on the pixel ornaments. */
+  --bevel: inset 2px 2px 0 rgba(255, 255, 255, 0.18), inset -2px -2px 0 rgba(0, 0, 0, 0.35);
+  --bevel-in: inset 2px 2px 0 rgba(0, 0, 0, 0.35), inset -2px -2px 0 rgba(255, 255, 255, 0.12);
+  /* Whole number of screen pixels per ornament pixel (see ui/filete.ts). */
+  --orn: 3;
   color-scheme: dark;
 }
 
@@ -26,10 +35,11 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: var(--ink);
+  background: var(--deep);
   color: var(--cream);
-  font-family: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
-  font-size: 15px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.2;
   overflow: hidden;
 }
 
@@ -41,42 +51,71 @@ select {
 }
 
 button {
-  background: var(--ink-3);
-  border: 1px solid #6b5137;
-  border-radius: 6px;
-  padding: 5px 10px;
+  background: var(--raised);
+  border: 2px solid var(--gold-dark);
+  box-shadow: var(--bevel);
+  padding: 5px 9px;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
 }
 
 button:hover {
-  border-color: var(--gold);
-  background: #4a3627;
+  border-color: var(--gold-light);
+  background: #26694f;
 }
 
+button:active {
+  box-shadow: var(--bevel-in);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button[aria-pressed='true'] {
+  background: var(--gold);
+  border-color: var(--gold-light);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* Two rings, light inside and dark outside, so the focus shows on green, on enamel and on paper. */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--celeste);
-  outline-offset: 1px;
+  outline: 2px solid #fff;
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px #000;
 }
 
 button.primary {
-  background: linear-gradient(#d14a37, #a92e25);
+  background: var(--red);
   border-color: var(--gold);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 button.primary:hover {
-  background: linear-gradient(#df5642, #b8342a);
+  background: #de4a3f;
+  border-color: var(--gold-light);
 }
 
 input,
 select {
-  background: #140e0a;
-  border: 1px solid #6b5137;
-  border-radius: 6px;
+  background: var(--deep);
+  border: 2px solid var(--gold-dark);
   padding: 6px 8px;
+}
+
+input:hover,
+select:hover {
+  border-color: var(--gold);
+}
+
+select,
+label.check,
+input[type='checkbox'],
+input[type='range'] {
+  cursor: pointer;
 }
 
 .hidden {
@@ -90,46 +129,27 @@ select {
   flex-wrap: wrap;
 }
 
-/* Fileteado frame: gold outer line, red inner line and curls in two corners. */
-.filete {
+/* A framed panel: gold line and a hard shadow, like a painted board. */
+.panel {
   position: relative;
-  background: var(--ink-2);
-  border: 2px solid var(--gold);
-  box-shadow:
-    inset 0 0 0 3px var(--ink-2),
-    inset 0 0 0 4px var(--red),
-    0 6px 18px rgba(0, 0, 0, 0.35);
-  border-radius: 10px;
+  background: var(--base);
+  border: 3px solid var(--gold);
+  box-shadow: 5px 5px 0 #000;
 }
 
-.filete::before,
-.filete::after {
-  content: '';
-  position: absolute;
-  width: 34px;
-  height: 34px;
-  background: var(--filete) no-repeat center / contain;
-  pointer-events: none;
-}
-
-.filete::before {
-  top: 2px;
-  left: 2px;
-}
-
-.filete::after {
-  bottom: 2px;
-  right: 2px;
-  transform: rotate(180deg);
+/* Lettering with volume: a highlight above, a coloured drop and a black one under it. */
+.filete {
+  font-family: var(--font-title);
+  font-weight: 400;
+  color: var(--gold);
+  text-shadow:
+    0 -2px 0 var(--gold-light),
+    2px 2px 0 var(--red),
+    4px 4px 0 #000;
+  letter-spacing: 1px;
 }
 
 .logo {
-  font-family: 'Rye', Georgia, serif;
-  color: var(--gold-soft);
-  letter-spacing: 0.5px;
-  text-shadow:
-    1px 1px 0 var(--red),
-    2px 2px 0 #5a1a14;
   white-space: nowrap;
 }
 
@@ -138,205 +158,252 @@ select {
   font-weight: 400;
 }
 
+/* Pixel flourish under a heading (the newspaper masthead, the start screen). */
+.flourish {
+  height: 30px;
+  background: var(--divider) center / 240px 30px no-repeat;
+  image-rendering: pixelated;
+}
+
+/* Corner ornament: drawn for the top left and mirrored for the other three. */
+.cor {
+  position: absolute;
+  width: calc(56px * var(--orn));
+  height: calc(56px * var(--orn));
+  background: var(--corner) no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  filter: drop-shadow(3px 3px 0 #000);
+  pointer-events: none;
+}
+
+.cor.tl {
+  left: 6px;
+  top: 6px;
+}
+
+/* The shadow is mirrored with the image, so each corner asks for the one that lands down and right. */
+.cor.tr {
+  right: 6px;
+  top: 6px;
+  transform: scaleX(-1);
+  filter: drop-shadow(-3px 3px 0 #000);
+}
+
+.cor.bl {
+  left: 6px;
+  bottom: 6px;
+  transform: scaleY(-1);
+  filter: drop-shadow(3px -3px 0 #000);
+}
+
+.cor.br {
+  right: 6px;
+  bottom: 6px;
+  transform: scale(-1, -1);
+  filter: drop-shadow(-3px -3px 0 #000);
+}
+
+/* A filete saying on a button: a click brings another one. */
+.phrase {
+  background: none;
+  border: 2px solid transparent;
+  box-shadow: none;
+  padding: 0 4px;
+  color: var(--gold-light);
+  white-space: nowrap;
+}
+
+.phrase:hover {
+  background: none;
+  border-color: transparent;
+  color: #fff;
+  text-decoration: underline;
+}
+
 /* ---------- Layout ---------- */
 
 #app {
   display: grid;
-  grid-template-columns: 132px 1fr 300px;
-  grid-template-rows: 58px 1fr 28px;
+  grid-template-columns: 108px 1fr 306px;
+  grid-template-rows: 66px 1fr 30px;
   grid-template-areas:
     'top top top'
     'tools stage news'
     'status status status';
   height: 100vh;
+  background: var(--base);
 }
 
 #app.no-news {
-  grid-template-columns: 132px 1fr 0;
+  grid-template-columns: 108px 1fr 0;
 }
 
 #app.no-news #diario {
   display: none;
 }
 
+/* ---------- Top bar ---------- */
+
 #topbar {
   grid-area: top;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 12px;
-  background: linear-gradient(#2c2019, #1f1611);
-  border-bottom: 2px solid var(--gold);
-  box-shadow: 0 2px 0 var(--red);
+  gap: 8px;
+  min-width: 0;
+  padding: 0 10px;
+  background: var(--deep);
+  border-bottom: 4px solid var(--gold-dark);
+  line-height: 1.05;
   z-index: 2;
-  overflow: hidden;
 }
 
-#topbar .brand .logo {
-  font-size: 20px;
-}
-
-.city {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-  min-width: 120px;
-}
-
-.city span {
-  font-weight: 800;
-  font-size: 16px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-}
-
-.city small {
-  color: var(--muted);
-  text-transform: capitalize;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-}
-
-.stat label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--muted);
-}
-
-.stat span {
-  font-weight: 800;
+#topbar .logo {
+  display: grid;
+  margin-right: 4px;
   font-size: 17px;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* Enamel street-sign plaques, with a rivet at each side. */
+.chapa {
+  position: relative;
+  flex: none;
+  min-width: 104px;
+  padding: 3px 14px;
+  background: var(--enamel);
+  border: 2px solid var(--cream);
+  outline: 2px solid var(--enamel-dark);
+  box-shadow: 3px 3px 0 #000;
+  color: var(--cream);
+  font: inherit;
+  line-height: 1.05;
+  text-align: left;
+}
+
+.chapa::before,
+.chapa::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  background: #c9d6e6;
+  box-shadow: 1px 1px 0 var(--enamel-dark);
+}
+
+.chapa::before {
+  left: 3px;
+}
+
+.chapa::after {
+  right: 3px;
+}
+
+.chapa .tag,
+.chapa strong,
+.chapa small {
+  display: block;
   white-space: nowrap;
 }
 
-#cash.neg {
-  color: #ff7a6b;
+.chapa .tag {
+  font-size: 10.8px;
+  letter-spacing: 1px;
+  color: #bcd3ee;
 }
 
-#goal {
-  color: var(--muted);
+.chapa .tag span {
+  letter-spacing: 0;
 }
 
-/* Why the city attracts nobody new, next to the demand bars (see Simulation.stall). */
-.stall {
-  max-width: 130px;
-  font-size: 12px;
+.chapa strong {
+  font-size: 20.8px;
   font-weight: 700;
-  line-height: 1.15;
-  color: #f0b34a;
-  cursor: help;
-}
-
-/* The approval is a stat you can click to see what the neighbours complain about. */
-#approvalBox {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-#approvalBox label {
-  cursor: pointer;
-}
-
-#approval.tone-good {
-  color: #8fd49a;
-}
-
-#approval.tone-warn {
-  color: #f0b34a;
-}
-
-#approval.tone-bad {
-  color: #ff7a6b;
-}
-
-#election {
-  color: var(--muted);
-}
-
-.factors {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.factors td {
-  padding: 3px 0;
-}
-
-.factors td:last-child {
-  text-align: right;
-  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
-/* Estimated monthly balance under the cash: green when the city earns, red when it loses, and the
-   runway in amber or red when the cash will not last. */
-#topbar .stat .balance {
-  font-size: 12px;
-  font-weight: 700;
+.chapa small {
+  min-height: 13.5px;
+  font-size: 12.8px;
+  color: #bfe9c4;
+}
+
+/* The approval is a plaque you can click to see what the neighbours complain about. */
+button.chapa:hover {
+  background: #2a62a6;
+  border-color: var(--gold-light);
+}
+
+button.chapa:active {
+  box-shadow: 1px 1px 0 #000;
+  transform: translate(2px, 2px);
+}
+
+button.chapa:focus-visible {
+  outline: 2px solid #fff;
+  box-shadow: 0 0 0 4px #000;
+}
+
+.tone-good {
+  color: #bfe9c4;
+}
+
+.tone-warn {
+  color: #ffd27a;
+}
+
+.tone-bad,
+#cash.neg {
+  color: #ffb3a8;
+}
+
+/* Estimated monthly balance under the cash, and the runway when the cash will not last. */
+#balance,
+#goal {
   cursor: help;
 }
 
-#topbar .stat .balance span {
-  font-size: inherit;
-  font-weight: inherit;
+.clock {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
 }
 
-.balance .tone-good {
-  color: #8fd49a;
-}
-
-.balance .tone-warn {
-  color: #f0b34a;
-}
-
-.balance .tone-bad {
-  color: #ff7a6b;
+#date {
+  font-size: 12.8px;
+  font-weight: 600;
+  color: var(--gold-light);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .speed {
   display: flex;
-  gap: 2px;
+  gap: 3px;
 }
 
 .speed button {
-  padding: 3px 7px;
-  min-width: 32px;
-  font-size: 13px;
+  min-width: 30px;
+  padding: 4px 5px;
+  font-size: 11px;
+  line-height: 1;
 }
 
-.speed button[aria-pressed='true'] {
-  background: var(--gold);
-  color: var(--ink);
-  border-color: var(--gold);
-  font-weight: 800;
-}
-
+/* Demand bars: up from the middle when there is demand, down when there is too much built. */
 .rci {
   display: flex;
+  flex: none;
   gap: 4px;
-  height: 44px;
-  align-items: stretch;
+  height: 52px;
+  padding: 3px 5px 14px;
+  background: #000;
+  border: 2px solid var(--gold-dark);
 }
 
 .rci .bar {
   position: relative;
-  width: 16px;
-  background: #140e0a;
-  border: 1px solid #6b5137;
-  border-radius: 3px;
+  width: 12px;
 }
 
 .rci .bar::before {
@@ -345,26 +412,25 @@ select {
   left: 0;
   right: 0;
   top: 50%;
-  border-top: 1px dashed #6b5137;
+  border-top: 1px solid #6f6a5c;
 }
 
 .rci .bar i {
   position: absolute;
-  left: 2px;
-  right: 2px;
-  border-radius: 2px;
+  left: 0;
+  right: 0;
 }
 
 .rci .bar span {
   position: absolute;
-  bottom: -1px;
+  top: 100%;
   left: 0;
   right: 0;
+  margin-top: 1px;
   text-align: center;
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--cream);
-  text-shadow: 0 0 2px #000;
 }
 
 .rci .r i {
@@ -379,99 +445,205 @@ select {
   background: var(--i);
 }
 
+/* Why the city attracts nobody new, next to the demand bars (see Simulation.stall). */
+.stall {
+  max-width: 118px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #ffd27a;
+  cursor: help;
+}
+
 .menu {
   margin-left: auto;
-  display: flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 4px;
+}
+
+.menu button {
+  padding: 3px 8px;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 /* ---------- Toolbar ---------- */
 
 #toolbar {
   grid-area: tools;
-  margin: 8px 0 8px 8px;
-  padding: 10px 6px;
-  /* Two columns of buttons when the bar is wide enough, one on narrow screens. */
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 52px);
-  justify-content: center;
-  align-content: start;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 6px;
+  background: var(--deep);
+  border-right: 4px solid var(--gold-dark);
   overflow-y: auto;
   scrollbar-width: thin;
+  scrollbar-color: var(--gold-dark) var(--deep);
+  line-height: 1.05;
 }
 
-#toolbar .tool {
-  position: relative;
-  width: 52px;
-  height: 46px;
-  padding: 3px;
+#toolbar button {
+  flex: none;
+  padding: 5px 2px;
+  font-size: 13.6px;
+}
+
+#toolbar .cat {
   display: grid;
-  place-items: center;
-  background: var(--ink-3);
+  justify-items: center;
+  gap: 2px;
+  padding: 5px 2px 4px;
 }
 
-#toolbar .tool svg {
-  width: 30px;
-  height: 30px;
+.cat svg {
+  width: 32px;
+  height: 32px;
+  shape-rendering: crispEdges;
 }
 
-#toolbar .tool kbd {
-  position: absolute;
-  top: 1px;
-  right: 3px;
-  font-size: 9px;
-  color: var(--muted);
-  font-family: inherit;
-}
-
-/* A tool the city has not earned yet (see sim/milestones.ts). */
-#toolbar .tool.locked {
-  opacity: 0.38;
-  filter: grayscale(1);
-}
-
-#toolbar hr,
-#toolbar .group-label,
-#toolbar [data-act='undo'] {
-  grid-column: 1 / -1;
-}
-
-#toolbar [data-act='undo'] {
-  width: auto;
-}
-
-#toolbar .tool[aria-pressed='true'] {
-  background: #5a3a22;
-  border-color: var(--gold);
-  box-shadow: inset 0 0 0 1px var(--gold);
-}
-
-#toolbar hr {
-  width: 100%;
-  border: 0;
-  border-top: 1px solid #6b5137;
-  margin: 4px 0;
-}
-
-#toolbar .small {
-  width: 52px;
-  font-size: 12px;
-  padding: 3px 2px;
-}
-
-#toolbar .small[aria-pressed='true'] {
+/* The category of the tool in use. */
+.cat.current {
   background: var(--gold);
+  border-color: var(--gold-light);
   color: var(--ink);
-  font-weight: 800;
+  font-weight: 700;
+}
+
+/* The category whose tools are showing. */
+#toolbar [aria-expanded='true'] {
+  border-color: #fff;
+  box-shadow: var(--bevel-in);
 }
 
 #toolbar .group-label {
-  font-size: 10px;
-  text-transform: uppercase;
+  margin-top: 2px;
+  font-size: 10.8px;
+  letter-spacing: 1px;
   color: var(--muted);
   text-align: center;
-  letter-spacing: 0.5px;
+}
+
+#toolbar .seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+
+#toolbar .seg.view {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+#toolbar .seg button {
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+#toolbar .seg.view button {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* ---------- Tool flyout ---------- */
+
+#flyout {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  z-index: 4;
+  width: 286px;
+  max-width: calc(100% - 12px);
+  padding: 10px;
+  background: var(--base);
+  border: 3px solid var(--gold);
+  box-shadow: 5px 5px 0 #000;
+  line-height: 1.05;
+}
+
+.fly[hidden] {
+  display: none;
+}
+
+.fly h3 {
+  margin: 0 0 10px;
+  font-size: 15.6px;
+}
+
+.fly .tool {
+  display: grid;
+  grid-template-columns: 28px 24px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 4px 6px;
+  background: none;
+  border: 2px solid transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.fly .tool.layer {
+  grid-template-columns: 1fr;
+  padding: 6px 8px;
+}
+
+.fly .tool svg {
+  width: 28px;
+  height: 28px;
+}
+
+.fly .tool:hover {
+  border-color: var(--gold);
+  background: var(--raised);
+}
+
+.fly .tool:active {
+  background: var(--deep);
+}
+
+.fly .tool[aria-pressed='true'] {
+  background: var(--gold);
+  border-color: var(--gold-light);
+}
+
+.fly .tool kbd {
+  padding: 3px 0;
+  border: 0;
+  background: #000;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fly .tool .price {
+  color: var(--gold-light);
+  font-size: 14.4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fly .tool[aria-pressed='true'] .price {
+  color: var(--ink);
+}
+
+/* A tool the city has not earned yet (see sim/milestones.ts): the price gives way to the milestone that opens it. */
+.fly .tool.locked {
+  cursor: not-allowed;
+}
+
+.fly .tool.locked svg {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.fly .tool.locked .name {
+  color: #a9bdb2;
+}
+
+.fly .tool.locked .price {
+  color: var(--muted);
 }
 
 /* ---------- Stage ---------- */
@@ -480,6 +652,7 @@ select {
   grid-area: stage;
   position: relative;
   overflow: hidden;
+  background: #000;
 }
 
 #game {
@@ -496,11 +669,59 @@ select {
   cursor: grabbing;
 }
 
+/* The map frame: two lines all around, a corner ornament in each corner and the ribbon. It never takes the pointer. */
+#frame {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 3px var(--gold),
+    inset 0 0 0 6px #000;
+}
+
+.ribbon {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  width: calc(150px * var(--orn));
+  height: calc(22px * var(--orn));
+  margin-left: calc(-75px * var(--orn));
+  padding: 0 calc(12px * var(--orn));
+  color: #173a66;
+  font-weight: 700;
+  font-size: max(12px, calc(5.28px * var(--orn)));
+  line-height: calc(20.6px * var(--orn));
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.ribbon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ribbon) no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  filter: drop-shadow(3px 3px 0 #000);
+}
+
+#ribbonText {
+  position: relative;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 #minimapBox {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
-  padding: 8px;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
+  padding: 4px;
+  background: var(--deep);
+  box-shadow: 4px 4px 0 #000;
 }
 
 #minimap {
@@ -510,19 +731,22 @@ select {
 
 .card {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 290px;
-  padding: 14px 16px 12px;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  width: 300px;
+  max-width: calc(100% - 28px);
+  padding: 12px 14px;
 }
 
 .card h3 {
-  margin: 0 0 6px;
-  padding: 0 20px 0 22px;
-  font-family: 'Rye', Georgia, serif;
+  margin: 0 0 8px;
+  padding-right: 24px;
+  font-family: var(--font-title);
   font-weight: 400;
-  color: var(--gold-soft);
-  font-size: 18px;
+  font-size: 15.6px;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 #000;
 }
 
 .card ul {
@@ -531,38 +755,45 @@ select {
 }
 
 .card li {
-  margin: 1px 0;
+  margin: 2px 0;
 }
 
 .card .hint {
   margin: 8px 0 0;
   padding: 6px 8px;
-  border-left: 3px solid var(--celeste);
-  background: rgba(111, 183, 224, 0.12);
-  font-size: 14px;
+  background: var(--deep);
+  border: 2px solid var(--line);
+  font-size: 14.4px;
 }
 
 .card .close,
 .modal-card .close {
   position: absolute;
   top: 6px;
-  right: 8px;
-  padding: 0 6px;
-  background: transparent;
-  border: none;
-  font-size: 16px;
+  right: 6px;
   z-index: 1;
+  padding: 2px 7px;
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  font-size: 16px;
+}
+
+.card .close:hover,
+.modal-card .close:hover {
+  border-color: currentColor;
 }
 
 #tooltip {
   position: absolute;
+  z-index: 6;
   pointer-events: none;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(20, 14, 10, 0.92);
-  border: 1px solid var(--gold);
-  font-weight: 700;
-  font-size: 13px;
+  padding: 4px 8px;
+  background: var(--deep);
+  border: 2px solid var(--gold);
+  box-shadow: 3px 3px 0 #000;
+  font-weight: 600;
+  font-size: 14px;
   white-space: nowrap;
   transform: translate(14px, 14px);
 }
@@ -572,116 +803,114 @@ select {
   color: #ffb3a8;
 }
 
+/* Under the ribbon, so neither hides the other. */
 #toasts {
   position: absolute;
-  top: 12px;
+  top: calc(22px * var(--orn) + 18px);
   left: 50%;
+  z-index: 5;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   gap: 6px;
   align-items: center;
+  max-width: calc(100% - 24px);
   pointer-events: none;
 }
 
 .toast {
   padding: 7px 14px;
-  border-radius: 8px;
-  background: rgba(31, 22, 17, 0.95);
-  border: 1px solid var(--gold);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  font-weight: 700;
-  animation: toast-in 0.18s ease-out;
+  background: var(--base);
+  border: 2px solid var(--gold);
+  box-shadow: 4px 4px 0 #000;
+  font-weight: 600;
+  text-align: center;
 }
 
 .toast.bad {
   border-color: var(--red);
 }
 
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
 /* ---------- Newspaper ---------- */
 
 #diario {
   grid-area: news;
-  margin: 8px 8px 8px 0;
-  background: var(--paper);
-  color: var(--paper-ink);
-  border: 1px solid #b9a77f;
-  border-radius: 4px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
+  margin: 8px;
+  padding: 10px 12px 0;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--gold-dark);
+  box-shadow: 4px 4px 0 #000;
   overflow: hidden;
-  font-family: 'Old Standard TT', Georgia, serif;
 }
 
 .masthead {
   text-align: center;
-  padding: 10px 10px 6px;
-  border-bottom: 3px double var(--paper-ink);
-  margin: 0 10px;
 }
 
 .masthead h2 {
-  margin: 2px 0;
-  font-family: 'Rye', Georgia, serif;
-  font-weight: 400;
-  font-size: 21px;
-  line-height: 1.1;
-  color: #2a2118;
+  margin: 6px 0 2px;
+  font: 400 15.6px/1.5 var(--font-title);
+  color: #8f1d17;
+  text-shadow: 2px 2px 0 var(--gold);
 }
 
-.masthead .kicker,
+.masthead .edition,
 .masthead .dateline {
   display: block;
-  font-size: 11px;
+  font-size: 10.8px;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: #6f5f48;
+}
+
+.masthead .edition {
+  letter-spacing: 2px;
+}
+
+.masthead .dateline {
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--ink);
+  letter-spacing: 1px;
+  color: #6a4a2c;
+}
+
+.masthead .flourish {
+  margin: 4px 0 6px;
 }
 
 #news {
-  list-style: none;
-  margin: 0;
-  padding: 6px 14px 14px;
-  overflow-y: auto;
   flex: 1;
+  margin: 0;
+  padding: 8px 0 10px;
+  list-style: none;
+  overflow-y: auto;
   scrollbar-width: thin;
+  scrollbar-color: #b99f78 var(--paper);
 }
 
 #news li {
-  padding: 8px 0;
-  border-bottom: 1px solid #cbbb97;
-  line-height: 1.25;
+  margin-bottom: 9px;
+  padding-bottom: 8px;
+  border-bottom: 2px dotted #b99f78;
+  font-size: 15.2px;
+  line-height: 1.12;
 }
 
 #news li:first-child {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.05;
 }
 
 #news li time {
   display: block;
-  font-size: 11px;
-  font-style: italic;
-  color: #7b6a50;
   margin-bottom: 2px;
-}
-
-#news li.fresh {
-  animation: fresh 1.2s ease-out;
-}
-
-@keyframes fresh {
-  from {
-    background: #f7d98a;
-  }
+  font-size: 10.8px;
+  font-weight: 400;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: #7a5a3a;
 }
 
 /* ---------- Status bar ---------- */
@@ -689,15 +918,36 @@ select {
 #status {
   grid-area: status;
   display: flex;
-  justify-content: space-between;
+  align-items: center;
   gap: 16px;
-  padding: 4px 12px;
-  background: #170f0b;
-  border-top: 1px solid #6b5137;
-  font-size: 13px;
-  color: var(--muted);
+  min-width: 0;
+  padding: 0 12px;
+  background: var(--deep);
+  border-top: 4px solid var(--gold-dark);
+  font-size: 14.4px;
   white-space: nowrap;
+}
+
+#statusTool,
+#statusCell {
+  min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#statusTool {
+  flex: 0 1 auto;
+}
+
+#statusCell {
+  flex: 1 1 0;
+  color: var(--muted);
+}
+
+#phrase {
+  flex: none;
+  margin-left: auto;
+  line-height: 1.2;
 }
 
 /* ---------- Screens & modals ---------- */
@@ -711,9 +961,10 @@ select {
 }
 
 #start {
-  background:
-    radial-gradient(ellipse at 50% 30%, rgba(224, 165, 38, 0.18), transparent 60%),
-    linear-gradient(160deg, #2c1d14, #140d09);
+  background: var(--deep);
+  box-shadow:
+    inset 0 0 0 3px var(--gold),
+    inset 0 0 0 6px #000;
   overflow-y: auto;
   padding: 16px;
 }
@@ -721,21 +972,28 @@ select {
 .start-card {
   max-width: 760px;
   width: 100%;
-  padding: 28px 32px 30px;
+  padding: 28px 32px 20px;
 }
 
 .logo.big {
-  font-size: clamp(30px, 6vw, 54px);
-  text-align: center;
   margin: 0;
-  font-weight: 400;
+  font-size: clamp(26px, 5.4vw, 48px);
+  line-height: 1.2;
+  text-align: center;
+  text-shadow:
+    0 -2px 0 var(--gold-light),
+    3px 3px 0 var(--red),
+    6px 6px 0 #000;
 }
 
 .tagline {
+  margin: 10px 0 4px;
   text-align: center;
-  color: var(--muted);
   font-size: 17px;
-  margin: 6px 0 22px;
+}
+
+.start-card > .flourish {
+  margin-bottom: 14px;
 }
 
 .start-grid {
@@ -755,12 +1013,13 @@ select {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .start-form input,
 .start-form select {
   width: 100%;
+  font-weight: 400;
 }
 
 .start-form label.check {
@@ -782,7 +1041,7 @@ select {
 
 .start-form .map-note {
   margin: -6px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -799,14 +1058,22 @@ select {
 }
 
 .start-preview canvas {
-  border: 2px solid var(--gold);
-  border-radius: 6px;
   display: block;
-  background: #140e0a;
+  margin-bottom: 4px;
+  background: var(--deep);
+  border: 3px solid var(--gold-dark);
+  box-shadow: 4px 4px 0 #000;
+}
+
+#startPhrase {
+  display: block;
+  margin: 18px auto 0;
+  max-width: 100%;
+  white-space: normal;
 }
 
 #modal {
-  background: rgba(10, 7, 5, 0.6);
+  background: rgba(0, 0, 0, 0.62);
   padding: 16px;
 }
 
@@ -814,40 +1081,43 @@ select {
   width: min(720px, 100%);
   max-height: calc(100vh - 32px);
   overflow-y: auto;
-  padding: 24px 28px;
+  padding: 22px 26px;
 }
 
 .modal-card h2 {
-  padding-left: 18px;
-  font-family: 'Rye', Georgia, serif;
+  margin: 0 0 14px;
+  padding-right: 24px;
+  font-family: var(--font-title);
   font-weight: 400;
-  color: var(--gold-soft);
-  margin: 0 0 12px;
+  font-size: 20px;
+  color: var(--gold);
+  text-shadow:
+    0 -2px 0 var(--gold-light),
+    2px 2px 0 var(--red),
+    4px 4px 0 #000;
+  letter-spacing: 1px;
 }
 
 .modal-card h3 {
   margin: 16px 0 6px;
-  color: var(--gold-soft);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold-light);
 }
 
-table.budget {
+.factors {
   width: 100%;
   border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
 }
 
-table.budget td {
-  padding: 3px 4px;
-  border-bottom: 1px solid #4a3627;
+.factors td {
+  padding: 3px 0;
 }
 
-table.budget td:last-child {
+.factors td:last-child {
   text-align: right;
-}
-
-table.budget tr.total td {
-  font-weight: 800;
-  border-bottom: 2px solid var(--gold);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .pos {
@@ -858,10 +1128,58 @@ table.budget tr.total td {
   color: #ff8f80;
 }
 
+/* The budget as a ruled ledger sheet: one row per line, a red margin line on the left. */
+.planilla {
+  padding: 0 12px 0 34px;
+  color: #1b2a4a;
+  background:
+    linear-gradient(90deg, transparent 24px, #d9777a 24px 26px, transparent 26px),
+    repeating-linear-gradient(#f4eeda 0 26px, #9fbfe0 26px 28px);
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0 #000;
+}
+
+table.budget {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+table.budget td {
+  height: 28px;
+  padding: 0;
+  line-height: 26px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+table.budget td:last-child {
+  text-align: right;
+}
+
+table.budget tr.total td {
+  font-weight: 700;
+}
+
+.planilla .pos,
+.boleta .pos {
+  color: #1f7a3a;
+}
+
+.planilla .neg,
+.boleta .neg {
+  color: #b3261e;
+}
+
 .budget-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 22px;
+}
+
+.budget-grid h3:first-child {
+  margin-top: 0;
 }
 
 .tax {
@@ -872,6 +1190,7 @@ table.budget tr.total td {
 
 .tax input[type='range'] {
   flex: 1;
+  min-width: 0;
   accent-color: var(--gold);
   padding: 0;
   border: 0;
@@ -879,23 +1198,38 @@ table.budget tr.total td {
 }
 
 .tax output {
-  font-weight: 800;
+  font-weight: 700;
   min-width: 52px;
-  font-size: 16px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .tax label {
   min-width: 92px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 canvas.chart {
   width: 100%;
   height: 120px;
-  background: #140e0a;
-  border: 1px solid #6b5137;
-  border-radius: 6px;
+  background: var(--deep);
+  border: 2px solid var(--gold-dark);
+}
+
+/* Colour keys of the history chart. */
+.key {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  vertical-align: middle;
+}
+
+.key.pop {
+  background: #9fdc8a;
+}
+
+.key.cash {
+  background: var(--gold);
 }
 
 .slots {
@@ -909,9 +1243,8 @@ canvas.chart {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid #6b5137;
-  border-radius: 8px;
-  background: var(--ink);
+  background: var(--deep);
+  border: 2px solid var(--line);
 }
 
 .slot .meta {
@@ -930,56 +1263,274 @@ canvas.chart {
 .help-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px 24px;
+  gap: 6px 24px;
 }
 
 kbd {
   display: inline-block;
-  min-width: 20px;
-  padding: 0 5px;
-  border: 1px solid #6b5137;
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  background: var(--ink);
+  min-width: 22px;
+  padding: 1px 5px;
+  background: #000;
+  color: var(--gold);
   font-family: inherit;
   font-size: 12px;
+  font-weight: 700;
   text-align: center;
 }
 
 ol.steps li {
-  margin: 4px 0;
+  margin: 5px 0;
 }
 
-@media (max-width: 1100px) {
-  #topbar .brand {
+/* ---------- Panels shaped like objects ---------- */
+
+/* Election night: a ballot paper with the flag's band, the share of the votes and a rubber stamp. */
+.modal-card[data-shape='boleta'] {
+  width: min(400px, 100%);
+  padding: 0 18px 16px;
+  background: var(--cream);
+  color: var(--ink);
+  border-color: #000;
+}
+
+.modal-card[data-shape='boleta'] .close {
+  top: 22px;
+}
+
+.boleta {
+  position: relative;
+}
+
+.boleta .band {
+  height: 18px;
+  margin: 0 -18px 12px;
+  background: linear-gradient(var(--celeste) 0 6px, #fff 6px 12px, var(--celeste) 12px 18px);
+}
+
+.boleta h2.lista {
+  margin: 0 0 4px;
+  padding-right: 28px;
+  font: 700 12px var(--font-body);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.boleta h3 {
+  color: var(--ink);
+}
+
+.boleta p {
+  margin: 8px 0;
+}
+
+.boleta .num {
+  font: 400 40.8px/1.5 var(--font-title);
+  color: #173a66;
+}
+
+.boleta.lost .num {
+  color: #8f1d17;
+}
+
+/* Share of the votes, with a mark at what it took to win. */
+.boleta .votes {
+  position: relative;
+  height: 14px;
+  margin: 0 0 10px;
+  background: #d9d4cc;
+  border: 2px solid #000;
+}
+
+.boleta .votes i {
+  display: block;
+  height: 100%;
+  background: var(--celeste);
+}
+
+.boleta .votes b {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 2px;
+  background: #000;
+}
+
+.boleta .stamp {
+  position: absolute;
+  right: 0;
+  top: 62px;
+  padding: 3px 8px;
+  border: 3px solid var(--red);
+  color: var(--red);
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  transform: rotate(-12deg);
+}
+
+.boleta .row {
+  margin-top: 14px;
+}
+
+.boleta button {
+  color: var(--cream);
+}
+
+/* A reached milestone: a bronze plaque held by four screws. */
+.modal-card[data-shape='plaqueta'] {
+  width: min(430px, 100%);
+  padding: 30px 30px 24px;
+  background: #a8703f;
+  color: #1c0e04;
+  border: 4px solid #6b3f22;
+  box-shadow:
+    inset 3px 3px 0 #d09a60,
+    inset -3px -3px 0 #7a4c26,
+    5px 5px 0 #000;
+  text-align: center;
+  text-shadow: 1px 1px 0 #d09a60;
+}
+
+.modal-card[data-shape='plaqueta'] .close {
+  top: 20px;
+  right: 22px;
+  text-shadow: none;
+}
+
+.plaqueta p {
+  margin: 4px 0;
+  font-weight: 600;
+}
+
+.plaqueta h2 {
+  margin: 0;
+  padding: 0;
+  font-size: 26.4px;
+  line-height: 1.6;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: inherit;
+  text-shadow: 1px 1px 0 #d09a60;
+}
+
+.plaqueta .screw {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #6b3f22;
+  box-shadow: 1px 1px 0 #d09a60;
+}
+
+.plaqueta .screw.tl,
+.plaqueta .screw.bl {
+  left: 10px;
+}
+
+.plaqueta .screw.tr,
+.plaqueta .screw.br {
+  right: 10px;
+}
+
+.plaqueta .screw.tl,
+.plaqueta .screw.tr {
+  top: 10px;
+}
+
+.plaqueta .screw.bl,
+.plaqueta .screw.br {
+  bottom: 10px;
+}
+
+.plaqueta .row {
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.plaqueta button {
+  color: var(--cream);
+  text-shadow: none;
+}
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast {
+    animation: toast-in 0.18s ease-out;
+  }
+
+  #news li.fresh {
+    animation: fresh 1.2s ease-out;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes fresh {
+  from {
+    background: #f7d98a;
+  }
+}
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 1140px), (max-height: 700px) {
+  #start > .cor {
+    display: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  #topbar .logo {
     display: none;
   }
 }
 
 @media (max-width: 900px) {
+  :root {
+    --orn: 2;
+  }
+
   #runway {
     display: none; /* still in the tooltip */
   }
 
   #app {
     grid-template-columns: 76px 1fr 0;
+    grid-template-rows: auto 1fr 30px;
   }
 
-  #diario {
+  #topbar {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 6px 10px;
+  }
+
+  #diario,
+  #phrase,
+  .chapa .tag,
+  .cat span {
     display: none;
   }
 
-  .stat label {
-    display: none;
-  }
-
-  .city {
-    display: none;
+  #toolbar .seg,
+  #toolbar .seg.view {
+    grid-template-columns: 1fr;
   }
 
   .start-grid,
   .budget-grid,
   .help-grid {
     grid-template-columns: 1fr;
+  }
+
+  .start-card {
+    padding: 22px 18px 16px;
   }
 }
