@@ -25,10 +25,15 @@ export function weekLabel(tick: number): string {
 }
 
 /**
- * Cumulative part of a monthly `amount` due after `week` weeks (0 to WEEKS_PER_MONTH). Paying
- * the difference between consecutive values each week makes the four weekly payments add up
- * to exactly `amount`, whatever the rounding.
+ * Cumulative part of an `amount` due after `done` of `steps` steps (0 to `steps`). Paying the
+ * difference between consecutive values makes the steps add up to exactly `amount`, whatever the
+ * rounding. The weekly settlement and the loan instalments are both this rule.
  */
+export function cumulativeShareOf(amount: number, done: number, steps: number): number {
+  return Math.round((amount * done) / steps) || 0; // `|| 0` turns -0 into 0
+}
+
+/** Cumulative part of a monthly `amount` due after `week` weeks (0 to WEEKS_PER_MONTH). */
 export function cumulativeShare(amount: number, week: number): number {
-  return Math.round((amount * week) / WEEKS_PER_MONTH) || 0; // `|| 0` turns -0 into 0
+  return cumulativeShareOf(amount, week, WEEKS_PER_MONTH);
 }

@@ -125,6 +125,18 @@ export const SERVICES: Record<ServiceKind, { cost: number; upkeep: number; radiu
  */
 export const FIXED_SHARE = 0.25;
 
+/**
+ * Municipal loans, for when the cash is in the red: the city gets `amount` at once and pays it back
+ * in `months` equal instalments. `rate` is the share charged on top, so the whole term returns
+ * `amount x (1 + rate)`: taking 25.000 over 36 months at 0.45 returns 36.250 in 36 payments of 1.007.
+ * One at a time.
+ */
+export const LOANS = [
+  { label: 'Crédito chico', amount: 10000, months: 24, rate: 0.3 },
+  { label: 'Crédito mediano', amount: 25000, months: 36, rate: 0.45 },
+  { label: 'Crédito grande', amount: 50000, months: 48, rate: 0.6 },
+] as const;
+
 /** Municipal tax rate of each zone, in percent. */
 export interface ZoneTaxes {
   R: number;
