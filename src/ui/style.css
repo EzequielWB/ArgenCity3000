@@ -225,6 +225,52 @@ select {
   color: var(--muted);
 }
 
+/* The approval is a stat you can click to see what the neighbours complain about. */
+#approvalBox {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#approvalBox label {
+  cursor: pointer;
+}
+
+#approval.tone-good {
+  color: #8fd49a;
+}
+
+#approval.tone-warn {
+  color: #f0b34a;
+}
+
+#approval.tone-bad {
+  color: #ff7a6b;
+}
+
+#election {
+  color: var(--muted);
+}
+
+.factors {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.factors td {
+  padding: 3px 0;
+}
+
+.factors td:last-child {
+  text-align: right;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Estimated monthly balance under the cash: green when the city earns, red when it loses, and the
    runway in amber or red when the cash will not last. */
 #topbar .stat .balance {

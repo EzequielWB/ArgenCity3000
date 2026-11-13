@@ -6,6 +6,7 @@ import type { Game } from '../game';
 import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
+import { APPROVAL, monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
 import { $, escapeHtml, toast } from './dom';
 
 let closeHook: (() => void) | null = null;
@@ -180,6 +181,51 @@ function drawHistory(c: HTMLCanvasElement, history: { pop: number; cash: number 
   );
 }
 
+// ---------------------------------------------------------------- approval
+
+function factorRows(factors: readonly ApprovalFactor[]): string {
+  if (factors.length === 0) return '<p>Nada para destacar: ni quejas ni aplausos.</p>';
+  return `<table class="factors">${factors
+    .map((f) => `<tr><td>${escapeHtml(f.label)}</td><td class="${f.points > 0 ? 'pos' : 'neg'}">${f.points > 0 ? '+' : ''}${f.points}</td></tr>`)
+    .join('')}</table>`;
+}
+
+/** What the neighbours think and why, and when they vote. */
+export function openApproval(game: Game): void {
+  const s = game.sim.state;
+  const report = game.sim.approval;
+  const trend = report.target > s.approval ? 'está subiendo' : report.target < s.approval ? 'está bajando' : 'se mantiene';
+  const vote = s.lostElection
+    ? '<p>Perdiste las últimas elecciones: la ciudad sigue en <strong>modo libre</strong>, sin más votaciones.</p>'
+    : `<p>Próximas elecciones: <strong>octubre de ${nextElectionYear(s.tick)}</strong> (faltan ${monthsToElection(s.tick)} meses). Hace falta el ${APPROVAL.toWin} % para seguir.${s.terms ? ` Mandatos ganados: ${s.terms}.` : ''}</p>`;
+  openModal(`
+    <h2>Aprobación de los vecinos</h2>
+    <p>Hoy te aprueba el <strong>${s.approval} %</strong>. Por cómo está la ciudad, ${trend} hacia el <strong>${report.target} %</strong> (se mueve hasta ${APPROVAL.step} puntos por mes).</p>
+    ${vote}
+    <h3>Qué suma y qué resta</h3>
+    <p><small>Se parte de 50 puntos.</small></p>
+    ${factorRows(report.factors)}
+  `);
+}
+
+/** The night of a lost election: what went wrong, and the choice to go on in free mode or leave. */
+export function openElectionLost(game: Game, onLeave: () => void): void {
+  const s = game.sim.state;
+  const complaints = game.sim.approval.factors.filter((f) => f.points < 0).slice(0, 4);
+  const body = openModal(`
+    <h2>Perdiste las elecciones</h2>
+    <p>Los vecinos de ${escapeHtml(game.name)} votaron y solo el <strong>${s.approval} %</strong> te acompañó. Hacía falta el ${APPROVAL.toWin} %.</p>
+    ${complaints.length ? `<h3>De qué se quejaban</h3>${factorRows(complaints)}` : ''}
+    <p>Podés seguir construyendo la ciudad en modo libre (ya no habrá elecciones) o volver al inicio y fundar otra.</p>
+    <div class="row"><button id="lostStay" class="primary" type="button">Seguir en modo libre</button><button id="lostLeave" type="button">Volver al inicio</button></div>
+  `);
+  body.querySelector('#lostStay')!.addEventListener('click', closeModal);
+  body.querySelector('#lostLeave')!.addEventListener('click', () => {
+    closeModal();
+    onLeave();
+  });
+}
+
 // ---------------------------------------------------------------- saves
 
 const SLOT_NAMES: Record<SlotId, string> = { '1': 'Ranura 1', '2': 'Ranura 2', '3': 'Ranura 3', auto: 'Autoguardado' };
@@ -274,7 +320,7 @@ export function openHelp(): void {
       <li><strong>Trazá calles</strong> (3) arrastrando. Los lotes necesitan una calle a 3 lotes o menos.
         Si ponés calles pegadas una al lado de la otra, forman una <strong>avenida</strong> con más carriles cuanto más ancha sea, y aguanta más tránsito.</li>
       <li><strong>Zonificá</strong> residencial (5), comercial (6) e industrial (7) pegado a las calles. Al zonificar, la manzana se nivela sola y las calles hacen de rampa.
-        La luz viaja por calles, zonas y tendido eléctrico (4), así que todo tiene que estar conectado a la usina.</li>
+        La usina y cada edificio con luz alumbran hasta 3 lotes a su alrededor; para llevar la luz más lejos hace falta el tendido eléctrico (4). Las calles no llevan luz.</li>
       <li><strong>Mirá la demanda</strong> (barras R C I arriba): la gente viene si hay trabajo, y el comercio y la industria siguen a la gente.</li>
       <li><strong>Cuidá la caja.</strong> Cada semana cobrás tasas y pagás mantenimiento. Al lado de la Caja ves el saldo estimado del mes y, si la caja no va a durar un año, cuántos meses alcanza. Con la caja en rojo no se construye nada y los vecinos empiezan a irse. Los servicios públicos cuestan una parte fija (el 25 %) y el resto según cuántos vecinos atienden.
         En el <strong>Presupuesto</strong> (P) ponés una tasa para cada zona (cada una mueve solo la demanda de su zona) y decidís cuánto financiar cada servicio:
@@ -285,6 +331,8 @@ export function openHelp(): void {
         <strong>escuela</strong> (Y) no hay torres ni oficinas. La <strong>comisaría</strong> (I) baja el delito de los barrios densos y los
         <strong>bomberos</strong> (O) apagan los incendios antes de que se pierda el edificio. Al elegirlos se ve la capa de cobertura.</li>
       <li><strong>Tránsito.</strong> Cada vecino va a trabajar al comercio y a la industria más cercanos por las calles. Si pasa más gente de la que la calle aguanta, se satura (rojo en la capa Tránsito): baja el valor del suelo, los lotes crecen despacio y los vecinos se quejan. Se arregla con avenidas, con más caminos o acercando el trabajo a las casas.</li>
+      <li><strong>Aprobación y elecciones.</strong> Arriba ves qué porcentaje de los vecinos te aprueba (clic para el detalle). Suman la salud, la educación, las tasas bajas y los barrios lindos; restan el delito, el humo, los apagones, el tránsito, el abandono, la falta de trabajo, las tasas altas y la caja en rojo. En octubre cada 4 años (la primera vez en 1993) hay elecciones: con 50 % o más seguís; si perdés, la ciudad queda en modo libre.</li>
+      <li><strong>Hitos.</strong> Debajo de la población está el próximo hito. Al llegar, la Provincia gira plata y se habilitan edificios: salita y bomberos con 100 habitantes, escuela y comisaría con 200, usina a gas con 1.000 y parque eólico con 2.500.</li>
       <li>Un edificio sin luz, sin calle, con mucho delito o con la caja en rojo puede quedar <strong>abandonado</strong>: no paga y baja el valor de alrededor.</li>
     </ol>
     <h3>Controles</h3>
@@ -306,7 +354,7 @@ export function openHelp(): void {
     </div>
     <p><small>Con la herramienta Consulta (1) un clic muestra la ficha del lote y por qué crece o no; arrastrando movés el mapa.</small></p>
     <p><small>El Diario del Conurbano sale a la calle recién cuando hay al menos dos viviendas, dos comercios y dos fábricas construidas; hasta entonces los avisos de plata están solo en la barra superior.</small></p>
-    <p><small>Al fundar una ciudad inventada elegís el tipo de mapa: Con salida al mar (lomas suaves, un río ancho al este y un arroyo), Llanura (casi llano, con arroyo y laguna), Con gran relieve (cerros y valles por todo el mapa) o Sierras (cordones de montañas con valles anchos para construir). Por ahora el tamaño es Chico (128 × 128 lotes); Mediano y Grande llegan cuando el dibujado del mapa los banque. Los mapas reales ignoran estas opciones.</small></p>
+    <p><small>Al fundar una ciudad inventada elegís el tipo de mapa: Con salida al mar (lomas suaves, un río ancho al este y un arroyo), Llanura (casi llano, con arroyo y laguna), Con gran relieve (cerros y valles por todo el mapa) o Sierras (cordones de montañas con valles anchos para construir). El tamaño puede ser Chico (128 × 128 lotes), Mediano (192) o Grande (256). Los mapas reales ignoran estas opciones.</small></p>
     <p><small>Mapas reales: calles, agua y parques © colaboradores de OpenStreetMap (ODbL); relieve de Terrain Tiles (Mapzen y AWS, con datos de SRTM y otros).</small></p>
   `);
 }

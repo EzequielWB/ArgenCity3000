@@ -17,7 +17,9 @@ import { windOutput } from './sim/plants';
 import { reachCells } from './sim/power';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
+import { APPROVAL, nextElectionYear } from './sim/politics';
 import { TOOL_ICONS } from './ui/icons';
+import { openApproval, openElectionLost } from './ui/panels';
 import { $, escapeHtml, toast } from './ui/dom';
 import { applyPlan, dragCells, planTool, plantFootprint, plantKindOfTool, toolInfo, TOOLS, type ToolId } from './world/tools';
 import { UndoHistory } from './world/history';
@@ -60,6 +62,8 @@ const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'he
 
 export interface GameHooks {
   isModalOpen(): boolean;
+  /** Leaves the city for the start screen. */
+  leave(): void;
   sound: Sound;
 }
 
@@ -97,6 +101,9 @@ export class Game implements PointerTarget {
   private keyboardPan = { x: 0, y: 0 };
   /** Milestone the toolbar and the goal were last drawn for (-1 = never). */
   private shownMilestone = -1;
+  /** Elections already announced to the player: won ones, and whether the lost one was shown. */
+  private shownTerms: number;
+  private shownLost: boolean;
   /** Fires already announced with the siren. */
   private firesHeard = 0;
 
@@ -105,6 +112,8 @@ export class Game implements PointerTarget {
     this.name = data.name;
     this.seed = data.seed;
     this.sim = new Simulation(this.world, data.sim, data.name);
+    this.shownTerms = data.sim.terms;
+    this.shownLost = data.sim.lostElection;
     this.map = new MapRenderer(this.world);
     this.map.redrawAll();
     this.world.takeDirty();
@@ -118,6 +127,7 @@ export class Game implements PointerTarget {
     this.updateHud(true);
     window.addEventListener('resize', this.onResize);
     $<HTMLCanvasElement>('#minimap').addEventListener('pointerdown', this.onMinimap);
+    $('#approvalBox').onclick = () => openApproval(this);
     this.raf = requestAnimationFrame(this.frame);
   }
 
@@ -527,6 +537,7 @@ export class Game implements PointerTarget {
     $('#pop').textContent = formatNumber(this.sim.totals.pop);
     $('#cityType').textContent = settlementType(this.sim.totals.pop);
     this.updateMilestone();
+    this.updateApproval();
     const bars = document.querySelectorAll<HTMLElement>('#rci .bar i');
     const d = [this.sim.demand.R, this.sim.demand.C, this.sim.demand.I];
     bars.forEach((el, k) => {
@@ -548,6 +559,24 @@ export class Game implements PointerTarget {
     }
     if (this.queried) this.renderInfo();
     if (force) this.updateStatus();
+  }
+
+  /** Approval next to the population, the date of the next election, and the news of an election night. */
+  private updateApproval(): void {
+    const s = this.sim.state;
+    const el = $('#approval');
+    el.textContent = `${s.approval} %`;
+    el.className = s.approval >= APPROVAL.toWin ? 'tone-good' : s.approval >= APPROVAL.toWin - 10 ? 'tone-warn' : 'tone-bad';
+    $('#election').textContent = s.lostElection ? 'modo libre' : `vota en oct ${nextElectionYear(s.tick)}`;
+    if (s.terms > this.shownTerms) {
+      this.shownTerms = s.terms;
+      toast(`¡Reelecto con el ${s.approval} % de los votos! Próximas elecciones: octubre de ${nextElectionYear(s.tick)}`);
+      this.hooks.sound.play('news');
+    }
+    if (s.lostElection && !this.shownLost) {
+      this.shownLost = true;
+      openElectionLost(this, () => this.hooks.leave());
+    }
   }
 
   /** The next goal under the population, the locked tools, and a notice when a milestone is reached. */

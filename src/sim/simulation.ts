@@ -26,6 +26,7 @@ import { computeCrime, computeLandValue, computePollution, computeRoadAccess, co
 import { advanceMilestones, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
+import { APPROVAL, computeApproval, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
 import { computePower, type PowerReport } from './power';
 
 export interface SimState {
@@ -44,6 +45,12 @@ export interface SimState {
   hints: Record<string, number>;
   /** Index in `MILESTONES` of the highest milestone the city has reached. */
   milestone: number;
+  /** Share of the neighbours (0 to 100) who approve of the Intendente. */
+  approval: number;
+  /** Elections won. */
+  terms: number;
+  /** True once an election was lost: the city goes on in free mode, with no more elections. */
+  lostElection: boolean;
 }
 
 export function newSimState(seed: number): SimState {
@@ -59,6 +66,9 @@ export function newSimState(seed: number): SimState {
     history: [],
     hints: {},
     milestone: 0,
+    approval: APPROVAL.start,
+    terms: 0,
+    lostElection: false,
   };
 }
 
@@ -100,6 +110,8 @@ export class Simulation {
   demand: Demand = { R: 0, C: 0, I: 0 };
   power: PowerReport = { capacity: 0, use: 0, shortage: false };
   congestion: CongestionReport = { trips: 0, worst: 0, jammedShare: 0 };
+  /** What the city deserves today and why; `state.approval` follows it month by month. */
+  approval: ApprovalReport = { target: 50, factors: [] };
   /** Above 1 the city attracts newcomers beyond what its jobs justify (see `updateAppetite`). */
   appetite = GROWTH_APPETITE;
   abandonedCount = 0;
@@ -148,6 +160,19 @@ export class Simulation {
     this.burning.clear();
     for (let i = 0; i < w.fire.length; i++) if (w.fire[i]) this.burning.add(i);
     this.updateAppetite();
+    this.approval = this.judge();
+  }
+
+  /** What the neighbours think of the city as it is now. */
+  private judge(): ApprovalReport {
+    return computeApproval(this.world, {
+      taxes: this.state.taxes,
+      crisis: this.state.cash < 0,
+      jammedShare: this.congestion.jammedShare,
+      abandoned: this.abandonedCount,
+      pop: this.totals.pop,
+      jobs: this.totals.cJobs + this.totals.iJobs,
+    });
   }
 
   private recomputePower(): void {
@@ -395,6 +420,8 @@ export class Simulation {
     this.abandonedCount = countAbandoned(w);
     this.updateAppetite();
     const reached = advanceMilestones(s, this.totals.pop);
+    this.approval = this.judge();
+    s.approval = stepApproval(s.approval, this.approval.target);
     s.history.push({ pop: this.totals.pop, cash: s.cash });
     if (s.history.length > MAX_HISTORY) s.history.shift();
 
@@ -411,6 +438,29 @@ export class Simulation {
     }
     // While the paper is closed the snapshot still advances: those events are never reported.
     this.prevSnapshot = snap;
+    this.holdElection(snap.year);
+  }
+
+  /**
+   * Polls a year and six months before each election, and the election itself when October ends:
+   * the Intendente stays with `APPROVAL.toWin` or more. A lost election ends the mandate for good.
+   */
+  private holdElection(year: number): void {
+    const s = this.state;
+    if (s.lostElection) return;
+    if (!electionDue(s.tick)) {
+      const left = monthsToElection(s.tick);
+      if (left === 12 || left === 6) this.publish(`Encuesta a ${left} meses de las urnas: el ${s.approval} % aprueba la gestión del Intendente`);
+      return;
+    }
+    // The result is news even before the paper has opened.
+    if (s.approval >= APPROVAL.toWin) {
+      s.terms++;
+      this.publish(`Elecciones ${year}: el Intendente fue reelecto con el ${s.approval} % de los votos`, true);
+    } else {
+      s.lostElection = true;
+      this.publish(`Elecciones ${year}: el Intendente perdió con el ${s.approval} % de los votos y deja la Municipalidad`, true);
+    }
   }
 
   private hints(): string[] {

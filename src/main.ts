@@ -129,7 +129,7 @@ function launch(data: SaveData): void {
   game?.destroy();
   $('#start').classList.add('hidden');
   $('#app').classList.remove('hidden');
-  game = new Game(data, { isModalOpen, sound });
+  game = new Game(data, { isModalOpen, sound, leave: showStart });
   if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
   if (data.sim.tick === 0) toast(`¡Bienvenido, Intendente! Empezá por una usina (9) y unas calles (3).`);
   else toast(`Partida cargada: ${data.name}`);

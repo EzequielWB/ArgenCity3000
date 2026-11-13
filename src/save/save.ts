@@ -13,6 +13,7 @@ import {
 } from '../config';
 import type { BudgetReport } from '../sim/budget';
 import { MILESTONES, milestoneForPop } from '../sim/milestones';
+import { APPROVAL } from '../sim/politics';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
@@ -201,6 +202,10 @@ function parseSim(raw: unknown): SimState {
     need(isInt(s.milestone) && s.milestone >= 0 && s.milestone < MILESTONES.length, 'El hito de la partida es inválido');
     milestone = s.milestone as number;
   }
+  // Approval and mandate exist from version 4 on: older saves start a fresh mandate.
+  need(s.approval === undefined || (isInt(s.approval) && s.approval >= 0 && s.approval <= 100), 'La aprobación de la partida es inválida');
+  need(s.terms === undefined || (isInt(s.terms) && s.terms >= 0), 'El mandato de la partida es inválido');
+  need(s.lostElection === undefined || typeof s.lostElection === 'boolean', 'El mandato de la partida es inválido');
   return {
     tick: s.tick as number,
     cash: s.cash as number,
@@ -213,5 +218,8 @@ function parseSim(raw: unknown): SimState {
     history,
     hints,
     milestone,
+    approval: (s.approval as number | undefined) ?? APPROVAL.start,
+    terms: (s.terms as number | undefined) ?? 0,
+    lostElection: (s.lostElection as boolean | undefined) ?? false,
   };
 }
