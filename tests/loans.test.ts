@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FUNDING, DEFAULT_TAX, LOANS, TICKS_PER_MONTH, TICKS_PER_WEEK } from '../src/config';
 import { monthlyBudget } from '../src/sim/budget';
-import { dateLabel } from '../src/sim/calendar';
+import { dateLabel, cumulativeShare } from '../src/sim/calendar';
 import { loanEndLabel, loanInstalment, loanOwed, loanPaidOff, loanTotal, type Loan } from '../src/sim/loans';
 import { Simulation, newSimState } from '../src/sim/simulation';
+import { deserialize, serialize } from '../src/save/save';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { World } from '../src/world/world';
@@ -25,6 +26,17 @@ function staticCity(roads: number): World {
   const w = new World(flat());
   build(w, 'plant', 20, 20);
   build(w, 'road', 0, 3, roads - 1, 3);
+  return w;
+}
+
+/** A city with room to grow, to watch what the crisis does to it. */
+function growingCity(): World {
+  const w = new World(flat());
+  build(w, 'plant', 0, 1);
+  build(w, 'road', 0, 3, 31, 3);
+  build(w, 'zoneR', 2, 4, 14, 5);
+  build(w, 'zoneC', 15, 4, 21, 5);
+  build(w, 'zoneI', 22, 4, 31, 6);
   return w;
 }
 
@@ -174,5 +186,90 @@ describe('taking and paying a loan', () => {
     expect(sim.state.cash).toBeGreaterThan(0);
     for (let t = 0; t < TICKS_PER_WEEK; t++) sim.tick();
     expect(sim.state.crisis).toBe(false);
+  });
+});
+
+describe('the loan across a month boundary', () => {
+  it('charges the instalment once when the loan starts mid-month', () => {
+    const base = monthlyBudget(staticCity(7), DEFAULT_TAX, DEFAULT_FUNDING).balance;
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    for (let t = 0; t < TICKS_PER_WEEK; t++) sim.tick();
+    const before = sim.state.cash;
+    sim.takeLoan(1);
+    expect(sim.state.cash - before).toBe(LOANS[1].amount);
+    const afterLoan = sim.state.cash;
+    for (let t = 0; t < TICKS_PER_MONTH - TICKS_PER_WEEK; t++) sim.tick();
+    // The rest of the month, with the instalment charged once and week 1 already settled before the loan.
+    expect(sim.state.cash - afterLoan).toBe(base - loanInstalment(fresh(1)) - cumulativeShare(base, 1));
+  });
+
+  it('nets exactly the amount minus the total when paid off mid-month', () => {
+    const plain = new Simulation(staticCity(7), newSimState(1), 'X');
+    plain.state.cash = 100000;
+    for (let t = 0; t < TICKS_PER_MONTH; t++) plain.tick();
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    sim.state.cash = 100000;
+    sim.takeLoan(2);
+    for (let t = 0; t < 2 * TICKS_PER_WEEK; t++) sim.tick();
+    const owed = loanOwed(sim.state.loan!);
+    const before = sim.state.cash;
+    expect(sim.payOffLoan()).toBe(true);
+    expect(before - sim.state.cash).toBe(owed);
+    for (let t = 0; t < TICKS_PER_MONTH - 2 * TICKS_PER_WEEK; t++) sim.tick();
+    expect(sim.state.cash - plain.state.cash).toBe(LOANS[2].amount - loanTotal(fresh(2)));
+  });
+});
+
+describe('the loan invariants', () => {
+  it('keeps the end of the term fixed across the whole term', () => {
+    for (const kind of KINDS) {
+      const labels = new Set<string>();
+      for (let paid = 0; paid < LOANS[kind].months; paid++) labels.add(loanEndLabel({ kind, paid }, paid * TICKS_PER_MONTH + 7));
+      expect(labels.size).toBe(1);
+    }
+  });
+
+  it('leaves the state untouched when a command is refused', () => {
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    const none = JSON.stringify(sim.state);
+    sim.takeLoan(99);
+    sim.payOffLoan();
+    expect(JSON.stringify(sim.state)).toBe(none);
+    sim.takeLoan(0);
+    const running = JSON.stringify(sim.state);
+    sim.takeLoan(2);
+    expect(JSON.stringify(sim.state)).toBe(running);
+    sim.state.cash = 5;
+    const short = JSON.stringify(sim.state);
+    sim.payOffLoan();
+    expect(JSON.stringify(sim.state)).toBe(short);
+  });
+
+  it('saves a copy of the loan, so nothing reads a stale paid count', () => {
+    const sim = new Simulation(staticCity(7), newSimState(1), 'X');
+    sim.takeLoan(0);
+    const saved = JSON.parse(serialize({ name: 'X', seed: 1, world: sim.world, sim: sim.state }));
+    for (let t = 0; t < 3 * TICKS_PER_MONTH; t++) sim.tick();
+    expect(sim.state.loan!.paid).toBe(3);
+    expect(saved.sim.loan).toEqual({ kind: 0, paid: 0 });
+    expect(deserialize(JSON.stringify(saved)).sim.loan).toEqual({ kind: 0, paid: 0 });
+    // The budget line is a figure, not the loan: the month that just closed charged its own instalment.
+    expect(sim.state.lastBudget!.loan).toBe(loanInstalment({ kind: 0, paid: 2 }));
+  });
+});
+
+describe('what the loan is for', () => {
+  it('lifts a city stalled by the red back into growth', () => {
+    const sim = new Simulation(growingCity(), newSimState(5), 'X');
+    const pop = () => sim.state.history[sim.state.history.length - 1].pop;
+    for (let m = 0; m < 12; m++) for (let t = 0; t < TICKS_PER_MONTH; t++) sim.tick();
+    sim.state.cash = -5000;
+    for (let m = 0; m < 2; m++) for (let t = 0; t < TICKS_PER_MONTH; t++) sim.tick();
+    const stalled = pop();
+    expect(sim.state.crisis).toBe(true);
+    sim.takeLoan(2);
+    for (let m = 0; m < 6; m++) for (let t = 0; t < TICKS_PER_MONTH; t++) sim.tick();
+    expect(sim.state.crisis).toBe(false);
+    expect(pop()).toBeGreaterThan(stalled);
   });
 });
