@@ -1,0 +1,147 @@
+ARGENCITY 3000 - NOTAS DE PARCHE
+==============================
+Version: 0.5 "La ciudad que contesta"
+Fecha: 2026-11-14
+Base anterior: 0.4 "Tendido y demoliciones"
+
+Este parche convierte a los vecinos en algo mas que numeros en un tablero: se
+organizan, prometen, reclaman, eligen y se enojan. Y se enteran de todo por el
+diario.
+
+
+LO NUEVO EN POCAS LINEAS
+------------------------
+- Seis casos nuevos de gestion que te frenan el reloj y te obligan a decidir.
+- Quince eventos en total, cada uno con su disparador y dos salidas con precio.
+- Promesas con fecha de vencimiento y un aviso rojo sobre el mapa.
+- Las demoliciones dejan un enojo que cuesta aprobacion y se va olvidando.
+- La dictadura ya no muestra cuenta regresiva de votacion, y su diario
+  publica el acto eleccionario igual.
+- La tecnocracia ahora pide el 50 % de aprobacion (antes 40 %), cada seis anos.
+
+
+PROMESAS CON PLAZO
+------------------
+Un evento puede pedirte la palabra: "El barrio se organiza" junta firmas por la
+escuela del barrio y te ofrece dos caminos.
+
+- PROMETER LA ESCUELA: te comprometes a levantarla en doce meses. Aparece un
+  aviso ROJO debajo de la cinta del mapa con lo que prometiste y cuanto falta
+  ("construir una escuela - quedan 8 meses"). Cuando la escuela aparece, el
+  aviso se va solo y los vecinos lo festejan: sube la aprobacion y sale en el
+  diario.
+- DAR VUELTAS: ni obra ni promesa. La aprobacion baja ahora y el barrio se lo
+  anota.
+
+Si llega la fecha y la obra no esta, perdés aprobacion y te queda un enojo que
+tarda unos meses en irse. La promesa viaja en la partida: si guardás con el
+compromiso vivo y volvés otro dia, el aviso sigue ahi con los meses que quedan.
+
+
+EVENTOS CON DECISION (QUINCE)
+-----------------------------
+Cada tanto la ciudad te cruza un caso. El reloj se detiene, no se puede esquivar
+y las dos salidas tienen su consecuencia escrita en el boton: lo que va a pasar,
+en palabras, antes de apretar. Nunca las dos opciones son gratis, y cada una
+cuesta en algo distinto: plata, aprobacion, enojo, tiempo de obra o la palabra
+empenada.
+
+Los casos, y cuando te buscan:
+
+- Piquete en la avenida: con el transito saturado. Policia (enojo) o aguantar
+  (dos meses sin construccion).
+- La Provincia pone la plata: con la caja apretada. Aceptar 20.000 pesos y las
+  Salitas clavadas en 120 % por dos anos, o rechazar y no volver a recibir
+  ofertas por un ano.
+- Derrame en el arroyo: con industria cerca del agua y el aire pesado. Clausurar
+  la fabrica mas humeante (se pierden sus empleos) o multarla y que siga.
+- Ola de calor: en enero o febrero, con las salitas al limite. Paradores con agua
+  o que se aguante.
+- Vecinos piden una plaza: con la ciudad grande y sin plaza decente. Ceder el
+  terreno (promesa de un 2x2 en un ano) o venderselo a un inversor.
+- Ola de robos: con el delito alto. Comisarias al 120 % o campana de prevencion.
+- Una fabrica quiere instalarse: con la industria pidiendo tierra. Ceder el
+  terreno (empleos y humo) o rechazarla.
+- El rio crece: en otono, con la costanera hecha. Obra de defensa por tres anos o
+  dejar que se lleve la primera fila.
+- Feria del pueblo: con los vecinos contentos. Pagar el operativo o negarla.
+- Corte en la usina: cuando la red esta al limite. Comprarle luz a la Provincia
+  o racionar.
+- El barrio se organiza: la escuela prometida.
+- Coima en la obra: con la caja holgada y la ciudad creciendo, nunca en ano
+  electoral. Denunciar (sale en el diario) o taparlo y jugartela: tres de diez
+  veces sale a la luz y la aprobacion se hunde.
+- Se viene la sequia: con industria y gente. Subsidiar la produccion o que el
+  mercado decida.
+- Los vecinos no quieren humo: con el aire pesado y ciudad grande. Exigir
+  filtros (impuesto industrial arriba) o ignorarlos.
+- Temporada en la costanera: en diciembre, con costa construida. Invertir en la
+  temporada o dejar que la costanera se gaste.
+
+Los eventos no salen en el primer ano, nunca hay dos abiertos a la vez, y uno que
+ya respondiste no vuelve por un tiempo. Cada ciudad ve los suyos: los disparadores
+miran el transito, el delito, el humo, la caja, la energia, el mes del calendario
+y lo que hay construido.
+
+
+EFECTOS TEMPORALES
+------------------
+Para que las consecuencias sean de verdad y no adornos, el juego estrena efectos
+con vencimiento en meses:
+
+- Freno: no se levanta nada nuevo mientras dura. La ciudad lo avisa en el
+  tablero: "No llega gente nueva: la ciudad esta frenada".
+- Industria fria o caliente: la demanda industrial cae a la mitad o sube un 40 %.
+- Costa: la temporada rinde la mitad mas, o el suelo junto al agua se deprecia.
+- Luz comprada: no hay cortes mientras dure el acuerdo.
+- Slider clavado: un presupuesto que no podes mover (el panel lo dice con una
+  nota debajo de la lista: "Salitas no se puede mover: 24 meses de compromiso").
+
+
+DEMOLICIONES
+------------
+Demoler algo que estaba construido ya no es gratis: los desalojados se enojan.
+Cuanto pesa depende de cuantos eran y del tamano de tu ciudad: en un pueblo se
+nota una casa, en una metropolis casi no se siente una avenida. El enojo resta
+aprobacion unos meses y despues se olvida. El diario lo cuenta si el barrio se
+enoja lo suficiente.
+
+
+FORMAS DE GOBIERNO
+------------------
+- DICTADURA: la caja de aprobacion ya no muestra la cuenta regresiva de la
+  votacion, porque no hay ninguna. Pero el calendario sigue teniendo su octubre:
+  el diario publica el acto eleccionario igual, con titulares que no dejan dudas
+  ("...gana por amplia mayoria, despues de que sus contrincantes desaparecieran")
+  y, al dia siguiente, la noticia que siempre es peor que la anterior.
+- TECNOCRACIA: pide el 50 % de aprobacion para seguir, cada seis anos. La
+  tarjeta de la pantalla de fundacion ya lo decia ("la mitad de la opinion en
+  juego"); ahora el numero coincide. La aprobacion se sigue moviendo la mitad de
+  rapido.
+
+
+SI VENIS DE UNA PARTIDA VIEJA
+-----------------------------
+Las partidas anteriores abren sin problema: arrancan sin promesa, sin evento
+abierto, sin efectos y sin enojo por demoliciones. Los quince eventos empiezan a
+aparecer a partir del primer ano de juego.
+
+
+ARCHIVOS QUE CAMBIARON (para el que mire el repo)
+-------------------------------------------------
+- src/sim/commitments.ts        promesas: plazo, linea de base, progreso.
+- src/sim/events.ts             los quince casos y cuando aparecen.
+- src/sim/effects.ts            efectos con vencimiento y sus multiplicadores.
+- src/sim/simulation.ts         estado nuevo, cierre de mes, ganchos de los efectos.
+- src/sim/mayor.ts              titulares del acto eleccionario de la dictadura.
+- src/sim/budget.ts, fields.ts  factores de costa y de valor del suelo.
+- src/save/save.ts              formato 14 (promesa, evento pendiente, efectos).
+- src/ui/panels.ts              ventana del evento, slider clavado, ayudas.
+- src/game.ts                   aviso rojo de la promesa, reapertura del evento.
+- index.html, src/ui/style.css  el aviso y las dos opciones del evento.
+- tests/promesas.test.ts, tests/eventos.test.ts, tests/efectos.test.ts.
+- odd/tasks/promesas.md, odd/tasks/eventos.md, odd/tasks/formas-de-gobierno.md.
+
+Verificado con 700 pruebas automaticas en verde, tipos sin errores, build limpio
+y una partida de quince anos contestando siempre la primera opcion: salieron 18
+eventos de 7 tipos distintos, uno cada diez meses aproximadamente.
