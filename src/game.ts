@@ -633,7 +633,7 @@ ${stalled}` : ''}`;
     const s = this.sim.state;
     const now = performance.now();
     if (force || !this.outlookBudget || now - this.outlookAt > 400) {
-      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month);
+      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green);
       this.outlookAt = now;
     }
     const o = describeOutlook(this.outlookBudget, s.cash);

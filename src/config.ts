@@ -136,7 +136,8 @@ export const UPKEEP = {
   road: ROAD_TIERS[ASPHALT].upkeep,
   bridge: 4,
   line: 0.3,
-  park: 2,
+  /** Per cell of plaza, at the "Espacios verdes" budget in full. A 4×4 costs $80 a month. */
+  park: 5,
   plant: 350,
   /**
    * Administration per resident. Raised from 0.06 when service upkeep started to depend on use
@@ -194,6 +195,24 @@ export const POWER_USE = { R: 2, C: 3, I: 5 } as const;
 
 export type ServiceKind = 'school' | 'clinic' | 'police' | 'fire';
 export const SERVICE_KINDS: readonly ServiceKind[] = ['school', 'clinic', 'police', 'fire'];
+
+/**
+ * Plazas. A patch of plaza only pays off from `minArea` cells up, so a 2×2 or a 1×3 does something
+ * and a single tile is an ornament that still costs. Bigger patch, wider field; the budget for
+ * green spaces decides whether it gives value or takes it away.
+ */
+export const PARK = {
+  /** Cells below this carry no amenity at all. */
+  minArea: 3,
+  /** Amenity at the centre of the smallest plaza that counts, with the budget in full. */
+  value: 4,
+  /** Radius of the amenity field for that smallest plaza; it grows with the size of the patch. */
+  radius: 3,
+  /** Care at which a plaza neither gives nor takes value. */
+  care: 50,
+  /** Land value the neighbours lose around a plaza nobody looks after. */
+  neglect: 8,
+} as const;
 
 /**
  * Public services. Each covers the residents within `radius` cells; when more than

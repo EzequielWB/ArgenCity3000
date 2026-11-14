@@ -1,4 +1,4 @@
-import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
+import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, PARK, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf } from '../world/world';
 import { coastWorks } from './coast';
@@ -58,6 +58,26 @@ function splat(acc: Float32Array, n: number, cx: number, cy: number, radius: num
       acc[y * n + x] += strength * (1 - d / (radius + 1));
     }
   }
+}
+
+/**
+ * What one cell of a plaza adds, or takes away. A patch smaller than `PARK.minArea` is an ornament
+ * and does nothing. A patch that counts spreads further the bigger it is, and its value follows the
+ * budget for green spaces: at 100 % it gives all it can, at `PARK.care` it gives nothing, below that
+ * it loses the neighbours' value as an abandoned building would.
+ */
+function splatPark(w: World, amenities: Float32Array, blight: Float32Array, i: number): void {
+  const area = w.parkArea[i];
+  if (area < PARK.minArea) return;
+  const mood = (w.parkCare[i] - PARK.care) / (100 - PARK.care);
+  if (mood === 0) return;
+  const x = i % w.n;
+  const y = (i - x) / w.n;
+  const radius = Math.min(8, PARK.radius + Math.floor(Math.log2(area)));
+  if (mood > 0) {
+    const size = Math.min(2.5, 0.4 + Math.log2(area + 1) / 2);
+    splat(amenities, w.n, x, y, radius, PARK.value * size * mood);
+  } else splat(blight, w.n, x, y, radius, PARK.neglect * -mood);
 }
 
 /** Industry, working ports and power plants pollute their surroundings, each kind of plant in its own measure. */
@@ -219,6 +239,47 @@ export function computeCrime(w: World, pop: number): void {
 }
 
 /** Land value: views of the water, plazas, promenades, lighthouses, trees and height add; pollution, crime and a saturated street subtract. The lamps of a boulevard buy no value here; what they are worth shows in its crime. Needs pollution, crime and congestion first. */
+/**
+ * Fills `parkArea` (how many cells the plaza patch of each cell has) and `parkCare` (how well that
+ * patch is kept, 0-100, straight from the budget for green spaces). Plazas are 4-connected: a 2x2
+ * block or a 1x3 walk is one patch, two plazas that only touch at a corner are two.
+ */
+export function computeParks(w: World, green: number): void {
+  const n = w.n;
+  const care = Math.max(0, Math.min(100, Math.round(green)));
+  w.parkArea.fill(0);
+  w.parkCare.fill(0);
+  const queue = new Int32Array(n * n);
+  for (let i = 0; i < n * n; i++) {
+    if (w.tiles[i] !== TILE.PARK || w.parkArea[i] !== 0) continue;
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = i;
+    w.parkArea[i] = 1; // in the patch; the real size is written once the walk is over
+    while (head < tail) {
+      const c = queue[head++];
+      const x = c % n;
+      const y = (c - x) / n;
+      for (const [nx, ny] of [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1],
+      ]) {
+        if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+        const j = ny * n + nx;
+        if (w.tiles[j] !== TILE.PARK || w.parkArea[j] !== 0) continue;
+        w.parkArea[j] = 1;
+        queue[tail++] = j;
+      }
+    }
+    for (let k = 0; k < tail; k++) {
+      w.parkArea[queue[k]] = tail;
+      w.parkCare[queue[k]] = care;
+    }
+  }
+}
+
 export function computeLandValue(w: World): void {
   const n = w.n;
   const water = waterDistance(w);
@@ -226,7 +287,7 @@ export function computeLandValue(w: World): void {
   const blight = new Float32Array(n * n);
   for (let i = 0; i < n * n; i++) {
     const t = w.tiles[i];
-    if (t === TILE.PARK) splat(amenities, n, i % n, Math.floor(i / n), 4, 14);
+    if (t === TILE.PARK) splatPark(w, amenities, blight, i);
     else if (t === TILE.PROMENADE) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.promenadeValue.radius, COAST_FIELDS.promenadeValue.strength);
     else if (t === TILE.LIGHTHOUSE) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.lighthouseValue.radius, COAST_FIELDS.lighthouseValue.strength);
     if (w.abandoned[i] && w.level[i] > 0) splat(blight, n, i % n, Math.floor(i / n), 2, 8);

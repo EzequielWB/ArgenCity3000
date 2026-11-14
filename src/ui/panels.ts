@@ -1,4 +1,5 @@
-import { GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, type GovernmentKind, type ServiceKind } from '../config';
+import { TILE } from '../world/world';
+import { GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, PARK, type GovernmentKind, type ServiceKind } from '../config';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
 import { formatMoney, formatNumber } from '../core/format';
@@ -78,7 +79,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Total ingresos', b.income, 'total')}
     ${row('Calles y puentes', b.roads)}
     ${row('Tendido eléctrico', b.lines)}
-    ${row('Plazas', b.parks)}
+    ${row('Espacios verdes', b.parks)}
     ${row('Usinas', b.plants)}
     ${row('Escuelas', b.schools)}
     ${row('Salitas', b.clinics)}
@@ -113,7 +114,9 @@ export function openBudget(game: Game): void {
           ([k, label]) =>
             `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
         ).join('')}
-        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos.</small></p>
+        <h3>Espacios verdes</h3>
+        <div class="tax"><label for="fundgreen">Plazas</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
+        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. Las plazas son distintas: por debajo del ${PARK.care} % se descuidan y bajan el valor del suelo alrededor.</small></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
         Saldo anual estimado: <strong id="yearly"></strong><br>
@@ -128,10 +131,10 @@ export function openBudget(game: Game): void {
     ${sim.state.lastBudget ? `<h3>Mes pasado</h3>${budgetTable(sim.state.lastBudget)}` : ''}
   `);
   const refresh = () => {
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month);
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green);
     $('#budgetNow').innerHTML = budgetTable(b);
     // The year is the average of the seasons, not the month in course.
-    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan).balance * 12, true);
+    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green).balance * 12, true);
     const d = sim.demand;
     const avg = averageTax(sim.state.taxes);
     const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;
@@ -189,6 +192,17 @@ export function openBudget(game: Game): void {
       refresh();
     }),
   );
+  const green = body.querySelector<HTMLInputElement>('input[data-green]');
+  green?.addEventListener('input', () => {
+    sim.setGreen(Number(green.value));
+    green.nextElementSibling!.textContent = `${sim.state.green} %`;
+    // The plazas change their ground and lose their trees, so the map itself has to be painted again.
+    const parks: number[] = [];
+    for (let i = 0; i < game.world.tiles.length; i++) if (game.world.tiles[i] === TILE.PARK) parks.push(i);
+    game.map.update(parks);
+    game.view.invalidateLayer();
+    refresh();
+  });
   body.querySelectorAll<HTMLInputElement>('input[data-fund]').forEach((input) =>
     input.addEventListener('input', () => {
       const k = input.dataset.fund as ServiceKind;

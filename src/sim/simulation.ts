@@ -26,7 +26,7 @@ import { cumulativeShare, dateLabel, dateOf } from './calendar';
 import { countCoast } from './coast';
 import { computeCongestion, jamGrowthFactor, type CongestionReport } from './congestion';
 import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
-import { computeCrime, computeLandValue, computePollution, computeRoadAccess, computeServices } from './fields';
+import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
 import { foundingHeadline, electionHeadline, pollHeadline } from './mayor';
 import { advanceMilestones, unlockNames } from './milestones';
@@ -40,6 +40,8 @@ export interface SimState {
   cash: number;
   taxes: ZoneTaxes;
   funding: ServiceFunding;
+  /** Budget for green spaces (plazas), 0 to `MAX_FUNDING`. It decides how well plazas are kept. */
+  green: number;
   rngState: number;
   crisis: boolean;
   lastBudget: BudgetReport | null;
@@ -73,6 +75,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     cash: INITIAL_CASH,
     taxes: { R: DEFAULT_TAX, C: DEFAULT_TAX, I: DEFAULT_TAX },
     funding: { ...DEFAULT_FUNDING },
+    green: 100,
     rngState: seed >>> 0,
     crisis: false,
     lastBudget: null,
@@ -239,6 +242,7 @@ export class Simulation {
     computePollution(w);
     computeCrime(w, this.totals.pop);
     this.congestion = computeCongestion(w);
+    computeParks(w, this.state.green);
     computeLandValue(w);
   }
 
@@ -298,6 +302,13 @@ export class Simulation {
     const v = Math.max(MIN_TAX, Math.min(MAX_TAX, Math.round(tax)));
     for (const z of zone ? [zone] : (['R', 'C', 'I'] as const)) this.state.taxes[z] = v;
     this.updateAppetite();
+  }
+
+  /** Sets the budget for green spaces (percent); how well the plazas are kept follows. */
+  setGreen(percent: number): void {
+    this.state.green = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
+    computeParks(this.world, this.state.green);
+    computeLandValue(this.world);
   }
 
   /** Sets a service's budget (percent of its standard upkeep); its coverage follows at once. */
@@ -471,7 +482,7 @@ export class Simulation {
   private settleWeek(): void {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
-    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month).balance, week);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green).balance, week);
     s.cash += due - this.monthPaid;
     this.monthPaid = due;
     s.crisis = s.cash < 0;
@@ -485,7 +496,7 @@ export class Simulation {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
     if (week === 0) return 0;
-    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green).balance, Math.min(week, WEEKS_PER_MONTH - 1));
   }
 
   /** Counts the instalment this month paid, and closes the loan once the term is done. */
@@ -503,7 +514,7 @@ export class Simulation {
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month);
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green);
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
@@ -617,6 +628,7 @@ export class Simulation {
       crisis: this.state.crisis,
       taxes: { ...this.state.taxes },
       funding: { ...this.state.funding },
+      green: this.state.green,
       month,
       year,
       cash: this.state.cash,

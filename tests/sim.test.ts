@@ -5,7 +5,7 @@ import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { CAPACITY, INITIAL_CASH, PLANT_CAPACITY, POWER_USE, TICKS_PER_MONTH } from '../src/config';
 import { dateLabel, dateOf } from '../src/sim/calendar';
 import { computePower } from '../src/sim/power';
-import { computeRoadAccess, computePollution, computeLandValue } from '../src/sim/fields';
+import { computeRoadAccess, computeParks, computePollution, computeLandValue } from '../src/sim/fields';
 import { cityTotals, computeDemand } from '../src/sim/demand';
 import { monthlyBudget } from '../src/sim/budget';
 import { headlinesFor, type CitySnapshot } from '../src/sim/news';
@@ -85,12 +85,24 @@ describe('fields', () => {
 
   it('raises land value near water and parks', () => {
     const w = new World(flat(32, 28));
-    build(w, 'park', 5, 5);
+    // A plaza counts from three cells up: a single tile is an ornament.
+    build(w, 'park', 5, 4, 5, 6);
     computePollution(w);
+    computeParks(w, 100);
     computeLandValue(w);
     const base = w.landValue[w.idx(15, 20)];
     expect(w.landValue[w.idx(26, 20)]).toBeGreaterThan(base);
-    expect(w.landValue[w.idx(6, 5)]).toBeGreaterThan(base);
+    expect(w.landValue[w.idx(5, 5)]).toBeGreaterThan(base);
+  });
+
+  it('leaves a single plaza tile without any effect', () => {
+    const w = new World(flat(32, 28));
+    build(w, 'park', 5, 5);
+    computePollution(w);
+    computeParks(w, 100);
+    computeLandValue(w);
+    expect(w.parkArea[w.idx(5, 5)]).toBe(1);
+    expect(w.landValue[w.idx(5, 5)]).toBe(w.landValue[w.idx(15, 20)]);
   });
 });
 
@@ -188,6 +200,7 @@ describe('headlinesFor', () => {
     crisis: false,
     taxes: { R: 7, C: 7, I: 7 },
     funding: { school: 100, clinic: 100, police: 100, fire: 100 },
+    green: 100,
     month: 1,
     year: 1990,
     cash: 1000,

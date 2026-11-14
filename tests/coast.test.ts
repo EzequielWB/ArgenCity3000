@@ -5,7 +5,7 @@ import { monthlyBudget } from '../src/sim/budget';
 import { coastRefusal, coastWorks, countCoast, seasonOf, tourismFor } from '../src/sim/coast';
 import { computeCongestion } from '../src/sim/congestion';
 import { cityTotals } from '../src/sim/demand';
-import { computeLandValue, computePollution, computeRoadAccess } from '../src/sim/fields';
+import { computeLandValue, computeParks, computePollution, computeRoadAccess } from '../src/sim/fields';
 import { MILESTONES, isUnlocked, milestoneOfTool } from '../src/sim/milestones';
 import { CitySnapshot, headlinesFor } from '../src/sim/news';
 import { computeApproval, type ApprovalInputs } from '../src/sim/politics';
@@ -553,9 +553,22 @@ describe('smoke, land value and approval', () => {
 
   const valueWith = (tool: ToolId, x: number, y: number, probe: [number, number]) => {
     const base = new World(shore());
+    computeParks(base, 100);
     computeLandValue(base);
     const w = new World(shore());
     build(w, tool, x, y);
+    computeParks(w, 100);
+    computeLandValue(w);
+    return w.landValue[w.idx(...probe)] - base.landValue[base.idx(...probe)];
+  };
+  /** The same measurement around a plaza patch of `cw`×`ch` cells, which is what counts. */
+  const patchValue = (cw: number, ch: number, x: number, y: number, probe: [number, number]) => {
+    const base = new World(shore());
+    computeParks(base, 100);
+    computeLandValue(base);
+    const w = new World(shore());
+    for (let k = 0; k < ch; k++) for (let j = 0; j < cw; j++) build(w, 'park', x + j, y + k);
+    computeParks(w, 100);
     computeLandValue(w);
     return w.landValue[w.idx(...probe)] - base.landValue[base.idx(...probe)];
   };
@@ -563,11 +576,13 @@ describe('smoke, land value and approval', () => {
   it('raises the land value like a plaza but stronger: 20 over a radius of 4 against 14', () => {
     expect(valueWith('promenade', 8, 5, [8, 5])).toBeGreaterThanOrEqual(19);
     expect(valueWith('promenade', 8, 5, [8, 5])).toBeLessThanOrEqual(21);
-    expect(valueWith('park', 8, 5, [8, 5])).toBeGreaterThanOrEqual(13);
-    expect(valueWith('park', 8, 5, [8, 5])).toBeLessThanOrEqual(15);
+    // A plaza needs three cells to count at all, and then it gives 14 at its centre.
+    expect(patchValue(1, 3, 8, 4, [8, 5])).toBeGreaterThanOrEqual(13);
+    expect(patchValue(1, 3, 8, 4, [8, 5])).toBeLessThanOrEqual(15);
+    expect(valueWith('park', 8, 5, [8, 5])).toBe(0);
     expect(valueWith('promenade', 8, 5, [8, 9])).toBeGreaterThan(0); // 4 lots away
     expect(valueWith('promenade', 8, 5, [8, 10])).toBe(0);
-    expect(valueWith('promenade', 8, 5, [8, 7])).toBeGreaterThan(valueWith('park', 8, 5, [8, 7]));
+    expect(valueWith('promenade', 8, 5, [8, 7])).toBeGreaterThan(patchValue(1, 3, 8, 4, [8, 7]));
   });
 
   it('raises the land value around a lighthouse, 12 over a radius of 6', () => {
@@ -753,6 +768,7 @@ describe('the newspaper of the coast', () => {
     crisis: false,
     taxes: { R: 7, C: 7, I: 7 },
     funding: { school: 100, clinic: 100, police: 100, fire: 100 },
+    green: 100,
     month: 5,
     year: 1990,
     cash: 1000,

@@ -7,6 +7,7 @@ import {
   FIRE_SAFE_COVER,
   FISHING_SALES,
   LINE_REACH,
+  PARK,
   PLANTS,
   PORT_TAX_BOOST,
   POWER_REACH,
@@ -131,7 +132,22 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   }
   const coast = coastOf(tile);
   if (coast) return describeCoast(w, sim, i, coast);
-  if (tile === TILE.PARK) return { title: 'Plaza', lines: [height, `Valor del suelo: ${w.landValue[i]}/100`], hint: 'Las plazas suben el valor del suelo alrededor.' };
+  if (tile === TILE.PARK) {
+    const area = w.parkArea[i];
+    const care = w.parkCare[i];
+    const lines = [height, `Mancha de plaza: ${formatNumber(area)} celda${area === 1 ? '' : 's'}`, `Valor del suelo: ${w.landValue[i]}/100`];
+    if (area >= PARK.minArea) lines.push(`Mantenimiento: ${care} % (${care >= PARK.care ? 'la Provincia la cuida' : 'descuidada'})`);
+    return {
+      title: 'Plaza',
+      lines,
+      hint:
+        area < PARK.minArea
+          ? `Una plaza de ${formatNumber(area)} celda${area === 1 ? '' : 's'} no alcanza: recién desde ${PARK.minArea} celdas sube el valor del suelo alrededor.`
+          : care >= PARK.care
+            ? 'Las plazas suben el valor del suelo alrededor, y cuanto más grande es la mancha, más lejos llega.'
+            : `Descuidada: baja el valor del suelo alrededor. Subí el presupuesto de espacios verdes (hoy al ${care} %).`,
+    };
+  }
 
   if (zone && level > 0 && w.fire[i]) {
     return {

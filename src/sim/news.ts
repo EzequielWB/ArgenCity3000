@@ -11,6 +11,8 @@ export interface CitySnapshot {
   crisis: boolean;
   taxes: ZoneTaxes;
   funding: ServiceFunding;
+  /** Budget for green spaces, the one that decides whether the plazas are kept. */
+  green: number;
   month: number;
   year: number;
   cash: number;
@@ -96,6 +98,9 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   for (const k of SERVICE_KINDS) {
     if (prev.funding[k] >= DEEP_CUT && next.funding[k] < DEEP_CUT) out.push(CUT_NEWS[k](next.funding[k]));
   }
+  if (prev.green >= DEEP_CUT && next.green < DEEP_CUT)
+    out.push(`Plazas descuidadas: el mantenimiento de los espacios verdes quedó al ${next.green} %`);
+  if (prev.green < DEEP_CUT && next.green >= DEEP_CUT) out.push('Vuelven a cuidar las plazas: los espacios verdes recuperaron su presupuesto');
   // `next.month` is the month that has just begun.
   if (next.resorts > 0 && prev.month !== next.month) {
     if (next.month === 12) out.push(`Arranca la temporada: los balnearios de ${city} esperan turistas`);

@@ -1,4 +1,4 @@
-import { DEFAULT_FUNDING, FIXED_SHARE, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
+import { DEFAULT_FUNDING, FIXED_SHARE, MAX_FUNDING, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { coastBudget, portTaxBoost } from './coast';
 import { cityTotals, zoneTaxes } from './demand';
@@ -68,7 +68,7 @@ export function serviceUpkeep(kind: ServiceKind, utilization: number): number {
  * runway and the newspaper all account for it without knowing about loans. `month` (1 to 12) sets the
  * tourism season of the resorts; without it the tourism is the average of the year.
  */
-export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING, loan: Loan | null = null, month?: number): BudgetReport {
+export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING, loan: Loan | null = null, month?: number, green = 100): BudgetReport {
   const taxes = zoneTaxes(tax);
   const t = cityTotals(w);
   let roads = 0;
@@ -107,7 +107,7 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
     taxI,
     roads: Math.round(roads + bridges),
     lines: Math.round(lines * UPKEEP.line),
-    parks: Math.round(parks * UPKEEP.park),
+    parks: Math.round(parks * UPKEEP.park * (Math.max(0, Math.min(MAX_FUNDING, green)) / 100)),
     plants: plantsUpkeep(w),
     services: Math.round(t.pop * UPKEEP.servicesPerResident * (1 + t.pop / UPKEEP.servicesScale)),
     schools: funded('school'),

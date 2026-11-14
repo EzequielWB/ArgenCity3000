@@ -26,7 +26,14 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'zoneR', label: 'Residencial', key: '5', shape: 'rect', help: 'Zona para viviendas. Necesita luz y calle cerca.' },
   { id: 'zoneC', label: 'Comercial', key: '6', shape: 'rect', help: 'Zona para comercios y oficinas.' },
   { id: 'zoneI', label: 'Industrial', key: '7', shape: 'rect', help: 'Zona para talleres y fábricas. Contamina.' },
-  { id: 'park', label: 'Plaza', key: '8', shape: 'rect', help: 'Sube el valor del suelo alrededor.' },
+  {
+    id: 'park',
+    label: 'Plaza',
+    key: '8',
+    shape: 'rect',
+    // Three cells is the smallest plaza that lifts the land value; the bigger the patch, the further it reaches.
+    help: 'Desde 3 celdas sube el valor del suelo alrededor, y cuanto más grande, más lejos llega. Si el presupuesto de espacios verdes baja del 50 %, la plaza se descuida y lo baja.',
+  },
   { id: 'plant', label: 'Usina a carbón', key: '9', shape: 'anchor', help: 'Usina térmica de 2×2. Barata, pero contamina mucho.' },
   { id: 'plantGas', label: 'Usina a gas', key: 'j', shape: 'anchor', help: 'Usina de 2×2. Más cara de construir y de mantener, casi no contamina.' },
   { id: 'plantWind', label: 'Parque eólico', key: 'k', shape: 'anchor', help: 'Molinos de 2×2. No contaminan y cuestan poco de mantener; rinden más en lo alto de una loma y cerca del agua.' },

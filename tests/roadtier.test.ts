@@ -43,7 +43,7 @@ describe('street quality', () => {
     }
     const back = deserialize(serialize({ name: 'X', seed: 11, world, sim: sim.state }));
     expect(Array.from(back.world.roadTier)).toEqual(Array.from(world.roadTier));
-    expect(SAVE_VERSION).toBe(10);
+    expect(SAVE_VERSION).toBe(11);
   });
 
   it('opens a save from the version before the qualities as all asphalt', () => {

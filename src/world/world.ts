@@ -121,6 +121,10 @@ export class World {
   readonly traffic: Uint8Array;
   /** For every lot near a street, the traffic of the street it opens onto. */
   readonly jam: Uint8Array;
+  /** Cells of the plaza patch each park cell belongs to (0 outside a plaza). */
+  readonly parkArea: Uint16Array;
+  /** 0-100, how well the plaza patch of each cell is kept (0 outside a plaza). */
+  readonly parkCare: Uint8Array;
 
   /** Bumped whenever something that conducts power or gives road access changes. */
   networkVersion = 0;
@@ -145,6 +149,8 @@ export class World {
     this.fireCover = new Uint8Array(size);
     this.traffic = new Uint8Array(size);
     this.jam = new Uint8Array(size);
+    this.parkArea = new Uint16Array(size);
+    this.parkCare = new Uint8Array(size);
     this.powered = new Uint8Array(size);
     this.pollution = new Uint8Array(size);
     this.landValue = new Uint8Array(size);

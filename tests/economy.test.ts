@@ -132,6 +132,7 @@ describe('the newspaper', () => {
     crisis: false,
     taxes: even(7),
     funding: { ...fullFunding },
+    green: 100,
     month: 3,
     year: 1990,
     cash: 1000,

@@ -1,4 +1,4 @@
-import { PLANT_SIZE } from '../config';
+import { PARK, PLANT_SIZE } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
@@ -503,7 +503,7 @@ export class MapRenderer {
     } else {
       this.drawGround(vx, vy, x, y);
       if (tile === TILE.ROAD) this.drawRoad(vx, vy, pts, i);
-      else if (tile === TILE.PARK) this.drawPark(pts);
+      else if (tile === TILE.PARK) this.drawPark(pts, w.parkArea[i] >= PARK.minArea && w.parkCare[i] < PARK.care);
       else if (tile === TILE.PROMENADE) this.drawPromenade(pts);
       else if (zoneOf(tile) && level === 0) this.drawZoneLot(pts, tile);
     }
@@ -563,8 +563,11 @@ export class MapRenderer {
     const coast = coastOf(tile);
     if (coast) return { sprite: coastSprite(coast, this.coastVariant(coast, vx, vy, x, y)), ax, ay };
     if (tile === TILE.PARK) {
-      const tree = parkTreeHere(x, y, (cx, cy) => cx >= 0 && cy >= 0 && cx < n && cy < n && w.tiles[w.idx(cx, cy)] === TILE.PARK);
-      return { sprite: parkSpriteFor(w.variant[i], tree), ax, ay };
+      // A plaza nobody keeps loses its trees and shows dry ground, so the city tells you at a glance.
+      const neglected = w.parkArea[i] >= PARK.minArea && w.parkCare[i] < PARK.care;
+      const tree =
+        !neglected && parkTreeHere(x, y, (cx, cy) => cx >= 0 && cy >= 0 && cx < n && cy < n && w.tiles[w.idx(cx, cy)] === TILE.PARK);
+      return { sprite: parkSpriteFor(w.variant[i], neglected ? 'neglected' : tree ? 'tree' : 'bare'), ax, ay };
     }
     if (tile === TILE.LINE) return { sprite: poleSpriteFor(), ax, ay };
     const sign = tile === TILE.ROAD && !w.isWater(x, y) ? this.signs.get(i) : undefined;
@@ -694,10 +697,10 @@ export class MapRenderer {
     g.stroke();
   }
 
-  private drawPark(pts: Pt[]): void {
-    this.poly(pts, PAL.park);
+  private drawPark(pts: Pt[], dry = false): void {
+    this.poly(pts, dry ? PAL.parkDry : PAL.park);
     const strip = (u0: number, v0: number, u1: number, v1: number) =>
-      this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], PAL.path);
+      this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], dry ? PAL.pathDry : PAL.path);
     strip(0.44, 0, 0.56, 1);
     strip(0, 0.44, 1, 0.56);
   }
