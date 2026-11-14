@@ -4,7 +4,7 @@ import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
 import type { RoadTier } from '../config';
-import { KIND, analyzeRoads, boulevardMedian, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
+import { KIND, analyzeRoads, boulevardMedian, centreMark, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
 
 /** Asphalt of each street quality: plain, reinforced pavement, boulevard. */
 const ROAD_SURFACE = [PAL.asphalt, PAL.asphaltPaved, PAL.asphaltBoulevard] as const;
@@ -777,12 +777,13 @@ export class MapRenderer {
     if (down) sub(a, b, b, 1);
     if (left) sub(0, a, a, b);
     if (right) sub(b, a, 1, b);
-    // Centre lines towards each connection: dashed on a street, and the concrete median of a
-    // boulevard, solid and one pixel wide, in the middle of a street of a single cell.
+    // Centre lines towards each connection: cream dashes on plain asphalt, the raised markers of
+    // reinforced pavement (little yellow lights), and the concrete median of a boulevard.
     const g = this.g;
-    g.strokeStyle = tier === 2 ? MEDIAN_CONCRETE : PAL.marking;
-    g.lineWidth = tier === 2 ? 1 : 0.8;
-    g.setLineDash(tier === 2 ? [] : [2, 2]);
+    const mark = centreMark(tier);
+    g.strokeStyle = mark === 'concrete' ? MEDIAN_CONCRETE : mark === 'lights' ? AVENUE_LINE : PAL.marking;
+    g.lineWidth = mark === 'plain' ? 0.8 : mark === 'concrete' ? 1 : 1.2;
+    g.setLineDash(mark === 'concrete' ? [] : mark === 'lights' ? [1, 2] : [2, 2]);
     const c = bilinear(pts, 0.5, 0.5);
     const line = (u: number, v: number) => {
       const p = bilinear(pts, u, v);
@@ -889,12 +890,14 @@ export class MapRenderer {
     };
     const g = this.g;
     const stroke = (style: LaneLine, at: (t: number, off: number) => Pt, t0: number, t1: number) => {
-      // A boulevard has a concrete median, one pixel wide, where an avenue paints its double line.
-      const median = boulevard && style === 'double';
-      g.strokeStyle = median ? MEDIAN_CONCRETE : style === 'dash' ? PAL.marking : AVENUE_LINE;
-      g.lineWidth = median ? 1 : style === 'dash' ? 0.8 : 0.9;
-      g.setLineDash(!boulevard && style === 'dash' ? [2, 2] : []);
-      for (const off of median ? [0] : style === 'double' ? [-DOUBLE_GAP, DOUBLE_GAP] : [0]) {
+      // Where an avenue paints its double line, the quality decides what the centre looks like: a
+      // concrete median on a boulevard and the little yellow markers of reinforced pavement.
+      const centre = style === 'double' ? centreMark(tier) : 'plain';
+      const single = centre !== 'plain';
+      g.strokeStyle = centre === 'concrete' ? MEDIAN_CONCRETE : centre === 'lights' ? AVENUE_LINE : style === 'dash' ? PAL.marking : AVENUE_LINE;
+      g.lineWidth = centre === 'concrete' ? 1 : centre === 'lights' ? 1.2 : style === 'dash' ? 0.8 : 0.9;
+      g.setLineDash(centre === 'lights' ? [1, 2] : style === 'dash' && !boulevard ? [2, 2] : []);
+      for (const off of single ? [0] : style === 'double' ? [-DOUBLE_GAP, DOUBLE_GAP] : [0]) {
         const p = at(t0, off);
         const q = at(t1, off);
         g.beginPath();

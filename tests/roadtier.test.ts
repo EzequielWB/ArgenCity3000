@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { COSTS, ROAD_TIERS } from '../src/config';
 import { computeCrime, computeLandValue } from '../src/sim/fields';
 import { MapRenderer } from '../src/render/mapRenderer';
-import { KIND, analyzeRoads, boulevardMedian, kindOf, tierOf } from '../src/render/avenue';
+import { KIND, analyzeRoads, boulevardMedian, centreMark, kindOf, tierOf } from '../src/render/avenue';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { SAVE_VERSION, deserialize, serialize, toBase64 } from '../src/save/save';
 import { isUnlocked } from '../src/sim/milestones';
@@ -215,6 +215,14 @@ describe('the concrete median of a boulevard', () => {
     expect(boulevardMedian(3, 0)).toBe('none');
     expect(boulevardMedian(5, 2)).toBe('through');
     expect(boulevardMedian(5, 1)).toBe('none');
+  });
+});
+
+describe('how each quality marks the middle of the street', () => {
+  it('is the plain marking on asphalt, the raised yellow markers on reinforced pavement and concrete on a boulevard', () => {
+    expect(centreMark(0)).toBe('plain');
+    expect(centreMark(1)).toBe('lights');
+    expect(centreMark(2)).toBe('concrete');
   });
 });
 

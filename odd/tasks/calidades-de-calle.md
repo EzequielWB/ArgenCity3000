@@ -83,6 +83,9 @@ trazarla y se puede mejorar en el lugar pagando la diferencia.
 
 - Asfalto: como hoy.
 - Pavimento reforzado: asfalto más oscuro y líneas más marcadas.
+- Pavimento reforzado: el medio del camino se marca con **lucecitas amarillas punteadas** (trazo de
+  un píxel con huecos), como los topes de algunas avenidas, en vez de la línea crema del asfalto.
+  La regla es `centreMark(tier)` (`src/render/avenue.ts`), pura y probada.
 - Bulevar: cantero de cemento de un píxel en el medio del camino, a cualquier ancho, y farolas cada
   pocas celdas. La regla es `boulevardMedian(lanes, lane)` (`src/render/avenue.ts`), pura y probada:
   `'boundary'` en el límite entre las dos manos (ancho par), `'through'` por el medio de la celda
@@ -105,6 +108,7 @@ línea obligaba a cambiar el formato del presupuesto en el guardado sin que el j
 | T2 Herramientas: tres calidades, costos, mejora en el lugar, ruta | S1, S2, S5, S7 | `src/config.ts`, `src/world/tools.ts`, `src/game.ts`, `src/ui/toolbar.ts` | hecho | RED visto; 7 tests de construcción/mejora; `toolgroups`, `outlook`, `coast` (la tecla `b` estaba tomada por el tamaño de bloque: el bulevar usa `t`) y `route` (versión 9) actualizados |
 | T3 Congestión: multiplicador y eslabón más débil | S4 | `src/sim/congestion.ts` | hecho | RED visto (2 de 9 rojos); 3 tests nuevos, los 6 viejos siguen verdes |
 | T4 Delito del bulevar (el valor del suelo se sacó en T7) | S3 | `src/sim/fields.ts` | hecho | RED visto (2 rojos); dentro del radio baja el delito, fuera queda igual; el valor del suelo ya no cambia |
+| T10 Pavimento reforzado con lucecitas amarillas al medio | S8 | `src/render/avenue.ts`, `src/render/mapRenderer.ts`, `tests/roadtier.test.ts`, `README.md`, `src/ui/panels.ts`, `src/world/tools.ts` | hecho | ver L15 |
 | T9 El mapa repinta una calle que solo cambió de calidad | S2, S8 | `src/render/mapRenderer.ts`, `tests/roadtier.test.ts` | hecho | ver L14 |
 | T8 Bulevar con cantero de cemento de un píxel, sin pasto | S3, S8 | `src/render/avenue.ts`, `src/render/mapRenderer.ts`, `tests/roadtier.test.ts`, `README.md`, `src/ui/panels.ts`, `src/world/tools.ts` | hecho | ver L12 |
 | T7 Bulevar sin "con farolas", sin valor del suelo | S3, S8 | `src/config.ts`, `src/world/tools.ts`, `src/render/avenue.ts`, `src/render/mapRenderer.ts`, `src/sim/fields.ts`, `src/ui/panels.ts`, `README.md`, `tests/roadtier.test.ts` | hecho | ver L11 |
@@ -136,3 +140,5 @@ Runner: `npm test` (Vitest) y `npm run build`. Balance: `npm run probe`.
   - Test de regresión: `the map redraws a street that was only upgraded` en `tests/roadtier.test.ts`, con `MapRenderer` real sobre un mapa generado; verificado en rojo (sin el arreglo da `expected +0 to be 1`) y en verde con él.
   - Verificación de punta a punta en el navegador headless: se pinta una calle, se muestrea su píxel `[85,84,90]` (asfalto), se aplica la mejora a pavimento reforzado, se llama a `map.update` y el mismo píxel pasa a `[64,63,71]` (pavimento). Antes del arreglo ese píxel se quedaba en el asfalto.
   - Queda como está, a propósito: en una avenida ancha, mejorar **un solo carril** no cambia el dibujo hasta que se mejora el carril más flojo de la banda, porque la banda se dibuja por su celda más débil (S4). En una calle de una celda, o mejorando la avenida entera, el cambio se ve al instante.
+- **L15 (2026-11-13), pedido del usuario (verbatim):** "podrias hacer que la separación de la calle "pavimento reforzado" que sea una linea punteada amarilla? como que son las tipicas lucecitas/tope que hay en algunas calles y avenidas en vez de linea". `centreMark(tier)` (`avenue.ts`) devuelve `'plain'` (asfalto: dos amarillas en una avenida, crema punteada en una calle), `'lights'` (reforzado) y `'concrete'` (bulevar). Con `'lights'` el centro se dibuja en amarillo (`AVENUE_LINE`, ancho 1,2) con `setLineDash([1, 2])`: los huecos son los que dan la lectura de lucecitas en vez de línea.
+  - Medido en el navegador headless recorriendo el medio de cada calle y clasificando los píxeles: **asfalto** amarillo 0 / crema 30 (línea crema punteada de siempre), **reforzado** amarillo 20 / crema 0 (lucecitas con huecos a la vista), **bulevar** amarillo 0 / crema 40 (el cemento cae en la clase "crema" porque es un gris claro). Los temporales se borraron.

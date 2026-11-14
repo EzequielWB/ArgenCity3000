@@ -20,7 +20,7 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'query', label: 'Consulta', key: '1', shape: 'point', help: 'Clic en el mapa para ver la ficha del lote.' },
   { id: 'bulldoze', label: 'Topadora', key: '2', shape: 'rect', help: 'Arrastrá para demoler. Se paga por lote.' },
   { id: 'road', label: 'Calle de asfalto', key: '3', shape: 'line', help: 'Arrastrá para trazar. Sobre el agua se hace puente.' },
-  { id: 'roadPaved', label: 'Pavimento reforzado', key: 'r', shape: 'line', help: 'Calle de asfalto más resistente: entra un 60 % más de tránsito y cuesta más mantener. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
+  { id: 'roadPaved', label: 'Pavimento reforzado', key: 'r', shape: 'line', help: 'Calle de asfalto más resistente: entra un 60 % más de tránsito, cuesta más mantener y marca el medio con lucecitas amarillas. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
   { id: 'roadBoulevard', label: 'Bulevar', key: 't', shape: 'line', help: 'La calle de más capacidad, con cantero de cemento en el medio y farolas que bajan el delito alrededor. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
   { id: 'line', label: 'Tendido eléctrico', key: '4', shape: 'line', help: 'Lleva la luz por terrenos vacíos y sobre el agua.' },
   { id: 'zoneR', label: 'Residencial', key: '5', shape: 'rect', help: 'Zona para viviendas. Necesita luz y calle cerca.' },

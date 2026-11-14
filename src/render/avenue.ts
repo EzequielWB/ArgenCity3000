@@ -166,6 +166,15 @@ export function boulevardMedian(lanes: number, lane: number): 'boundary' | 'thro
 }
 
 /**
+ * How a street tells its two ways apart, by quality: the plain marking (two yellow lines on an
+ * avenue, the cream dashes of a single street), the little raised markers of reinforced pavement,
+ * or the concrete median of a boulevard.
+ */
+export function centreMark(tier: RoadTier): 'plain' | 'lights' | 'concrete' {
+  return tier === 2 ? 'concrete' : tier === 1 ? 'lights' : 'plain';
+}
+
+/**
  * Whether the boundary between lane `a` and lane `b` of a route strip is its centre line: the one
  * painted solid yellow, with white dashes on the other boundaries of the lanes going each way.
  */
