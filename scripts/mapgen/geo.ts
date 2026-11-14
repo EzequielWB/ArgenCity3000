@@ -73,6 +73,29 @@ export function rasterLine4(x0: number, y0: number, x1: number, y1: number): [nu
 }
 
 /**
+ * Closed rings out of ways that share end points, as the outline of a big lake or river
+ * comes in OpenStreetMap. `key` tells two points apart. Pieces that never close are left out.
+ */
+export function stitchRings<T>(ways: readonly (readonly T[])[], key: (p: T) => string): T[][] {
+  const rings: T[][] = [];
+  const open = ways.filter((w) => w.length > 1).map((w) => w.slice());
+  while (open.length) {
+    const ring = open.shift()!;
+    const head = key(ring[0]);
+    while (key(ring[ring.length - 1]) !== head) {
+      const tail = key(ring[ring.length - 1]);
+      const k = open.findIndex((w) => key(w[0]) === tail || key(w[w.length - 1]) === tail);
+      if (k < 0) break;
+      const [next] = open.splice(k, 1);
+      if (key(next[0]) !== tail) next.reverse();
+      ring.push(...next.slice(1));
+    }
+    if (ring.length > 3 && key(ring[ring.length - 1]) === head) rings.push(ring);
+  }
+  return rings;
+}
+
+/**
  * Corner heights for the game from elevations in metres sampled at the corners.
  * `water` marks the cells that are water. A corner is underwater when at least three
  * quarters of the cells around it are water, which keeps shorelines where they are.

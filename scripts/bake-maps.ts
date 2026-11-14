@@ -5,12 +5,15 @@
  * Sources, fetched once at bake time (the game never calls them):
  * - Elevation: Terrain Tiles on AWS (Terrarium encoding), open data.
  * - Streets, water, parks and woods: OpenStreetMap through the Overpass API (ODbL).
+ *
+ * With `MAP_CACHE_DIR` set, downloads are kept in that folder and reused, so trying another
+ * scale for a city does not ask the public servers again.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { hash2 } from '../src/core/rng';
 import { MAP_SIZE } from '../src/config';
 import { encodePreset, type MapPreset } from '../src/world/presets';
-import { cornersFromElevation, dominantBearing, rasterLine4, type Segment } from './mapgen/geo';
+import { cornersFromElevation, dominantBearing, rasterLine4, stitchRings, type Segment } from './mapgen/geo';
 
 interface City {
   id: string;
@@ -19,9 +22,43 @@ interface City {
   center: [number, number];
   cellMeters: number;
   metersPerLevel: number;
+  /** Cells per side: 128 (the default), 192 or 256. */
+  size?: number;
+  /**
+   * Elevation in metres of the water that reaches the map edge, for a lake or a river far
+   * above the sea. Without it, that water is the sea (SEA_MAX_M).
+   */
+  waterLevelM?: number;
+  /**
+   * Rivers and canals are left out where the ground is higher than this many metres: a city
+   * on a piedmont has ditches running down from the hills that would cut a trench into them.
+   */
+  waterwayMaxM?: number;
 }
 
-const CITIES: City[] = [{ id: 'mar-del-plata', name: 'Mar del Plata', center: [-38.0019, -57.543], cellMeters: 20, metersPerLevel: 5 }];
+const CITIES: City[] = [
+  { id: 'mar-del-plata', name: 'Mar del Plata', center: [-38.0019, -57.543], cellMeters: 20, metersPerLevel: 5 },
+  { id: 'buenos-aires', name: 'Buenos Aires', center: [-34.598, -58.365], cellMeters: 20, metersPerLevel: 9, size: 256 },
+  { id: 'rosario', name: 'Rosario', center: [-32.947, -60.636], cellMeters: 20, metersPerLevel: 4, size: 192 },
+  { id: 'cordoba', name: 'Córdoba', center: [-31.4167, -64.1836], cellMeters: 20, metersPerLevel: 8, size: 192 },
+  { id: 'mendoza', name: 'Mendoza', center: [-32.8895, -68.874], cellMeters: 25, metersPerLevel: 25, size: 256, waterwayMaxM: 800 },
+  { id: 'bariloche', name: 'Bariloche', center: [-41.138, -71.31], cellMeters: 25, metersPerLevel: 30, size: 192, waterLevelM: 772 },
+  { id: 'ushuaia', name: 'Ushuaia', center: [-54.805, -68.31], cellMeters: 20, metersPerLevel: 20, size: 192 },
+];
+
+const env = (globalThis as unknown as { process: { argv: string[]; env: Record<string, string | undefined> } }).process;
+const CACHE_DIR = env.env.MAP_CACHE_DIR;
+
+/** Bytes of a download, from the cache folder when there is one. */
+async function cached(file: string, download: () => Promise<Uint8Array>): Promise<Uint8Array> {
+  if (!CACHE_DIR) return download();
+  const path = `${CACHE_DIR}/${file}`;
+  if (existsSync(path)) return readFileSync(path);
+  const bytes = await download();
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(path, bytes);
+  return bytes;
+}
 
 const ATTRIBUTION = 'Calles, agua y parques: © colaboradores de OpenStreetMap (ODbL). Relieve: Terrain Tiles (Mapzen y AWS, con datos de SRTM y otros).';
 const USER_AGENT = 'map-baker/1.0';
@@ -47,6 +84,11 @@ interface OsmElement {
 
 async function overpass(south: number, west: number, north: number, east: number): Promise<OsmElement[]> {
   const b = `${south},${west},${north},${east}`;
+  const bytes = await cached(`osm-${[south, west, north, east].map((v) => v.toFixed(5)).join('_')}.json`, () => overpassQuery(b));
+  return (JSON.parse(new TextDecoder().decode(bytes)) as { elements: OsmElement[] }).elements;
+}
+
+async function overpassQuery(b: string): Promise<Uint8Array> {
   const query = `[out:json][timeout:120];
 (
   way["highway"](${b});
@@ -69,7 +111,7 @@ out geom;`;
         headers: { 'User-Agent': USER_AGENT, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `data=${encodeURIComponent(query)}`,
       });
-      if (res.ok) return ((await res.json()) as { elements: OsmElement[] }).elements;
+      if (res.ok) return new Uint8Array(await res.arrayBuffer());
       last = `${url} respondió ${res.status}`;
     } catch (err) {
       last = `${url}: ${(err as Error).message}`;
@@ -80,13 +122,14 @@ out geom;`;
   throw new Error(`Overpass no respondió: ${last}`);
 }
 
-/** Closed rings of an area element (a closed way, or the outer members of a relation). */
-function rings(e: OsmElement): OsmPoint[][] {
+/** Closed rings of an area element: a closed way, or the members of a relation with that role joined end to end. */
+function rings(e: OsmElement, role: 'outer' | 'inner' = 'outer'): OsmPoint[][] {
   if (e.type === 'way') {
     const g = e.geometry ?? [];
-    return g.length > 3 && g[0].lat === g[g.length - 1].lat && g[0].lon === g[g.length - 1].lon ? [g] : [];
+    return role === 'outer' && g.length > 3 && g[0].lat === g[g.length - 1].lat && g[0].lon === g[g.length - 1].lon ? [g] : [];
   }
-  return (e.members ?? []).filter((m) => m.role === 'outer' && m.geometry && m.geometry.length > 1).map((m) => m.geometry!);
+  const ways = (e.members ?? []).filter((m) => m.role === role && m.geometry && m.geometry.length > 1).map((m) => m.geometry!);
+  return stitchRings(ways, (p) => `${p.lat},${p.lon}`);
 }
 
 // ---------------------------------------------------------------- elevation
@@ -159,9 +202,13 @@ class Elevation {
     const [bx, by] = Elevation.pixel(lat0, lon1);
     for (let ty = Math.floor(ay / 256) - 1; ty <= Math.floor(by / 256) + 1; ty++) {
       for (let tx = Math.floor(ax / 256) - 1; tx <= Math.floor(bx / 256) + 1; tx++) {
-        const res = await fetch(`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${ZOOM}/${tx}/${ty}.png`, { headers: { 'User-Agent': USER_AGENT } });
-        if (!res.ok) throw new Error(`Mosaico de relieve ${tx}/${ty}: ${res.status}`);
-        const png = await decodePng(new Uint8Array(await res.arrayBuffer()));
+        const png = await decodePng(
+          await cached(`relieve-${ZOOM}-${tx}-${ty}.png`, async () => {
+            const res = await fetch(`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${ZOOM}/${tx}/${ty}.png`, { headers: { 'User-Agent': USER_AGENT } });
+            if (!res.ok) throw new Error(`Mosaico de relieve ${tx}/${ty}: ${res.status}`);
+            return new Uint8Array(await res.arrayBuffer());
+          }),
+        );
         const m = new Float32Array(256 * 256);
         for (let i = 0; i < m.length; i++) m[i] = png.rgb[i * 3] * 256 + png.rgb[i * 3 + 1] + png.rgb[i * 3 + 2] / 256 - 32768;
         this.tiles.set(`${tx}/${ty}`, m);
@@ -226,17 +273,17 @@ const MIN_LAKE_CELLS = 12;
 const SEA_MAX_M = 1;
 
 /**
- * The sea: cells at most SEA_MAX_M high connected to the map edge through such cells. Low
+ * The sea: cells at most `maxM` high connected to the map edge through such cells. Low
  * spots inland are left alone: in cities they are usually noise in the elevation data.
  */
-function seaFromElevation(n: number, elevAt: (x: number, y: number) => number): Uint8Array {
+function seaFromElevation(n: number, elevAt: (x: number, y: number) => number, maxM: number): Uint8Array {
   const e = new Float32Array(n * n);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) e[y * n + x] = elevAt(x, y);
   const sea = new Uint8Array(n * n);
   const queue: number[] = [];
   for (let k = 0; k < n; k++) {
     for (const seed of [k, (n - 1) * n + k, k * n, k * n + n - 1]) {
-      if (sea[seed] || e[seed] > SEA_MAX_M) continue;
+      if (sea[seed] || e[seed] > maxM) continue;
       sea[seed] = 1;
       queue.push(seed);
       while (queue.length) {
@@ -244,7 +291,7 @@ function seaFromElevation(n: number, elevAt: (x: number, y: number) => number): 
         const x = i % n;
         const y = (i - x) / n;
         for (const j of [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < n - 1 ? i + n : -1]) {
-          if (j >= 0 && !sea[j] && e[j] <= SEA_MAX_M) {
+          if (j >= 0 && !sea[j] && e[j] <= maxM) {
             sea[j] = 1;
             queue.push(j);
           }
@@ -256,7 +303,7 @@ function seaFromElevation(n: number, elevAt: (x: number, y: number) => number): 
 }
 
 async function bake(city: City): Promise<void> {
-  const n = MAP_SIZE;
+  const n = city.size ?? MAP_SIZE;
   const [lat0, lon0] = city.center;
   const kx = M_PER_DEG_LON * Math.cos((lat0 * Math.PI) / 180);
   const half = (n * city.cellMeters) / 2;
@@ -307,7 +354,7 @@ async function bake(city: City): Promise<void> {
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) elev[y * s + x] = elevation.sample(...toLatLon(x, y));
 
   // Water: the sea from the elevation data, lakes and rivers from OpenStreetMap.
-  const water = seaFromElevation(n, (x, y) => elevation.sample(...toLatLon(x + 0.5, y + 0.5)));
+  const water = seaFromElevation(n, (x, y) => elevation.sample(...toLatLon(x + 0.5, y + 0.5)), city.waterLevelM ?? SEA_MAX_M);
   for (const e of osm) {
     const t = e.tags ?? {};
     const isWaterArea = (t.natural === 'water' || t.waterway === 'riverbank' || t.landuse === 'reservoir' || t.landuse === 'basin') && !t.amenity;
@@ -316,6 +363,7 @@ async function bake(city: City): Promise<void> {
         // Ponds smaller than a few lots would only leave odd bridges in the middle of a block.
         const area = new Uint8Array(n * n);
         fillRing(area, n, r.map(grid), 1);
+        for (const island of rings(e, 'inner')) fillRing(area, n, island.map(grid), 0);
         let cells = 0;
         for (let i = 0; i < area.length; i++) cells += area[i];
         if (cells < MIN_LAKE_CELLS) continue;
@@ -332,6 +380,7 @@ async function bake(city: City): Promise<void> {
       const g = e.geometry.map(grid);
       for (let k = 1; k < g.length; k++) {
         for (const [x, y] of rasterLine4(Math.round(g[k - 1][0]), Math.round(g[k - 1][1]), Math.round(g[k][0]), Math.round(g[k][1]))) {
+          if (city.waterwayMaxM !== undefined && x >= -1 && y >= -1 && x < n && y < n && elevation.sample(...toLatLon(x + 1, y + 1)) > city.waterwayMaxM) continue;
           for (const [dx, dy] of [
             [0, 0],
             [1, 0],
@@ -388,5 +437,5 @@ async function bake(city: City): Promise<void> {
   );
 }
 
-const wanted = (globalThis as unknown as { process: { argv: string[] } }).process.argv.slice(2);
+const wanted = env.argv.slice(2);
 for (const city of CITIES) if (wanted.length === 0 || wanted.includes(city.id)) await bake(city);

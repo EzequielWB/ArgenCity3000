@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { cornersFromElevation, dominantBearing, rasterLine4 } from '../scripts/mapgen/geo';
+import { cornersFromElevation, dominantBearing, rasterLine4, stitchRings } from '../scripts/mapgen/geo';
 import { PRESETS, decodePreset, encodePreset, worldFromPreset, type MapPreset } from '../src/world/presets';
-import { MAX_HEIGHT, SEA_LEVEL, isWaterCell } from '../src/world/terrain';
+import { MAX_HEIGHT, SEA_LEVEL, isFlatCell, isWaterCell } from '../src/world/terrain';
 import { TILE, World } from '../src/world/world';
 import { deserialize, serialize } from '../src/save/save';
 import { newSimState } from '../src/sim/simulation';
 import { monthlyBudget } from '../src/sim/budget';
-import { UPKEEP } from '../src/config';
+import { MAP_SIZES, UPKEEP } from '../src/config';
 import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools';
 import { UndoHistory } from '../src/world/history';
 
@@ -44,6 +44,30 @@ describe('rasterLine4', () => {
         expect(Math.abs(cells[k][0] - cells[k - 1][0]) + Math.abs(cells[k][1] - cells[k - 1][1])).toBe(1);
       }
     }
+  });
+});
+
+describe('stitchRings', () => {
+  const key = (p: [number, number]) => p.join(',');
+
+  it('joins ways that share end points into closed rings, whatever their direction', () => {
+    const rings = stitchRings<[number, number]>(
+      [
+        [[0, 0], [4, 0], [4, 4]],
+        [[0, 0], [0, 4], [4, 4]],
+        [[10, 10], [12, 10], [12, 12], [10, 10]],
+      ],
+      key,
+    );
+    expect(rings).toHaveLength(2);
+    const square = rings.find((r) => r.length === 5)!;
+    expect(key(square[0])).toBe(key(square[4]));
+    expect(new Set(square.map(key))).toEqual(new Set(['0,0', '4,0', '4,4', '0,4']));
+    expect(rings.find((r) => r.length === 4)).toEqual([[10, 10], [12, 10], [12, 12], [10, 10]]);
+  });
+
+  it('leaves out the pieces that never close', () => {
+    expect(stitchRings<[number, number]>([[[0, 0], [5, 0]], [[5, 0], [5, 5]]], key)).toEqual([]);
   });
 });
 
@@ -183,22 +207,56 @@ describe('map presets', () => {
     expect(Array.from(deserialize(JSON.stringify(old)).world.inherited).every((v) => v === 0)).toBe(true);
   });
 
-  it('ship every listed map as a valid file with land, water and streets', () => {
-    const files = import.meta.glob('../public/maps/*.json', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-    expect(PRESETS.length).toBeGreaterThan(0);
+  const files = import.meta.glob('../public/maps/*.json', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+  const cities = ['mar-del-plata', 'buenos-aires', 'rosario', 'cordoba', 'mendoza', 'bariloche', 'ushuaia'];
+
+  it('list the seven cities, each with a name and a line for the start screen', () => {
+    expect(PRESETS.map((p) => p.id)).toEqual(cities);
     for (const info of PRESETS) {
-      const file = files[`../public/maps/${info.id}.json`];
-      expect(file, `falta public/maps/${info.id}.json`).toBeTypeOf('string');
-      const p = decodePreset(file);
-      expect(p.n).toBe(128);
-      let land = 0;
-      let wet = 0;
-      const t = { n: p.n, corners: p.corners, trees: p.trees };
-      for (let y = 0; y < p.n; y++) for (let x = 0; x < p.n; x++) (isWaterCell(t, x, y) ? wet++ : land++);
-      expect(land).toBeGreaterThan(p.n * p.n * 0.3);
-      expect(wet).toBeGreaterThan(0);
-      expect(p.roads.reduce((a, b) => a + b, 0)).toBeGreaterThan(500);
-      expect(p.attribution).toMatch(/OpenStreetMap/);
+      expect(info.name.length).toBeGreaterThan(0);
+      expect(info.blurb.length).toBeGreaterThan(0);
     }
+  });
+
+  it.each(cities)('ship %s as a valid file with water, flat land to build on and streets', (id) => {
+    const file = files[`../public/maps/${id}.json`];
+    expect(file, `falta public/maps/${id}.json`).toBeTypeOf('string');
+    const p = decodePreset(file);
+    expect(p.id).toBe(id);
+    expect(Object.values(MAP_SIZES)).toContain(p.n);
+    let flat = 0;
+    let wet = 0;
+    const t = { n: p.n, corners: p.corners, trees: p.trees };
+    for (let y = 0; y < p.n; y++) {
+      for (let x = 0; x < p.n; x++) {
+        if (isWaterCell(t, x, y)) wet++;
+        else if (isFlatCell(t, x, y)) flat++;
+      }
+    }
+    const cells = p.n * p.n;
+    expect(wet).toBeGreaterThan(cells * 0.01);
+    // Mar del Plata has 43 % of flat land; a mountain town may have half of that.
+    expect(flat).toBeGreaterThan(cells * 0.2);
+    for (const c of p.corners) {
+      expect(c).toBeGreaterThanOrEqual(SEA_LEVEL - 1);
+      expect(c).toBeLessThanOrEqual(MAX_HEIGHT);
+    }
+    expect(p.roads.reduce((a, b) => a + b, 0)).toBeGreaterThan(500);
+    expect(p.attribution).toMatch(/OpenStreetMap/);
+    expect(p.attribution).toMatch(/Relieve/);
+  });
+
+  it.each(cities)('start a game in %s with only the land, or with its streets at no cost', (id) => {
+    const p = decodePreset(files[`../public/maps/${id}.json`]);
+    const bare = worldFromPreset(p, false);
+    expect(bare.n).toBe(p.n);
+    expect(Array.from(bare.tiles).every((v) => v === TILE.EMPTY)).toBe(true);
+
+    const streets = worldFromPreset(p, true);
+    expect(streets.n).toBe(p.n);
+    expect(streets.inherited.reduce((a, b) => a + b, 0)).toBeGreaterThan(500);
+    expect(monthlyBudget(streets, 7).roads).toBe(0);
+    expect(bare.route.every((v) => v === 0)).toBe(true);
+    expect(streets.route.every((v) => v === 0)).toBe(true);
   });
 });
