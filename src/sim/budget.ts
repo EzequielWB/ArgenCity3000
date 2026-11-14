@@ -68,7 +68,15 @@ export function serviceUpkeep(kind: ServiceKind, utilization: number): number {
  * runway and the newspaper all account for it without knowing about loans. `month` (1 to 12) sets the
  * tourism season of the resorts; without it the tourism is the average of the year.
  */
-export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING, loan: Loan | null = null, month?: number, green = 100): BudgetReport {
+export function monthlyBudget(
+  w: World,
+  tax: ZoneTaxes | number,
+  funding: Readonly<ServiceFunding> = DEFAULT_FUNDING,
+  loan: Loan | null = null,
+  month?: number,
+  green = 100,
+  coastFactor = 1,
+): BudgetReport {
   const taxes = zoneTaxes(tax);
   const t = cityTotals(w);
   let roads = 0;
@@ -116,7 +124,7 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
     firefighters: funded('fire'),
     loan: loanDue,
     coast: coast.upkeep,
-    coastIncome: coast.income,
+    coastIncome: Math.round(coast.income * coastFactor),
   };
   const income = r.taxR + r.taxC + r.taxI + r.coastIncome;
   const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan + r.coast;

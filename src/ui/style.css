@@ -445,6 +445,14 @@ button.chapa:focus-visible {
   background: var(--i);
 }
 
+/* A budget slider the city promised not to move: dead, and the reason is in the title. */
+.tax.locked {
+  opacity: 0.55;
+}
+.tax.locked input {
+  cursor: not-allowed;
+}
+
 /* The event of the month: two ways out, each with its consequence written under the label. */
 .event-kicker {
   margin: 0 0 2px;

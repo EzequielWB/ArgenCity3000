@@ -280,7 +280,11 @@ export function computeParks(w: World, green: number): void {
   }
 }
 
-export function computeLandValue(w: World): void {
+/**
+ * Land value of every cell. `coast` scales the bonus for being close to the water: an event can
+ * leave the seafront falling apart without touching anything else.
+ */
+export function computeLandValue(w: World, coast = 1): void {
   const n = w.n;
   const water = waterDistance(w);
   const amenities = new Float32Array(n * n);
@@ -296,7 +300,7 @@ export function computeLandValue(w: World): void {
     for (let x = 0; x < n; x++) {
       const i = y * n + x;
       let v = 25;
-      if (water[i] > 0 && water[i] < 6) v += (6 - water[i]) * 5;
+      if (water[i] > 0 && water[i] < 6) v += (6 - water[i]) * 5 * coast;
       v += Math.min(30, amenities[i]);
       let trees = 0;
       for (let dy = -1; dy <= 1; dy++) {

@@ -17,6 +17,7 @@ import {
 } from '../config';
 import type { BudgetReport } from '../sim/budget';
 import type { Commitment } from '../sim/commitments';
+import type { Effects } from '../sim/effects';
 import type { Loan } from '../sim/loans';
 import { MILESTONES, milestoneForPop } from '../sim/milestones';
 import { APPROVAL } from '../sim/politics';
@@ -24,7 +25,7 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 13;
+export const SAVE_VERSION = 14;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -36,7 +37,7 @@ export const SAVE_VERSION = 13;
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
  * government, so they are democracies with no party.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -202,6 +203,8 @@ function parseSim(raw: unknown): SimState {
   const commitment = parseCommitment(s.commitment);
   need(s.pendingEvent === undefined || s.pendingEvent === null || typeof s.pendingEvent === 'string', 'El evento de la partida es inválido');
   need(s.lastEvent === undefined || (isInt(s.lastEvent) && s.lastEvent >= 0), 'El evento de la partida es inválido');
+  // Format 14 added the temporary effects of the events (see `sim/effects.ts`).
+  const effects = parseEffects(s.effects);
   need(isInt(s.rngState), 'La partida está dañada');
   need(typeof s.crisis === 'boolean', 'La partida está dañada');
   need(Array.isArray(s.news) && Array.isArray(s.history), 'La partida está dañada');
@@ -228,6 +231,19 @@ function parseSim(raw: unknown): SimState {
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }
+/** The effects running, in months. A city saved before them opens with none. */
+function parseEffects(raw: unknown): Effects {
+  const effects: Effects = {};
+  if (raw === null || raw === undefined) return effects;
+  need(typeof raw === 'object' && !Array.isArray(raw), 'Los efectos de la partida son inválidos');
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    need(k.length > 0 && k.length <= 32, 'Los efectos de la partida son inválidos');
+    need(isInt(v) && (v as number) > 0 && (v as number) <= 600, 'Los efectos de la partida son inválidos');
+    effects[k] = v as number;
+  }
+  return effects;
+}
+
 /** The promise being watched, or null. Checked so a hand-edited save cannot promise nonsense. */
 function parseCommitment(raw: unknown): Commitment | null {
   if (raw === null || raw === undefined) return null;
@@ -263,6 +279,7 @@ function parseCommitment(raw: unknown): Commitment | null {
     commitment,
     pendingEvent: (s.pendingEvent as string | null | undefined) ?? null,
     lastEvent: (s.lastEvent as number | undefined) ?? 0,
+    effects,
     rngState: (s.rngState as number) >>> 0,
     crisis: s.crisis as boolean,
     lastBudget,

@@ -39,6 +39,7 @@ import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElect
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, pickEvent, type CityEvent } from './events';
+import { COAST_BOOST, COAST_WORN, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, lockOf, tickEffects, type Effects } from './effects';
 
 export interface SimState {
   tick: number;
@@ -55,6 +56,8 @@ export interface SimState {
   pendingEvent: string | null;
   /** Tick of the last event, to keep them apart. */
   lastEvent: number;
+  /** Temporary effects, in months (see `sim/effects.ts`). Empty means none. */
+  effects: Effects;
   rngState: number;
   crisis: boolean;
   lastBudget: BudgetReport | null;
@@ -93,6 +96,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     commitment: null,
     pendingEvent: null,
     lastEvent: 0,
+    effects: {},
     rngState: seed >>> 0,
     crisis: false,
     lastBudget: null,
@@ -249,6 +253,8 @@ export class Simulation {
 
   private recomputePower(): void {
     this.power = computePower(this.world);
+    // Power bought from the Province covers the gap for as long as the deal lasts.
+    if (this.hasEffect(NO_BLACKOUT)) this.power = { ...this.power, shortage: false };
     this.powerDirty = false;
     this.lightTick = this.state.tick;
   }
@@ -261,7 +267,7 @@ export class Simulation {
     computeCrime(w, this.totals.pop);
     this.congestion = computeCongestion(w);
     computeParks(w, this.state.green);
-    computeLandValue(w);
+    computeLandValue(w, factorOf(this.state.effects, COAST_WORN));
   }
 
   /**
@@ -277,7 +283,14 @@ export class Simulation {
     this.appetite = this.stall
       ? 1
       : GROWTH_APPETITE * GOVERNMENTS[this.state.government].migration * approvalAppetite(this.state.approval);
+    this.recomputeDemand();
+  }
+
+  /** Demand as the economy asks for it, with whatever the events did to the industry on top. */
+  private recomputeDemand(): void {
     this.demand = computeDemand(this.totals, this.state.taxes, this.appetite);
+    const f = factorOf(this.state.effects, INDUSTRY_FROZEN, INDUSTRY_BOOM);
+    if (f !== 1) this.demand.I = Math.max(-100, Math.min(100, Math.round(this.demand.I * f)));
   }
 
   /** What holds the city back, in words for the player, or null while it attracts people. */
@@ -419,8 +432,35 @@ export class Simulation {
     this.state.lastEvent = this.state.tick;
   }
 
+  /** Turns an effect on for `months` months, or extends it if it was already running. */
+  effect(key: string, months: number): void {
+    if (months <= 0) return;
+    this.state.effects[key] = Math.max(this.state.effects[key] ?? 0, Math.round(months));
+  }
+
+  /** True while the effect is running. */
+  hasEffect(key: string): boolean {
+    return (this.state.effects[key] ?? 0) > 0;
+  }
+
+  /** Abandons the building in a cell: nobody lives or works there any more (see `setAbandoned`). */
+  abandonBuilding(cell: number): void {
+    if (this.world.level[cell] > 0 && !this.world.abandoned[cell]) this.setAbandoned(cell, true);
+  }
+
+  /** A roll of the simulation's own dice: a saved game plays the same. */
+  chance(p: number): boolean {
+    return this.rng.chance(p);
+  }
+
+  /** Publishes a headline in the paper, even before it has opened: the neighbours know anyway. */
+  report(text: string): void {
+    this.publish(text, true);
+  }
+
   /** Sets the budget for green spaces (percent); how well the plazas are kept follows. */
   setGreen(percent: number): void {
+    if (this.hasEffect(lockOf('green'))) return;
     this.state.green = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
     computeParks(this.world, this.state.green);
     computeLandValue(this.world);
@@ -430,6 +470,7 @@ export class Simulation {
 
   /** Sets a service's budget (percent of its standard upkeep); its coverage follows at once. */
   setFunding(kind: ServiceKind, percent: number): void {
+    if (this.hasEffect(lockOf(kind))) return;
     this.state.funding[kind] = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
     this.updateFields();
   }
@@ -458,6 +499,8 @@ export class Simulation {
   }
 
   private grow(): void {
+    // A piquete, a rationing month or a jammed avenue: nothing new is built while it lasts.
+    if (this.hasEffect(FREEZE)) return;
     const w = this.world;
     const rng = this.rng;
     const size = w.n * w.n;
@@ -519,7 +562,7 @@ export class Simulation {
     addBuilding(this.totals, tile, w.level[i], -1);
     w.setLevel(i, level);
     addBuilding(this.totals, tile, level, 1);
-    this.demand = computeDemand(this.totals, this.state.taxes, this.appetite);
+    this.recomputeDemand();
   }
 
   private setAbandoned(i: number, abandoned: boolean): void {
@@ -528,7 +571,7 @@ export class Simulation {
     w.abandoned[i] = abandoned ? 1 : 0;
     this.abandonedCount += abandoned ? 1 : -1;
     w.markDirty(i);
-    this.demand = computeDemand(this.totals, this.state.taxes, this.appetite);
+    this.recomputeDemand();
   }
 
   /** Fires burn down; covered ones are put out and the building survives. Fires spread without cover. */
@@ -556,7 +599,7 @@ export class Simulation {
         this.stats.buildingsBurned++;
       }
       w.markDirty(i);
-      this.demand = computeDemand(this.totals, this.state.taxes, this.appetite);
+      this.recomputeDemand();
     }
   }
 
@@ -574,7 +617,7 @@ export class Simulation {
       const name = buildingName(zoneOf(w.tiles[i])!, w.level[i], w.variant[i]).toLowerCase();
       this.publish(covered ? `Los bomberos voluntarios apagaron a tiempo un incendio en un ${name}` : `Incendio en un ${name}: los vecinos piden un cuartel de bomberos`);
     }
-    this.demand = computeDemand(this.totals, this.state.taxes, this.appetite);
+    this.recomputeDemand();
   }
 
   /** Each month a few dense buildings may catch fire; fire coverage makes it much rarer. */
@@ -631,7 +674,7 @@ export class Simulation {
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green);
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST));
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
@@ -645,6 +688,7 @@ export class Simulation {
     s.approval = stepApproval(s.approval, this.approval.target, s.government);
     // The promise comes first: it is what the neighbours were waiting for all month.
     const promiseLine = this.settlePromise();
+    tickEffects(s.effects);
     // The grudge of the demolitions wears off month by month, and dies below one person.
     s.grief = s.grief > 1 ? Math.max(1, Math.floor(s.grief * DEMOLITION.keep)) : 0;
     s.history.push({ pop: this.totals.pop, cash: s.cash });

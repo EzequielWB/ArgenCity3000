@@ -8,6 +8,7 @@ import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
 import { dateOf } from '../sim/calendar';
+import { COAST_BOOST, factorOf, lockOf } from '../sim/effects';
 import { loanEndLabel, loanInstalment, loanOwed, loanTotal } from '../sim/loans';
 import { MILESTONES, unlockNames } from '../sim/milestones';
 import { monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
@@ -130,10 +131,11 @@ export function openBudget(game: Game): void {
     ${sim.state.lastBudget ? `<h3>Mes pasado</h3>${budgetTable(sim.state.lastBudget)}` : ''}
   `);
   const refresh = () => {
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green);
+    const boost = factorOf(sim.state.effects, COAST_BOOST);
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost);
     $('#budgetNow').innerHTML = budgetTable(b);
     // The year is the average of the seasons, not the month in course.
-    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green).balance * 12, true);
+    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost).balance * 12, true);
     const d = sim.demand;
     const avg = averageTax(sim.state.taxes);
     const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;
@@ -191,6 +193,15 @@ export function openBudget(game: Game): void {
       refresh();
     }),
   );
+  // A slider the Province tied to a deal cannot be moved: it is drawn dead, with the reason written.
+  for (const input of body.querySelectorAll<HTMLInputElement>('input[data-green], input[data-fund]')) {
+    const key = input.dataset.green ? 'green' : (input.dataset.fund as ServiceKind);
+    const months = sim.state.effects[lockOf(key)] ?? 0;
+    if (!months) continue;
+    input.disabled = true;
+    input.parentElement!.classList.add('locked');
+    input.title = `No lo podés mover: quedan ${months === 1 ? 'un mes' : `${months} meses`} de compromiso.`;
+  }
   const green = body.querySelector<HTMLInputElement>('input[data-green]');
   green?.addEventListener('input', () => {
     sim.setGreen(Number(green.value));
