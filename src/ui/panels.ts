@@ -551,3 +551,33 @@ export function openHelp(): void {
     <p><small>Mapas reales: calles, agua y parques © colaboradores de OpenStreetMap (ODbL); relieve de Terrain Tiles (Mapzen y AWS, con datos de SRTM y otros).</small></p>
   `);
 }
+
+/**
+ * The event of the month: what is going on, and the two ways out. The consequences are written on
+ * the buttons — it is a decision, not a lottery — and it cannot be closed without choosing.
+ */
+export function openEvent(game: Game): void {
+  const event = game.sim.openEvent();
+  if (!event) return;
+  const body = openModal(`
+    <p class="event-kicker">Se cruza en la gestión</p>
+    <h2>${escapeHtml(event.title)}</h2>
+    <p>${escapeHtml(event.text)}</p>
+    <div class="event-options">
+      ${event.options
+        .map(
+          (o, k) =>
+            `<button type="button" data-option="${k}"><b>${escapeHtml(o.label)}</b><span>${escapeHtml(o.detail)}</span></button>`,
+        )
+        .join('')}
+    </div>
+    <p><small>El tiempo está en pausa hasta que elijas.</small></p>
+  `);
+  body.querySelectorAll<HTMLButtonElement>('button[data-option]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      game.sim.answerEvent(Number(btn.dataset.option));
+      closeModal();
+      game.afterEvent();
+    }),
+  );
+}

@@ -16,6 +16,7 @@ import {
   type ZoneTaxes,
 } from '../config';
 import type { BudgetReport } from '../sim/budget';
+import type { Commitment } from '../sim/commitments';
 import type { Loan } from '../sim/loans';
 import { MILESTONES, milestoneForPop } from '../sim/milestones';
 import { APPROVAL } from '../sim/politics';
@@ -23,7 +24,7 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -35,7 +36,7 @@ export const SAVE_VERSION = 12;
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
  * government, so they are democracies with no party.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -197,6 +198,10 @@ function parseSim(raw: unknown): SimState {
   need(s.green === undefined || (isInt(s.green) && s.green >= 0 && s.green <= MAX_FUNDING), 'El presupuesto de espacios verdes es inválido');
   // Format 12 added the grudge of the demolitions; a city saved before it has none.
   need(s.grief === undefined || (isInt(s.grief) && s.grief >= 0), 'El enojo por las demoliciones es inválido');
+  // Format 13 added the promises and the events with a decision.
+  const commitment = parseCommitment(s.commitment);
+  need(s.pendingEvent === undefined || s.pendingEvent === null || typeof s.pendingEvent === 'string', 'El evento de la partida es inválido');
+  need(s.lastEvent === undefined || (isInt(s.lastEvent) && s.lastEvent >= 0), 'El evento de la partida es inválido');
   need(isInt(s.rngState), 'La partida está dañada');
   need(typeof s.crisis === 'boolean', 'La partida está dañada');
   need(Array.isArray(s.news) && Array.isArray(s.history), 'La partida está dañada');
@@ -223,6 +228,16 @@ function parseSim(raw: unknown): SimState {
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }
+/** The promise being watched, or null. Checked so a hand-edited save cannot promise nonsense. */
+function parseCommitment(raw: unknown): Commitment | null {
+  if (raw === null || raw === undefined) return null;
+  const c = raw as Record<string, unknown>;
+  need(c.kind === 'school' || c.kind === 'plaza', 'La promesa de la partida es inválida');
+  for (const k of ['made', 'due', 'baseline']) need(isInt(c[k]) && (c[k] as number) >= 0, 'La promesa de la partida es inválida');
+  need((c.due as number) > (c.made as number), 'La promesa de la partida es inválida');
+  return { kind: c.kind as Commitment['kind'], made: c.made as number, due: c.due as number, baseline: c.baseline as number };
+}
+
   // Saves before version 4 had no milestones: the city keeps what its best month earned.
   let milestone = milestoneForPop(Math.max(0, ...history.map((h) => h.pop)));
   if (s.milestone !== undefined) {
@@ -245,6 +260,9 @@ function parseSim(raw: unknown): SimState {
     funding,
     green: (s.green as number | undefined) ?? 100,
     grief: (s.grief as number | undefined) ?? 0,
+    commitment,
+    pendingEvent: (s.pendingEvent as string | null | undefined) ?? null,
+    lastEvent: (s.lastEvent as number | undefined) ?? 0,
     rngState: (s.rngState as number) >>> 0,
     crisis: s.crisis as boolean,
     lastBudget,

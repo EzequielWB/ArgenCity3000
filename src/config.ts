@@ -215,6 +215,31 @@ export const DEMOLITION = {
   keep: 0.5,
 } as const;
 
+/**
+ * Events with a decision, and the promises they can leave behind. A promise has a deadline in
+ * months, is checked every month against the world, and pays or costs approval when it resolves.
+ */
+export const PROMISE = {
+  /** Months the neighbours give the Intendente to keep it. */
+  months: 12,
+  /** Approval points won the month it is kept. */
+  kept: 8,
+  /** Approval points lost the month it falls due unkept... */
+  broken: 10,
+  /** ...and how much the neighbours resent it, as a demolition would (see `DEMOLITION`). */
+  grief: 200,
+} as const;
+
+/** How often an event with a decision can show up. */
+export const EVENT = {
+  /** Months the city has to live before the first one: the founding is not interrupted. */
+  firstAt: 12,
+  /** Months between two events. */
+  gap: 8,
+  /** Chance per month of one showing up, once the gap has passed. */
+  chance: 0.3,
+} as const;
+
 /** Power units consumed per building level. */
 export const POWER_USE = { R: 2, C: 3, I: 5 } as const;
 

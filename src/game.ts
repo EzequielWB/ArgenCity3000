@@ -19,7 +19,7 @@ import { reachCells } from './sim/power';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { APPROVAL, nextElectionYear } from './sim/politics';
-import { openApproval, openElectionLost, openElectionWon, openMilestone } from './ui/panels';
+import { openApproval, openElectionLost, openElectionWon, openEvent, openMilestone } from './ui/panels';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
 import { applyPlan, dragCells, isCoastTool, planTool, plantFootprint, plantKindOfTool, routeRefusal, toolInfo, type ToolId } from './world/tools';
@@ -158,6 +158,11 @@ export class Game implements PointerTarget {
     window.addEventListener('resize', this.onResize);
     $<HTMLCanvasElement>('#minimap').addEventListener('pointerdown', this.onMinimap);
     $('#approvalBox').onclick = () => openApproval(this);
+    // A saved game may have been left in the middle of an event: it is answered before anything else.
+    if (this.sim.state.pendingEvent) {
+      this.setSpeed(0);
+      openEvent(this);
+    }
     this.raf = requestAnimationFrame(this.frame);
   }
 
@@ -226,6 +231,11 @@ export class Game implements PointerTarget {
   private onNewMonth(): void {
     this.view.invalidateLayer();
     this.view.refreshTraffic();
+    // An event waits for an answer: the clock stops until the Intendente decides.
+    if (this.sim.state.pendingEvent && !this.hooks.isModalOpen()) {
+      this.setSpeed(0);
+      openEvent(this);
+    }
     if (this.sim.state.tick % (TICKS_PER_MONTH * 12) === 0) {
       try {
         saveToSlot('auto', this.saveData());
@@ -419,6 +429,11 @@ export class Game implements PointerTarget {
     toast(`Deshecho: ${toolInfo(r.tool).label}${r.refund ? ` (se devolvieron ${formatMoney(r.refund)})` : ''}`);
   }
 
+  /** Called when an event is answered: the answer may have moved money, approval or a promise. */
+  afterEvent(): void {
+    this.afterEdit();
+  }
+
   private afterEdit(): void {
     this.outlookAt = 0;
     this.sim.refresh();
@@ -574,6 +589,13 @@ ${stalled}` : ''}`;
     if (stalled) {
       stall.textContent = `⚠ No llega gente nueva: ${STALL_LABELS[this.sim.stall!]}`;
       stall.title = stalled;
+    }
+    const promise = this.sim.commitmentText();
+    const warning = $('#promise');
+    warning.classList.toggle('hidden', !promise);
+    if (promise) {
+      warning.textContent = promise;
+      warning.title = 'Una promesa hecha a los vecinos. Si no está para la fecha, se lo toman a mal.';
     }
     const cityAndMonth = `${this.name} · ${dateLabel(s.tick)}`;
     $('#ribbonText').textContent = cityAndMonth;

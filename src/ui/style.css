@@ -445,6 +445,66 @@ button.chapa:focus-visible {
   background: var(--i);
 }
 
+/* The event of the month: two ways out, each with its consequence written under the label. */
+.event-kicker {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.event-options {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 12px;
+}
+.event-options button {
+  display: grid;
+  gap: 1px;
+  padding: 8px 12px;
+  text-align: left;
+  font-family: var(--font-body);
+}
+.event-options b {
+  font-size: 14px;
+  color: var(--gold-light);
+}
+.event-options span {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* A promise the neighbours are waiting on: red, on top of the map, with the time left. */
+#promise {
+  position: absolute;
+  top: calc(22px * var(--orn) + 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  max-width: min(520px, 90%);
+  padding: 5px 14px;
+  background: #5c1512;
+  border: 2px solid var(--red);
+  box-shadow: 3px 3px 0 #000;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffd9d4;
+  text-align: center;
+  cursor: pointer;
+}
+#promise::before {
+  content: '⚠ PROMESA';
+  margin-right: 8px;
+  color: #ff9a8e;
+  letter-spacing: 1px;
+}
+#promise:hover {
+  border-color: #ff9a8e;
+}
+
 /* Why the city attracts nobody new, next to the demand bars (see Simulation.stall). */
 .stall {
   max-width: 118px;
@@ -807,6 +867,7 @@ button.chapa:focus-visible {
 #toasts {
   position: absolute;
   top: calc(22px * var(--orn) + 18px);
+  transition: top 0.15s;
   left: 50%;
   z-index: 5;
   transform: translateX(-50%);
@@ -816,6 +877,11 @@ button.chapa:focus-visible {
   align-items: center;
   max-width: calc(100% - 24px);
   pointer-events: none;
+}
+
+/* The warning takes the place right under the ribbon, so the toasts step aside while it is up. */
+#promise:not(.hidden) ~ #toasts {
+  top: calc(22px * var(--orn) + 56px);
 }
 
 .toast {

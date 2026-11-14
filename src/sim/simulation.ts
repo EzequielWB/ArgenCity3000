@@ -10,6 +10,7 @@ import {
   MAX_FUNDING,
   MAX_TAX,
   MIN_TAX,
+  PROMISE,
   TICKS_PER_MONTH,
   TICKS_PER_WEEK,
   WEEKS_PER_MONTH,
@@ -36,6 +37,8 @@ import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem }
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
 import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
 import { computePower, type PowerReport } from './power';
+import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
+import { eventById, pickEvent, type CityEvent } from './events';
 
 export interface SimState {
   tick: number;
@@ -46,6 +49,12 @@ export interface SimState {
   green: number;
   /** People affected by the demolitions of the last months. It costs approval and wears off. */
   grief: number;
+  /** The promise the neighbours are waiting on, or null. One at a time. */
+  commitment: Commitment | null;
+  /** Id of the event waiting for an answer, or null. Saved, so a loaded game reopens it. */
+  pendingEvent: string | null;
+  /** Tick of the last event, to keep them apart. */
+  lastEvent: number;
   rngState: number;
   crisis: boolean;
   lastBudget: BudgetReport | null;
@@ -81,6 +90,9 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     funding: { ...DEFAULT_FUNDING },
     green: 100,
     grief: 0,
+    commitment: null,
+    pendingEvent: null,
+    lastEvent: 0,
     rngState: seed >>> 0,
     crisis: false,
     lastBudget: null,
@@ -344,6 +356,69 @@ export class Simulation {
     return affected;
   }
 
+  /** Makes a promise to the neighbours, with its deadline and the city as it is today. */
+  promise(kind: PromiseKind): Commitment {
+    const c = newCommitment(this.world, kind, this.state.tick);
+    this.state.commitment = c;
+    return c;
+  }
+
+  /** Moves the approval now; the monthly step slowly brings it back to what the city deserves. */
+  nudgeApproval(delta: number): void {
+    this.state.approval = Math.max(0, Math.min(100, Math.round(this.state.approval + delta)));
+  }
+
+  /** What the neighbours are still waiting for, with the time left: the red warning says this. */
+  commitmentText(): string | null {
+    const c = this.state.commitment;
+    if (!c) return null;
+    const left = monthsLeft(c, this.state.tick);
+    return `${promiseWhat(c.kind)} · ${left === 0 ? 'vence este mes' : left === 1 ? 'queda 1 mes' : `quedan ${left} meses`}`;
+  }
+
+  /** The event waiting for an answer, if any. */
+  openEvent(): CityEvent | null {
+    return this.state.pendingEvent ? (eventById(this.state.pendingEvent) ?? null) : null;
+  }
+
+  /** Answers the pending event with one of its two options: doing nothing is not one. */
+  answerEvent(index: number): void {
+    const event = this.openEvent();
+    const option = event && (index === 0 || index === 1) ? event.options[index] : null;
+    this.state.pendingEvent = null;
+    if (option) option.apply(this);
+  }
+
+  /**
+   * Checks the promise once a month: kept as soon as the city shows it, lost when the deadline
+   * arrives without it. Either way it is over, and the neighbours pay or charge on the spot.
+   */
+  private settlePromise(): string | null {
+    const c = this.state.commitment;
+    if (!c) return null;
+    const done = promiseDone(this.world, c);
+    if (!done && this.state.tick < c.due) return null;
+    this.state.commitment = null;
+    if (done) {
+      this.nudgeApproval(PROMISE.kept);
+      return `${promiseKept(c.kind)}: los vecinos lo festejan`;
+    }
+    this.nudgeApproval(-PROMISE.broken);
+    this.state.grief += PROMISE.grief;
+    return 'Lo prometió el Intendente y no cumplió: el barrio corta la calle';
+  }
+
+  /**
+   * The event of the month, if there is one. It stays pending until the player answers, so the
+   * window reopens after a load and nothing gets decided behind their back.
+   */
+  private fireEvent(): void {
+    const event = pickEvent(this, this.rng);
+    if (!event) return;
+    this.state.pendingEvent = event.id;
+    this.state.lastEvent = this.state.tick;
+  }
+
   /** Sets the budget for green spaces (percent); how well the plazas are kept follows. */
   setGreen(percent: number): void {
     this.state.green = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
@@ -568,11 +643,16 @@ export class Simulation {
     const reached = advanceMilestones(s, this.totals.pop, GOVERNMENTS[s.government].grants);
     this.approval = this.judge();
     s.approval = stepApproval(s.approval, this.approval.target, s.government);
+    // The promise comes first: it is what the neighbours were waiting for all month.
+    const promiseLine = this.settlePromise();
     // The grudge of the demolitions wears off month by month, and dies below one person.
     s.grief = s.grief > 1 ? Math.max(1, Math.floor(s.grief * DEMOLITION.keep)) : 0;
     s.history.push({ pop: this.totals.pop, cash: s.cash });
     if (s.history.length > MAX_HISTORY) s.history.shift();
 
+    this.fireEvent();
+    // A promise kept or lost is news even before the paper has opened: the neighbours saw it.
+    if (promiseLine) this.publish(promiseLine, true);
     const snap = this.snapshot();
     if (this.paperOpen()) {
       const lines = headlinesFor(this.prevSnapshot, snap, this.cityName);
