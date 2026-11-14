@@ -5,7 +5,7 @@
  *
  * The analysis works on WORLD cells and does not depend on the view rotation.
  */
-import type { RoadTier } from '../config';
+import { weakerRoad, type RoadTier } from '../config';
 
 export const KIND = {
   /** Not a road. */
@@ -134,7 +134,7 @@ export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: numbe
         const jy = alongX ? first + k : y;
         const j = jy * n + jx;
         if (guess[j] !== g) clean = false;
-        else tier = Math.min(tier, ownTier(jx, jy)) as RoadTier;
+        else tier = weakerRoad(tier, ownTier(jx, jy));
       }
       // ...and the cells next to it along the street must have the same cross section.
       for (const d of [-1, 1]) {

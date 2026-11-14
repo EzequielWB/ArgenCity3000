@@ -13,7 +13,7 @@ describe('tool groups', () => {
   it('has the six categories of the toolbar, in order', () => {
     expect(TOOL_GROUPS.map((g) => [g.label, g.tools])).toEqual([
       ['Consulta', ['query', 'bulldoze']],
-      ['Calles y luz', ['road', 'roadPaved', 'roadBoulevard', 'line']],
+      ['Calles y luz', ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line']],
       ['Zonas', ['zoneR', 'zoneC', 'zoneI', 'park']],
       ['Servicios', ['school', 'clinic', 'police', 'fire']],
       ['Usinas', ['plant', 'plantGas', 'plantWind']],

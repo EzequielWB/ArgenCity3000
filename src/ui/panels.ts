@@ -524,7 +524,7 @@ export function openHelp(): void {
       <li><strong>Construí una usina</strong> (tecla 9). Sin luz no se levanta ni una casita. El tiempo arranca en pausa: se pone en marcha con tu primera obra.</li>
       <li><strong>Trazá calles</strong> (3) arrastrando. Los lotes necesitan una calle a 3 lotes o menos.
         Si ponés calles pegadas una al lado de la otra, forman una <strong>avenida</strong> con más carriles cuanto más ancha sea, y aguanta más tránsito.
-        Hay tres <strong>calidades</strong> y se eligen de una: asfalto (3), pavimento reforzado (R), que entra un 60 % más de tránsito y marca el medio con lucecitas amarillas,
+        Hay cuatro <strong>calidades</strong> y se eligen de una: calle de tierra (0), la más barata y la peor, que aguanta la mitad del tránsito del asfalto y no cruza el agua; asfalto (3), pavimento reforzado (R), que entra un 60 % más de tránsito y marca el medio con lucecitas amarillas,
         y bulevar (T), que entra un 80 % más: se dibuja con un cantero de cemento de un píxel en el medio del camino, angosto o ancho, y sus farolas bajan el delito alrededor.
         Arrastrá una calidad mejor sobre una calle y se mejora en el lugar: pagás solo la diferencia, sin demoler. Para bajar de calidad hay que demoler.</li>
       <li><strong>Zonificá</strong> residencial (5), comercial (6) e industrial (7) pegado a las calles. Al zonificar, la manzana se nivela sola y las calles hacen de rampa.

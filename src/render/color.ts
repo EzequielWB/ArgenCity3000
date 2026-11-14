@@ -44,6 +44,12 @@ export const PAL = {
   asphalt: '#55545a',
   asphaltPaved: '#403f47',
   asphaltBoulevard: '#34333b',
+  dirt: '#a07c52',
+  /** The browns a dirt street alternates between, so no two neighbouring pieces match. */
+  dirtShades: ['#a07c52', '#92704a', '#ad865a', '#86663f'],
+  dirtLight: '#bf9764',
+  dirtDark: '#7a5a38',
+  dirtShadow: '#5f4328',
   median: '#5f8f4a',
   lamp: '#ffd84a',
   marking: '#f2e7b6',

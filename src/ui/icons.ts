@@ -10,6 +10,9 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   bulldoze: svg(
     '<path d="M4 22h18v-8h-6l-3-5H7v13z" fill="#e0a526" stroke="#5a3a22" stroke-width="1.2"/><path d="M22 12l6 2v10l-6-2" fill="#9aa3a6" stroke="#5a3a22" stroke-width="1.2"/><rect x="3" y="22" width="20" height="5" rx="2.5" fill="#3a2a20"/><circle cx="7" cy="24.5" r="1.4" fill="#9aa3a6"/><circle cx="13" cy="24.5" r="1.4" fill="#9aa3a6"/><circle cx="19" cy="24.5" r="1.4" fill="#9aa3a6"/>',
   ),
+  roadDirt: svg(
+    '<path d="M2 20L16 13l14 7-14 7z" fill="#cbbfa8"/><path d="M5 20L16 14.5 27 20 16 25.5z" fill="#a07c52"/><path d="M9 19l3-1.5M15 22l3-1.5M19 17l2-1" stroke="#7d5c38" stroke-width="1.6"/><circle cx="12" cy="21" r="0.9" fill="#7d5c38"/><circle cx="21" cy="20" r="0.9" fill="#7d5c38"/>',
+  ),
   road: svg(
     '<path d="M2 20L16 13l14 7-14 7z" fill="#cbbfa8"/><path d="M5 20L16 14.5 27 20 16 25.5z" fill="#55545a"/><path d="M9 18l3-1.5m4-2l3-1.5M13 22l3 1.5m4 2" stroke="#f2e7b6" stroke-width="1.3"/>',
   ),

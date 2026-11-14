@@ -3,11 +3,11 @@ import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
-import type { RoadTier } from '../config';
+import { DIRT, type RoadTier } from '../config';
 import { KIND, analyzeRoads, boulevardMedian, centreMark, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
 
 /** Asphalt of each street quality: plain, reinforced pavement, boulevard. */
-const ROAD_SURFACE = [PAL.asphalt, PAL.asphaltPaved, PAL.asphaltBoulevard] as const;
+const ROAD_SURFACE = [PAL.asphalt, PAL.asphaltPaved, PAL.asphaltBoulevard, PAL.dirt] as const;
 import {
   CHUNK_PAD,
   CHUNK_SIZE,
@@ -774,6 +774,10 @@ export class MapRenderer {
       return;
     }
     const code = this.bands[i];
+    if (tierOf(code) === DIRT) {
+      this.drawDirt(vx, vy, pts);
+      return;
+    }
     if (kindOf(code) > KIND.PLAIN) {
       this.drawWideAsphalt(vx, vy, pts, i, code);
       return;
@@ -851,6 +855,81 @@ export class MapRenderer {
       g.arc(p[0], p[1] - 1.2, 1.1, 0, Math.PI * 2);
       g.fill();
     }
+  }
+
+  /**
+   * A cell of a dirt street: a different brown on every piece, patches and wheel ruts, a piled-up
+   * edge (lit on the up and left sides, shaded on the others) and a concrete curb on the sides
+   * where the street does not go on. Dirt has no lanes, paint or lamps, whatever the width.
+   */
+  private drawDirt(vx: number, vy: number, pts: Pt[]): void {
+    const n = this.world.n;
+    const [wx, wy] = fromView(vx, vy, this.rot, n);
+    const up = this.isRoadView(vx, vy - 1);
+    const right = this.isRoadView(vx + 1, vy);
+    const down = this.isRoadView(vx, vy + 1);
+    const left = this.isRoadView(vx - 1, vy);
+    const a = 0.18;
+    const b = 0.82;
+    const e = 0.04;
+    const curb = 0.05;
+    const rect = (u0: number, v0: number, u1: number, v1: number, fill: string) =>
+      this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], fill);
+    const shade = (k: number) => PAL.dirtShades[Math.floor(hash2(wx, wy, 40 + k) * PAL.dirtShades.length)];
+
+    if (!up) rect(a - curb, a - curb, b + curb, a, PAL.concrete);
+    if (!down) rect(a - curb, b, b + curb, b + curb, PAL.concrete);
+    if (!left) rect(a - curb, a - curb, a, b + curb, PAL.concrete);
+    if (!right) rect(b, a - curb, b + curb, b + curb, PAL.concrete);
+
+    let k = 0;
+    const piece = (u0: number, v0: number, u1: number, v1: number) => rect(u0, v0, u1, v1, shade(k++));
+    piece(a, a, b, b);
+    if (up) piece(a, -e, b, a + e);
+    if (down) piece(a, b - e, b, 1);
+    if (left) piece(-e, a, a + e, b);
+    if (right) piece(b - e, a, 1, b);
+    if (up && left && this.isRoadView(vx - 1, vy - 1)) piece(-e, -e, a + e, a + e);
+    if (up && right && this.isRoadView(vx + 1, vy - 1)) piece(b - e, -e, 1, a + e);
+    if (down && right && this.isRoadView(vx + 1, vy + 1)) piece(b - e, b - e, 1, 1);
+    if (down && left && this.isRoadView(vx - 1, vy + 1)) piece(-e, b - e, a + e, 1);
+
+    // Patches of loose earth and stones, always inside the middle of the cell.
+    for (let j = 0; j < 6; j++) {
+      const u = a + 0.03 + hash2(wx, wy, 60 + j) * (b - a - 0.2);
+      const v = a + 0.03 + hash2(wx, wy, 70 + j) * (b - a - 0.2);
+      const s = 0.07 + hash2(wx, wy, 80 + j) * 0.09;
+      rect(u, v, u + s, v + s * (0.6 + hash2(wx, wy, 90 + j) * 0.8), j % 2 ? PAL.dirtDark : PAL.dirtLight);
+    }
+
+    // The piled edge, where the street ends: lit towards the sun, in shade away from it.
+    const lip = 0.05;
+    if (!up) rect(a, a, b, a + lip, PAL.dirtLight);
+    if (!left) rect(a, a, a + lip, b, PAL.dirtLight);
+    if (!down) rect(a, b - lip, b, b, PAL.dirtShadow);
+    if (!right) rect(b - lip, a, b, b, PAL.dirtShadow);
+
+    // Two wheel ruts along every way out of the cell.
+    const g = this.g;
+    g.strokeStyle = PAL.dirtShadow;
+    g.globalAlpha = 0.6;
+    g.lineWidth = 0.9;
+    const c = 0.5;
+    const rut = (u0: number, v0: number, u1: number, v1: number) => {
+      const p = bilinear(pts, u0, v0);
+      const q = bilinear(pts, u1, v1);
+      g.beginPath();
+      g.moveTo(p[0], p[1]);
+      g.lineTo(q[0], q[1]);
+      g.stroke();
+    };
+    for (const off of [-0.13, 0.13]) {
+      if (up) rut(c + off, c, c + off, 0);
+      if (down) rut(c + off, c, c + off, 1);
+      if (left) rut(c, c + off, 0, c + off);
+      if (right) rut(c, c + off, 1, c + off);
+    }
+    g.globalAlpha = 1;
   }
 
   /**

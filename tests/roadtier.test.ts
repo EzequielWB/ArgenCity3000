@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COSTS, ROAD_TIERS } from '../src/config';
+import { COSTS, DIRT, ROAD_TIERS, roadRank, weakerRoad } from '../src/config';
 import { computeCrime, computeLandValue } from '../src/sim/fields';
 import { MapRenderer } from '../src/render/mapRenderer';
 import { KIND, analyzeRoads, boulevardMedian, centreMark, kindOf, tierOf } from '../src/render/avenue';
@@ -263,5 +263,52 @@ describe('the band analysis with qualities', () => {
     const lone = analyzeRoads((x, y) => x === 1 && y === 8, N, () => 2);
     expect(kindOf(lone[8 * N + 1])).toBe(KIND.PLAIN);
     expect(tierOf(lone[8 * N + 1])).toBe(2);
+  });
+});
+
+describe('dirt streets', () => {
+  it('are the worst quality of all: cheapest, weakest and cheapest to keep', () => {
+    for (const t of [0, 1, 2] as const) {
+      expect(roadRank(DIRT)).toBeLessThan(roadRank(t));
+      expect(R[DIRT].cost).toBeLessThan(R[t].cost);
+      expect(R[DIRT].upkeep).toBeLessThan(R[t].upkeep);
+      expect(R[DIRT].capacity).toBeLessThan(R[t].capacity);
+      expect(weakerRoad(t, DIRT)).toBe(DIRT);
+      expect(weakerRoad(DIRT, t)).toBe(DIRT);
+    }
+    expect(weakerRoad(1, 2)).toBe(1);
+  });
+
+  it('are built at their own price and kept off the water', () => {
+    const w = new World(generateTerrain(11, 32));
+    const land = drag(w, 'roadDirt', 5, 5, 7, 5);
+    expect(land.cost).toBe(R[DIRT].cost * 3);
+    applyPlan(w, land);
+    expect([5, 6, 7].map((x) => w.roadTier[w.idx(x, 5)])).toEqual([DIRT, DIRT, DIRT]);
+    let wet: [number, number] | null = null;
+    for (let y = 0; y < w.n && !wet; y++) for (let x = 0; x < w.n && !wet; x++) if (w.isWater(x, y) && !w.route[w.idx(x, y)]) wet = [x, y];
+    expect(wet).not.toBeNull();
+    expect(drag(w, 'roadDirt', wet![0], wet![1]).cells).toEqual([]);
+  });
+
+  it('are upgraded by any other quality for the difference, and never the other way round', () => {
+    const w = new World(generateTerrain(11, 32));
+    applyPlan(w, drag(w, 'roadDirt', 5, 5, 7, 5));
+    const up = drag(w, 'road', 5, 5, 7, 5);
+    expect(up.cost).toBe((R[0].cost - R[DIRT].cost) * 3);
+    applyPlan(w, up);
+    expect([5, 6, 7].map((x) => w.roadTier[w.idx(x, 5)])).toEqual([0, 0, 0]);
+    expect(drag(w, 'roadDirt', 5, 5, 7, 5).cells).toEqual([]);
+  });
+
+  it('keep their quality through a save', () => {
+    const { world, sim } = city();
+    for (let i = 0; i < world.roadTier.length; i++) if (world.tiles[i] === TILE.ROAD) world.roadTier[i] = DIRT;
+    const back = deserialize(serialize({ name: 'X', seed: 11, world, sim: sim.state }));
+    expect(Array.from(back.world.roadTier)).toEqual(Array.from(world.roadTier));
+  });
+
+  it('are unlocked from the start', () => {
+    expect(isUnlocked('roadDirt', 0)).toBe(true);
   });
 });

@@ -103,18 +103,27 @@ export const START_YEAR = 1990;
 /**
  * Quality of every street cell, in the order the player can build them. `capacity` multiplies the
  * lanes a cell carries (see `sim/congestion.ts`); a band of streets carries by its weakest cell.
- * The index is what `World.roadTier` and the save store, so the first one has to stay asphalt.
+ * The index is what `World.roadTier` and the save store, so the first one has to stay asphalt and
+ * dirt, the worst of all, goes last: compare qualities with `roadRank`, never the raw index.
  */
 export const ROAD_TIERS = [
   { label: 'Asfalto', cost: 10, upkeep: 1, capacity: 1 },
   { label: 'Pavimento reforzado', cost: 30, upkeep: 3, capacity: 1.6 },
   { label: 'Bulevar', cost: 75, upkeep: 8, capacity: 1.8 },
+  { label: 'Calle de tierra', cost: 3, upkeep: 0.5, capacity: 0.5 },
 ] as const;
 
-/** Index into `ROAD_TIERS`: 0 asphalt, 1 reinforced pavement, 2 boulevard. */
-export type RoadTier = 0 | 1 | 2;
+/** Index into `ROAD_TIERS`: 0 asphalt, 1 reinforced pavement, 2 boulevard, 3 dirt. */
+export type RoadTier = 0 | 1 | 2 | 3;
 export const MAX_ROAD_TIER = ROAD_TIERS.length - 1;
 export const ASPHALT: RoadTier = 0;
+export const DIRT: RoadTier = 3;
+
+/** Where a tier stands in quality, worst first: dirt, asphalt, reinforced pavement, boulevard. */
+export const roadRank = (tier: number): number => (tier === DIRT ? -1 : tier);
+
+/** The worse of two tiers: a band of streets is as good as its weakest cell. */
+export const weakerRoad = (a: RoadTier, b: RoadTier): RoadTier => (roadRank(b) < roadRank(a) ? b : a);
 
 /** How far the boulevard's lamps reach, and how much crime they take out there. */
 export const BOULEVARD = { radius: 2, crime: 12 } as const;

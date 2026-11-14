@@ -1,10 +1,10 @@
-import { ASPHALT, COAST, COSTS, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
+import { ASPHALT, COAST, COSTS, DIRT, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, roadRank, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
 import { TILE, World, coastTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
+export type ToolId = 'query' | 'bulldoze' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -19,6 +19,7 @@ export interface ToolInfo {
 export const TOOLS: readonly ToolInfo[] = [
   { id: 'query', label: 'Consulta', key: '1', shape: 'point', help: 'Clic en el mapa para ver la ficha del lote.' },
   { id: 'bulldoze', label: 'Topadora', key: '2', shape: 'rect', help: 'Arrastrá para demoler. Se paga por lote.' },
+  { id: 'roadDirt', label: 'Calle de tierra', key: '0', shape: 'line', help: 'La calle más barata y la peor de todas: aguanta la mitad del tránsito que el asfalto y no se puede hacer sobre el agua. Arrastrá asfalto encima para mejorarla pagando la diferencia.' },
   { id: 'road', label: 'Calle de asfalto', key: '3', shape: 'line', help: 'Arrastrá para trazar. Sobre el agua se hace puente.' },
   { id: 'roadPaved', label: 'Pavimento reforzado', key: 'r', shape: 'line', help: 'Calle de asfalto más resistente: entra un 60 % más de tránsito, cuesta más mantener y marca el medio con lucecitas amarillas. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
   { id: 'roadBoulevard', label: 'Bulevar', key: 't', shape: 'line', help: 'La calle de más capacidad, con cantero de cemento en el medio y farolas que bajan el delito alrededor. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
@@ -76,7 +77,7 @@ export interface ToolGroup {
 /** The toolbar's categories: every tool belongs to exactly one, in the order it is listed. */
 export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'query', label: 'Consulta', tools: ['query', 'bulldoze'] },
-  { id: 'network', label: 'Calles y luz', tools: ['road', 'roadPaved', 'roadBoulevard', 'line'] },
+  { id: 'network', label: 'Calles y luz', tools: ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line'] },
   { id: 'zones', label: 'Zonas', tools: ['zoneR', 'zoneC', 'zoneI', 'park'] },
   { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire'] },
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
@@ -154,6 +155,7 @@ export interface Plan {
 
 /** The quality of street a tool builds, or null for any other tool. */
 export function roadTierOfTool(tool: ToolId): RoadTier | null {
+  if (tool === 'roadDirt') return DIRT;
   if (tool === 'road') return 0;
   if (tool === 'roadPaved') return 1;
   if (tool === 'roadBoulevard') return 2;
@@ -234,13 +236,14 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     // A better street over an existing one is an upgrade in place: only the difference is charged.
     if (tier !== null && t === TILE.ROAD) {
       const was = w.roadTier[i] as RoadTier;
-      if (tier > was) {
+      if (roadRank(tier) > roadRank(was)) {
         out.push([x, y]);
         cost += ROAD_TIERS[tier].cost - ROAD_TIERS[was].cost;
       }
       continue;
     }
     if (tier !== null) {
+      if (water && tier === DIRT) continue;
       if (isFreeLot(w, x, y) || t === TILE.LINE) {
         if (connected && !sideNeighbours(w, x, y).some((j) => connected[j] || j === previous)) continue;
         out.push([x, y]);

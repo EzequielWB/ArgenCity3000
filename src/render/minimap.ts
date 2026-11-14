@@ -8,6 +8,7 @@ const ROAD_TIER_COLORS: [number, number, number][] = [
   [85, 84, 90],
   [64, 63, 71],
   [52, 51, 59],
+  [160, 124, 82],
 ];
 
 const TILE_COLORS: Record<number, [number, number, number]> = {

@@ -4,7 +4,7 @@
  * jobs), and what passes over a street is compared with what the street can carry. Streets laid
  * side by side form an avenue, which carries as many times more as it has lanes.
  */
-import { CAPACITY, COAST, ROAD_REACH, ROAD_TIERS, TRAFFIC } from '../config';
+import { CAPACITY, COAST, ROAD_REACH, ROAD_TIERS, TRAFFIC, weakerRoad, type RoadTier } from '../config';
 import { TILE, type World } from '../world/world';
 import { coastWorks } from './coast';
 
@@ -164,13 +164,13 @@ export function computeCongestion(w: World): CongestionReport {
     const runsAlong = (j: number) => (isRoad(j - along) && (!alongX || sameRow(j, j - along))) || (isRoad(j + along) && (!alongX || sameRow(j, j + along)));
     let lanes = 1;
     let carried = raw[i];
-    let tier = w.roadTier[i];
+    let tier = w.roadTier[i] as RoadTier;
     for (const dir of [-across, across]) {
       let j = i + dir;
       while (lanes < MAX_LANES && isRoad(j) && (alongX || sameRow(j, i)) && runsAlong(j)) {
         lanes++;
         carried += raw[j];
-        tier = Math.min(tier, w.roadTier[j]);
+        tier = weakerRoad(tier, w.roadTier[j] as RoadTier);
         j += dir;
       }
     }

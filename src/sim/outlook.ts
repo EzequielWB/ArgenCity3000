@@ -76,7 +76,7 @@ export function serviceUpkeepRange(kind: ServiceKind): { min: number; max: numbe
 }
 
 const PLANT_OF_TOOL: Record<string, PlantKind | undefined> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
-const ROAD_TIER_OF_TOOL: Record<string, RoadTier | undefined> = { road: 0, roadPaved: 1, roadBoulevard: 2 };
+const ROAD_TIER_OF_TOOL: Record<string, RoadTier | undefined> = { roadDirt: 3, road: 0, roadPaved: 1, roadBoulevard: 2 };
 
 /** The upkeep part of the placement tooltip for a tool, or null when the tool has none worth showing. */
 export function placementUpkeep(tool: string): string | null {
