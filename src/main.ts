@@ -15,6 +15,7 @@ import { MAP_KINDS, generateMap, type MapKind } from './world/mapkinds';
 import type { Terrain } from './world/terrain';
 import { TOOLS } from './world/tools';
 import { PRESETS, loadPreset, worldFromPreset, type MapPreset } from './world/presets';
+import { addRoute } from './world/route';
 import { World } from './world/world';
 
 const CITY_NAMES = [
@@ -136,7 +137,10 @@ function launch(data: SaveData): void {
   $('#app').classList.remove('hidden');
   game = new Game(data, { isModalOpen, sound, leave: showStart });
   if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
-  if (data.sim.tick === 0) toast(data.mayor ? `¡Arranca la gestión de ${data.mayor}! Empezá por una usina (9) y unas calles (3).` : `¡Bienvenido, Intendente! Empezá por una usina (9) y unas calles (3).`);
+  if (data.sim.tick === 0) {
+    const streets = data.world.route.some((v) => v) ? 'una calle que salga de la ruta (3)' : 'unas calles (3)';
+    toast(data.mayor ? `¡Arranca la gestión de ${data.mayor}! Empezá por una usina (9) y ${streets}.` : `¡Bienvenido, Intendente! Empezá por una usina (9) y ${streets}.`);
+  }
   else toast(`Partida cargada: ${data.name}`);
 }
 
@@ -151,6 +155,7 @@ function startNew(): void {
   }
   const seed = parseSeed($<HTMLInputElement>('#startSeed').value);
   const world = new World(pickedTerrain(seed));
+  addRoute(world, seed);
   launch({ name, seed, mayor, world, sim: newSimState(seed) });
 }
 

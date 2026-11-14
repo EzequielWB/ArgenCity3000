@@ -1,6 +1,7 @@
 import { COAST, COSTS, PLANTS, PLANT_SIZE, SERVICES, type CoastKind, type PlantKind, type ServiceKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
+import { connectedToRoute } from './route';
 import { TILE, World, coastTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
 export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
@@ -156,6 +157,31 @@ function isFreeLot(w: World, x: number, y: number): boolean {
   return t === TILE.EMPTY || (zoneOf(t) !== null && w.level[i] === 0);
 }
 
+const ROUTE_UNTOUCHABLE = 'La ruta provincial no se toca';
+const STREETS_FROM_ROUTE = 'Las calles tienen que salir de la ruta';
+
+/** Cells whose side touches (x, y). */
+function sideNeighbours(w: World, x: number, y: number): number[] {
+  const out: number[] = [];
+  if (x > 0) out.push(w.idx(x - 1, y));
+  if (x < w.n - 1) out.push(w.idx(x + 1, y));
+  if (y > 0) out.push(w.idx(x, y - 1));
+  if (y < w.n - 1) out.push(w.idx(x, y + 1));
+  return out;
+}
+
+/** Why the tool cannot work on a cell because of the provincial route, in words for the player, or null. */
+export function routeRefusal(w: World, tool: ToolId, x: number, y: number): string | null {
+  if (tool === 'query' || !w.inBounds(x, y)) return null;
+  if (w.route[w.idx(x, y)]) return ROUTE_UNTOUCHABLE;
+  if (tool !== 'road') return null;
+  const connected = connectedToRoute(w);
+  if (!connected) return null;
+  const t = w.tiles[w.idx(x, y)];
+  if (!(isFreeLot(w, x, y) || t === TILE.LINE)) return null;
+  return sideNeighbours(w, x, y).some((j) => connected[j]) ? null : STREETS_FROM_ROUTE;
+}
+
 /** Works out which cells the tool will change and what it costs, without changing anything. */
 export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
   const out: Cell[] = [];
@@ -164,11 +190,14 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
   const plantsSeen = new Set<object>();
   const zone = zoneKindOfTool(tool);
   const plantKind = plantKindOfTool(tool);
+  // With a route, a street is only accepted next to a street that comes from it, or to the cell accepted before it.
+  const connected = tool === 'road' ? connectedToRoute(w) : null;
+  let previous = -1;
 
   if (plantKind) {
     const [ax, ay] = cells[0] ?? [-1, -1];
     const foot = plantFootprint(w.n, ax, ay);
-    const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.isWater(x, y) && isFreeLot(w, x, y));
+    const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.isWater(x, y) && !w.route[w.idx(x, y)] && isFreeLot(w, x, y));
     return ok ? { tool, cells: foot, cost: PLANTS[plantKind].cost } : { tool, cells: [], cost: 0 };
   }
 
@@ -177,13 +206,16 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     const i = w.idx(x, y);
     if (seen.has(i)) continue;
     seen.add(i);
+    if (w.route[i]) continue;
     const t = w.tiles[i];
     const water = w.isWater(x, y);
     switch (tool) {
       case 'road':
         if (t === TILE.ROAD) break;
         if (isFreeLot(w, x, y) || t === TILE.LINE) {
+          if (connected && !sideNeighbours(w, x, y).some((j) => connected[j] || j === previous)) break;
           out.push([x, y]);
+          previous = i;
           cost += water ? COSTS.bridge : COSTS.road;
         }
         break;
@@ -250,6 +282,7 @@ export function applyPlan(w: World, plan: Plan): void {
   const plantKind = plantKindOfTool(plan.tool);
   for (const [x, y] of plan.cells) {
     const i = w.idx(x, y);
+    if (w.route[i]) continue;
     switch (plan.tool) {
       case 'road':
         w.setTile(x, y, TILE.ROAD);

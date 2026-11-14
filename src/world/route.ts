@@ -1,0 +1,103 @@
+/**
+ * The provincial route of generated maps: a strip of ordinary road that enters along one border,
+ * cannot be touched and costs nothing. Streets can only start from it (see `planTool`). Real-place
+ * maps and saves from before it have no route and no restriction. Pure functions of the world.
+ */
+import { ROUTE } from '../config';
+import { hash2 } from '../core/rng';
+import { isWaterCell, type Terrain } from './terrain';
+import { TILE, type World } from './world';
+
+export type RouteEdge = 'north' | 'east' | 'south' | 'west';
+
+const EDGES: readonly RouteEdge[] = ['north', 'east', 'south', 'west'];
+
+export interface RouteChoice {
+  edge: RouteEdge;
+  /** The cells of the strip, in world coordinates. */
+  cells: [number, number][];
+  /** How many of them are water: the stretches the route crosses on a bridge. */
+  bridges: number;
+}
+
+/** Cell at `across` cells in from the border of `edge` and `along` cells from the corner. */
+function edgeCell(n: number, edge: RouteEdge, across: number, along: number): [number, number] {
+  if (edge === 'west') return [across, along];
+  if (edge === 'east') return [n - 1 - across, along];
+  if (edge === 'north') return [along, across];
+  return [along, n - 1 - across];
+}
+
+/** Water cells in the strip of an edge and in the line of cells on each side of it. */
+function waterNear(t: Terrain, edge: RouteEdge): number {
+  let count = 0;
+  for (let along = ROUTE.margin; along <= t.n - 1 - ROUTE.margin; along++) {
+    for (let across = ROUTE.inset - 1; across <= ROUTE.inset + ROUTE.width; across++) {
+      const [x, y] = edgeCell(t.n, edge, across, along);
+      if (isWaterCell(t, x, y)) count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Picks the border for the route: the one with least water in its strip and beside it, so a map
+ * with a sea exit never gets the route on the coast. Edges that tie are told apart by the seed.
+ */
+export function chooseRoute(terrain: Terrain, seed: number): RouteChoice {
+  const scores = EDGES.map((e) => waterNear(terrain, e));
+  const best = Math.min(...scores);
+  const tied = EDGES.filter((_, k) => scores[k] === best);
+  const edge = tied[Math.floor(hash2(17, 29, seed) * tied.length)];
+  const cells: [number, number][] = [];
+  for (let along = ROUTE.margin; along <= terrain.n - 1 - ROUTE.margin; along++) {
+    for (let k = 0; k < ROUTE.width; k++) cells.push(edgeCell(terrain.n, edge, ROUTE.inset + k, along));
+  }
+  return { edge, cells, bridges: cells.filter(([x, y]) => isWaterCell(terrain, x, y)).length };
+}
+
+/** Builds the route of a new generated world: road on the strip (a bridge over water), marked as route. */
+export function addRoute(w: World, seed: number): RouteChoice {
+  const choice = chooseRoute(w.terrain, seed);
+  for (const [x, y] of choice.cells) {
+    const i = w.idx(x, y);
+    w.setTile(x, y, TILE.ROAD);
+    w.terrain.trees[i] = 0;
+    w.route[i] = 1;
+  }
+  w.bumpNetwork();
+  return choice;
+}
+
+const reached = new WeakMap<World, { version: number; connected: Uint8Array | null }>();
+
+/**
+ * 1 on every street cell reachable from the route over street cells, the route included; null
+ * when the world has no route. Kept until the network changes, because the tools ask on every
+ * mouse move.
+ */
+export function connectedToRoute(w: World): Uint8Array | null {
+  const hit = reached.get(w);
+  if (hit && hit.version === w.networkVersion) return hit.connected;
+  const n = w.n;
+  let connected: Uint8Array | null = null;
+  const queue: number[] = [];
+  for (let i = 0; i < w.route.length; i++) {
+    if (!w.route[i] || w.tiles[i] !== TILE.ROAD) continue;
+    connected ??= new Uint8Array(n * n);
+    connected[i] = 1;
+    queue.push(i);
+  }
+  while (connected && queue.length) {
+    const i = queue.pop()!;
+    const x = i % n;
+    for (const j of [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, i >= n ? i - n : -1, i < n * n - n ? i + n : -1]) {
+      if (j >= 0 && !connected[j] && w.tiles[j] === TILE.ROAD) {
+        connected[j] = 1;
+        queue.push(j);
+      }
+    }
+  }
+  reached.set(w, { version: w.networkVersion, connected });
+  return connected;
+}

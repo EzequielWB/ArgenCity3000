@@ -82,7 +82,7 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
       const i = w.idx(x, y);
       const tile = w.tiles[i];
       if (tile === TILE.ROAD) {
-        if (w.inherited[i] && !used[i]) continue;
+        if (w.route[i] || (w.inherited[i] && !used[i])) continue;
         if (w.isWater(x, y)) bridges++;
         else roads++;
       } else if (tile === TILE.LINE) lines++;

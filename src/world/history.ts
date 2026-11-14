@@ -96,6 +96,7 @@ export class UndoHistory {
       return null;
     }
     for (const c of e.cells) {
+      if (w.route[c.i]) continue; // the route is never part of what an action can give back
       const x = c.i % w.n;
       w.setTile(x, (c.i - x) / w.n, c.tile, c.level);
       w.variant[c.i] = c.variant;

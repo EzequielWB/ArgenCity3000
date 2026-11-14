@@ -47,8 +47,8 @@ function liftSlopes(h: Uint8Array, s: number, frozen: Uint8Array): void {
  * (zones and services, so it ends at streets); each becomes flat at its average height rounded
  * up, so blocks are filled rather than dug and keep their views (land value counts height), with
  * every corner moving at most MAX_LEVELING_STEP levels. Corners touching water never move,
- * so shores stay put. Slopes are constrained afterwards, and every lot whose ground moved is
- * marked for redrawing.
+ * so shores stay put, and so do the corners under the provincial route. Slopes are constrained
+ * afterwards, and every lot whose ground moved is marked for redrawing.
  */
 export function levelBlocks(w: World, cells: readonly [number, number][]): void {
   const n = w.n;
@@ -63,7 +63,7 @@ export function levelBlocks(w: World, cells: readonly [number, number][]): void 
   const frozen = new Uint8Array(s * s);
   for (let i = 0; i < n * n; i++) {
     const k = cornersOf(i);
-    if (Math.min(c[k[0]], c[k[1]], c[k[2]], c[k[3]]) < SEA_LEVEL) for (const j of k) frozen[j] = 1;
+    if (w.route[i] || Math.min(c[k[0]], c[k[1]], c[k[2]], c[k[3]]) < SEA_LEVEL) for (const j of k) frozen[j] = 1;
   }
 
   const seen = new Uint8Array(n * n);

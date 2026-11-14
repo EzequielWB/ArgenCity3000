@@ -20,16 +20,17 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
  * versions 1 to 3 had only coal plants (a plant without a kind is a coal one); versions 1 to 4
  * had no municipal loan, so they owe nothing; versions 1 to 5 had no mayor's name, so the
  * Intendente is simply the Intendente; versions 1 to 6 had no buildings of the coast (the tile ids
- * from 12 on) nor the two coast lines of the budget, which count as zero.
+ * from 12 on) nor the two coast lines of the budget, which count as zero; versions 1 to 7 had no
+ * provincial route, so they have none and their streets are free to start anywhere.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -83,6 +84,7 @@ export function serialize(d: SaveData): string {
     variant: toBase64(w.variant),
     abandoned: toBase64(w.abandoned),
     inherited: toBase64(w.inherited),
+    route: toBase64(w.route),
     fire: toBase64(w.fire),
     plants: w.plants,
     sim: d.sim,
@@ -124,9 +126,12 @@ export function deserialize(text: string): SaveData {
   }
   // Streets inherited from a real-place map exist from version 3 on.
   if ((data.version as number) >= 3) world.inherited.set(fromBase64(data.inherited, size, 1, 'Las calles del mapa'));
+  // The provincial route exists from version 8 on.
+  if ((data.version as number) >= 8) world.route.set(fromBase64(data.route, size, 1, 'La ruta provincial'));
   for (let i = 0; i < size; i++) {
     need(level[i] === 0 || zoneOf(tiles[i]) !== null, 'Hay edificios fuera de las zonas');
     need(world.inherited[i] === 0 || tiles[i] === TILE.ROAD, 'Las calles del mapa están dañadas');
+    need(world.route[i] === 0 || tiles[i] === TILE.ROAD, 'La ruta provincial está dañada');
   }
 
   need(Array.isArray(data.plants), 'Faltan las usinas');

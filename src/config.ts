@@ -16,6 +16,12 @@ export type MapSizeId = keyof typeof MAP_SIZES;
  */
 export const PLAYABLE_SIZES: readonly MapSizeId[] = ['small', 'medium', 'large'];
 
+/**
+ * Geometry of the provincial route of generated maps, in cells: the strip is `width` wide, starts
+ * `inset` cells in from the border and stops `margin` cells short of both ends of that side.
+ */
+export const ROUTE = { width: 2, inset: 1, margin: 1 } as const;
+
 export const INITIAL_CASH = 30000;
 export const DEFAULT_TAX = 7;
 export const MIN_TAX = 0;

@@ -641,9 +641,9 @@ describe('the streets to a working port', () => {
 describe('saving the coast', () => {
   const save = (w: World, sim = newSimState(1)) => JSON.parse(serialize({ name: 'X', seed: 1, world: w, sim }));
 
-  it('writes format 7', () => {
-    expect(SAVE_VERSION).toBe(7);
-    expect(save(new World(shore())).version).toBe(7);
+  it('writes the current format, which is 7 or later because 7 introduced the coast tiles', () => {
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(7);
+    expect(save(new World(shore())).version).toBe(SAVE_VERSION);
   });
 
   it('round-trips every coast tile', () => {
