@@ -11,6 +11,7 @@ import {
   PORT_TAX_BOOST,
   POWER_REACH,
   ROAD_REACH,
+  ROAD_TIERS,
   SERVICES,
   TRAFFIC,
   WIND,
@@ -83,10 +84,14 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
     };
   }
   if (tile === TILE.ROAD) {
+    const tier = ROAD_TIERS[w.roadTier[i]];
     return {
       title: water ? 'Puente' : 'Calle',
-      lines: [height, `Tránsito: ${w.traffic[i]} % de su capacidad`, w.powered[i] ? 'Con luz (la calle no lleva la luz)' : 'Sin luz (la calle no lleva la luz)'],
-      hint: w.traffic[i] > 100 ? 'Calle saturada: poné otra calle pegada para hacerla avenida, o abrí otro camino entre las casas y el trabajo.' : undefined,
+      lines: [height, `Calidad: ${tier.label}`, `Tránsito: ${w.traffic[i]} % de su capacidad`, w.powered[i] ? 'Con luz (la calle no lleva la luz)' : 'Sin luz (la calle no lleva la luz)'],
+      hint:
+        w.traffic[i] > 100
+          ? 'Calle saturada: mejorá su calidad con pavimento reforzado o bulevar, poné otra calle pegada para hacerla avenida, o abrí otro camino entre las casas y el trabajo.'
+          : undefined,
     };
   }
   if (water) {

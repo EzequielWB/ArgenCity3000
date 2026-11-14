@@ -13,6 +13,12 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   road: svg(
     '<path d="M2 20L16 13l14 7-14 7z" fill="#cbbfa8"/><path d="M5 20L16 14.5 27 20 16 25.5z" fill="#55545a"/><path d="M9 18l3-1.5m4-2l3-1.5M13 22l3 1.5m4 2" stroke="#f2e7b6" stroke-width="1.3"/>',
   ),
+  roadPaved: svg(
+    '<path d="M2 20L16 13l14 7-14 7z" fill="#cbbfa8"/><path d="M5 20L16 14.5 27 20 16 25.5z" fill="#3c3b42"/><path d="M9 18l3-1.5m4-2l3-1.5M13 22l3 1.5m4 2M7 19.6l3-1.5m6-3l3-1.5" stroke="#fff6c8" stroke-width="1.4"/>',
+  ),
+  roadBoulevard: svg(
+    '<path d="M2 20L16 13l14 7-14 7z" fill="#cbbfa8"/><path d="M5 20L16 14.5 27 20 16 25.5z" fill="#3c3b42"/><path d="M14 15.6l4 2v2.2l-4-2z" fill="#7cc06a"/><path d="M9 18l3-1.5m4-2l3-1.5M13 22l3 1.5m4 2" stroke="#fff6c8" stroke-width="1.2"/><circle cx="19" cy="14.6" r="1.2" fill="#ffd84a"/><circle cx="11" cy="21.4" r="1.2" fill="#ffd84a"/>',
+  ),
   line: svg(
     '<path d="M10 28V7M22 28V9" stroke="#8a5a34" stroke-width="2.2"/><path d="M5 8h10M17 10h10" stroke="#8a5a34" stroke-width="2"/><path d="M6 8q10 6 16 2M14 8q6 5 12 2" stroke="#1f1611" stroke-width="1" fill="none"/><path d="M16 15l-3 5h3l-2 5 5-7h-3l2-3z" fill="#ffd84a"/>',
   ),

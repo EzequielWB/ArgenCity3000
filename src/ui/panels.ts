@@ -432,7 +432,10 @@ export function openHelp(): void {
     <ol class="steps">
       <li><strong>Construí una usina</strong> (tecla 9). Sin luz no se levanta ni una casita.</li>
       <li><strong>Trazá calles</strong> (3) arrastrando. Los lotes necesitan una calle a 3 lotes o menos.
-        Si ponés calles pegadas una al lado de la otra, forman una <strong>avenida</strong> con más carriles cuanto más ancha sea, y aguanta más tránsito.</li>
+        Si ponés calles pegadas una al lado de la otra, forman una <strong>avenida</strong> con más carriles cuanto más ancha sea, y aguanta más tránsito.
+        Hay tres <strong>calidades</strong> y se eligen de una: asfalto (3), pavimento reforzado (R), que entra un 60 % más de tránsito,
+        y bulevar con farolas (T), que entra un 80 % más y además sube el valor del suelo y baja el delito alrededor.
+        Arrastrá una calidad mejor sobre una calle y se mejora en el lugar: pagás solo la diferencia, sin demoler. Para bajar de calidad hay que demoler.</li>
       <li><strong>Zonificá</strong> residencial (5), comercial (6) e industrial (7) pegado a las calles. Al zonificar, la manzana se nivela sola y las calles hacen de rampa.
         La usina y cada edificio con luz alumbran hasta 3 lotes a su alrededor; para llevar la luz más lejos hace falta el tendido eléctrico (4), que también alumbra 3 lotes a su alrededor. Las calles no llevan luz.</li>
       <li><strong>Mirá la demanda</strong> (barras R C I arriba): la gente viene si hay trabajo, y el comercio y la industria siguen a la gente. Con apagones, con tasas de más de 9 % en promedio o con muchos edificios abandonados la ciudad deja de atraer gente nueva y la demanda se queda en cero: al lado de las barras aparece el motivo.</li>
@@ -456,7 +459,7 @@ export function openHelp(): void {
     <h3>Controles</h3>
     <div class="help-grid">
       <span><kbd>1</kbd>–<kbd>9</kbd> herramientas · <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>O</kbd> servicios · <kbd>Z</kbd> <kbd>X</kbd> <kbd>V</kbd> <kbd>L</kbd> <kbd>F</kbd> costa</span>
-      <span><kbd>B</kbd> tamaño de bloque</span>
+      <span><kbd>3</kbd> <kbd>R</kbd> <kbd>T</kbd> calidades de calle · <kbd>B</kbd> tamaño de bloque</span>
       <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer la última obra (devuelve todo dentro del mes, la mitad hasta un año)</span>
       <span>Arrastrar con clic izquierdo: construir</span>
       <span>Clic derecho o rueda apretada: mover el mapa</span>

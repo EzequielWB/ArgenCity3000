@@ -5,6 +5,7 @@
  *
  * The analysis works on WORLD cells and does not depend on the view rotation.
  */
+import type { RoadTier } from '../config';
 
 export const KIND = {
   /** Not a road. */
@@ -24,11 +25,13 @@ export type RoadKind = (typeof KIND)[keyof typeof KIND];
 /** Widest band that is told apart into lanes; anything wider is drawn as plain asphalt. */
 export const MAX_BAND = 12;
 
-// A cell's analysis is packed into 16 bits: kind (3) | width (4) | index (4).
+// A cell's analysis is packed into 16 bits: kind (3) | width (4) | index (4) | tier (2).
 export const kindOf = (code: number): RoadKind => (code & 7) as RoadKind;
 export const widthOf = (code: number): number => (code >> 3) & 15;
 export const indexOf = (code: number): number => (code >> 7) & 15;
-const pack = (kind: number, width = 0, index = 0): number => kind | (width << 3) | (index << 7);
+/** Quality of the street a cell belongs to, already brought down to its weakest lane. */
+export const tierOf = (code: number): RoadTier => ((code >> 11) & 3) as RoadTier;
+const pack = (kind: number, width = 0, index = 0, tier = 0): number => kind | (width << 3) | (index << 7) | (tier << 11);
 
 /**
  * Classifies every road cell of an n x n grid. Returns one packed code per cell (row-major);
@@ -39,8 +42,11 @@ const pack = (kind: number, width = 0, index = 0): number => kind | (width << 3)
  * shorter run is the band's width. A cell is only a band cell ("clean") when the whole cross
  * section it sits in is a band of the same axis and the cells next to it along the street have
  * the same cross section; otherwise it is a junction or a corner and gets no lane lines.
+ *
+ * `tierAt` says which quality each cell was built with. A band is read by its weakest cell, so an
+ * avenue with one plain lane in it is drawn as a plain avenue, the same way it carries traffic.
  */
-export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: number): Uint16Array {
+export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: number, tierAt?: (x: number, y: number) => RoadTier): Uint16Array {
   const size = n * n;
   const road = new Uint8Array(size);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (isRoad(x, y)) road[y * n + x] = 1;
@@ -107,13 +113,14 @@ export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: numbe
   }
 
   const out = new Uint16Array(size);
+  const ownTier = (x: number, y: number): RoadTier => (tierAt ? tierAt(x, y) : 0);
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
       const i = y * n + x;
       if (!road[i]) continue;
       const g = guess[i];
       if (g === KIND.PLAIN || g === KIND.BLOB) {
-        out[i] = pack(g);
+        out[i] = pack(g, 0, 0, ownTier(x, y));
         continue;
       }
       const alongX = g === KIND.BAND_X;
@@ -121,9 +128,13 @@ export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: numbe
       const width = alongX ? vLen[i] : hLen[i];
       const first = alongX ? vStart[i] : hStart[i];
       let clean = true;
+      let tier = ownTier(x, y);
       for (let k = 0; k < width && clean; k++) {
-        const j = alongX ? (first + k) * n + x : y * n + first + k;
+        const jx = alongX ? x : first + k;
+        const jy = alongX ? first + k : y;
+        const j = jy * n + jx;
         if (guess[j] !== g) clean = false;
+        else tier = Math.min(tier, ownTier(jx, jy)) as RoadTier;
       }
       // ...and the cells next to it along the street must have the same cross section.
       for (const d of [-1, 1]) {
@@ -135,7 +146,7 @@ export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: numbe
         if (!road[j]) continue;
         if (alongX ? vStart[j] !== first || vLen[j] !== width : hStart[j] !== first || hLen[j] !== width) clean = false;
       }
-      out[i] = clean ? pack(g, width, (alongX ? y : x) - first) : pack(KIND.BLOB);
+      out[i] = clean ? pack(g, width, (alongX ? y : x) - first, tier) : pack(KIND.BLOB, 0, 0, ownTier(x, y));
     }
   }
   return out;

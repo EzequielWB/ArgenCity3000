@@ -3,7 +3,11 @@ import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type
 import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
-import { KIND, analyzeRoads, indexOf, kindOf, laneLine, routeSigns, widthOf, type LaneLine } from './avenue';
+import type { RoadTier } from '../config';
+import { KIND, analyzeRoads, indexOf, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
+
+/** Asphalt of each street quality: plain, reinforced pavement, boulevard. */
+const ROAD_SURFACE = [PAL.asphalt, PAL.asphaltPaved, PAL.asphaltBoulevard] as const;
 import {
   CHUNK_PAD,
   CHUNK_SIZE,
@@ -250,7 +254,7 @@ export class MapRenderer {
   /** Recomputes which road cells form avenues. Cheap: one pass over the grid. */
   private refreshBands(): void {
     const w = this.world;
-    this.bands = analyzeRoads((x, y) => w.tiles[y * w.n + x] === TILE.ROAD, w.n);
+    this.bands = analyzeRoads((x, y) => w.tiles[y * w.n + x] === TILE.ROAD, w.n, (x, y) => w.roadTier[y * w.n + x] as RoadTier);
     for (let i = 0; i < this.roadSnap.length; i++) this.roadSnap[i] = w.tiles[i] === TILE.ROAD ? 1 : 0;
   }
 
@@ -749,8 +753,9 @@ export class MapRenderer {
     const left = this.isRoadView(vx - 1, vy);
     const a = 0.18;
     const b = 0.82;
+    const tier = tierOf(code);
     const sub = (u0: number, v0: number, u1: number, v1: number) =>
-      this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], PAL.asphalt);
+      this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], ROAD_SURFACE[tier]);
     sub(a, a, b, b);
     if (up) sub(a, 0, b, a);
     if (down) sub(a, b, b, 1);
@@ -790,6 +795,29 @@ export class MapRenderer {
       }
     }
     g.setLineDash([]);
+    if (tier === 2) this.drawLamps(pts, vx, vy, !up, !right, !down, !left);
+  }
+
+  /**
+   * The lamps of a boulevard: one every few cells, standing on the sidewalk along its outer
+   * edges. A cell with no sidewalk left (inside a junction) gets none.
+   */
+  private drawLamps(pts: Pt[], vx: number, vy: number, up: boolean, right: boolean, down: boolean, left: boolean): void {
+    if ((vx + vy) % 3 !== 0) return;
+    const g = this.g;
+    g.fillStyle = PAL.lamp;
+    for (const [on, u, v] of [
+      [up, 0.5, 0.07],
+      [down, 0.5, 0.93],
+      [left, 0.07, 0.5],
+      [right, 0.93, 0.5],
+    ] as [boolean, number, number][]) {
+      if (!on) continue;
+      const p = bilinear(pts, u, v);
+      g.beginPath();
+      g.arc(p[0], p[1] - 1.2, 1.1, 0, Math.PI * 2);
+      g.fill();
+    }
   }
 
   /**
@@ -804,8 +832,10 @@ export class MapRenderer {
     const left = this.isRoadView(vx - 1, vy);
     const a = 0.18;
     const b = 0.82;
+    const tier = tierOf(code);
+    const boulevard = tier === 2;
     const sub = (u0: number, v0: number, u1: number, v1: number) =>
-      this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], PAL.asphalt);
+      this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], ROAD_SURFACE[tier]);
     // The pieces overlap by `e`, and reach `e` into the neighbours drawn before this cell,
     // so no seam of sidewalk colour shows through the asphalt of a wide road.
     const e = 0.04;
@@ -821,6 +851,7 @@ export class MapRenderer {
     if (down && left && this.isRoadView(vx - 1, vy + 1)) sub(-e, b - e, a + e, 1);
 
     const kind = kindOf(code);
+    if (kind === KIND.BLOB) this.drawLamps(pts, vx, vy, !up, !right, !down, !left);
     if (kind !== KIND.BAND_X && kind !== KIND.BAND_Y) return;
     // Each cell draws the lane boundary on its up and left edges, so a boundary is painted
     // once, by the cell drawn later, and never half-covered by it.
@@ -839,10 +870,12 @@ export class MapRenderer {
     };
     const g = this.g;
     const stroke = (style: LaneLine, at: (t: number, off: number) => Pt, t0: number, t1: number) => {
-      g.strokeStyle = style === 'dash' ? PAL.marking : AVENUE_LINE;
-      g.lineWidth = style === 'dash' ? 0.8 : 0.9;
-      g.setLineDash(style === 'dash' ? [2, 2] : []);
-      for (const off of style === 'double' ? [-DOUBLE_GAP, DOUBLE_GAP] : [0]) {
+      // A boulevard has a planted median where an avenue paints its double centre line.
+      const median = boulevard && style === 'double';
+      g.strokeStyle = median ? PAL.median : style === 'dash' ? PAL.marking : AVENUE_LINE;
+      g.lineWidth = median ? 1.8 : style === 'dash' ? 0.8 : 0.9;
+      g.setLineDash(!boulevard && style === 'dash' ? [2, 2] : []);
+      for (const off of median ? [0] : style === 'double' ? [-DOUBLE_GAP, DOUBLE_GAP] : [0]) {
         const p = at(t0, off);
         const q = at(t1, off);
         g.beginPath();
@@ -856,6 +889,7 @@ export class MapRenderer {
     if (jUp >= 0) stroke(laneLine(lanes, jUp), (t, off) => bilinear(pts, t, off), left ? -e : a, right ? 1 : b);
     const jLeft = boundary(vx - 1, vy);
     if (jLeft >= 0) stroke(laneLine(lanes, jLeft), (t, off) => bilinear(pts, off, t), up ? -e : a, down ? 1 : b);
+    if (boulevard) this.drawLamps(pts, vx, vy, !up, !right, !down, !left);
   }
 
   /**

@@ -3,8 +3,15 @@ import { MAX_HEIGHT, SEA_LEVEL, isWaterCell, type Terrain } from '../world/terra
 import { TILE, World } from '../world/world';
 import { hexToRgb, PAL } from './color';
 
+/** The streets, one colour per quality, so the minimap shows where the asphalt is new. */
+const ROAD_TIER_COLORS: [number, number, number][] = [
+  [85, 84, 90],
+  [64, 63, 71],
+  [52, 51, 59],
+];
+
 const TILE_COLORS: Record<number, [number, number, number]> = {
-  [TILE.ROAD]: [85, 84, 90],
+  [TILE.ROAD]: ROAD_TIER_COLORS[0],
   [TILE.LINE]: [140, 110, 70],
   [TILE.PLANT]: [150, 50, 40],
   [TILE.PARK]: [120, 190, 80],
@@ -98,6 +105,7 @@ export class Minimap {
         const t = w.tiles[i];
         let c: [number, number, number];
         if (t === TILE.ROAD && w.route[i]) c = ROUTE_COLOR;
+        else if (t === TILE.ROAD) c = ROAD_TIER_COLORS[w.roadTier[i]];
         else if (TILE_COLORS[t]) c = TILE_COLORS[t];
         else if (ZONE_BUILT[t]) c = w.abandoned[i] ? [95, 85, 75] : w.level[i] > 0 ? ZONE_BUILT[t] : ZONE_EMPTY[t];
         else c = terrainColor(w.terrain, x, y);

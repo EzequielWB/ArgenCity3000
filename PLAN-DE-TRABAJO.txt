@@ -24,7 +24,9 @@ QUE VAS A PODER HACER (v1)
    y un arroyo que cruza el mapa. Arboles (jacaranda, palo borracho, ombu).
 3. Camara isometrica: arrastrar para mover, rueda para zoom, 4 rotaciones, minimapa.
 4. Herramientas:
-   - Consulta (ficha de la celda)       - Calle (se traza arrastrando, en L)
+   - Consulta (ficha de la celda)       - Calle (se traza arrastrando, en L; tres calidades:
+                                          asfalto, pavimento reforzado y bulevar, y se mejora
+                                          en el lugar pagando la diferencia)
    - Bulldozer (rectangulo)             - Tendido electrico (arrastrando)
    - Zona Residencial / Comercial / Industrial (rectangulo)
    - Usina (2x2)                        - Plaza (rectangulo)
