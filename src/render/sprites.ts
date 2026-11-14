@@ -172,39 +172,93 @@ class Painter {
     }
   }
 
+  /**
+   * A tree, in the same language as the buildings: flat facets, the same three values of light and
+   * the same thin dark edge. The crown is a ring of faces around an apex, never an ellipse, and the
+   * trunk is drawn in whole pixels with a lit side and a shaded one.
+   */
   tree(u: number, v: number, kind: number, scale = 1): void {
-    const g = this.g;
-    const [x, y] = this.P(u, v, 0);
     const s = scale;
     if (kind === 4) {
       // Eucalipto: tall and narrow.
-      g.fillStyle = '#d9cfb8';
-      g.fillRect(x - 0.7, y - 14 * s, 1.4, 14 * s);
-      blob(g, x, y - 16 * s, 3.2 * s, 7 * s, '#6f9461');
-      blob(g, x - 1, y - 19 * s, 2 * s, 3 * s, '#8db07c');
+      this.post(u, v, 8 * s, TREE.trunkLight);
+      this.crown(u, v, 0.17 * s, 0.12 * s, 6 * s, 10 * s, TREE.eucalyptus);
+      this.crown(u - 0.05 * s, v - 0.03 * s, 0.12 * s, 0.09 * s, 13 * s, 7 * s, TREE.eucalyptus);
       return;
     }
     if (kind === 2) {
-      // Palo borracho: swollen trunk, pink flowers.
-      g.fillStyle = '#7f9a6a';
-      g.beginPath();
-      g.ellipse(x, y - 3 * s, 1.6 * s, 3.2 * s, 0, 0, Math.PI * 2);
-      g.fill();
-      blob(g, x, y - 9 * s, 5 * s, 3.6 * s, '#d97aa3');
-      blob(g, x - 1.5 * s, y - 10.5 * s, 2.4 * s, 1.8 * s, '#f0a8c6');
+      // Palo borracho: the swollen green trunk is the tree, crowned by its flowers.
+      this.post(u, v, 3 * s, TREE.paloTrunk);
+      this.crown(u, v, 0.07 * s, 0.05 * s, 1.5 * s, 5.5 * s, TREE.paloTrunk);
+      this.crown(u, v, 0.19 * s, 0.15 * s, 6.5 * s, 5 * s, TREE.palo);
+      this.crown(u - 0.06 * s, v - 0.05 * s, 0.09 * s, 0.07 * s, 8 * s, 3 * s, TREE.palo);
       return;
     }
-    g.fillStyle = '#6b4a2e';
-    g.fillRect(x - 0.8, y - 6 * s, 1.6, 6 * s);
+    this.post(u, v, 5 * s, TREE.trunk);
     if (kind === 3) {
       // Ombú: wide dark crown.
-      blob(g, x, y - 9 * s, 6.5 * s, 4.5 * s, '#3e6e3a');
-      blob(g, x - 2 * s, y - 11 * s, 3 * s, 2 * s, '#5a8a48');
+      this.crown(u, v, 0.32 * s, 0.26 * s, 4 * s, 8 * s, TREE.ombu);
+      this.crown(u - 0.07 * s, v - 0.05 * s, 0.18 * s, 0.15 * s, 8 * s, 5 * s, TREE.ombu);
     } else {
-      // Jacarandá: lilac crown.
-      blob(g, x, y - 9 * s, 5 * s, 4 * s, '#8e6cc2');
-      blob(g, x - 1.5 * s, y - 10.5 * s, 2.5 * s, 2 * s, '#b49ae2');
+      // Jacarandá: lilac crown, muted so it sits with the rest of the map.
+      this.crown(u, v, 0.28 * s, 0.23 * s, 4 * s, 7 * s, TREE.jacaranda);
+      this.crown(u - 0.06 * s, v - 0.05 * s, 0.16 * s, 0.13 * s, 7 * s, 4.5 * s, TREE.jacaranda);
     }
+  }
+
+  /**
+   * A faceted crown: three rings and eight faces per band, so the silhouette has shoulders and
+   * reads as a crown instead of a cone. Each face is lit by the side it looks at, the way the walls
+   * are (a face turned to +v is lighter than one turned to +u) and the upper bands are brighter.
+   */
+  crown(cu: number, cv: number, ru: number, rv: number, z: number, h: number, color: string): void {
+    const P = this.P.bind(this);
+    const edge = shade(color, 0.58);
+    const faces = 8;
+    /** Height (0 at the base, 1 at the apex) and radius of each ring. The middle one is the widest. */
+    const rings: [number, number][] = [
+      [0, 0.78],
+      [0.42, 1],
+      [0.82, 0.5],
+    ];
+    const ring = (k: number, t: number, scale: number): Pt => {
+      const a = (k / faces) * Math.PI * 2;
+      return P(cu + Math.cos(a) * ru * scale, cv + Math.sin(a) * rv * scale, z + h * t);
+    };
+    for (let band = 0; band < rings.length; band++) {
+      const [t0, s0] = rings[band];
+      const above = rings[band + 1];
+      const [t1, s1] = above ?? [1, 0];
+      for (let k = 0; k < faces; k++) {
+        const a = ((k + 0.5) / faces) * Math.PI * 2;
+        // -1 for the face turned away from the light, +1 for the one turned towards it.
+        const facing = -(Math.cos(a) + Math.sin(a)) / 2;
+        const fill = shade(color, 0.86 + 0.2 * facing + 0.08 * band);
+        const low = [ring(k, t0, s0), ring(k + 1, t0, s0)];
+        if (above) this.poly([...low, ring(k + 1, t1, s1), ring(k, t1, s1)], fill, edge);
+        else this.poly([...low, P(cu, cv, z + h)], fill, edge);
+      }
+    }
+  }
+
+  /** A trunk: whole pixels, one lit column and one in shadow, like the two visible walls of a box. */
+  post(cu: number, cv: number, h: number, color: string): void {
+    const [x, y] = this.P(cu, cv, 0);
+    const bx = Math.round(x);
+    const by = Math.round(y);
+    const tall = Math.max(2, Math.round(h));
+    this.g.fillStyle = shade(color, 1.06);
+    this.g.fillRect(bx - 2, by - tall, 1, tall);
+    this.g.fillStyle = color;
+    this.g.fillRect(bx - 1, by - tall, 1, tall);
+    this.g.fillStyle = shade(color, 0.68);
+    this.g.fillRect(bx, by - tall, 1, tall);
+  }
+
+  /** A park bench: a seat and its back, built like a tiny box so it sits on the ground like the rest. */
+  bench(cu: number, cv: number): void {
+    this.box(cu - 0.07, cv - 0.025, cu + 0.07, cv + 0.025, 0, 1.4, BENCH);
+    this.box(cu - 0.07, cv - 0.03, cu + 0.07, cv - 0.015, 1.4, 1.3, shade(BENCH, 1.12));
   }
 }
 
@@ -236,6 +290,19 @@ function done(p: Painter, attach?: [number, number]): Sprite {
   return { canvas: p.canvas, ax: p.ax, ay: p.ay, smoke: p.smoke, attach };
 }
 
+/** Trees and plazas: the greens of the terrain, one muted lilac and one muted pink. */
+const TREE = {
+  trunk: '#6b4a2e',
+  trunkLight: '#b3a78c',
+  jacaranda: '#8c7fae',
+  ombu: '#436e3a',
+  palo: '#c98ba8',
+  paloTrunk: '#7f9a6a',
+  eucalyptus: '#7d9464',
+} as const;
+
+const BENCH = '#8a6a45';
+
 const WALLS = ['#f1e3c6', '#e9b9a2', '#b5d3e0', '#f0d27c', '#c2dbb3', '#f4f0e6'];
 const ROOFS = ['#b4532f', '#9e4428', '#c06a3c', '#7d6a5e'];
 const AWNINGS: [string, string][] = [
@@ -250,7 +317,7 @@ function residential(level: number, v: number): Sprite {
   const roof = ROOFS[(v >> 3) % ROOFS.length];
   if (level === 1) {
     const p = painter(1, 24);
-    if (v % 3 === 0) p.tree(0.15, 0.85, 1 + ((v >> 2) % 4), 0.7);
+    if (v % 3 === 0) p.tree(0.15, 0.85, 1 + ((v >> 2) % 4), 0.75);
     p.box(0.25, 0.25, 0.75, 0.75, 0, 8, wall);
     p.left(0.75, 0.42, 0.55, 0, 6, PAL.door);
     p.right(0.75, 0.38, 0.6, 3, 6, PAL.glass);
@@ -594,10 +661,11 @@ function burningOf(base: Sprite): Sprite {
 
 function treeSprite(kind: number, v: number): Sprite {
   const p = painter(1, 26);
+  // Kept near the middle of the diamond: a crown reaches about 5 px sideways and the canvas is 36.
   const spots: [number, number][] = [
-    [0.35, 0.35],
-    [0.7, 0.45],
-    [0.45, 0.75],
+    [0.3, 0.36],
+    [0.6, 0.62],
+    [0.36, 0.72],
   ];
   const count = 1 + (v % 3);
   for (let k = 0; k < count; k++) {
@@ -610,42 +678,30 @@ function treeSprite(kind: number, v: number): Sprite {
 function parkSprite(v: number): Sprite {
   const p = painter(1, 30);
   const kind = v % 3;
-  p.tree(0.2, 0.25, 1 + ((v >> 2) % 3), 0.8);
+  // The tree sits at the far corner of the diamond, where it does not cover the plaza itself.
+  p.tree(0.1, 0.6, 1 + ((v >> 2) % 3));
   if (kind === 0) {
-    // Small obelisk.
-    p.box(0.42, 0.42, 0.58, 0.58, 0, 2, '#d8d2c4', false);
-    p.poly([p.P(0.45, 0.45, 2), p.P(0.55, 0.45, 2), p.P(0.55, 0.55, 2), p.P(0.45, 0.55, 2), p.P(0.5, 0.5, 20)], '#efe9dc', '#9a9284');
+    // A monument: stone base and a bronze bust, no taller than a two-storey house.
+    p.box(0.5, 0.5, 0.74, 0.74, 0, 2.5, '#d8d2c4', false);
+    p.box(0.56, 0.56, 0.68, 0.68, 2.5, 4, '#7d6a45');
+    p.box(0.58, 0.58, 0.66, 0.66, 6.5, 2.5, '#9a8355');
   } else if (kind === 1) {
-    // Fountain.
-    const [x, y] = p.P(0.5, 0.5, 1);
-    p.g.beginPath();
-    p.g.ellipse(x, y, 7, 3.5, 0, 0, Math.PI * 2);
-    p.g.fillStyle = '#d8d2c4';
-    p.g.fill();
-    p.g.beginPath();
-    p.g.ellipse(x, y, 5.5, 2.6, 0, 0, Math.PI * 2);
-    p.g.fillStyle = '#6fb7e0';
-    p.g.fill();
-    p.g.fillStyle = '#d8d2c4';
-    p.g.fillRect(x - 0.8, y - 5, 1.6, 5);
-    p.g.fillStyle = '#cfe6ec';
-    p.g.fillRect(x - 0.5, y - 7, 1, 2);
+    // A faceted basin with the water of the game inside.
+    p.box(0.46, 0.5, 0.82, 0.86, 0, 1.5, '#d8d2c4', false);
+    p.poly([p.P(0.53, 0.57, 1.6), p.P(0.75, 0.57, 1.6), p.P(0.75, 0.79, 1.6), p.P(0.53, 0.79, 1.6)], PAL.water, shade(PAL.water, 0.7));
+    p.bench(0.18, 0.7);
   } else {
     // Glorieta (bandstand).
     for (const [u, w] of [
-      [0.35, 0.35],
-      [0.65, 0.35],
-      [0.35, 0.65],
-      [0.65, 0.65],
-    ]) {
-      const [x, y] = p.P(u, w, 0);
-      p.g.fillStyle = '#efe9dc';
-      p.g.fillRect(x - 0.5, y - 7, 1, 7);
-    }
-    p.box(0.3, 0.3, 0.7, 0.7, 0, 1, '#d8d2c4', false);
-    p.hipRoof(0.28, 0.28, 0.72, 0.72, 7, 6, '#2f7f4f');
+      [0.52, 0.56],
+      [0.78, 0.56],
+      [0.52, 0.82],
+      [0.78, 0.82],
+    ])
+      p.post(u, w, 6, '#efe9dc');
+    p.box(0.46, 0.5, 0.84, 0.88, 0, 1, '#d8d2c4', false);
+    p.hipRoof(0.44, 0.48, 0.86, 0.9, 6, 5, '#4a6f45');
   }
-  p.tree(0.8, 0.75, 1 + ((v >> 4) % 4), 0.75);
   return done(p);
 }
 
