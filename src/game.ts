@@ -93,6 +93,8 @@ export class Game implements PointerTarget {
   block = 1;
   private layerBeforeTool: Layer = 'none';
   speed = 2;
+  /** A brand-new city waits, paused, for the player's first work. */
+  private waitingForFirstWork = false;
 
   private history = new UndoHistory();
   private dragFrom: [number, number] | null = null;
@@ -127,6 +129,8 @@ export class Game implements PointerTarget {
     this.name = data.name;
     this.mayor = data.mayor ?? '';
     this.seed = data.seed;
+    this.waitingForFirstWork = data.sim.tick === 0;
+    this.speed = this.waitingForFirstWork ? 0 : 2;
     this.sim = new Simulation(this.world, data.sim, data.name, this.mayor);
     this.shownTerms = data.sim.terms;
     this.shownLost = data.sim.lostElection;
@@ -382,6 +386,12 @@ export class Game implements PointerTarget {
     applyPlan(this.world, plan);
     this.hooks.sound.play(this.tool === 'bulldoze' ? 'bulldoze' : 'build');
     this.afterEdit();
+    if (this.waitingForFirstWork) {
+      // The first work is the starting gun: the clock was holding for it.
+      this.waitingForFirstWork = false;
+      this.setSpeed(2);
+      toast('Arranca el tiempo: la ciudad se pone en marcha');
+    }
   }
 
   /** Reverts the latest construction or demolition and gives the money back. */
