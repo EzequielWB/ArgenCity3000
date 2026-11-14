@@ -92,6 +92,27 @@ export function surfaceHeights(w: World, vx: number, vy: number, rot: Rotation):
     const deck = w.tiles[i] === TILE.ROAD ? bridgeDeckHeight(w, x, y) : SEA_LEVEL;
     return [deck, deck, deck, deck];
   }
+  if (w.tiles[i] === TILE.ROAD) {
+    // The street cell where a bridge meets the land is the rise up to the deck: the two corners
+    // of its side facing the water go up to the deck, and the road climbs there instead of
+    // stepping off it. The corners on the other side do not move, so the ground around it does
+    // not shift and its neighbours keep meeting it.
+    const n = w.n;
+    const out: [number, number, number, number] = [hs[0], hs[1], hs[2], hs[3]];
+    const rise = (nvx: number, nvy: number, c1: number, c2: number): void => {
+      if (nvx < 0 || nvy < 0 || nvx >= n || nvy >= n) return;
+      const [bx, by] = fromView(nvx, nvy, rot, n);
+      if (w.tiles[w.idx(bx, by)] !== TILE.ROAD || !w.isWater(bx, by)) return;
+      const deck = bridgeDeckHeight(w, bx, by);
+      out[c1] = Math.max(out[c1], deck);
+      out[c2] = Math.max(out[c2], deck);
+    };
+    rise(vx, vy - 1, 0, 1);
+    rise(vx + 1, vy, 1, 2);
+    rise(vx, vy + 1, 3, 2);
+    rise(vx - 1, vy, 0, 3);
+    return out;
+  }
   if (w.tiles[i] === TILE.PLANT) {
     const p = w.plantAt(x, y);
     if (p) {

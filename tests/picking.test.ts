@@ -39,6 +39,22 @@ describe('bridge decks', () => {
     expect(bridgeDeckHeight(w, 8, 8)).toBe(SEA_LEVEL + 4);
   });
 
+  it('lifts the land cell at each end of the bridge into the rise up to the deck', () => {
+    const w = lake();
+    // The eastern bank sits two levels higher, so the deck lands there and the west end climbs.
+    for (let cy = 0; cy <= 16; cy++) for (let cx = 10; cx <= 16; cx++) w.terrain.corners[cy * 17 + cx] = SEA_LEVEL + 4;
+    for (let x = 2; x <= 14; x++) w.setTile(x, 8, TILE.ROAD);
+    const deck = SEA_LEVEL + 4;
+    const low = SEA_LEVEL + 2;
+    // Corner order top, right, bottom, left: only the side facing the bridge is lifted.
+    expect(surfaceHeights(w, 4, 8, 0)).toEqual([low, deck, deck, low]);
+    expect(surfaceHeights(w, 5, 8, 0)).toEqual([deck, deck, deck, deck]);
+    // The far end is already at the deck, so nothing moves there.
+    expect(surfaceHeights(w, 9, 8, 0)).toEqual([deck, deck, deck, deck]);
+    // The street past the rise keeps its own ground, one cell away from the bridge.
+    expect(surfaceHeights(w, 3, 8, 0)).toEqual([low, low, low, low]);
+  });
+
   it('keeps water without a road flat at sea level', () => {
     const w = lake();
     expect(surfaceHeights(w, 7, 3, 0)).toEqual([SEA_LEVEL, SEA_LEVEL, SEA_LEVEL, SEA_LEVEL]);
