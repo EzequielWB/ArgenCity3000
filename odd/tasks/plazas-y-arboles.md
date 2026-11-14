@@ -29,12 +29,19 @@ mismo idioma que los edificios.
   `parkSpriteFor`), mismas claves de caché, mismas anclas, mismos tamaños de lienzo y la simulación
   ni se entera.
 
+- **S7 Densidad por tamaño (pedido, verbatim).** "ahora me gustaría que lo que es la plaza tenga
+  menos árboles, mas que nada cuando empezas a expandirla ya que siento que se satura mucho, quizá
+  una conversión estilo: 1x1 : 1 arbol, 2X2 : 2 arboles (antes habrian sido 4), 3x3 : 4 o 5
+  arboles y asi". La plaza sola siempre lleva su árbol; dentro de un bloque solo planta la mitad de
+  las celdas (tablero de ajedrez), así que un 2×2 lleva 2, un 3×3 lleva 5, un 4×4 lleva 8 y un
+  10×10 unos 50. Las celdas que quedan sin árbol llevan un banco, para que la plaza no lea vacía.
 ## Tasks
 
 | ID | Specs | Ruta | Estado | Evidencia |
 |----|-------|------|--------|-----------|
 | T1 Copas facetadas y tronco en píxeles | S2, S3, S4 | `src/render/sprites.ts` | hecho | los cuatro árboles comparados a 7x contra las casas |
 | T2 Plazas a escala humana | S5 | `src/render/sprites.ts` | hecho | busto de 9 px, pileta facetada, banco junto al camino |
+| T4 Densidad por tamaño | S7 | `src/render/park.ts`, `src/render/mapRenderer.ts`, `tests/parks.test.ts` | hecho | 1×1 → 1, 2×2 → 2, 3×3 → 5, 4×4 → 8, 10×10 → 50; los bloques mirados a 5x |
 | T3 Verificación en el mapa | S6 | navegador | hecho | plazas plantadas con la herramienta 8 y miradas en el mapa, sin errores de consola |
 
 Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`.
@@ -68,3 +75,9 @@ Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`.
   y el proyecto no tiene DOM en los tests. La verificación de esta feature es visual, y está dicha.
   Un tropiezo propio: un reemplazo con script se comió las funciones que estaban entre `parkSprite`
   y `parkSpriteFor`; se restauró esa región desde `HEAD` (`git show`) antes de seguir.
+- **L8, menos árboles al expandir.** El árbol no lo decide la celda sola: lo decide con sus vecinas.
+  `parkTreeHere` (módulo propio, sin canvas, así se puede probar) devuelve árbol si la celda está
+  sola o si cae en el tablero de ajedrez del bloque. Medido: 1×1 → 1, 2×2 → 2, 3×3 → 5, 4×4 → 8,
+  5×5 → 13, 10×10 → 50. `parkSprite` y `parkSpriteFor` reciben el booleano y la caché lo lleva en la
+  clave (`park:3:bare`), o sea que pasan de 6 a 12 sprites de plaza. Las celdas sin árbol llevan un
+  banco en el vértice donde iba el árbol (menos la variante de la fuente, que ya tiene el suyo).

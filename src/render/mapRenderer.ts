@@ -40,6 +40,7 @@ import {
   treeSpriteFor,
   type Sprite,
 } from './sprites';
+import { parkTreeHere } from './park';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
 const PAD_TOP = MAX_HEIGHT * HEIGHT_STEP + 120;
@@ -561,7 +562,10 @@ export class MapRenderer {
     const [ax, ay] = this.toCache(vx, vy, avg(hs));
     const coast = coastOf(tile);
     if (coast) return { sprite: coastSprite(coast, this.coastVariant(coast, vx, vy, x, y)), ax, ay };
-    if (tile === TILE.PARK) return { sprite: parkSpriteFor(w.variant[i]), ax, ay };
+    if (tile === TILE.PARK) {
+      const tree = parkTreeHere(x, y, (cx, cy) => cx >= 0 && cy >= 0 && cx < n && cy < n && w.tiles[w.idx(cx, cy)] === TILE.PARK);
+      return { sprite: parkSpriteFor(w.variant[i], tree), ax, ay };
+    }
     if (tile === TILE.LINE) return { sprite: poleSpriteFor(), ax, ay };
     const sign = tile === TILE.ROAD && !w.isWater(x, y) ? this.signs.get(i) : undefined;
     if (sign) {

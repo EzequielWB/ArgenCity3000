@@ -675,11 +675,13 @@ function treeSprite(kind: number, v: number): Sprite {
   return done(p);
 }
 
-function parkSprite(v: number): Sprite {
+function parkSprite(v: number, tree: boolean): Sprite {
   const p = painter(1, 30);
   const kind = v % 3;
-  // The tree sits at the far corner of the diamond, where it does not cover the plaza itself.
-  p.tree(0.1, 0.6, 1 + ((v >> 2) % 3));
+  // The tree sits at the far corner of the diamond, where it does not cover the plaza itself; the
+  // cells a block leaves bare get a bench there instead, so a plaza never reads as empty ground.
+  if (tree) p.tree(0.1, 0.6, 1 + ((v >> 2) % 3));
+  else if (kind !== 1) p.bench(0.14, 0.46);
   if (kind === 0) {
     // A monument: stone base and a bronze bust, no taller than a two-storey house.
     p.box(0.5, 0.5, 0.74, 0.74, 0, 2.5, '#d8d2c4', false);
@@ -1030,8 +1032,8 @@ export function treeSpriteFor(kind: number, variant: number): Sprite {
   return cached(`tree${kind}:${variant % 6}`, () => treeSprite(kind, variant % 6));
 }
 
-export function parkSpriteFor(variant: number): Sprite {
-  return cached(`park:${variant % 6}`, () => parkSprite(variant % 6));
+export function parkSpriteFor(variant: number, tree: boolean): Sprite {
+  return cached(`park:${variant % 6}:${tree ? 'tree' : 'bare'}`, () => parkSprite(variant % 6, tree));
 }
 
 export function poleSpriteFor(): Sprite {
