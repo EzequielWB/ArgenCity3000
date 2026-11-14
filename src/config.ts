@@ -54,8 +54,8 @@ export type RoadTier = 0 | 1 | 2;
 export const MAX_ROAD_TIER = ROAD_TIERS.length - 1;
 export const ASPHALT: RoadTier = 0;
 
-/** How far the boulevard's lamps reach, and what they are worth there. */
-export const BOULEVARD = { radius: 2, value: 8, crime: 12 } as const;
+/** How far the boulevard's lamps reach, and how much crime they take out there. */
+export const BOULEVARD = { radius: 2, crime: 12 } as const;
 
 export const COSTS = {
   road: ROAD_TIERS[ASPHALT].cost,

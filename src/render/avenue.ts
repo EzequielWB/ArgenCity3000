@@ -155,6 +155,23 @@ export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: numbe
 export type LaneLine = 'dash' | 'solid' | 'double';
 
 /**
+ * Width of the planted median of a boulevard band, in lanes: three in the middle when the band is
+ * wide enough for a lane on each side of it, fewer when it is narrow, and none at all when the
+ * band has only two lanes (there the median is just the line between them).
+ */
+export function medianCells(lanes: number): number {
+  return lanes >= 3 ? Math.min(3, lanes - 2) : 0;
+}
+
+/** Whether `lane` is part of the planted median of a band of `lanes` lanes. */
+export function isMedianLane(lanes: number, lane: number): boolean {
+  const m = medianCells(lanes);
+  if (m === 0) return false;
+  const first = Math.floor((lanes - m) / 2);
+  return lane >= first && lane < first + m;
+}
+
+/**
  * Whether the boundary between lane `a` and lane `b` of a route strip is its centre line: the one
  * painted solid yellow, with white dashes on the other boundaries of the lanes going each way.
  */

@@ -218,11 +218,10 @@ export function computeCrime(w: World, pop: number): void {
   }
 }
 
-/** Land value: views of the water, plazas, promenades, lighthouses, trees, boulevard lamps and height add; pollution, crime and a saturated street subtract. Needs pollution, crime and congestion first. */
+/** Land value: views of the water, plazas, promenades, lighthouses, trees and height add; pollution, crime and a saturated street subtract. The lamps of a boulevard buy no value here; what they are worth shows in its crime. Needs pollution, crime and congestion first. */
 export function computeLandValue(w: World): void {
   const n = w.n;
   const water = waterDistance(w);
-  const lamps = lampField(w);
   const amenities = new Float32Array(n * n);
   const blight = new Float32Array(n * n);
   for (let i = 0; i < n * n; i++) {
@@ -238,7 +237,6 @@ export function computeLandValue(w: World): void {
       let v = 25;
       if (water[i] > 0 && water[i] < 6) v += (6 - water[i]) * 5;
       v += Math.min(30, amenities[i]);
-      v += BOULEVARD.value * Math.min(1, lamps[i]);
       let trees = 0;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {

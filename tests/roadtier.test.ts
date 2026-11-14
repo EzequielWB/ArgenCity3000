@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { COSTS, ROAD_TIERS } from '../src/config';
 import { computeCrime, computeLandValue } from '../src/sim/fields';
-import { KIND, analyzeRoads, kindOf, tierOf } from '../src/render/avenue';
+import { KIND, analyzeRoads, isMedianLane, kindOf, medianCells, tierOf } from '../src/render/avenue';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { SAVE_VERSION, deserialize, serialize, toBase64 } from '../src/save/save';
 import { isUnlocked } from '../src/sim/milestones';
@@ -191,13 +191,32 @@ describe('what the boulevard lamps are worth', () => {
     expect(lit.crime[lit.idx(20, 6)]).toBe(dark.crime[dark.idx(20, 6)]);
   });
 
-  it('raises the land value within their reach and leaves the rest alone', () => {
+  it('buys no land value: only the crime they take out shows', () => {
     const dark = litTown(0);
     const lit = litTown(2);
     computeLandValue(dark);
     computeLandValue(lit);
-    expect(lit.landValue[lit.idx(20, 9)]).toBeGreaterThan(dark.landValue[dark.idx(20, 9)]);
-    expect(lit.landValue[lit.idx(20, 6)]).toBe(dark.landValue[dark.idx(20, 6)]);
+    expect(lit.landValue[lit.idx(20, 9)]).toBe(dark.landValue[dark.idx(20, 9)]);
+  });
+});
+
+describe('the planted median of a boulevard', () => {
+  const median = (lanes: number) => [...Array(lanes).keys()].filter((lane) => isMedianLane(lanes, lane));
+
+  it('takes the middle three lanes when there is a lane left on each side', () => {
+    expect(median(5)).toEqual([1, 2, 3]);
+    expect(median(7)).toEqual([2, 3, 4]);
+    expect(median(6)).toEqual([1, 2, 3]);
+  });
+
+  it('takes fewer lanes when the band is narrow, and none at all with only two lanes', () => {
+    expect(median(3)).toEqual([1]);
+    expect(median(4)).toEqual([1, 2]);
+    expect(median(2)).toEqual([]);
+    expect(median(1)).toEqual([]);
+    expect(medianCells(3)).toBe(1);
+    expect(medianCells(5)).toBe(3);
+    expect(medianCells(9)).toBe(3);
   });
 });
 

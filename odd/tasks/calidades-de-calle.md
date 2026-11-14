@@ -26,12 +26,18 @@ trazarla y se puede mejorar en el lugar pagando la diferencia.
 - La mejora conserva todo lo demás: acceso a calle, luz, tránsito, el flag de calle heredada de
   los mapas reales y el terreno. No demuele ni crea lotes libres.
 
-### S3 — El bulevar compra valor del suelo y seguridad
+### S3 — El bulevar: cantero de pasto y farolas, sin valor del suelo
 
-- Una celda de bulevar suma valor del suelo y resta delito a las celdas a 2 o menos de distancia,
-  con tope (no se acumula sin límite por cada celda de bulevar vecina).
-- Aceptación: con el resto de la ciudad igual, un barrio con bulevar tiene más valor del suelo y
-  menos delito que el mismo barrio con asfalto.
+> "el bulevar con farolas la verdad que no se nota mucho y no se entiende el bulevar, podrias hacer que la linea del medio sea 3 de ancho? con distintos tonos de verde para notar el pasto, y sacá el nombre "con farolas", y que deje de subir el precio de la tierra alrededor"
+
+- Se llama **Bulevar**, sin "con farolas", en la barra, la ayuda y los documentos.
+- En una avenida de bulevar de **3 carriles o más**, el medio se dibuja como un **cantero de pasto
+  de hasta 3 carriles**, con cordón contra el asfalto y **distintos tonos de verde** por celda. Con
+  2 carriles no hay lugar para el cantero y queda solo la línea verde entre las dos manos.
+- El bulevar **ya no sube el valor del suelo**. Lo único que sigue dando aparte de capacidad son sus
+  farolas, que restan delito a 2 celdas o menos (con tope).
+- Aceptación: con el resto de la ciudad igual, un barrio con bulevar tiene menos delito y **el mismo
+  valor del suelo** que el mismo barrio con asfalto.
 
 ### S4 — Capacidad: 1,0 / 1,6 / 1,8 y manda el eslabón más débil
 
@@ -76,7 +82,9 @@ trazarla y se puede mejorar en el lugar pagando la diferencia.
 
 - Asfalto: como hoy.
 - Pavimento reforzado: asfalto más oscuro y líneas más marcadas.
-- Bulevar: cantero central y farolas cada pocas celdas.
+- Bulevar: cantero de pasto de hasta 3 carriles en el medio de la avenida (con tonos de verde y
+  cordón) y farolas cada pocas celdas. La regla del cantero es `medianCells` / `isMedianLane`
+  (`src/render/avenue.ts`), pura y probada.
 - El minimapa distingue las calidades.
 - Aceptación: en una captura con las tres calidades en el mapa, se distinguen sin leyenda.
 
@@ -94,7 +102,8 @@ línea obligaba a cambiar el formato del presupuesto en el guardado sin que el j
 | T1 Mundo y guardado: `roadTier`, formato 9, validación | S6 | `src/world/world.ts`, `src/save/save.ts`, `tests/roadtier.test.ts` | hecho | RED visto (7 tests del archivo nuevo sin `roadTier`); 7 tests verdes; `save.test.ts` sigue verde |
 | T2 Herramientas: tres calidades, costos, mejora en el lugar, ruta | S1, S2, S5, S7 | `src/config.ts`, `src/world/tools.ts`, `src/game.ts`, `src/ui/toolbar.ts` | hecho | RED visto; 7 tests de construcción/mejora; `toolgroups`, `outlook`, `coast` (la tecla `b` estaba tomada por el tamaño de bloque: el bulevar usa `t`) y `route` (versión 9) actualizados |
 | T3 Congestión: multiplicador y eslabón más débil | S4 | `src/sim/congestion.ts` | hecho | RED visto (2 de 9 rojos); 3 tests nuevos, los 6 viejos siguen verdes |
-| T4 Valor del suelo y delito del bulevar | S3 | `src/sim/fields.ts` | hecho | RED visto (2 rojos); dentro del radio baja el delito y sube el valor, fuera quedan igual |
+| T4 Delito del bulevar (el valor del suelo se sacó en T7) | S3 | `src/sim/fields.ts` | hecho | RED visto (2 rojos); dentro del radio baja el delito, fuera queda igual; el valor del suelo ya no cambia |
+| T7 Bulevar sin "con farolas", cantero de 3 carriles y sin valor del suelo | S3, S8 | `src/config.ts`, `src/world/tools.ts`, `src/render/avenue.ts`, `src/render/mapRenderer.ts`, `src/sim/fields.ts`, `src/ui/panels.ts`, `README.md`, `tests/roadtier.test.ts` | hecho | ver L11 |
 | T5 Dibujo, minimapa, ficha y presupuesto | S8, S9 | `src/render/*`, `src/sim/report.ts`, `src/sim/budget.ts` | hecho | `tierOf` en `avenue.ts` probado (banda por su celda más débil); las tres calidades miradas en el navegador con el `MapRenderer` real: asfalto más claro, reforzado más oscuro, bulevar con cantero verde y farolas |
 | T6 Documentación: README, plan, ayuda en pantalla | S1, S5 | `README.md`, `PLAN-DE-TRABAJO.txt`, `src/ui/panels.ts` | hecho | — |
 
@@ -111,3 +120,8 @@ Runner: `npm test` (Vitest) y `npm run build`. Balance: `npm run probe`.
 - **L7 (2026-11-13), cambio de spec.** S9 pedía separar el mantenimiento de calles por calidad en el presupuesto. Se reescribió ese ítem: el presupuesto cobra cada celda según su calidad dentro de la línea "Calles y puentes" que ya existe. Motivo: separar la línea obliga a agregar campos al presupuesto guardado y a una migración más, y el jugador no gana nada que no pueda leer en la ficha de la celda.
 - **L8 (2026-11-13), verificación del dibujo.** La automatización del navegador de la app dio timeout en `snapshot` y `evaluate` sobre la página del juego, así que la comprobación visual se hizo con una página temporal (`calles-lab.html` + `src/lab/calles.ts`) que arma un mapa con las tres calidades y lo pinta con el `MapRenderer` real; se miró la captura y después se borraron los dos archivos. Resultado: el asfalto es el gris de siempre, el pavimento reforzado es visiblemente más oscuro y el bulevar se distingue por el cantero verde y las farolas. Lo que **no** quedó verificado es el gesto de mejora arrastrando el mouse sobre el mapa con la interfaz real: eso está cubierto por tests de `planTool`/`applyPlan`, no por una prueba manual.
 - **L9 (2026-11-13), cierre.** Commits: `7cbb9fb` (mundo, guardado, herramientas, congestión, campos y sus tests) y `2ebbd19` (dibujo, minimapa, ficha, ayuda y docs). `npm test`: 533 tests en 36 archivos, todos verdes (eran 513 antes; los 20 nuevos están en `tests/roadtier.test.ts`). `npx tsc --noEmit` limpio y `npm run build` en 1,07 s. Pendiente para una próxima: pasar el ojo por el gesto de mejora arrastrando en la interfaz real, y ver si el mantenimiento del bulevar ($8) duele lo suficiente corriendo `npm run probe` con y sin bulevares.
+- **L10 (2026-11-13), pedido del usuario (verbatim):** "el bulevar con farolas la verdad que no se nota mucho y no se entiende el bulevar, podrias hacer que la linea del medio sea 3 de ancho? con distintos tonos de verde para notar el pasto, y sacá el nombre "con farolas", y que deje de subir el precio de la tierra alrededor". Se reescribió S3 y el ítem de dibujo de S8.
+- **L11 (2026-11-13), T7.** El cantero es una regla pura en `avenue.ts`: `medianCells(lanes)` devuelve `min(3, lanes - 2)` con 3 carriles o más y 0 con 2; `isMedianLane` reparte ese ancho en el medio. El renderer pinta la celda entera con uno de cuatro verdes según `world.variant` y dibuja cordón en los bordes que dan al asfalto; las líneas de carril se saltan los bordes que tocan cantero. Con 2 carriles queda la línea verde de antes, porque no hay lugar para el cantero (decisión del padre, no del spec: si el usuario quiere cantero también ahí, hay que ensanchar la avenida).
+  - Los faroles y su efecto sobre el delito quedan; lo que se fue es el valor del suelo: `BOULEVARD.value` desapareció de `config.ts` y de `computeLandValue`, y el test que exigía "sube el valor" ahora exige que **no** lo mueva.
+  - Medido en el navegador headless con el `MapRenderer` real sobre una avenida de 5 carriles de bulevar, muestreando el centro de cada carril: `[[52,51,59],[106,154,78],[121,167,87],[92,139,70],[52,51,59]]` → asfalto, pasto, pasto, pasto, asfalto, con tres verdes distintos. Los archivos temporales se borraron.
+  - Consecuencia de diseño, anotada a propósito: sin valor del suelo, el bulevar solo compra +0,2 de capacidad sobre el pavimento reforzado por $45 de construcción y $5 de mantenimiento más. **Puede quedar dominado**; si al jugarlo no se elige nunca, la palanca es bajar el mantenimiento o subir la capacidad.

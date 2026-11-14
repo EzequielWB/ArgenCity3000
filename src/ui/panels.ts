@@ -434,7 +434,7 @@ export function openHelp(): void {
       <li><strong>Trazá calles</strong> (3) arrastrando. Los lotes necesitan una calle a 3 lotes o menos.
         Si ponés calles pegadas una al lado de la otra, forman una <strong>avenida</strong> con más carriles cuanto más ancha sea, y aguanta más tránsito.
         Hay tres <strong>calidades</strong> y se eligen de una: asfalto (3), pavimento reforzado (R), que entra un 60 % más de tránsito,
-        y bulevar con farolas (T), que entra un 80 % más y además sube el valor del suelo y baja el delito alrededor.
+        y bulevar (T), que entra un 80 % más: en una avenida de tres carriles o más el medio se vuelve un cantero de pasto, y sus farolas bajan el delito alrededor.
         Arrastrá una calidad mejor sobre una calle y se mejora en el lugar: pagás solo la diferencia, sin demoler. Para bajar de calidad hay que demoler.</li>
       <li><strong>Zonificá</strong> residencial (5), comercial (6) e industrial (7) pegado a las calles. Al zonificar, la manzana se nivela sola y las calles hacen de rampa.
         La usina y cada edificio con luz alumbran hasta 3 lotes a su alrededor; para llevar la luz más lejos hace falta el tendido eléctrico (4), que también alumbra 3 lotes a su alrededor. Las calles no llevan luz.</li>
