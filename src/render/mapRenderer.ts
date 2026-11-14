@@ -1040,12 +1040,26 @@ export class MapRenderer {
 
   private drawBridge(vx: number, vy: number, pts: Pt[], hs: readonly number[], i: number): void {
     const g = this.g;
-    // Pillars down to the water, from the deck as this cell draws it: the cells over a bank are
-    // sloped, so their deck sits lower than the flat span over the water.
     const deck = (hs[0] + hs[1] + hs[2] + hs[3]) / 4;
+    // The faces of the deck: one wall from each outer edge down to the water. They are what
+    // closes the gap between the span and the river instead of showing the water through it.
+    for (const [u0, v0, u1, v1, nx, ny] of [
+      [0, 0, 1, 0, vx, vy - 1],
+      [1, 0, 1, 1, vx + 1, vy],
+      [0, 1, 1, 1, vx, vy + 1],
+      [0, 0, 0, 1, vx - 1, vy],
+    ] as [number, number, number, number, number, number][]) {
+      if (this.isRoadView(nx, ny)) continue;
+      const top0 = this.toCache(vx + u0, vy + v0, deck);
+      const top1 = this.toCache(vx + u1, vy + v1, deck);
+      const low0 = this.toCache(vx + u0, vy + v0, SEA_LEVEL);
+      const low1 = this.toCache(vx + u1, vy + v1, SEA_LEVEL);
+      this.poly([top0, top1, low1, low0], '#8c857a');
+    }
+    // Pillars down to the water, under the span.
     if (deck > SEA_LEVEL) {
       const [px, py] = this.toCache(vx + 0.5, vy + 0.5, deck);
-      g.fillStyle = '#8c857a';
+      g.fillStyle = '#6f685e';
       g.fillRect(px - 1.5, py, 3, (deck - SEA_LEVEL) * HEIGHT_STEP);
     }
     this.poly(pts, '#a7a093');

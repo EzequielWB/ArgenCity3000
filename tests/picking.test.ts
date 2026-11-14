@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toView, type Rotation } from '../src/core/iso';
-import { cellScreenCorners, pickCell, surfaceHeights } from '../src/render/geometry';
+import { DECK_HEIGHT, cellScreenCorners, pickCell, surfaceHeights } from '../src/render/geometry';
 import { generateTerrain, SEA_LEVEL } from '../src/world/terrain';
 import { World, TILE } from '../src/world/world';
 
@@ -18,45 +18,29 @@ describe('bridge decks', () => {
     return new World({ n, corners, trees: new Uint8Array(n * n) });
   }
 
-  it('rides flat above the water and lands on the bank it reaches', () => {
+  it('draws the whole span as one flat deck, at the same height everywhere', () => {
     const w = lake();
     for (let x = 2; x <= 14; x++) w.setTile(x, 8, TILE.ROAD);
-    const deck = SEA_LEVEL + 0.75;
-    const bank = SEA_LEVEL + 2;
-    let wet = 0;
-    let ramps = 0;
+    const deck = SEA_LEVEL + DECK_HEIGHT;
+    let bridges = 0;
     for (let x = 2; x <= 14; x++) {
-      if (!w.isWater(x, 8)) {
-        expect(surfaceHeights(w, x, 8, 0)).toEqual([bank, bank, bank, bank]);
-        continue;
-      }
-      wet++;
-      const hs = surfaceHeights(w, x, 8, 0);
-      const landLeft = !w.isWater(x - 1, 8);
-      const landRight = !w.isWater(x + 1, 8);
-      if (!landLeft && !landRight) {
-        expect(hs, `celda ${x}`).toEqual([deck, deck, deck, deck]);
-        continue;
-      }
-      ramps++;
-      // Corner order is top, right, bottom, left: the side that reaches land takes its height.
-      if (landLeft) {
-        expect(hs[0]).toBe(bank);
-        expect(hs[3]).toBe(bank);
-      }
-      if (landRight) {
-        expect(hs[1]).toBe(bank);
-        expect(hs[2]).toBe(bank);
-      }
-      expect(hs.some((h) => h === deck)).toBe(true);
+      if (!w.isWater(x, 8)) continue;
+      bridges++;
+      expect(surfaceHeights(w, x, 8, 0), `celda ${x}`).toEqual([deck, deck, deck, deck]);
     }
-    expect(wet).toBeGreaterThan(2);
-    expect(ramps).toBe(2);
+    expect(bridges).toBeGreaterThan(2);
   });
 
   it('keeps water without a road flat at sea level', () => {
     const w = lake();
     expect(surfaceHeights(w, 7, 3, 0)).toEqual([SEA_LEVEL, SEA_LEVEL, SEA_LEVEL, SEA_LEVEL]);
+  });
+
+  it('does not move the ground under the bridge', () => {
+    const w = lake();
+    const before = w.terrain.corners.slice();
+    for (let x = 2; x <= 14; x++) w.setTile(x, 8, TILE.ROAD);
+    expect(Array.from(w.terrain.corners)).toEqual(Array.from(before));
   });
 });
 

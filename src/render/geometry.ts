@@ -26,36 +26,17 @@ export const DECK_HEIGHT = 0.75;
 
 /**
  * Heights used to draw the cell's surface: water is flat at sea level, building lots are
- * levelled at their highest corner, everything else follows the terrain. A bridge deck is flat
- * over the water, but the cells that reach a bank take the bank's height on that side, so the
- * deck lands on the shore instead of hanging over it.
+ * levelled at their highest corner, everything else follows the terrain. A bridge is one flat
+ * deck, the whole span at the same height: a deck that slopes leaves the water showing between
+ * its cells, and its sides are closed by the renderer with the faces of the deck.
  */
 export function surfaceHeights(w: World, vx: number, vy: number, rot: Rotation): [number, number, number, number] {
   const hs = viewCornerHeights(w, vx, vy, rot);
   const [x, y] = fromView(vx, vy, rot, w.n);
   const i = w.idx(x, y);
   if (w.isWater(x, y)) {
-    if (w.tiles[i] !== TILE.ROAD) return [SEA_LEVEL, SEA_LEVEL, SEA_LEVEL, SEA_LEVEL];
-    const deck = SEA_LEVEL + DECK_HEIGHT;
-    const out: [number, number, number, number] = [deck, deck, deck, deck];
-    const n = w.n;
-    /** The heights of the land cell there, or null when that side is water or off the map. */
-    const bank = (nvx: number, nvy: number): [number, number, number, number] | null => {
-      if (nvx < 0 || nvy < 0 || nvx >= n || nvy >= n) return null;
-      const [bx, by] = fromView(nvx, nvy, rot, n);
-      if (w.isWater(bx, by)) return null;
-      return surfaceHeights(w, nvx, nvy, rot);
-    };
-    // Corner order is top, right, bottom, left: each side pins the two corners it shares.
-    const up = bank(vx, vy - 1);
-    if (up) [out[0], out[1]] = [up[3], up[2]];
-    const right = bank(vx + 1, vy);
-    if (right) [out[1], out[2]] = [right[0], right[3]];
-    const down = bank(vx, vy + 1);
-    if (down) [out[3], out[2]] = [down[0], down[1]];
-    const left = bank(vx - 1, vy);
-    if (left) [out[0], out[3]] = [left[1], left[2]];
-    return out;
+    const deck = w.tiles[i] === TILE.ROAD ? SEA_LEVEL + DECK_HEIGHT : SEA_LEVEL;
+    return [deck, deck, deck, deck];
   }
   if (w.tiles[i] === TILE.PLANT) {
     const p = w.plantAt(x, y);
