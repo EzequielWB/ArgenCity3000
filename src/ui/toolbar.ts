@@ -2,11 +2,11 @@
  * The toolbar: five categories that open a flyout with their tools, plus undo, block size, the
  * layers and the view controls. It only draws and reports clicks; the game decides what happens.
  */
-import { COAST, COSTS, PLANTS, SERVICES } from '../config';
+import { COAST, COSTS, PLANTS, ROAD_TIERS, SERVICES } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { Layer } from '../render/view';
 import { MILESTONES, isUnlocked, milestoneOfTool } from '../sim/milestones';
-import { TOOL_GROUPS, groupOfTool, isCoastTool, isServiceTool, plantKindOfTool, toolInfo, type ToolGroup, type ToolId } from '../world/tools';
+import { TOOL_GROUPS, groupOfTool, isCoastTool, isServiceTool, plantKindOfTool, roadTierOfTool, toolInfo, type ToolGroup, type ToolId } from '../world/tools';
 import { escapeHtml } from './dom';
 import { TOOL_ICONS } from './icons';
 
@@ -14,11 +14,11 @@ import { TOOL_ICONS } from './icons';
 export function toolPrice(tool: ToolId): number | null {
   const plant = plantKindOfTool(tool);
   if (plant) return PLANTS[plant].cost;
+  const tier = roadTierOfTool(tool);
+  if (tier !== null) return ROAD_TIERS[tier].cost;
   if (isServiceTool(tool)) return SERVICES[tool].cost;
   if (isCoastTool(tool)) return COAST[tool].cost;
   switch (tool) {
-    case 'road':
-      return COSTS.road;
     case 'line':
       return COSTS.line;
     case 'park':

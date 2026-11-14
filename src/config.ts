@@ -37,9 +37,28 @@ export const WEEKS_PER_MONTH = 4;
 export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
 export const START_YEAR = 1990;
 
+/**
+ * Quality of every street cell, in the order the player can build them. `capacity` multiplies the
+ * lanes a cell carries (see `sim/congestion.ts`); a band of streets carries by its weakest cell.
+ * The index is what `World.roadTier` and the save store, so the first one has to stay asphalt.
+ */
+export const ROAD_TIERS = [
+  { label: 'Asfalto', cost: 10, upkeep: 1, capacity: 1 },
+  { label: 'Pavimento reforzado', cost: 30, upkeep: 3, capacity: 1.6 },
+  { label: 'Bulevar', cost: 75, upkeep: 8, capacity: 1.8 },
+] as const;
+
+/** Index into `ROAD_TIERS`: 0 asphalt, 1 reinforced pavement, 2 boulevard. */
+export type RoadTier = 0 | 1 | 2;
+export const MAX_ROAD_TIER = ROAD_TIERS.length - 1;
+export const ASPHALT: RoadTier = 0;
+
+/** How far the boulevard's lamps reach, and what they are worth there. */
+export const BOULEVARD = { radius: 2, value: 8, crime: 12 } as const;
+
 export const COSTS = {
-  road: 10,
-  bridge: 60,
+  road: ROAD_TIERS[ASPHALT].cost,
+  bridge: 60, 
   line: 5,
   zone: 5,
   park: 20,
@@ -51,7 +70,7 @@ export const COSTS = {
 
 /** Monthly upkeep. */
 export const UPKEEP = {
-  road: 1,
+  road: ROAD_TIERS[ASPHALT].upkeep,
   bridge: 4,
   line: 0.3,
   park: 2,

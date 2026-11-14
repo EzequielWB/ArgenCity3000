@@ -3,7 +3,7 @@
  * bar, how many months the cash lasts, the upkeep shown when choosing a building, and the
  * newspaper's cause headlines. No DOM and no simulation state in here.
  */
-import { COAST, COAST_KINDS, FIXED_SHARE, LINE_REACH, PLANTS, POWER_REACH, SERVICES, type PlantKind, type ServiceKind } from '../config';
+import { COAST, COAST_KINDS, FIXED_SHARE, LINE_REACH, PLANTS, POWER_REACH, ROAD_TIERS, SERVICES, type PlantKind, type RoadTier, type ServiceKind } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { BudgetReport } from './budget';
 
@@ -76,11 +76,14 @@ export function serviceUpkeepRange(kind: ServiceKind): { min: number; max: numbe
 }
 
 const PLANT_OF_TOOL: Record<string, PlantKind | undefined> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
+const ROAD_TIER_OF_TOOL: Record<string, RoadTier | undefined> = { road: 0, roadPaved: 1, roadBoulevard: 2 };
 
 /** The upkeep part of the placement tooltip for a tool, or null when the tool has none worth showing. */
 export function placementUpkeep(tool: string): string | null {
   const plant = PLANT_OF_TOOL[tool];
   if (plant) return `mantenimiento ${formatMoney(PLANTS[plant].upkeep)}/mes`;
+  const tier = ROAD_TIER_OF_TOOL[tool];
+  if (tier !== undefined) return `mantenimiento ${formatMoney(ROAD_TIERS[tier].upkeep)}/mes`;
   if (tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire') {
     return `mantenimiento desde ${formatMoney(serviceUpkeepRange(tool).min)}/mes`;
   }

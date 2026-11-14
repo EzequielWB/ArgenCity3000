@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COSTS, ROUTE } from '../src/config';
-import { deserialize, serialize } from '../src/save/save';
+import { SAVE_VERSION, deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { newSimState } from '../src/sim/simulation';
 import { UndoHistory } from '../src/world/history';
@@ -355,10 +355,10 @@ describe('real-place worlds', () => {
 describe('saving the route', () => {
   const save = (w: World) => JSON.parse(serialize({ name: 'Ruta', seed: SEED, world: w, sim: newSimState(SEED) }));
 
-  it('writes version 8 and reads the route back as it was', () => {
+  it('writes the current version and reads the route back as it was', () => {
     const w = southWorld();
     const data = save(w);
-    expect(data.version).toBe(8);
+    expect(data.version).toBe(SAVE_VERSION);
     const back = deserialize(JSON.stringify(data)).world;
     expect(Array.from(back.route)).toEqual(Array.from(w.route));
     expect(back.route.some((v) => v)).toBe(true);

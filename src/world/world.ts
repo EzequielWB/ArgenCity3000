@@ -97,6 +97,11 @@ export class World {
    * and on cities without a route, which then have no restriction at all.
    */
   readonly route: Uint8Array;
+  /**
+   * Quality of each street cell: an index into `ROAD_TIERS` (0 = asphalt). Zero on every cell that
+   * is not a street, and a cell that stops being a street loses it, like `inherited`.
+   */
+  readonly roadTier: Uint8Array;
   /** Ticks left of a fire burning in the cell (0 = no fire). */
   readonly fire: Uint8Array;
   plants: Plant[] = [];
@@ -131,6 +136,7 @@ export class World {
     this.abandoned = new Uint8Array(size);
     this.inherited = new Uint8Array(size);
     this.route = new Uint8Array(size);
+    this.roadTier = new Uint8Array(size);
     this.fire = new Uint8Array(size);
     this.crime = new Uint8Array(size);
     this.edu = new Uint8Array(size);
@@ -172,6 +178,7 @@ export class World {
     this.level[i] = level;
     this.abandoned[i] = 0;
     this.inherited[i] = 0;
+    this.roadTier[i] = 0;
     this.fire[i] = 0;
     this.markDirty(i);
   }

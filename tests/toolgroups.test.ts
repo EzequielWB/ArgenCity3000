@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COSTS, PLANTS, SERVICES } from '../src/config';
+import { COSTS, PLANTS, ROAD_TIERS, SERVICES } from '../src/config';
 import { toolPrice } from '../src/ui/toolbar';
 import { TOOLS, TOOL_GROUPS, groupOfTool } from '../src/world/tools';
 
@@ -13,7 +13,7 @@ describe('tool groups', () => {
   it('has the six categories of the toolbar, in order', () => {
     expect(TOOL_GROUPS.map((g) => [g.label, g.tools])).toEqual([
       ['Consulta', ['query', 'bulldoze']],
-      ['Calles y luz', ['road', 'line']],
+      ['Calles y luz', ['road', 'roadPaved', 'roadBoulevard', 'line']],
       ['Zonas', ['zoneR', 'zoneC', 'zoneI', 'park']],
       ['Servicios', ['school', 'clinic', 'police', 'fire']],
       ['Usinas', ['plant', 'plantGas', 'plantWind']],
@@ -31,6 +31,8 @@ describe('tool groups', () => {
 describe('tool prices in the toolbar', () => {
   it('shows what one lot or one building costs', () => {
     expect(toolPrice('road')).toBe(COSTS.road);
+    expect(toolPrice('roadPaved')).toBe(ROAD_TIERS[1].cost);
+    expect(toolPrice('roadBoulevard')).toBe(ROAD_TIERS[2].cost);
     expect(toolPrice('line')).toBe(COSTS.line);
     expect(toolPrice('zoneC')).toBe(COSTS.zone);
     expect(toolPrice('park')).toBe(COSTS.park);

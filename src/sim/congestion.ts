@@ -4,7 +4,7 @@
  * jobs), and what passes over a street is compared with what the street can carry. Streets laid
  * side by side form an avenue, which carries as many times more as it has lanes.
  */
-import { CAPACITY, COAST, ROAD_REACH, TRAFFIC } from '../config';
+import { CAPACITY, COAST, ROAD_REACH, ROAD_TIERS, TRAFFIC } from '../config';
 import { TILE, type World } from '../world/world';
 import { coastWorks } from './coast';
 
@@ -130,8 +130,9 @@ export function computeCongestion(w: World): CongestionReport {
   const raw = new Float32Array(size);
   for (const r of routes) for (let i = 0; i < size; i++) raw[i] += r.load[i];
 
-  // Capacity: the lanes of the avenue a cell belongs to. A cell's street runs along its longer
-  // run of asphalt; its lanes are the cells beside it that run the same way.
+  // Capacity: the lanes of the avenue a cell belongs to, each one carrying what its quality says.
+  // A cell's street runs along its longer run of asphalt; its lanes are the cells beside it that
+  // run the same way, and the band carries by its weakest cell.
   const isRoad = (j: number) => j >= 0 && j < size && w.tiles[j] === TILE.ROAD;
   // Length of the run of asphalt through each cell, along x and along y (one sweep each).
   const runX = new Uint16Array(size);
@@ -163,15 +164,18 @@ export function computeCongestion(w: World): CongestionReport {
     const runsAlong = (j: number) => (isRoad(j - along) && (!alongX || sameRow(j, j - along))) || (isRoad(j + along) && (!alongX || sameRow(j, j + along)));
     let lanes = 1;
     let carried = raw[i];
+    let tier = w.roadTier[i];
     for (const dir of [-across, across]) {
       let j = i + dir;
       while (lanes < MAX_LANES && isRoad(j) && (alongX || sameRow(j, i)) && runsAlong(j)) {
         lanes++;
         carried += raw[j];
+        tier = Math.min(tier, w.roadTier[j]);
         j += dir;
       }
     }
-    const pct = Math.min(255, Math.round((100 * carried) / (lanes * TRAFFIC.laneCapacity)));
+    const capacity = lanes * TRAFFIC.laneCapacity * ROAD_TIERS[tier].capacity;
+    const pct = Math.min(255, Math.round((100 * carried) / capacity));
     w.traffic[i] = pct;
     if (pct > 100) saturated[i] = 1;
     if (pct > worst) worst = pct;

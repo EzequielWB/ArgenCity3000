@@ -1,4 +1,4 @@
-import { CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
+import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf } from '../world/world';
 import { coastWorks } from './coast';
@@ -31,6 +31,20 @@ export function computeRoadAccess(w: World): void {
     }
   }
   for (let i = 0; i < n * n; i++) w.roadAccess[i] = dist[i] >= 0 ? 1 : 0;
+}
+
+/**
+ * How much the boulevard lamps reach each cell: 1 on a boulevard cell, fading to 0 at the edge of
+ * `BOULEVARD.radius`. Where boulevards overlap it stays at 1: two rows of lamps are not twice the light.
+ */
+function lampField(w: World): Float32Array {
+  const n = w.n;
+  const lamps = new Float32Array(n * n);
+  if (!w.roadTier.includes(2)) return lamps;
+  for (let i = 0; i < n * n; i++) {
+    if (w.tiles[i] === TILE.ROAD && w.roadTier[i] === 2) splat(lamps, n, i % n, Math.floor(i / n), BOULEVARD.radius, 1);
+  }
+  return lamps;
 }
 
 function splat(acc: Float32Array, n: number, cx: number, cy: number, radius: number, strength: number): void {
@@ -180,6 +194,7 @@ export function computeServices(w: World, funding: Readonly<ServiceFunding> = DE
  */
 export function computeCrime(w: World, pop: number): void {
   const n = w.n;
+  const lamps = lampField(w);
   const cityFactor = Math.min(1, pop / 2500);
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
@@ -197,15 +212,17 @@ export function computeCrime(w: World, pop: number): void {
       }
       const i = y * n + x;
       const raw = density * cityFactor;
-      w.crime[i] = clamp100(raw * (1 - (0.85 * w.safety[i]) / 100));
+      const shade = BOULEVARD.crime * Math.min(1, lamps[i]);
+      w.crime[i] = clamp100(Math.max(0, raw * (1 - (0.85 * w.safety[i]) / 100) - shade));
     }
   }
 }
 
-/** Land value: views of the water, plazas, promenades, lighthouses, trees and height add; pollution, crime and a saturated street subtract. Needs pollution, crime and congestion first. */
+/** Land value: views of the water, plazas, promenades, lighthouses, trees, boulevard lamps and height add; pollution, crime and a saturated street subtract. Needs pollution, crime and congestion first. */
 export function computeLandValue(w: World): void {
   const n = w.n;
   const water = waterDistance(w);
+  const lamps = lampField(w);
   const amenities = new Float32Array(n * n);
   const blight = new Float32Array(n * n);
   for (let i = 0; i < n * n; i++) {
@@ -221,6 +238,7 @@ export function computeLandValue(w: World): void {
       let v = 25;
       if (water[i] > 0 && water[i] < 6) v += (6 - water[i]) * 5;
       v += Math.min(30, amenities[i]);
+      v += BOULEVARD.value * Math.min(1, lamps[i]);
       let trees = 0;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {

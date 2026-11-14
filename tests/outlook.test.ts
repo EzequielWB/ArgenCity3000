@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FIXED_SHARE, SERVICES, TICKS_PER_MONTH } from '../src/config';
+import { FIXED_SHARE, ROAD_TIERS, SERVICES, TICKS_PER_MONTH } from '../src/config';
 import type { BudgetReport } from '../src/sim/budget';
 import {
   describeOutlook,
@@ -110,10 +110,12 @@ describe('placement text', () => {
     }
   });
 
-  it('shows the minimum upkeep for services and the fixed one for the plant', () => {
+  it('shows the minimum upkeep for services, the fixed one for the plant and the one of each street quality', () => {
     expect(placementUpkeep('school')).toBe(`mantenimiento desde $ ${Math.round(SERVICES.school.upkeep * FIXED_SHARE)}/mes`);
     expect(placementUpkeep('plant')).toBe('mantenimiento $ 350/mes');
-    expect(placementUpkeep('road')).toBeNull();
+    expect(placementUpkeep('road')).toBe('mantenimiento $ 1/mes');
+    expect(placementUpkeep('roadPaved')).toBe(`mantenimiento $ ${ROAD_TIERS[1].upkeep}/mes`);
+    expect(placementUpkeep('roadBoulevard')).toBe(`mantenimiento $ ${ROAD_TIERS[2].upkeep}/mes`);
     expect(placementUpkeep('zoneR')).toBeNull();
   });
 

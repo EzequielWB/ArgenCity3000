@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAPACITY, TRAFFIC } from '../src/config';
+import { CAPACITY, ROAD_TIERS, TRAFFIC } from '../src/config';
 import { computeCongestion, jamGrowthFactor } from '../src/sim/congestion';
 import { computeLandValue } from '../src/sim/fields';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
@@ -40,6 +40,35 @@ describe('estimated congestion', () => {
     // Lots feel the traffic of the street they open onto; land far from any street feels none.
     expect(w.jam[w.idx(7, 9)]).toBe(expected);
     expect(w.jam[w.idx(20, 30)]).toBe(0);
+  });
+
+  it('multiplies what one lane carries by the quality of the street', () => {
+    for (const tier of [0, 1, 2] as const) {
+      const w = commuterTown(1);
+      for (let x = 0; x <= 30; x++) w.roadTier[w.idx(x, 10)] = tier;
+      computeCongestion(w);
+      expect(w.traffic[w.idx(15, 10)]).toBe(Math.round((100 * residents) / (TRAFFIC.laneCapacity * ROAD_TIERS[tier].capacity)));
+    }
+  });
+
+  it('counts a band by its weakest cell, so a boulevard next to asphalt carries like asphalt', () => {
+    const asphalt = commuterTown(2);
+    const mixed = commuterTown(2);
+    mixed.roadTier[mixed.idx(15, 11)] = 2;
+    computeCongestion(asphalt);
+    computeCongestion(mixed);
+    expect(mixed.traffic[mixed.idx(15, 10)]).toBe(asphalt.traffic[asphalt.idx(15, 10)]);
+    expect(mixed.traffic[mixed.idx(15, 11)]).toBe(asphalt.traffic[asphalt.idx(15, 11)]);
+  });
+
+  it('lets a pair of boulevards carry two 1.8 lanes worth', () => {
+    const w = commuterTown(2);
+    for (let x = 0; x <= 30; x++) {
+      w.roadTier[w.idx(x, 10)] = 2;
+      w.roadTier[w.idx(x, 11)] = 2;
+    }
+    computeCongestion(w);
+    expect(w.traffic[w.idx(15, 10)]).toBe(Math.round((100 * residents) / (2 * TRAFFIC.laneCapacity * ROAD_TIERS[2].capacity)));
   });
 
   it('lets an avenue carry more: the same commuters on two lanes are half the congestion', () => {

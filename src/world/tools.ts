@@ -1,10 +1,10 @@
-import { COAST, COSTS, PLANTS, PLANT_SIZE, SERVICES, type CoastKind, type PlantKind, type ServiceKind } from '../config';
+import { ASPHALT, COAST, COSTS, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
 import { TILE, World, coastTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
+export type ToolId = 'query' | 'bulldoze' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -19,7 +19,9 @@ export interface ToolInfo {
 export const TOOLS: readonly ToolInfo[] = [
   { id: 'query', label: 'Consulta', key: '1', shape: 'point', help: 'Clic en el mapa para ver la ficha del lote.' },
   { id: 'bulldoze', label: 'Topadora', key: '2', shape: 'rect', help: 'Arrastrá para demoler. Se paga por lote.' },
-  { id: 'road', label: 'Calle', key: '3', shape: 'line', help: 'Arrastrá para trazar. Sobre el agua se hace puente.' },
+  { id: 'road', label: 'Calle de asfalto', key: '3', shape: 'line', help: 'Arrastrá para trazar. Sobre el agua se hace puente.' },
+  { id: 'roadPaved', label: 'Pavimento reforzado', key: 'r', shape: 'line', help: 'Calle de asfalto más resistente: entra un 60 % más de tránsito y cuesta más mantener. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
+  { id: 'roadBoulevard', label: 'Bulevar con farolas', key: 't', shape: 'line', help: 'La calle de más capacidad, con cantero y farolas: sube el valor del suelo y baja el delito alrededor. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
   { id: 'line', label: 'Tendido eléctrico', key: '4', shape: 'line', help: 'Lleva la luz por terrenos vacíos y sobre el agua.' },
   { id: 'zoneR', label: 'Residencial', key: '5', shape: 'rect', help: 'Zona para viviendas. Necesita luz y calle cerca.' },
   { id: 'zoneC', label: 'Comercial', key: '6', shape: 'rect', help: 'Zona para comercios y oficinas.' },
@@ -67,7 +69,7 @@ export interface ToolGroup {
 /** The toolbar's categories: every tool belongs to exactly one, in the order it is listed. */
 export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'query', label: 'Consulta', tools: ['query', 'bulldoze'] },
-  { id: 'network', label: 'Calles y luz', tools: ['road', 'line'] },
+  { id: 'network', label: 'Calles y luz', tools: ['road', 'roadPaved', 'roadBoulevard', 'line'] },
   { id: 'zones', label: 'Zonas', tools: ['zoneR', 'zoneC', 'zoneI', 'park'] },
   { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire'] },
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
@@ -143,6 +145,18 @@ export interface Plan {
   cost: number;
 }
 
+/** The quality of street a tool builds, or null for any other tool. */
+export function roadTierOfTool(tool: ToolId): RoadTier | null {
+  if (tool === 'road') return 0;
+  if (tool === 'roadPaved') return 1;
+  if (tool === 'roadBoulevard') return 2;
+  return null;
+}
+
+export function isRoadTool(tool: ToolId): boolean {
+  return roadTierOfTool(tool) !== null;
+}
+
 function zoneKindOfTool(tool: ToolId): ZoneKind | null {
   if (tool === 'zoneR') return 'R';
   if (tool === 'zoneC') return 'C';
@@ -174,7 +188,7 @@ function sideNeighbours(w: World, x: number, y: number): number[] {
 export function routeRefusal(w: World, tool: ToolId, x: number, y: number): string | null {
   if (tool === 'query' || !w.inBounds(x, y)) return null;
   if (w.route[w.idx(x, y)]) return ROUTE_UNTOUCHABLE;
-  if (tool !== 'road') return null;
+  if (!isRoadTool(tool)) return null;
   const connected = connectedToRoute(w);
   if (!connected) return null;
   const t = w.tiles[w.idx(x, y)];
@@ -190,8 +204,9 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
   const plantsSeen = new Set<object>();
   const zone = zoneKindOfTool(tool);
   const plantKind = plantKindOfTool(tool);
+  const tier = roadTierOfTool(tool);
   // With a route, a street is only accepted next to a street that comes from it, or to the cell accepted before it.
-  const connected = tool === 'road' ? connectedToRoute(w) : null;
+  const connected = tier !== null ? connectedToRoute(w) : null;
   let previous = -1;
 
   if (plantKind) {
@@ -209,16 +224,26 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     if (w.route[i]) continue;
     const t = w.tiles[i];
     const water = w.isWater(x, y);
+    // A better street over an existing one is an upgrade in place: only the difference is charged.
+    if (tier !== null && t === TILE.ROAD) {
+      const was = w.roadTier[i] as RoadTier;
+      if (tier > was) {
+        out.push([x, y]);
+        cost += ROAD_TIERS[tier].cost - ROAD_TIERS[was].cost;
+      }
+      continue;
+    }
+    if (tier !== null) {
+      if (isFreeLot(w, x, y) || t === TILE.LINE) {
+        if (connected && !sideNeighbours(w, x, y).some((j) => connected[j] || j === previous)) continue;
+        out.push([x, y]);
+        previous = i;
+        // A bridge is a surcharge: asphalt on water still costs exactly COSTS.bridge.
+        cost += water ? COSTS.bridge + ROAD_TIERS[tier].cost - ROAD_TIERS[ASPHALT].cost : ROAD_TIERS[tier].cost;
+      }
+      continue;
+    }
     switch (tool) {
-      case 'road':
-        if (t === TILE.ROAD) break;
-        if (isFreeLot(w, x, y) || t === TILE.LINE) {
-          if (connected && !sideNeighbours(w, x, y).some((j) => connected[j] || j === previous)) break;
-          out.push([x, y]);
-          previous = i;
-          cost += water ? COSTS.bridge : COSTS.road;
-        }
-        break;
       case 'line':
         if (t === TILE.EMPTY) {
           out.push([x, y]);
@@ -280,14 +305,23 @@ export function applyPlan(w: World, plan: Plan): void {
   if (plan.cells.length === 0) return;
   const zone = zoneKindOfTool(plan.tool);
   const plantKind = plantKindOfTool(plan.tool);
+  const tier = roadTierOfTool(plan.tool);
   for (const [x, y] of plan.cells) {
     const i = w.idx(x, y);
     if (w.route[i]) continue;
-    switch (plan.tool) {
-      case 'road':
+    if (tier !== null) {
+      // An upgrade keeps the cell as it is: same tile, same inherited flag, same trees.
+      if (w.tiles[i] === TILE.ROAD) {
+        w.roadTier[i] = tier;
+        w.markDirty(i);
+      } else {
         w.setTile(x, y, TILE.ROAD);
+        w.roadTier[i] = tier;
         w.terrain.trees[i] = 0;
-        break;
+      }
+      continue;
+    }
+    switch (plan.tool) {
       case 'line':
         w.setTile(x, y, TILE.LINE);
         w.terrain.trees[i] = 0;
