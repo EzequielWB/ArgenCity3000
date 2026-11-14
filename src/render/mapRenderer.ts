@@ -496,7 +496,7 @@ export class MapRenderer {
 
     if (water) {
       this.drawWater(vx, vy, x, y);
-      if (tile === TILE.ROAD) this.drawBridge(vx, vy, pts, i);
+      if (tile === TILE.ROAD) this.drawBridge(vx, vy, pts, hs, i);
     } else if (hs[0] === hs[1] && hs[1] === hs[2] && hs[2] === hs[3] && isPlatform(w, i)) {
       this.drawPlatform(vx, vy, hs[0], tile);
     } else {
@@ -1038,14 +1038,13 @@ export class MapRenderer {
     }
   }
 
-  private drawBridge(vx: number, vy: number, pts: Pt[], i: number): void {
+  private drawBridge(vx: number, vy: number, pts: Pt[], hs: readonly number[], i: number): void {
     const g = this.g;
-    // Pillars down to the water.
-    const deck = SEA_LEVEL + 0.75;
-    for (const [u, v] of [
-      [0.5, 0.5],
-    ]) {
-      const [px, py] = this.toCache(vx + u, vy + v, deck);
+    // Pillars down to the water, from the deck as this cell draws it: the cells over a bank are
+    // sloped, so their deck sits lower than the flat span over the water.
+    const deck = (hs[0] + hs[1] + hs[2] + hs[3]) / 4;
+    if (deck > SEA_LEVEL) {
+      const [px, py] = this.toCache(vx + 0.5, vy + 0.5, deck);
       g.fillStyle = '#8c857a';
       g.fillRect(px - 1.5, py, 3, (deck - SEA_LEVEL) * HEIGHT_STEP);
     }
