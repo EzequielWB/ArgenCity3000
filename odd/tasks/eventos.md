@@ -58,8 +58,8 @@ que ya existen leen sin enterarse.
 | --- | --- | --- | --- | --- |
 | T1 | Las palancas: efectos con vencimiento y su lectura en crecimiento, demanda, costa, valor del suelo, luz y sliders | S1–S7, S10, S12, S13 | `src/sim/effects.ts`, `src/sim/simulation.ts`, `src/sim/budget.ts`, `src/sim/fields.ts`, `src/save/save.ts`, `src/ui/panels.ts`, `src/game.ts` | `2893b3f` |
 | T2 | Tests de las palancas | S1–S7, S10, S12, S13 | `tests/efectos.test.ts` | `2893b3f` |
-| T3 | El catálogo: quince eventos con sus condiciones y sus dos salidas | S8, S9, S11 | `src/sim/events.ts` | `_` |
-| T4 | Tests del catálogo: cada evento aparece cuando debe y cada opción hace lo que promete | S8–S11 | `tests/eventos.test.ts` | `_` |
+| T3 | El catálogo: quince eventos con sus condiciones y sus dos salidas | S8, S9, S11 | `src/sim/events.ts` | `00b8adf` |
+| T4 | Tests del catálogo: cada evento aparece cuando debe y cada opción hace lo que promete | S8–S11 | `tests/eventos.test.ts` | `00b8adf` |
 
 ## Log
 
