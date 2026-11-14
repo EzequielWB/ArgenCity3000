@@ -91,6 +91,12 @@ export class World {
    * the player's own (building a street over a street changes nothing).
    */
   readonly inherited: Uint8Array;
+  /**
+   * 1 on the cells of the provincial route of a generated map (an ordinary road that cannot be
+   * touched and costs nothing; see `odd/tasks/ruta-provincial.md`). All zeros on real-place maps
+   * and on cities without a route, which then have no restriction at all.
+   */
+  readonly route: Uint8Array;
   /** Ticks left of a fire burning in the cell (0 = no fire). */
   readonly fire: Uint8Array;
   plants: Plant[] = [];
@@ -124,6 +130,7 @@ export class World {
     this.variant = new Uint8Array(size);
     this.abandoned = new Uint8Array(size);
     this.inherited = new Uint8Array(size);
+    this.route = new Uint8Array(size);
     this.fire = new Uint8Array(size);
     this.crime = new Uint8Array(size);
     this.edu = new Uint8Array(size);
