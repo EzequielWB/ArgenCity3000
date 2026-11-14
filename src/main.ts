@@ -11,6 +11,7 @@ import { $, toast } from './ui/dom';
 import { installOrnaments } from './ui/filete';
 import { PHRASES, nextPhrase } from './ui/phrases';
 import { closeModal, initModal, isModalOpen, openBudget, openGovernment, openHelp, openSaves } from './ui/panels';
+import { openTutorialAsk } from './ui/tutorial';
 import { MAP_KINDS, generateMap, type MapKind } from './world/mapkinds';
 import type { Terrain } from './world/terrain';
 import { TOOLS } from './world/tools';
@@ -138,8 +139,11 @@ function launch(data: SaveData): void {
   game = new Game(data, { isModalOpen, sound, leave: showStart });
   if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
   if (data.sim.tick === 0) {
-    // The city opens with its founding window: who governs it, and under what name.
-    if (!data.sim.party) openGovernment(game);
+    // The city opens with the offer of a tutorial and then its founding window: who governs it, and under what name.
+    if (!data.sim.party) {
+      const founding = game;
+      openTutorialAsk(() => openGovernment(founding));
+    }
     const streets = data.world.route.some((v) => v) ? 'una calle que salga de la ruta (3)' : 'unas calles (3)';
     toast(data.mayor ? `¡Arranca la gestión de ${data.mayor}! Empezá por una usina (9) y ${streets}.` : `¡Bienvenido, Intendente! Empezá por una usina (9) y ${streets}.`);
   }
