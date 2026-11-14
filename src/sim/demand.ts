@@ -1,5 +1,6 @@
 import { CAPACITY, DEFAULT_TAX, MAX_LEVEL, type ZoneTaxes } from '../config';
 import { World, zoneOf, type ZoneKind } from '../world/world';
+import { addCoastJobs } from './coast';
 
 export interface Totals {
   pop: number;
@@ -11,7 +12,10 @@ export type Demand = Record<ZoneKind, number>;
 
 export function cityTotals(w: World): Totals {
   const t: Totals = { pop: 0, cJobs: 0, iJobs: 0 };
-  for (let i = 0; i < w.tiles.length; i++) if (w.isOccupied(i)) addBuilding(t, w.tiles[i], w.level[i], 1);
+  for (let i = 0; i < w.tiles.length; i++) {
+    if (w.isOccupied(i)) addBuilding(t, w.tiles[i], w.level[i], 1);
+    else addCoastJobs(t, w, i);
+  }
   return t;
 }
 

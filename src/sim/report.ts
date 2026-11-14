@@ -1,8 +1,28 @@
-import { CAPACITY, DEFAULT_TAX, FIRE_SAFE_COVER, LINE_REACH, PLANTS, POWER_REACH, ROAD_REACH, SERVICES, TRAFFIC, WIND, type ServiceKind } from '../config';
+import {
+  CAPACITY,
+  COAST,
+  COAST_APPROVAL,
+  COAST_FIELDS,
+  DEFAULT_TAX,
+  FIRE_SAFE_COVER,
+  FISHING_SALES,
+  LINE_REACH,
+  PLANTS,
+  PORT_TAX_BOOST,
+  POWER_REACH,
+  ROAD_REACH,
+  SERVICES,
+  TRAFFIC,
+  WIND,
+  type CoastKind,
+  type ServiceKind,
+} from '../config';
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
-import { TILE, World, serviceOf, zoneOf, type ZoneKind } from '../world/world';
+import { TILE, World, coastOf, serviceOf, zoneOf, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
+import { dateOf } from './calendar';
+import { coastWorks, seasonOf, tourismFor, type Season } from './coast';
 import { SERVICE_NEED, TAX_DEMAND_POINTS, levelCap } from './demand';
 import { residentsServed, utilization } from './fields';
 import { plantCapacity } from './plants';
@@ -98,6 +118,8 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
       hint: w.powered[i] ? undefined : noLightHint(sim, 'Necesita luz', 'la'),
     };
   }
+  const coast = coastOf(tile);
+  if (coast) return describeCoast(w, sim, i, coast);
   if (tile === TILE.PARK) return { title: 'Plaza', lines: [height, `Valor del suelo: ${w.landValue[i]}/100`], hint: 'Las plazas suben el valor del suelo alrededor.' };
 
   if (zone && level > 0 && w.fire[i]) {
@@ -136,6 +158,52 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
 
   lines.push(height, `Valor del suelo: ${w.landValue[i]}/100`, `Contaminación: ${w.pollution[i]}/100`);
   return { title: w.terrain.trees[i] ? 'Arboleda' : 'Terreno libre', lines };
+}
+
+const SEASON_NAMES: Record<Season, string> = { peak: 'Temporada alta (verano)', shoulder: 'Entretemporada', low: 'Temporada baja' };
+
+/** The card of a building of the coast: what it does, whether it works and, if not, why. */
+function describeCoast(w: World, sim: Simulation, i: number, kind: CoastKind): CellReport {
+  const info = COAST[kind];
+  const upkeep = `Mantenimiento: $${formatNumber(info.upkeep)} por mes`;
+  const works = coastWorks(w, i);
+  const needsStreet = kind === 'fishing' || kind === 'port' || kind === 'resort';
+  const idle: CellReport = {
+    title: info.label,
+    lines: [`Sin calle cerca: no funciona`, upkeep],
+    hint: `Sin una calle a menos de ${ROAD_REACH} lotes no da trabajo ni rinde nada. Trazá una calle que llegue hasta acá.`,
+  };
+  if (needsStreet && !works) return idle;
+  const lines: string[] = [];
+  switch (kind) {
+    case 'fishing':
+      lines.push(`Funcionando: ${info.jobs} puestos de trabajo industriales`, `Ventas de pescado: $${formatNumber(FISHING_SALES)} por mes`);
+      break;
+    case 'port':
+      lines.push(
+        `Funcionando: ${info.jobs} puestos de trabajo industriales`,
+        `Las tasas industriales rinden un ${Math.round(PORT_TAX_BOOST.perPort * 100)} % más por puerto, hasta ${Math.round(PORT_TAX_BOOST.max * 100)} %`,
+        `Contaminación local: ${w.pollution[i]}/100`,
+      );
+      break;
+    case 'resort': {
+      const month = dateOf(sim.state.tick).month;
+      lines.push(`Funcionando: ${info.jobs} puestos de trabajo comerciales`, `${SEASON_NAMES[seasonOf(month)]}: turismo de $${formatNumber(tourismFor(month))} por mes`);
+      break;
+    }
+    case 'promenade':
+      lines.push(
+        `Valor del suelo: ${w.landValue[i]}/100`,
+        `Sube el valor del suelo hasta ${COAST_FIELDS.promenadeValue.radius} lotes a la redonda`,
+        `Suma a la aprobación: 1 punto cada ${COAST_APPROVAL.promenadeLots} lotes de costanera, hasta ${COAST_APPROVAL.promenadeMax}`,
+      );
+      break;
+    case 'lighthouse':
+      lines.push(`Suma ${COAST_APPROVAL.lighthouse} puntos a la aprobación de los vecinos`, `Sube el valor del suelo hasta ${COAST_FIELDS.lighthouseValue.radius} lotes a la redonda`);
+      break;
+  }
+  lines.push(upkeep);
+  return { title: info.label, lines };
 }
 
 /** What to do about a cell with no light: it must be within the reach of the plant or of a lit building, or get a power line. */

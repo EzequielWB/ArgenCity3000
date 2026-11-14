@@ -46,6 +46,21 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   police: svg(
     '<path d="M5 24V13l11-5.5L27 13v11l-11 5.5z" fill="#3f5f8a" stroke="#1f1611" stroke-width="1"/><path d="M5 18l11 5.5L27 18" stroke="#f4f0e6" stroke-width="2" fill="none"/><rect x="11" y="3" width="5" height="3" fill="#2f63e0"/><rect x="16" y="3" width="5" height="3" fill="#e03a2f"/>',
   ),
+  fishing: svg(
+    '<path d="M2 20l14-7 14 7-14 7z" fill="#4f8fb0"/><path d="M2 20l14 7 14-7" stroke="#cfe6ec" stroke-width="1" fill="none"/><path d="M7 21l14-7 3 1.5-14 7z" fill="#a9763f" stroke="#5a3a22" stroke-width="1"/><path d="M9 24v4M15 21v4M21 18v4" stroke="#5a3a22" stroke-width="1.8"/><path d="M20 22q5 3.5 10 0l-2 3.5q-3 1-6 0z" fill="#c8462f" stroke="#5a1a14" stroke-width=".8"/><path d="M25 22v-7l3 5z" fill="#f4f0e6"/>',
+  ),
+  promenade: svg(
+    '<path d="M3 21l13-6.5L29 21l-13 6.5z" fill="#d6cdbb"/><path d="M9 21.5l7-3.5 7 3.5M13 23.5l3-1.5" stroke="#b9ae9a" stroke-width="1" fill="none"/><path d="M3 21l13 6.5L29 21" stroke="#7a6a58" stroke-width="1.4" fill="none"/><path d="M3 16.5l13 6.5 13-6.5" stroke="#efe9dc" stroke-width="1.6" fill="none"/><path d="M3 16.5v4.5M10 20v4.5M16 23v4.5M22 20v4.5M29 16.5v4.5" stroke="#efe9dc" stroke-width="1.2"/><path d="M25 5v13" stroke="#5a5560" stroke-width="1.8"/><circle cx="25" cy="4.5" r="3.2" fill="#ffe08a" stroke="#5a5560" stroke-width="1"/>',
+  ),
+  port: svg(
+    '<path d="M2 23l14-7 14 7-14 7z" fill="#b9b2a4"/><path d="M4 22v-5l5-2.5 5 2.5v5l-5 2.5z" fill="#c8462f" stroke="#5a1a14" stroke-width=".8"/><path d="M13 25v-5l5-2.5 5 2.5v5l-5 2.5z" fill="#3f6f9f" stroke="#1f3a52" stroke-width=".8"/><path d="M9 14v-5l5-2.5 5 2.5v5z" fill="#e0a526" stroke="#5a3a22" stroke-width=".8" transform="translate(0 2)"/><path d="M24 26V5M29 23V8M22 6h9" stroke="#e0a526" stroke-width="2.2"/><path d="M22 6l-4 5" stroke="#e0a526" stroke-width="1.6"/><path d="M18 11v4" stroke="#3a2a20" stroke-width="1"/>',
+  ),
+  resort: svg(
+    '<path d="M2 22l14-7 14 7-14 7z" fill="#e2cc94"/><path d="M2 22l14 7 14-7" stroke="#cfe6ec" stroke-width="1" fill="none"/><path d="M7 14q8-9 16 0z" fill="#e0453a"/><path d="M11 14q1.5-8 5-9.5M19 14q-1.5-8-5-9.5" stroke="#f4f0e6" stroke-width="1.6" fill="none"/><path d="M15 5v18" stroke="#5a3a22" stroke-width="1.6"/><path d="M19 24l5-2.5 5 2.5v3l-5 2.5-5-2.5z" fill="#a9763f" stroke="#5a3a22" stroke-width=".8"/><path d="M18 24l6-3 6 3" fill="#e9c46a" stroke="#8a6a22" stroke-width=".8"/>',
+  ),
+  lighthouse: svg(
+    '<path d="M3 26l13-6.5L29 26l-13 6.5z" fill="#e2cc94"/><path d="M11 27l2-17h6l2 17z" fill="#f4f0e6" stroke="#5a3a22" stroke-width="1"/><path d="M12.2 21.5l.4-4.5h6.8l.4 4.5zM13.2 14.5l.4-3h4.8l.4 3z" fill="#c8392f"/><path d="M12 10h8v-2.5h-8z" fill="#5a5560"/><rect x="13.5" y="4.5" width="5" height="3" fill="#ffd84a"/><path d="M12.5 4.5l3.5-3.5 3.5 3.5z" fill="#c8392f"/><path d="M22 6l7-2M22 6l7 2.5M10 6l-7-2M10 6l-7 2.5" stroke="#ffd84a" stroke-width="1.2" opacity=".8"/>',
+  ),
   fire: svg(
     '<path d="M4 24v-9l11-5.5L26 15v9l-11 5.5z" fill="#b8322a" stroke="#5a1a14" stroke-width="1"/><path d="M6 23v-5l4 2v5zM12 26v-5l4 2v5z" fill="#efe6d8"/><path d="M20 12V4h6v11z" fill="#a52b24"/><path d="M22.5 10c-2-2 0-4 1-6 1 2 3 3 1 6z" fill="#ffd84a"/>',
   ),

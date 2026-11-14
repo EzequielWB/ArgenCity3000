@@ -10,7 +10,8 @@ import { View, type Layer } from './render/view';
 import type { SaveData } from './save/save';
 import { saveToSlot } from './save/slots';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
-import { dateLabel, weekLabel } from './sim/calendar';
+import { dateLabel, dateOf, weekLabel } from './sim/calendar';
+import { coastRefusal } from './sim/coast';
 import { isUnlocked, nextMilestone, unlockNames } from './sim/milestones';
 import { describeOutlook, placementNote, placementUpkeep } from './sim/outlook';
 import { windOutput } from './sim/plants';
@@ -21,7 +22,7 @@ import { APPROVAL, nextElectionYear } from './sim/politics';
 import { openApproval, openElectionLost, openElectionWon, openMilestone } from './ui/panels';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
-import { applyPlan, dragCells, planTool, plantFootprint, plantKindOfTool, toolInfo, type ToolId } from './world/tools';
+import { applyPlan, dragCells, isCoastTool, planTool, plantFootprint, plantKindOfTool, toolInfo, type ToolId } from './world/tools';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
 
@@ -55,6 +56,11 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   clinic: 'rgba(60,180,110,0.55)',
   police: 'rgba(63,95,138,0.6)',
   fire: 'rgba(200,50,40,0.55)',
+  fishing: 'rgba(169,118,63,0.6)',
+  promenade: 'rgba(214,205,187,0.65)',
+  port: 'rgba(224,165,38,0.55)',
+  resort: 'rgba(226,100,80,0.5)',
+  lighthouse: 'rgba(240,240,235,0.65)',
 };
 
 const STALL_LABELS = { shortage: 'apagones', taxes: 'tasas altas', blight: 'abandono' } as const;
@@ -363,13 +369,14 @@ export class Game implements PointerTarget {
   dragEnd(): void {
     if (!this.dragFrom || !this.dragTo) return this.dragCancel();
     const plan = planTool(this.world, this.tool, this.cellsFor(this.dragFrom, this.dragTo));
+    const target = this.dragTo;
     this.dragFrom = null;
     this.dragTo = null;
     this.view.preview = null;
     this.hideTooltip();
     if (plan.cells.length === 0) {
       this.hooks.sound.play('deny');
-      toast(this.tool === 'bulldoze' ? 'No hay nada para demoler ahí' : 'No se puede construir ahí', true);
+      toast(this.refusalAt(target) ?? (this.tool === 'bulldoze' ? 'No hay nada para demoler ahí' : 'No se puede construir ahí'), true);
       return;
     }
     if (!this.sim.spend(plan.cost)) {
@@ -432,6 +439,11 @@ export class Game implements PointerTarget {
     this.minimapDirty = true;
   }
 
+  /** Why the coast tool in hand cannot build on a cell, or null (other tools, or a lot that is merely taken). */
+  private refusalAt(cell: [number, number]): string | null {
+    return isCoastTool(this.tool) ? coastRefusal(this.world, this.tool, cell[0], cell[1]) : null;
+  }
+
   private cellsFor(a: [number, number], b: [number, number]): [number, number][] {
     return dragCells(this.tool, a[0], a[1], b[0], b[1], this.block, this.world.n);
   }
@@ -452,7 +464,7 @@ export class Game implements PointerTarget {
     tip.style.left = `${mx}px`;
     tip.style.top = `${my}px`;
     if (plan.cells.length === 0) {
-      tip.textContent = this.tool === 'bulldoze' ? 'Nada para demoler' : 'No se puede acá';
+      tip.textContent = this.refusalAt(b) ?? (this.tool === 'bulldoze' ? 'Nada para demoler' : 'No se puede acá');
       tip.classList.add('bad');
     } else if (plan.cost > this.sim.state.cash) {
       tip.textContent = `${formatMoney(plan.cost)} · no alcanza`;
@@ -611,7 +623,7 @@ ${stalled}` : ''}`;
     const s = this.sim.state;
     const now = performance.now();
     if (force || !this.outlookBudget || now - this.outlookAt > 400) {
-      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan);
+      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month);
       this.outlookAt = now;
     }
     const o = describeOutlook(this.outlookBudget, s.cash);

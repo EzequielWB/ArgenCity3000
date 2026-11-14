@@ -17,6 +17,9 @@ export interface CitySnapshot {
   abandoned: number;
   /** Kind of the municipal loan being paid off, or null. Only the kind: the amount and the term come from `LOANS`. */
   loan: number | null;
+  /** Ports and resorts on the map, working or not. */
+  ports: number;
+  resorts: number;
 }
 
 /** Built lots (level above 0, not burning) of each basic zone. */
@@ -63,6 +66,7 @@ const CUT_NEWS: Record<ServiceKind, (pct: number) => string> = {
 export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: string): string[] {
   const out: string[] = [];
   if (prev.plants === 0 && next.plants > 0) out.push(`¡Hay luz! Se inauguró la primera usina de ${city}`);
+  if (prev.ports === 0 && next.ports > 0) out.push(`Zarparon los primeros barcos: ${city} ya tiene su puerto de carga`);
   if (prev.pop === 0 && next.pop > 0) out.push(`Llegaron los primeros vecinos a ${city}: ya hay mate en la vereda`);
   for (const m of MILESTONES) {
     if (prev.pop < m && next.pop >= m) out.push(`${city} ya supera los ${formatNumber(m)} habitantes`);
@@ -91,6 +95,11 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   }
   for (const k of SERVICE_KINDS) {
     if (prev.funding[k] >= DEEP_CUT && next.funding[k] < DEEP_CUT) out.push(CUT_NEWS[k](next.funding[k]));
+  }
+  // `next.month` is the month that has just begun.
+  if (next.resorts > 0 && prev.month !== next.month) {
+    if (next.month === 12) out.push(`Arranca la temporada: los balnearios de ${city} esperan turistas`);
+    if (next.month === 3) out.push(`Terminó la temporada: los balnearios de ${city} se vacían hasta el verano`);
   }
   if (prev.month === 12 && next.month === 1) {
     out.push(`Balance ${prev.year}: ${formatNumber(next.pop)} habitantes y ${formatMoney(next.cash)} en la caja`);

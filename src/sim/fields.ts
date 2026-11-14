@@ -1,6 +1,7 @@
-import { CAPACITY, DEFAULT_FUNDING, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
+import { CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { TILE, World, serviceOf } from '../world/world';
+import { coastWorks } from './coast';
 
 const clamp100 = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
 
@@ -45,13 +46,15 @@ function splat(acc: Float32Array, n: number, cx: number, cy: number, radius: num
   }
 }
 
-/** Industry and power plants pollute their surroundings, each kind of plant in its own measure. */
+/** Industry, working ports and power plants pollute their surroundings, each kind of plant in its own measure. */
 export function computePollution(w: World): void {
   const n = w.n;
   const acc = new Float32Array(n * n);
   for (let i = 0; i < n * n; i++) {
     if (w.tiles[i] === TILE.I && w.level[i] > 0) {
       splat(acc, n, i % n, Math.floor(i / n), 4, 10 * w.level[i]);
+    } else if (w.tiles[i] === TILE.PORT && coastWorks(w, i)) {
+      splat(acc, n, i % n, Math.floor(i / n), COAST_FIELDS.portSmoke.radius, COAST_FIELDS.portSmoke.strength);
     }
   }
   for (const p of w.plants) {
@@ -199,14 +202,17 @@ export function computeCrime(w: World, pop: number): void {
   }
 }
 
-/** Land value: views of the water, plazas, trees and height add; pollution, crime and a saturated street subtract. Needs pollution, crime and congestion first. */
+/** Land value: views of the water, plazas, promenades, lighthouses, trees and height add; pollution, crime and a saturated street subtract. Needs pollution, crime and congestion first. */
 export function computeLandValue(w: World): void {
   const n = w.n;
   const water = waterDistance(w);
-  const parks = new Float32Array(n * n);
+  const amenities = new Float32Array(n * n);
   const blight = new Float32Array(n * n);
   for (let i = 0; i < n * n; i++) {
-    if (w.tiles[i] === TILE.PARK) splat(parks, n, i % n, Math.floor(i / n), 4, 14);
+    const t = w.tiles[i];
+    if (t === TILE.PARK) splat(amenities, n, i % n, Math.floor(i / n), 4, 14);
+    else if (t === TILE.PROMENADE) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.promenadeValue.radius, COAST_FIELDS.promenadeValue.strength);
+    else if (t === TILE.LIGHTHOUSE) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.lighthouseValue.radius, COAST_FIELDS.lighthouseValue.strength);
     if (w.abandoned[i] && w.level[i] > 0) splat(blight, n, i % n, Math.floor(i / n), 2, 8);
   }
   for (let y = 0; y < n; y++) {
@@ -214,7 +220,7 @@ export function computeLandValue(w: World): void {
       const i = y * n + x;
       let v = 25;
       if (water[i] > 0 && water[i] < 6) v += (6 - water[i]) * 5;
-      v += Math.min(30, parks[i]);
+      v += Math.min(30, amenities[i]);
       let trees = 0;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {

@@ -1,5 +1,5 @@
 import { PAL, shade } from './color';
-import type { PlantKind, ServiceKind } from '../config';
+import type { CoastKind, PlantKind, ServiceKind } from '../config';
 import type { ZoneKind } from '../world/world';
 
 /**
@@ -656,6 +656,252 @@ function poleSprite(): Sprite {
   p.g.fillRect(x - 0.8, y - 18, 1.6, 18);
   p.g.fillRect(x - 5, y - 17, 10, 1.4);
   return done(p, [0, 8 - 17]);
+}
+
+/**
+ * Edges of a view cell, in the order of the bits of an edge mask: back-right (v = 0), front-right
+ * (u = 1), front-left (v = 1) and back-left (u = 0), each as its two end points in footprint units.
+ */
+const EDGES: readonly [number, number, number, number][] = [
+  [0, 0, 1, 0],
+  [1, 0, 1, 1],
+  [0, 1, 1, 1],
+  [0, 0, 0, 1],
+];
+
+/** Pulls a footprint coordinate a little towards the middle of the lot, so a rail stays inside it. */
+const inset = (t: number) => t + (0.5 - t) * 0.14;
+
+function lamp(p: Painter, u: number, v: number): void {
+  const g = p.g;
+  const [x, y] = p.P(u, v, 0);
+  g.fillStyle = '#4a4650';
+  g.fillRect(x - 0.7, y - 15, 1.4, 15);
+  g.fillRect(x - 1.6, y - 1.4, 3.2, 1.4);
+  blob(g, x, y - 16.5, 2.4, 2.1, '#ffe08a');
+}
+
+/**
+ * Low railing and lamp posts along the edges of a promenade lot that face the water (bits 1 to 8
+ * of `variant`; bit 16 asks for a lamp). The paving itself is the ground, drawn by the map renderer.
+ */
+function promenadeRail(variant: number): Sprite {
+  const p = painter(1, 24);
+  const g = p.g;
+  const edges = [0, 3, 1, 2].filter((k) => variant & (1 << k));
+  for (const k of edges) {
+    const [u0, v0, u1, v1] = EDGES[k].map(inset) as [number, number, number, number];
+    const a = p.P(u0, v0, 0);
+    const b = p.P(u1, v1, 0);
+    g.strokeStyle = '#efe9dc';
+    g.lineWidth = 1.2;
+    for (const z of [3.2, 6.2]) {
+      g.beginPath();
+      g.moveTo(a[0], a[1] - z);
+      g.lineTo(b[0], b[1] - z);
+      g.stroke();
+    }
+    g.lineWidth = 1.6;
+    for (const t of [0, 0.5, 1]) {
+      const x = a[0] + (b[0] - a[0]) * t;
+      const y = a[1] + (b[1] - a[1]) * t;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x, y - 6.6);
+      g.stroke();
+    }
+  }
+  if (variant & 16 && edges.length) {
+    const [u0, v0, u1, v1] = EDGES[edges[0]].map(inset) as [number, number, number, number];
+    lamp(p, (u0 + u1) / 2, (v0 + v1) / 2);
+  }
+  return done(p);
+}
+
+/** Fishing pier: a wooden jetty across the lot to the water edge `dir` (an index of `EDGES`), with pilings, crates and a moored boat. */
+function fishingPier(dir: number): Sprite {
+  const p = painter(1, 26);
+  const g = p.g;
+  const [eu0, ev0, eu1, ev1] = EDGES[dir];
+  const du = inset((eu0 + eu1) / 2) - 0.5;
+  const dv = inset((ev0 + ev1) / 2) - 0.5;
+  const alongU = Math.abs(du) > Math.abs(dv);
+  // The deck runs the whole lot, from the dry side to the water; `at` is a point on its axis (-1 dry end, 1 water end).
+  const at = (t: number): [number, number] => [0.5 + du * t, 0.5 + dv * t];
+  const half = 0.13;
+  const [u0, u1] = alongU ? [0.5 - Math.abs(du), 0.5 + Math.abs(du)] : [0.5 - half, 0.5 + half];
+  const [v0, v1] = alongU ? [0.5 - half, 0.5 + half] : [0.5 - Math.abs(dv), 0.5 + Math.abs(dv)];
+  for (const t of [-0.8, -0.27, 0.27, 0.8]) {
+    const [pu, pv] = at(t);
+    const [ou, ov] = alongU ? [0, 0.15] : [0.15, 0];
+    p.box(pu - 0.05 - ou, pv - 0.05 - ov, pu + 0.05 - ou, pv + 0.05 - ov, 0, 5, '#4a2f1a', false);
+    p.box(pu - 0.05 + ou, pv - 0.05 + ov, pu + 0.05 + ou, pv + 0.05 + ov, 0, 5, '#4a2f1a', false);
+  }
+  p.box(u0, v0, u1, v1, 5, 1.8, '#b5824a');
+  g.strokeStyle = '#7a5530';
+  g.lineWidth = 0.6;
+  for (let k = 1; k < 8; k++) {
+    const t = k / 8;
+    const a = alongU ? p.P(u0 + (u1 - u0) * t, v0, 6.8) : p.P(u0, v0 + (v1 - v0) * t, 6.8);
+    const b = alongU ? p.P(u0 + (u1 - u0) * t, v1, 6.8) : p.P(u1, v0 + (v1 - v0) * t, 6.8);
+    g.beginPath();
+    g.moveTo(a[0], a[1]);
+    g.lineTo(b[0], b[1]);
+    g.stroke();
+  }
+  // Crates at the dry end and a rowing boat tied up beside the water end.
+  const [cu, cv] = at(-0.75);
+  p.box(cu - 0.09, cv - 0.09, cu + 0.09, cv + 0.09, 6.8, 4.5, '#c9a45a');
+  const [bu, bv] = at(0.45);
+  const [bx, by] = p.P(bu - dv * 1.05, bv + du * 1.05, 2);
+  g.beginPath();
+  g.moveTo(bx - 9, by - 4);
+  g.quadraticCurveTo(bx, by + 6, bx + 9, by - 4);
+  g.closePath();
+  g.fillStyle = '#c8462f';
+  g.fill();
+  g.strokeStyle = '#5a1a14';
+  g.lineWidth = 0.8;
+  g.stroke();
+  g.strokeStyle = '#f4f0e6';
+  g.lineWidth = 1.2;
+  g.beginPath();
+  g.moveTo(bx - 7.5, by - 3);
+  g.quadraticCurveTo(bx, by + 4.2, bx + 7.5, by - 3);
+  g.stroke();
+  g.strokeStyle = '#6b4a2e';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(bx, by - 2);
+  g.lineTo(bx, by - 13);
+  g.stroke();
+  g.fillStyle = '#f4f0e6';
+  g.beginPath();
+  g.moveTo(bx, by - 13);
+  g.lineTo(bx + 6, by - 7);
+  g.lineTo(bx, by - 5);
+  g.closePath();
+  g.fill();
+  return done(p);
+}
+
+/** Cargo port: a quay with stacked containers and a gantry crane. */
+function port(): Sprite {
+  const p = painter(1, 58);
+  p.box(0.02, 0.02, 0.98, 0.98, 0, 3, '#aaa293', false);
+  const stack = (u0: number, v0: number, u1: number, v1: number, colors: string[]) => {
+    colors.forEach((c, k) => p.box(u0, v0, u1, v1, 3 + k * 5.2, 5.2, c));
+  };
+  stack(0.08, 0.58, 0.46, 0.92, ['#c8462f', '#3f6f9f']);
+  stack(0.54, 0.6, 0.92, 0.92, ['#e0a526', '#2f9a55', '#c8462f']);
+  stack(0.55, 0.28, 0.9, 0.5, ['#3f6f9f']);
+  // Gantry crane: two legs, a beam along u, a cab and a hanging spreader.
+  p.box(0.07, 0.1, 0.15, 0.18, 3, 38, '#e0a526');
+  p.box(0.83, 0.1, 0.91, 0.18, 3, 38, '#e0a526');
+  p.box(0.05, 0.08, 0.93, 0.2, 41, 3.4, '#e0a526');
+  p.box(0.42, 0.06, 0.62, 0.22, 44.4, 6, '#c8462f');
+  p.right(0.62, 0.08, 0.2, 46, 49, PAL.glassDark);
+  const g = p.g;
+  const [cx, cy] = p.P(0.52, 0.14, 41);
+  g.strokeStyle = '#3a2a20';
+  g.lineWidth = 0.8;
+  g.beginPath();
+  g.moveTo(cx - 2, cy);
+  g.lineTo(cx - 2, cy + 12);
+  g.moveTo(cx + 2, cy);
+  g.lineTo(cx + 2, cy + 12);
+  g.stroke();
+  p.box(0.44, 0.1, 0.6, 0.18, 29, 3, '#3a2a20', false);
+  return done(p);
+}
+
+function umbrella(p: Painter, u: number, v: number, color: string): void {
+  const g = p.g;
+  const [x, y] = p.P(u, v, 0);
+  g.fillStyle = '#6b4a2e';
+  g.fillRect(x - 0.6, y - 14, 1.2, 14);
+  const rx = 7.5;
+  const ry = 3.4;
+  const cy = y - 11;
+  const wedges = 6;
+  for (let k = 0; k < wedges; k++) {
+    const a0 = Math.PI * (k / wedges);
+    const a1 = Math.PI * ((k + 1) / wedges);
+    g.beginPath();
+    g.moveTo(x, cy - 4.5);
+    g.lineTo(x - Math.cos(a0) * rx, cy + Math.sin(a0) * ry);
+    g.lineTo(x - Math.cos(a1) * rx, cy + Math.sin(a1) * ry);
+    g.closePath();
+    g.fillStyle = k % 2 ? '#f4f0e6' : color;
+    g.fill();
+  }
+}
+
+/** Beach resort: a thatched bar with an awning, umbrellas and sun loungers on the sand. */
+function resort(): Sprite {
+  const p = painter(1, 38);
+  p.box(0.5, 0.08, 0.92, 0.46, 0, 9, '#f1e3c6');
+  p.left(0.46, 0.56, 0.86, 2, 7.5, PAL.glassDark);
+  p.hipRoof(0.46, 0.04, 0.96, 0.5, 9, 5.5, '#c9a45a');
+  p.awning(0.46, 0.5, 0.92, 8.6, '#e0453a', '#f4f0e6', 5);
+  p.box(0.12, 0.62, 0.3, 0.74, 0, 1.4, '#f4f0e6');
+  p.box(0.55, 0.7, 0.73, 0.82, 0, 1.4, '#f4f0e6');
+  umbrella(p, 0.22, 0.38, '#e0453a');
+  umbrella(p, 0.3, 0.78, '#3f8fe0');
+  umbrella(p, 0.68, 0.64, '#e0b542');
+  return done(p);
+}
+
+/** Lighthouse: a tapered tower banded red and white, a gallery and a lit lantern under a red cap. */
+function lighthouse(): Sprite {
+  const p = painter(1, 100);
+  const g = p.g;
+  p.box(0.18, 0.18, 0.82, 0.82, 0, 3, '#aaa293', false);
+  const bands = 5;
+  const bandH = 13;
+  for (let k = 0; k < bands; k++) {
+    p.cylinder(0.5, 0.5, 0.27 - k * 0.018, 3 + k * bandH, bandH, k % 2 ? '#c8392f' : '#f4f0e6');
+  }
+  const top = 3 + bands * bandH;
+  p.cylinder(0.5, 0.5, 0.27, top, 3, '#4a4650');
+  const [lx, ly] = p.P(0.5, 0.5, top + 3);
+  const glow = g.createRadialGradient(lx, ly - 5, 1, lx, ly - 5, 20);
+  glow.addColorStop(0, 'rgba(255,230,120,0.55)');
+  glow.addColorStop(1, 'rgba(255,230,120,0)');
+  g.fillStyle = glow;
+  g.fillRect(lx - 22, ly - 28, 44, 46);
+  p.cylinder(0.5, 0.5, 0.14, top + 3, 9, '#ffd84a');
+  const [cx, cy] = p.P(0.5, 0.5, top + 12);
+  g.beginPath();
+  g.moveTo(cx - 6.4, cy);
+  g.lineTo(cx, cy - 10);
+  g.lineTo(cx + 6.4, cy);
+  g.closePath();
+  g.fillStyle = '#c8392f';
+  g.fill();
+  g.strokeStyle = shade('#c8392f', 0.5);
+  g.lineWidth = 0.6;
+  g.stroke();
+  return done(p);
+}
+
+/**
+ * Sprite of a coast building. `variant` is the mask of the water edges of the lot (see `EDGES`) for
+ * the promenade (plus bit 16 for a lamp) and the index of the edge the jetty runs to for the fishing pier.
+ */
+export function coastSprite(kind: CoastKind, variant = 0): Sprite {
+  switch (kind) {
+    case 'promenade':
+      return cached(`coast:promenade:${variant}`, () => promenadeRail(variant));
+    case 'fishing':
+      return cached(`coast:fishing:${variant}`, () => fishingPier(variant));
+    case 'port':
+      return cached('coast:port', port);
+    case 'resort':
+      return cached('coast:resort', resort);
+    case 'lighthouse':
+      return cached('coast:lighthouse', lighthouse);
+  }
 }
 
 /** Same building, emptied: darker, washed out, with boarded windows. */

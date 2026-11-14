@@ -193,6 +193,8 @@ describe('headlinesFor', () => {
     cash: 1000,
     abandoned: 0,
     loan: null,
+    ports: 0,
+    resorts: 0,
   };
 
   it('announces the first plant and the first residents', () => {

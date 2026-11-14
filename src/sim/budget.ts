@@ -1,5 +1,6 @@
 import { DEFAULT_FUNDING, FIXED_SHARE, ROAD_REACH, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import { coastBudget, portTaxBoost } from './coast';
 import { cityTotals, zoneTaxes } from './demand';
 import { utilization } from './fields';
 import { loanInstalment, loanPaidOff, type Loan } from './loans';
@@ -21,6 +22,10 @@ export interface BudgetReport {
   firefighters: number;
   /** This month's loan instalment; zero when the city owes nothing. */
   loan: number;
+  /** Upkeep of the buildings of the coast (docks, promenade, port, resort, lighthouse). */
+  coast: number;
+  /** Fish sold by the docks and tourism at the resorts. */
+  coastIncome: number;
   income: number;
   expenses: number;
   balance: number;
@@ -60,9 +65,10 @@ export function serviceUpkeep(kind: ServiceKind, utilization: number): number {
 /**
  * The month's income and expenses. `tax` is per zone, or one number for every zone. `loan` is the
  * credit being paid off, if any: its instalment is an expense like any other, so the balance, the
- * runway and the newspaper all account for it without knowing about loans.
+ * runway and the newspaper all account for it without knowing about loans. `month` (1 to 12) sets the
+ * tourism season of the resorts; without it the tourism is the average of the year.
  */
-export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING, loan: Loan | null = null): BudgetReport {
+export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readonly<ServiceFunding> = DEFAULT_FUNDING, loan: Loan | null = null, month?: number): BudgetReport {
   const taxes = zoneTaxes(tax);
   const t = cityTotals(w);
   let roads = 0;
@@ -89,7 +95,8 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
   }
   const taxR = Math.round(t.pop * taxes.R * 0.055);
   const taxC = Math.round(t.cJobs * taxes.C * 0.075);
-  const taxI = Math.round(t.iJobs * taxes.I * 0.075);
+  const coast = coastBudget(w, month);
+  const taxI = Math.round(t.iJobs * taxes.I * 0.075 * portTaxBoost(coast.ports));
   const funded = (k: ServiceKind) => Math.round((upkeep[k] * funding[k]) / 100);
   const loanDue = loan && !loanPaidOff(loan) ? loanInstalment(loan) : 0;
   const r = {
@@ -106,8 +113,10 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
     police: funded('police'),
     firefighters: funded('fire'),
     loan: loanDue,
+    coast: coast.upkeep,
+    coastIncome: coast.income,
   };
-  const income = r.taxR + r.taxC + r.taxI;
-  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan;
+  const income = r.taxR + r.taxC + r.taxI + r.coastIncome;
+  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan + r.coast;
   return { ...r, income, expenses, balance: income - expenses };
 }

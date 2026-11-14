@@ -21,6 +21,7 @@ import { World, zoneOf, type ZoneKind } from '../world/world';
 import { buildingName } from './report';
 import { monthlyBudget, type BudgetReport } from './budget';
 import { cumulativeShare, dateLabel, dateOf } from './calendar';
+import { countCoast } from './coast';
 import { computeCongestion, jamGrowthFactor, type CongestionReport } from './congestion';
 import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computePollution, computeRoadAccess, computeServices } from './fields';
@@ -445,7 +446,7 @@ export class Simulation {
   private settleWeek(): void {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
-    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan).balance, week);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month).balance, week);
     s.cash += due - this.monthPaid;
     this.monthPaid = due;
     s.crisis = s.cash < 0;
@@ -459,7 +460,7 @@ export class Simulation {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
     if (week === 0) return 0;
-    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month).balance, Math.min(week, WEEKS_PER_MONTH - 1));
   }
 
   /** Counts the instalment this month paid, and closes the loan once the term is done. */
@@ -476,7 +477,8 @@ export class Simulation {
     this.fireNews = 0;
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan);
+    // The tick already belongs to the next month: the season is the one of the month that just ended.
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month);
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
@@ -580,6 +582,7 @@ export class Simulation {
     const { month, year } = dateOf(this.state.tick);
     let buildings = 0;
     for (let i = 0; i < this.world.level.length; i++) if (this.world.level[i] > 0) buildings++;
+    const coast = countCoast(this.world);
     return {
       pop: this.totals.pop,
       buildings,
@@ -594,6 +597,8 @@ export class Simulation {
       abandoned: this.abandonedCount,
       // Only the kind: a copy would go stale as `advanceLoan` moves `paid`, and the rest comes from `LOANS`.
       loan: this.state.loan ? this.state.loan.kind : null,
+      ports: coast.port,
+      resorts: coast.resort,
     };
   }
 

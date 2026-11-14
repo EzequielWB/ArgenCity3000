@@ -4,8 +4,9 @@
  * jobs), and what passes over a street is compared with what the street can carry. Streets laid
  * side by side form an avenue, which carries as many times more as it has lanes.
  */
-import { CAPACITY, ROAD_REACH, TRAFFIC } from '../config';
+import { CAPACITY, COAST, ROAD_REACH, TRAFFIC } from '../config';
 import { TILE, type World } from '../world/world';
+import { coastWorks } from './coast';
 
 export interface CongestionReport {
   /** Residents who commute: those whose home opens onto a street, in a city with jobs. */
@@ -102,8 +103,15 @@ export function computeCongestion(w: World): CongestionReport {
   let iJobs = 0;
   for (let i = 0; i < size; i++) {
     const o = origin[i];
-    if (o < 0 || !w.isOccupied(i)) continue;
+    if (o < 0) continue;
     const tile = w.tiles[i];
+    // A working port is a place of work for the industry's share of the commuters.
+    if (tile === TILE.PORT && coastWorks(w, i)) {
+      sinksI[o] = 1;
+      iJobs += COAST.port.jobs;
+      continue;
+    }
+    if (!w.isOccupied(i)) continue;
     if (tile === TILE.R) {
       sources[o] += CAPACITY.R[w.level[i]];
       trips += CAPACITY.R[w.level[i]];

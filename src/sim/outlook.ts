@@ -3,7 +3,7 @@
  * bar, how many months the cash lasts, the upkeep shown when choosing a building, and the
  * newspaper's cause headlines. No DOM and no simulation state in here.
  */
-import { FIXED_SHARE, LINE_REACH, PLANTS, POWER_REACH, SERVICES, type PlantKind, type ServiceKind } from '../config';
+import { COAST, COAST_KINDS, FIXED_SHARE, LINE_REACH, PLANTS, POWER_REACH, SERVICES, type PlantKind, type ServiceKind } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { BudgetReport } from './budget';
 
@@ -56,14 +56,15 @@ export function describeOutlook(b: BudgetReport, cash: number): Outlook {
   const publicServices = b.schools + b.clinics + b.police + b.firefighters;
   const lines = [
     'Estimación de un mes con la ciudad como está hoy',
-    `Ingresos: ${money(b.income)} (viviendas ${money(b.taxR)}, comercios ${money(b.taxC)}, fábricas ${money(b.taxI)})`,
+    `Ingresos: ${money(b.income)} (viviendas ${money(b.taxR)}, comercios ${money(b.taxC)}, fábricas ${money(b.taxI)}${b.coastIncome ? `, pesca y turismo ${money(b.coastIncome)}` : ''})`,
     `Gastos: ${money(b.expenses)}`,
     `  Servicios públicos: ${money(publicServices)}`,
     `  Administración: ${money(b.services)}`,
     `  Usinas: ${money(b.plants)}`,
     `  Calles, tendido y plazas: ${money(b.roads + b.lines + b.parks)}`,
-    `Saldo: ${money(b.balance)}`,
   ];
+  if (b.coast) lines.push(`  Costa: ${money(b.coast)}`);
+  lines.push(`Saldo: ${money(b.balance)}`);
   if (cash < 0) lines.push('La caja ya está en rojo: no se construye hasta que se recupere.');
   else if (months !== null) lines.push(months === 0 ? 'A este ritmo la caja no alcanza para un mes.' : `Con la caja actual alcanza para ${monthsText(months)}.`);
   return { balanceText: formatBalance(b.balance), balanceTone: b.balance < 0 ? 'bad' : 'good', runwayText, runwayTone, tooltip: lines.join('\n') };
@@ -83,6 +84,8 @@ export function placementUpkeep(tool: string): string | null {
   if (tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire') {
     return `mantenimiento desde ${formatMoney(serviceUpkeepRange(tool).min)}/mes`;
   }
+  const coast = COAST_KINDS.find((k) => k === tool);
+  if (coast) return `mantenimiento ${formatMoney(COAST[coast].upkeep)}/mes`;
   return null;
 }
 

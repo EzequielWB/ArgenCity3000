@@ -1,8 +1,9 @@
-import { COSTS, PLANTS, PLANT_SIZE, SERVICES, type PlantKind, type ServiceKind } from '../config';
+import { COAST, COSTS, PLANTS, PLANT_SIZE, SERVICES, type CoastKind, type PlantKind, type ServiceKind } from '../config';
+import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
-import { TILE, World, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
+import { TILE, World, coastTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind;
+export type ToolId = 'query' | 'bulldoze' | 'road' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -30,10 +31,19 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'clinic', label: 'Salita', key: 'u', shape: 'point', help: 'Salud: sin salita las casas no pasan de chalet.' },
   { id: 'police', label: 'Comisaría', key: 'i', shape: 'point', help: 'Seguridad: baja el delito en los barrios densos.' },
   { id: 'fire', label: 'Bomberos', key: 'o', shape: 'point', help: 'Cuartel de bomberos voluntarios: apaga incendios.' },
+  { id: 'fishing', label: COAST.fishing.label, key: 'z', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 12 empleos industriales y vende pescado.' },
+  { id: 'promenade', label: COAST.promenade.label, key: 'x', shape: 'rect', help: 'Paseo sobre la costa, se arrastra como la plaza. Sube el valor del suelo y la aprobación.' },
+  { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 40 empleos industriales y sube las tasas de las fábricas; contamina.' },
+  { id: 'resort', label: COAST.resort.label, key: 'l', shape: 'point', help: 'En la playa. Con una calle cerca da 30 empleos y mucho turismo en verano.' },
+  { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Suma aprobación y valor del suelo.' },
 ];
 
 export function isServiceTool(tool: ToolId): tool is ServiceKind {
   return tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire';
+}
+
+export function isCoastTool(tool: ToolId): tool is CoastKind {
+  return tool === 'fishing' || tool === 'promenade' || tool === 'port' || tool === 'resort' || tool === 'lighthouse';
 }
 
 const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
@@ -48,7 +58,7 @@ export function toolInfo(id: ToolId): ToolInfo {
 }
 
 export interface ToolGroup {
-  id: 'query' | 'network' | 'zones' | 'services' | 'plants';
+  id: 'query' | 'network' | 'zones' | 'services' | 'plants' | 'coast';
   label: string;
   tools: readonly ToolId[];
 }
@@ -60,6 +70,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'zones', label: 'Zonas', tools: ['zoneR', 'zoneC', 'zoneI', 'park'] },
   { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire'] },
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
+  { id: 'coast', label: 'Costa', tools: ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] },
 ];
 
 export function groupOfTool(tool: ToolId): ToolGroup {
@@ -214,6 +225,15 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
           }
           break;
         }
+        if (isCoastTool(tool)) {
+          // One lighthouse per city: the first valid lot of the plan is the only one.
+          if (tool === 'lighthouse' && out.length > 0) break;
+          if (isFreeLot(w, x, y) && coastFits(w, tool, x, y)) {
+            out.push([x, y]);
+            cost += COAST[tool].cost;
+          }
+          break;
+        }
         if (zone && !water && isFreeLot(w, x, y) && t !== zoneTile(zone)) {
           out.push([x, y]);
           cost += COSTS.zone;
@@ -258,6 +278,9 @@ export function applyPlan(w: World, plan: Plan): void {
       default:
         if (isServiceTool(plan.tool)) {
           w.setTile(x, y, serviceTile(plan.tool));
+          w.terrain.trees[i] = 0;
+        } else if (isCoastTool(plan.tool)) {
+          w.setTile(x, y, coastTile(plan.tool));
           w.terrain.trees[i] = 0;
         } else if (zone) w.setTile(x, y, zoneTile(zone));
     }

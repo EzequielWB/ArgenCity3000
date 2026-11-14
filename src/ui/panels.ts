@@ -73,6 +73,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Tasas residenciales', b.taxR)}
     ${row('Tasas comerciales', b.taxC)}
     ${row('Tasas industriales', b.taxI)}
+    ${row('Pesca y turismo', b.coastIncome)}
     ${row('Total ingresos', b.income, 'total')}
     ${row('Calles y puentes', b.roads)}
     ${row('Tendido eléctrico', b.lines)}
@@ -82,6 +83,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Salitas', b.clinics)}
     ${row('Comisarías', b.police)}
     ${row('Bomberos voluntarios', b.firefighters)}
+    ${row('Costa', b.coast)}
     ${row('Cuota del crédito', b.loan)}
     ${row('Administración municipal', b.services)}
     ${row('Total gastos', b.expenses, 'total')}
@@ -125,9 +127,10 @@ export function openBudget(game: Game): void {
     ${sim.state.lastBudget ? `<h3>Mes pasado</h3>${budgetTable(sim.state.lastBudget)}` : ''}
   `);
   const refresh = () => {
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan);
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month);
     $('#budgetNow').innerHTML = budgetTable(b);
-    $('#yearly').innerHTML = money(b.balance * 12, true);
+    // The year is the average of the seasons, not the month in course.
+    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan).balance * 12, true);
     const d = sim.demand;
     const avg = averageTax(sim.state.taxes);
     const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;
@@ -438,18 +441,21 @@ export function openHelp(): void {
         al 50 % cuesta la mitad y cubre la mitad.
         Si la caja se queda sin resto, en el mismo panel podés <strong>pedir un crédito</strong>: entra la plata de una y se devuelve en cuotas fijas que se descuentan solas todos los meses. Uno por vez, y podés cancelar lo que queda cuando te sobre.</li>
       <li><strong>Plazas</strong> (8), agua y árboles suben el valor del suelo y dejan crecer edificios más altos. La industria contamina: alejala de las casas.</li>
+      <li><strong>La costa.</strong> En la categoría Costa hay cinco obras de un lote que van pegadas al agua (un faro puede estar hasta a 2 lotes) y, salvo la costanera y el faro, funcionan solo con una calle a 3 lotes o menos; ninguna necesita luz.
+        El <strong>muelle de pescadores</strong> (Z) da 12 empleos y vende pescado; la <strong>costanera</strong> (X) se arrastra como la plaza y sube el valor del suelo y la aprobación; el <strong>puerto de carga</strong> (V) da 40 empleos, hace rendir un 15 % más las tasas industriales (hasta 45 %), contamina y carga las calles que llegan;
+        el <strong>balneario</strong> (L) va sobre la arena y da turismo fuerte en verano (diciembre a febrero) y casi nada el resto del año; el <strong>faro</strong> (F) es uno solo por ciudad. En el Presupuesto, la costa tiene sus propias líneas.</li>
       <li>Si una usina no da abasto, aparecen rayos rojos sobre los edificios sin luz: hacé otra. Hay tres: <strong>a carbón</strong> (9), barata y con mucho humo; <strong>a gas</strong> (J), más cara y casi sin humo; y el <strong>parque eólico</strong> (K), sin humo y barato de mantener, que rinde más en lo alto de una loma y cerca del agua.</li>
       <li><strong>Servicios públicos</strong> (necesitan luz y cubren un radio): sin <strong>salita</strong> (U) las casas no pasan de chalet, y sin
         <strong>escuela</strong> (Y) no hay torres ni oficinas. La <strong>comisaría</strong> (I) baja el delito de los barrios densos y los
         <strong>bomberos</strong> (O) apagan los incendios antes de que se pierda el edificio. Al elegirlos se ve la capa de cobertura.</li>
       <li><strong>Tránsito.</strong> Cada vecino va a trabajar al comercio y a la industria más cercanos por las calles. Si pasa más gente de la que la calle aguanta, se satura (rojo en la capa Tránsito): baja el valor del suelo, los lotes crecen despacio y los vecinos se quejan. Se arregla con avenidas, con más caminos o acercando el trabajo a las casas.</li>
       <li><strong>Aprobación y elecciones.</strong> Arriba ves qué porcentaje de los vecinos te aprueba (clic para el detalle). Suman la salud, la educación, las tasas bajas, los barrios lindos y que la ciudad crezca; restan el delito, el humo, los apagones, el tránsito, el abandono, la falta de trabajo, las tasas altas y la caja en rojo. En octubre cada 4 años (la primera vez en 1993) hay elecciones: con 50 % o más seguís; si perdés, la ciudad queda en modo libre.</li>
-      <li><strong>Hitos.</strong> Debajo de la población está el próximo hito. Al llegar, la Provincia gira plata y se habilitan edificios: salita y bomberos con 100 habitantes, escuela y comisaría con 200, usina a gas con 1.000 y parque eólico con 2.500.</li>
+      <li><strong>Hitos.</strong> Debajo de la población está el próximo hito. Al llegar, la Provincia gira plata y se habilitan edificios: salita y bomberos con 100 habitantes, escuela y comisaría con 200, usina a gas con 1.000 y parque eólico con 2.500. Sobre la costa: el muelle con 100 habitantes, la costanera con 200, el puerto y el balneario con 1.000 y el faro con 5.000.</li>
       <li>Un edificio sin luz, sin calle, con mucho delito o con la caja en rojo puede quedar <strong>abandonado</strong>: no paga y baja el valor de alrededor.</li>
     </ol>
     <h3>Controles</h3>
     <div class="help-grid">
-      <span><kbd>1</kbd>–<kbd>9</kbd> herramientas · <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>O</kbd> servicios</span>
+      <span><kbd>1</kbd>–<kbd>9</kbd> herramientas · <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>O</kbd> servicios · <kbd>Z</kbd> <kbd>X</kbd> <kbd>V</kbd> <kbd>L</kbd> <kbd>F</kbd> costa</span>
       <span><kbd>B</kbd> tamaño de bloque</span>
       <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer la última obra (devuelve todo dentro del mes, la mitad hasta un año)</span>
       <span>Arrastrar con clic izquierdo: construir</span>

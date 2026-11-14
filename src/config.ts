@@ -165,3 +165,50 @@ export const TRAFFIC = { laneCapacity: 1200, valueFrom: 60, valuePerPoint: 0.3, 
 
 /** A zone needs a road within this many cells (Manhattan distance). */
 export const ROAD_REACH = 3;
+
+/**
+ * Buildings of the coast, one lot each. A dock, a port and a resort work (give jobs and income)
+ * only with a street within `ROAD_REACH`; the promenade and the lighthouse need nothing. `jobs`
+ * are industrial for the dock and the port and commercial for the resort. None of them needs
+ * light, and none levels the ground.
+ */
+export type CoastKind = 'fishing' | 'promenade' | 'port' | 'resort' | 'lighthouse';
+export const COAST_KINDS: readonly CoastKind[] = ['fishing', 'promenade', 'port', 'resort', 'lighthouse'];
+export const COAST: Record<CoastKind, { label: string; cost: number; upkeep: number; jobs: number }> = {
+  fishing: { label: 'Muelle de pescadores', cost: 400, upkeep: 30, jobs: 12 },
+  promenade: { label: 'Costanera', cost: 25, upkeep: 2, jobs: 0 },
+  port: { label: 'Puerto de carga', cost: 2500, upkeep: 200, jobs: 40 },
+  resort: { label: 'Balneario', cost: 1800, upkeep: 120, jobs: 30 },
+  lighthouse: { label: 'Faro', cost: 1500, upkeep: 60, jobs: 0 },
+};
+
+/** Fish sold by a working dock each month. */
+export const FISHING_SALES = 80;
+
+/**
+ * Monthly tourism of a working resort. The southern summer (December to February) is the peak,
+ * November and March are the shoulder and the rest of the year is quiet.
+ */
+export const TOURISM: { peak: number; shoulder: number; low: number; peakMonths: readonly number[]; shoulderMonths: readonly number[] } = {
+  peak: 450,
+  shoulder: 120,
+  low: 20,
+  peakMonths: [12, 1, 2],
+  shoulderMonths: [11, 3],
+};
+
+/** Each working port adds `perPort` to the industrial taxes, up to `max` in all. */
+export const PORT_TAX_BOOST = { perPort: 0.15, max: 0.45 } as const;
+
+/** A lighthouse may stand on land this close (in lots, any direction) to the water. */
+export const LIGHTHOUSE_REACH = 2;
+
+/** Spread of the coast buildings over the city: `radius` in lots, `strength` at the centre. */
+export const COAST_FIELDS = {
+  portSmoke: { radius: 4, strength: 25 },
+  promenadeValue: { radius: 4, strength: 20 },
+  lighthouseValue: { radius: 6, strength: 12 },
+} as const;
+
+/** Approval: one point per `promenadeLots` promenade lots up to `promenadeMax`, and `lighthouse` points for the lighthouse. */
+export const COAST_APPROVAL = { promenadeLots: 8, promenadeMax: 5, lighthouse: 3 } as const;

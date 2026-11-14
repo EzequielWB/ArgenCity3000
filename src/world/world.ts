@@ -1,4 +1,4 @@
-import { PLANT_SIZE, type PlantKind, type ServiceKind } from '../config';
+import { PLANT_SIZE, type CoastKind, type PlantKind, type ServiceKind } from '../config';
 import { isWaterCell, cellMinMax, type Terrain } from './terrain';
 
 /** What occupies a cell. Zones keep their building level in `World.level`. */
@@ -15,8 +15,13 @@ export const TILE = {
   CLINIC: 9,
   POLICE: 10,
   FIREHOUSE: 11,
+  FISHING: 12,
+  PROMENADE: 13,
+  PORT: 14,
+  RESORT: 15,
+  LIGHTHOUSE: 16,
 } as const;
-export const MAX_TILE = TILE.FIREHOUSE;
+export const MAX_TILE = TILE.LIGHTHOUSE;
 export type TileId = (typeof TILE)[keyof typeof TILE];
 
 export type ZoneKind = 'R' | 'C' | 'I';
@@ -39,6 +44,21 @@ export function serviceOf(tile: number): ServiceKind | null {
   if (tile === TILE.CLINIC) return 'clinic';
   if (tile === TILE.POLICE) return 'police';
   if (tile === TILE.FIREHOUSE) return 'fire';
+  return null;
+}
+
+const COAST_TILES: Record<CoastKind, TileId> = { fishing: TILE.FISHING, promenade: TILE.PROMENADE, port: TILE.PORT, resort: TILE.RESORT, lighthouse: TILE.LIGHTHOUSE };
+
+export function coastTile(k: CoastKind): TileId {
+  return COAST_TILES[k];
+}
+
+export function coastOf(tile: number): CoastKind | null {
+  if (tile === TILE.FISHING) return 'fishing';
+  if (tile === TILE.PROMENADE) return 'promenade';
+  if (tile === TILE.PORT) return 'port';
+  if (tile === TILE.RESORT) return 'resort';
+  if (tile === TILE.LIGHTHOUSE) return 'lighthouse';
   return null;
 }
 

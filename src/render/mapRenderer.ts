@@ -2,7 +2,7 @@ import { PLANT_SIZE } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
-import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
 import { KIND, analyzeRoads, indexOf, kindOf, laneLine, widthOf, type LaneLine } from './avenue';
 import {
   CHUNK_PAD,
@@ -27,6 +27,7 @@ import {
   abandonedBuildingSprite,
   buildingSprite,
   burningBuildingSprite,
+  coastSprite,
   parkSpriteFor,
   plantSprite,
   poleSpriteFor,
@@ -467,6 +468,7 @@ export class MapRenderer {
       this.drawGround(vx, vy, x, y);
       if (tile === TILE.ROAD) this.drawRoad(vx, vy, pts, i);
       else if (tile === TILE.PARK) this.drawPark(pts);
+      else if (tile === TILE.PROMENADE) this.drawPromenade(pts);
       else if (zoneOf(tile) && level === 0) this.drawZoneLot(pts, tile);
     }
 
@@ -522,6 +524,8 @@ export class MapRenderer {
       return { sprite: serviceSprite(service), ax, ay };
     }
     const [ax, ay] = this.toCache(vx, vy, avg(hs));
+    const coast = coastOf(tile);
+    if (coast) return { sprite: coastSprite(coast, this.coastVariant(coast, vx, vy, x, y)), ax, ay };
     if (tile === TILE.PARK) return { sprite: parkSpriteFor(w.variant[i]), ax, ay };
     if (tile === TILE.LINE) return { sprite: poleSpriteFor(), ax, ay };
     if (w.terrain.trees[i] && !w.isWater(x, y) && tile !== TILE.ROAD) return { sprite: treeSpriteFor(w.terrain.trees[i], w.variant[i]), ax, ay };
@@ -650,6 +654,48 @@ export class MapRenderer {
       this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], PAL.path);
     strip(0.44, 0, 0.56, 1);
     strip(0, 0.44, 1, 0.56);
+  }
+
+  /** Paving of a promenade lot, with the seams between its slabs. */
+  private drawPromenade(pts: Pt[]): void {
+    this.poly(pts, '#d6cdbb');
+    const seam = (u0: number, v0: number, u1: number, v1: number) =>
+      this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], '#c3b8a3');
+    seam(0.48, 0, 0.52, 1);
+    seam(0, 0.48, 1, 0.52);
+    const g = this.g;
+    g.strokeStyle = '#a79c86';
+    g.lineWidth = 0.8;
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (const p of pts.slice(1)) g.lineTo(p[0], p[1]);
+    g.closePath();
+    g.stroke();
+  }
+
+  /**
+   * What distinguishes the sprite of a coast building on a view cell: the sides of the lot that
+   * face water (bits 1, 2, 4, 8 in the order of the sprite's edges, plus 16 on every other lot
+   * for a lamp) for the promenade, and the side the jetty runs out to for the fishing pier.
+   */
+  private coastVariant(kind: ReturnType<typeof coastOf>, vx: number, vy: number, x: number, y: number): number {
+    if (kind !== 'promenade' && kind !== 'fishing') return 0;
+    const n = this.world.n;
+    let mask = 0;
+    [
+      [vx, vy - 1],
+      [vx + 1, vy],
+      [vx, vy + 1],
+      [vx - 1, vy],
+    ].forEach(([nx, ny], k) => {
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) return;
+      const [wx, wy] = fromView(nx, ny, this.rot, n);
+      if (this.world.isWater(wx, wy)) mask |= 1 << k;
+    });
+    if (kind === 'promenade') return mask | ((x + y) % 2 === 0 ? 16 : 0);
+    // The jetty goes to the first side facing water; with water only at a corner, to the front-left one.
+    for (const k of [2, 1, 0, 3]) if (mask & (1 << k)) return k;
+    return 2;
   }
 
   private isRoadView(vx: number, vy: number): boolean {

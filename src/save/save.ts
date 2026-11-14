@@ -20,15 +20,16 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
  * versions 1 to 3 had only coal plants (a plant without a kind is a coal one); versions 1 to 4
  * had no municipal loan, so they owe nothing; versions 1 to 5 had no mayor's name, so the
- * Intendente is simply the Intendente.
+ * Intendente is simply the Intendente; versions 1 to 6 had no buildings of the coast (the tile ids
+ * from 12 on) nor the two coast lines of the budget, which count as zero.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -198,9 +199,9 @@ function parseSim(raw: unknown): SimState {
   let lastBudget: BudgetReport | null = null;
   if (s.lastBudget !== null && s.lastBudget !== undefined) {
     const b = s.lastBudget as Record<string, unknown>;
-    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'loan', 'income', 'expenses', 'balance'];
-    // Older budgets had no lines for services, nor for the loan instalment; they count as zero.
-    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters', 'loan']) if (b[k] === undefined) b[k] = 0;
+    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'loan', 'coast', 'coastIncome', 'income', 'expenses', 'balance'];
+    // Older budgets had no lines for services, the loan instalment or the coast; they count as zero.
+    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters', 'loan', 'coast', 'coastIncome']) if (b[k] === undefined) b[k] = 0;
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }

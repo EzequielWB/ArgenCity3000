@@ -137,6 +137,8 @@ describe('the newspaper', () => {
     cash: 1000,
     abandoned: 0,
     loan: null,
+    ports: 0,
+    resorts: 0,
   };
 
   it('reports which tax went up or down', () => {

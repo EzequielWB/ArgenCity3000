@@ -3,7 +3,7 @@
  * Approval is 50 for a city where nothing stands out; each thing the neighbours enjoy or suffer
  * adds or takes points. Pure functions: the simulation keeps the state.
  */
-import { CAPACITY, DEFAULT_TAX, START_YEAR, TICKS_PER_MONTH, type ZoneTaxes } from '../config';
+import { CAPACITY, COAST_APPROVAL, DEFAULT_TAX, START_YEAR, TICKS_PER_MONTH, type ZoneTaxes } from '../config';
 import { TILE, type World } from '../world/world';
 import { averageTax } from './demand';
 
@@ -64,7 +64,11 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   let value = 0;
   let built = 0;
   let dark = 0;
+  let promenade = 0;
+  let lighthouse = 0;
   for (let i = 0; i < w.tiles.length; i++) {
+    if (w.tiles[i] === TILE.PROMENADE) promenade++;
+    else if (w.tiles[i] === TILE.LIGHTHOUSE) lighthouse = COAST_APPROVAL.lighthouse;
     if (w.level[i] === 0) continue;
     built++;
     if (!w.isOccupied(i)) continue;
@@ -101,6 +105,8 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   // A city that keeps receiving people is a city on the move; one that empties is not.
   raw.push(['Progreso', clamp(inp.growth * 30, -6, 6)]);
   raw.push(['Caja en rojo', inp.crisis ? -15 : 0]);
+  raw.push(['Costanera', Math.min(COAST_APPROVAL.promenadeMax, Math.floor(promenade / COAST_APPROVAL.promenadeLots))]);
+  raw.push(['Faro', lighthouse]);
 
   const factors = raw.map(([label, v]) => ({ label, points: Math.round(v) })).filter((f) => f.points !== 0);
   factors.sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
