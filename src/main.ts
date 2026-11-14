@@ -1,6 +1,6 @@
 import './ui/style.css';
 import { Sound, browserAudio, browserStorage } from './audio/sound';
-import { MAP_SIZES, PLAYABLE_SIZES, type GovernmentKind, type MapSizeId } from './config';
+import { MAP_SIZES, PLAYABLE_SIZES, type MapSizeId } from './config';
 import { hashString } from './core/rng';
 import { Game } from './game';
 import { paintTerrainPreview } from './render/minimap';
@@ -8,10 +8,9 @@ import type { SaveData } from './save/save';
 import { pickMayorName } from './sim/mayor';
 import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
-import { governmentCardsHtml } from './ui/government';
 import { installOrnaments } from './ui/filete';
 import { PHRASES, nextPhrase } from './ui/phrases';
-import { closeModal, initModal, isModalOpen, openBudget, openHelp, openSaves } from './ui/panels';
+import { closeModal, initModal, isModalOpen, openBudget, openGovernment, openHelp, openSaves } from './ui/panels';
 import { MAP_KINDS, generateMap, type MapKind } from './world/mapkinds';
 import type { Terrain } from './world/terrain';
 import { TOOLS } from './world/tools';
@@ -139,19 +138,12 @@ function launch(data: SaveData): void {
   game = new Game(data, { isModalOpen, sound, leave: showStart });
   if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
   if (data.sim.tick === 0) {
+    // The city opens with its founding window: who governs it, and under what name.
+    if (!data.sim.party) openGovernment(game);
     const streets = data.world.route.some((v) => v) ? 'una calle que salga de la ruta (3)' : 'unas calles (3)';
     toast(data.mayor ? `¡Arranca la gestión de ${data.mayor}! Empezá por una usina (9) y ${streets}.` : `¡Bienvenido, Intendente! Empezá por una usina (9) y ${streets}.`);
   }
   else toast(`Partida cargada: ${data.name}`);
-}
-
-function chosenGovernment(): GovernmentKind {
-  const picked = document.querySelector<HTMLInputElement>('input[name="startGov"]:checked');
-  return (picked?.value as GovernmentKind | undefined) ?? 'democracia';
-}
-
-function chosenParty(): string {
-  return $<HTMLInputElement>('#startParty').value.trim().slice(0, 32);
 }
 
 function startNew(): void {
@@ -160,13 +152,13 @@ function startNew(): void {
   if ($<HTMLSelectElement>('#startMapKind').value !== '') {
     if (!preset) return; // still loading
     const seed = hashString(preset.id) % 1_000_000_000;
-    launch({ name, seed, mayor, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed, chosenGovernment(), chosenParty()) });
+    launch({ name, seed, mayor, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed) });
     return;
   }
   const seed = parseSeed($<HTMLInputElement>('#startSeed').value);
   const world = new World(pickedTerrain(seed));
   addRoute(world, seed);
-  launch({ name, seed, mayor, world, sim: newSimState(seed, chosenGovernment(), chosenParty()) });
+  launch({ name, seed, mayor, world, sim: newSimState(seed) });
 }
 
 $('#startReroll').addEventListener('click', () => {
@@ -193,7 +185,6 @@ kindSelect.addEventListener('change', () => {
 });
 sizeSelect.addEventListener('change', refreshPreview);
 $('#startStreets').addEventListener('change', refreshPreview);
-$('#startGovernment').innerHTML = governmentCardsHtml();
 $('#startNew').addEventListener('click', startNew);
 $('#startLoad').addEventListener('click', () => openSaves(null, launch));
 $('#startName').addEventListener('keydown', (e) => {

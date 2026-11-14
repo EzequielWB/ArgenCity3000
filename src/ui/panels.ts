@@ -1,4 +1,4 @@
-import { GOVERNMENTS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, type ServiceKind } from '../config';
+import { GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, type GovernmentKind, type ServiceKind } from '../config';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
 import { formatMoney, formatNumber } from '../core/format';
@@ -12,6 +12,7 @@ import { MILESTONES, unlockNames } from '../sim/milestones';
 import { monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
 import { toolInfo } from '../world/tools';
 import { $, escapeHtml, toast } from './dom';
+import { governmentCardsHtml } from './government';
 
 let closeHook: (() => void) | null = null;
 
@@ -243,6 +244,55 @@ function factorRows(factors: readonly ApprovalFactor[]): string {
     .join('')}</table>`;
 }
 
+/**
+ * The founding window: it opens as soon as the city does, because there is no city without a
+ * party and a way of governing. The name is mandatory, so the window comes back if it is closed.
+ */
+export function openGovernment(game: Game): void {
+  const state = game.sim.state;
+  // While the papers are unsigned there is no way out: the close button is not an option.
+  $('#modalClose').classList.add('hidden');
+  const body = openModal(
+    `<h2>Quién gobierna ${escapeHtml(game.name)}</h2>
+    <p class="gov-lede">Antes de mover un ladrillo, los vecinos quieren saber quién firma. Ponele el nombre a tu partido y elegí cómo se gobierna.</p>
+    <label class="gov-party">Nombre del partido
+      <input id="govParty" maxlength="32" autocomplete="off" value="${escapeHtml(state.party)}" />
+    </label>
+    <div class="gov-grid" role="radiogroup" aria-label="Forma de gobierno">${governmentCardsHtml(state.government)}</div>
+    <div class="row"><button id="govTake" class="primary" type="button" disabled>Asumir el cargo</button></div>
+    <p class="gov-hint bad" id="govHint">El nombre del partido es obligatorio.</p>`,
+    () => {
+      // Closing the window without signing is not an option: it opens again.
+      if (!game.sim.state.party) openGovernment(game);
+    },
+  );
+  const input = body.querySelector<HTMLInputElement>('#govParty')!;
+  const take = body.querySelector<HTMLButtonElement>('#govTake')!;
+  const hint = body.querySelector<HTMLElement>('#govHint')!;
+  const refresh = (): void => {
+    const filled = input.value.trim().length > 0;
+    take.disabled = !filled;
+    hint.classList.toggle('bad', !filled);
+    hint.textContent = filled ? 'Así va a figurar en El Diario del Conurbano.' : 'El nombre del partido es obligatorio.';
+  };
+  input.addEventListener('input', refresh);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !take.disabled) take.click();
+  });
+  take.addEventListener('click', () => {
+    const party = input.value.trim().slice(0, 32);
+    if (!party) return;
+    const picked = body.querySelector<HTMLInputElement>('input[name="govPick"]:checked');
+    const government = (picked?.value as GovernmentKind | undefined) ?? 'democracia';
+    if (!GOVERNMENT_KINDS.includes(government)) return;
+    game.found(government, party);
+    $('#modalClose').classList.remove('hidden');
+    closeModal();
+  });
+  refresh();
+  input.focus();
+}
+
 /** What the neighbours think and why, when they vote, and who governs. */
 export function openApproval(game: Game): void {
   const s = game.sim.state;
@@ -459,7 +509,7 @@ export function openHelp(): void {
         <strong>escuela</strong> (Y) no hay torres ni oficinas. La <strong>comisaría</strong> (I) baja el delito de los barrios densos y los
         <strong>bomberos</strong> (O) apagan los incendios antes de que se pierda el edificio. Al elegirlos se ve la capa de cobertura.</li>
       <li><strong>Tránsito.</strong> Cada vecino va a trabajar al comercio y a la industria más cercanos por las calles. Si pasa más gente de la que la calle aguanta, se satura (rojo en la capa Tránsito): baja el valor del suelo, los lotes crecen despacio y los vecinos se quejan. Se arregla con avenidas, con más caminos o acercando el trabajo a las casas.</li>
-      <li><strong>Aprobación y elecciones.</strong> Arriba ves qué porcentaje de los vecinos te aprueba (clic para el detalle). Suman la salud, la educación, las tasas bajas, los barrios lindos y que la ciudad crezca; restan el delito, el humo, los apagones, el tránsito, el abandono, la falta de trabajo, las tasas altas y la caja en rojo. En octubre cada 4 años (la primera vez en 1993) hay elecciones: con 50 % o más seguís; si perdés, la ciudad queda en modo libre. La forma de gobierno que elegís al fundar cambia la regla: la <strong>dictadura</strong> no tiene elecciones, pero atrae un 20 % menos de gente, no recibe subsidios de la Provincia y no pasa del 60 % de aprobación; la <strong>tecnocracia</strong> vota cada 6 años con el 40 %, pero la aprobación se mueve la mitad de rápido.</li>
+      <li><strong>Aprobación y elecciones.</strong> Arriba ves qué porcentaje de los vecinos te aprueba (clic para el detalle). Suman la salud, la educación, las tasas bajas, los barrios lindos y que la ciudad crezca; restan el delito, el humo, los apagones, el tránsito, el abandono, la falta de trabajo, las tasas altas y la caja en rojo. En octubre cada 4 años (la primera vez en 1993) hay elecciones: con 50 % o más seguís; si perdés, la ciudad queda en modo libre. La forma de gobierno que elegís al entrar a la partida cambia la regla: la <strong>dictadura</strong> no tiene elecciones, pero atrae un 20 % menos de gente, no recibe subsidios de la Provincia y no pasa del 60 % de aprobación; la <strong>tecnocracia</strong> vota cada 6 años con el 40 %, pero la aprobación se mueve la mitad de rápido.</li>
       <li><strong>Hitos.</strong> Debajo de la población está el próximo hito. Al llegar, la Provincia gira plata y se habilitan edificios: salita y bomberos con 100 habitantes, escuela y comisaría con 200, usina a gas con 1.000 y parque eólico con 2.500. Sobre la costa: el muelle con 100 habitantes, la costanera con 200, el puerto y el balneario con 1.000 y el faro con 5.000.</li>
       <li>Un edificio sin luz, sin calle, con mucho delito o con la caja en rojo puede quedar <strong>abandonado</strong>: no paga y baja el valor de alrededor.</li>
     </ol>

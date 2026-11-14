@@ -1,5 +1,5 @@
 import type { Sound } from './audio/sound';
-import { POWER_REACH, TICKS_PER_MONTH } from './config';
+import { POWER_REACH, TICKS_PER_MONTH, type GovernmentKind } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
 import { attachPointer, type PointerTarget } from './input/controls';
@@ -291,6 +291,12 @@ export class Game implements PointerTarget {
   cycleLayer(): void {
     const k = LAYERS.findIndex((l) => l.id === this.view.layer);
     this.setLayer(LAYERS[(k + 1) % LAYERS.length].id);
+  }
+
+  /** Signs the founding papers: the party, the form of government, and the city's first headline. */
+  found(government: GovernmentKind, party: string): void {
+    this.sim.found(government, party);
+    this.updateHud(true);
   }
 
   setSpeed(speed: number): void {

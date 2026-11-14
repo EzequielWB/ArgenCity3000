@@ -77,7 +77,9 @@ describe('forms of government', () => {
     expect(old.sim.party).toBe('');
   });
 
-  it('offers the three forms in the start screen with their pros and cons, democracia by default', () => {
+  it('offers the three forms with their pros and cons, and marks the one in force', () => {
+    expect(governmentCardsHtml('dictadura')).toContain('value="dictadura" checked');
+    expect(governmentCardsHtml('dictadura').match(/checked/g)).toHaveLength(1);
     const html = governmentCardsHtml();
     for (const id of ['democracia', 'dictadura', 'tecnocracia']) expect(html).toContain(`value="${id}"`);
     expect(html).toContain('value="democracia" checked');
@@ -87,6 +89,22 @@ describe('forms of government', () => {
       for (const con of GOVERNMENTS[kind].cons) expect(html).toContain(con);
     }
     expect(html).toContain('(recomendada)');
+  });
+
+  it('signs the founding: party, form of government and one headline, not two', () => {
+    const w = new World(generateTerrain(5, 32));
+    const sim = new Simulation(w, newSimState(5), 'Villa', 'Norma Quiroga');
+    expect(sim.state.party).toBe('');
+    expect(sim.state.news[0].text).not.toContain('partido');
+    const before = sim.appetite;
+
+    sim.found('dictadura', 'Partido del Conurbano');
+    expect(sim.state.government).toBe('dictadura');
+    expect(sim.state.party).toBe('Partido del Conurbano');
+    expect(sim.state.news).toHaveLength(1);
+    expect(sim.state.news[0].text).toContain('Partido del Conurbano');
+    expect(sim.state.news[0].text).toContain('dictadura');
+    expect(sim.appetite).toBeCloseTo(before * GOVERNMENTS.dictadura.migration, 5);
   });
 
   it('rejects a save with a government nobody knows', () => {

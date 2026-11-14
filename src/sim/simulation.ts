@@ -177,6 +177,20 @@ export class Simulation {
     }
   }
 
+  /**
+   * Opens the mandate: the party and the form of government the player signs before moving a
+   * brick. The founding headline published on construction named no party, so it is replaced.
+   */
+  found(government: GovernmentKind, party: string): void {
+    const s = this.state;
+    s.government = government;
+    s.party = party;
+    const plain = foundingHeadline(this.cityName, this.mayor);
+    if (s.news.length > 0 && s.news[0].text === plain) s.news.shift();
+    this.publish(foundingHeadline(this.cityName, this.mayor, party, government), true);
+    this.updateAppetite();
+  }
+
   /** Recomputes every derived layer. Call after loading or after big edits. */
   refresh(): void {
     const w = this.world;

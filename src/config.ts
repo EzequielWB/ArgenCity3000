@@ -63,7 +63,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     label: 'Dictadura',
     blurb: 'Nadie te vota: el cargo es tuyo y no hay octubre que lo discuta.',
     pros: ['No hay elecciones: nunca perdés el poder', 'La ciudad crece con la plata que hacés vos'],
-    cons: ['Llega un 20 % menos de gente nueva', 'La Provincia no gira subsidies', 'La aprobación no pasa de 60'],
+    cons: ['Llega un 20 % menos de gente nueva', 'La Provincia no gira subsidios', 'La aprobación no pasa de 60'],
     termYears: null,
     toWin: 0,
     migration: 0.8,
