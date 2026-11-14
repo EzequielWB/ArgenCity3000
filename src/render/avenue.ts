@@ -153,3 +153,36 @@ export function laneLine(lanes: number, j: number): LaneLine {
   const mid = (lanes - 1) / 2;
   return j === mid - 1 || j === mid ? 'solid' : 'dash';
 }
+
+/** Distance in cells between two kilometre signs along the provincial route. */
+export const SIGN_EVERY = 8;
+
+/**
+ * Where the kilometre signs of the provincial route stand: the route cells that sit on the lane
+ * facing the inside of the map, every `SIGN_EVERY` cells along it, each with the world
+ * direction pointing from the cell to that inside edge. The route is a two-cell band along one
+ * border; anything else gets no signs.
+ */
+export function routeSigns(route: Uint8Array, n: number): Map<number, [number, number]> {
+  const signs = new Map<number, [number, number]>();
+  if (!route.some((v) => v)) return signs;
+  const codes = analyzeRoads((x, y) => route[y * n + x] === 1, n);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const i = y * n + x;
+      const code = codes[i];
+      const kind = kindOf(code);
+      if ((kind !== KIND.BAND_X && kind !== KIND.BAND_Y) || widthOf(code) !== 2) continue;
+      const alongX = kind === KIND.BAND_X;
+      if ((alongX ? x : y) % SIGN_EVERY !== SIGN_EVERY / 2) continue;
+      const lane = indexOf(code);
+      const first = (alongX ? y : x) - lane;
+      // Lane 1 is the one with the higher coordinate: it faces the inside when the band is in the lower half.
+      const inwardIsHigh = first + 0.5 < (n - 1) / 2;
+      if (lane !== (inwardIsHigh ? 1 : 0)) continue;
+      const step = inwardIsHigh ? 1 : -1;
+      signs.set(i, alongX ? [0, step] : [step, 0]);
+    }
+  }
+  return signs;
+}

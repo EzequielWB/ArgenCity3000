@@ -425,3 +425,29 @@ export class View {
     }
   }
 }
+
+/**
+ * The cell the camera looks at when a game starts: the middle of the provincial route when the
+ * map has one, otherwise the middle of the land, away from the river.
+ */
+export function startCameraCell(world: World): [number, number] {
+  const n = world.n;
+  let sx = 0;
+  let sy = 0;
+  let count = 0;
+  for (let i = 0; i < world.route.length; i++) {
+    if (!world.route[i]) continue;
+    sx += i % n;
+    sy += Math.floor(i / n);
+    count++;
+  }
+  if (count > 0) return [Math.floor(sx / count), Math.floor(sy / count)];
+  let best: [number, number] = [Math.floor(n / 2), Math.floor(n / 2)];
+  for (let x = Math.floor(n * 0.4); x >= 0; x--) {
+    if (!world.isWater(x, Math.floor(n / 2))) {
+      best = [x, Math.floor(n / 2)];
+      break;
+    }
+  }
+  return best;
+}

@@ -3,7 +3,7 @@ import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type
 import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
-import { KIND, analyzeRoads, indexOf, kindOf, laneLine, widthOf, type LaneLine } from './avenue';
+import { KIND, analyzeRoads, indexOf, kindOf, laneLine, routeSigns, widthOf, type LaneLine } from './avenue';
 import {
   CHUNK_PAD,
   CHUNK_SIZE,
@@ -31,6 +31,7 @@ import {
   parkSpriteFor,
   plantSprite,
   poleSpriteFor,
+  routeSignSpriteFor,
   serviceSprite,
   treeSpriteFor,
   type Sprite,
@@ -53,6 +54,8 @@ const PREFETCH_PX = CHUNK_SIZE * 2;
 const BASE_HEIGHT = 0;
 /** Paint of the centre lines of an avenue. */
 const AVENUE_LINE = '#e0b53c';
+/** Asphalt of the provincial route: darker than a street. */
+const ROUTE_ASPHALT = '#3a3a40';
 /** Distance of each line of a double centre line from the lane boundary, in cell units. */
 const DOUBLE_GAP = 0.08;
 
@@ -108,6 +111,9 @@ export class MapRenderer {
   private roadSnap: Uint8Array;
   /** Avenue analysis of every world cell (see avenue.ts), kept in step with the road layout. */
   private bands: Uint16Array;
+  /** Band analysis of the provincial route alone (null when the map has none), and where its signs stand. */
+  private routeBands: Uint16Array | null = null;
+  private signs = new Map<number, [number, number]>();
 
   constructor(readonly world: World) {
     const n = world.n;
@@ -271,8 +277,17 @@ export class MapRenderer {
     return changed;
   }
 
+  /** Reads the provincial route (it never changes while a game runs). */
+  private refreshRoute(): void {
+    const w = this.world;
+    const any = w.route.some((v) => v === 1);
+    this.routeBands = any ? analyzeRoads((x, y) => w.route[y * w.n + x] === 1, w.n) : null;
+    this.signs = any ? routeSigns(w.route, w.n) : new Map();
+  }
+
   /** Throws the drawing away; the chunks in view come back on the next `ensure`. */
   redrawAll(): void {
+    this.refreshRoute();
     this.refreshBands();
     this.smoke.clear();
     this.invalidateAll();
@@ -528,6 +543,13 @@ export class MapRenderer {
     if (coast) return { sprite: coastSprite(coast, this.coastVariant(coast, vx, vy, x, y)), ax, ay };
     if (tile === TILE.PARK) return { sprite: parkSpriteFor(w.variant[i]), ax, ay };
     if (tile === TILE.LINE) return { sprite: poleSpriteFor(), ax, ay };
+    const sign = tile === TILE.ROAD && !w.isWater(x, y) ? this.signs.get(i) : undefined;
+    if (sign) {
+      // The sign stands on the cell's edge that faces the inside of the map, whatever the rotation.
+      const [px, py] = toView(x, y, rot, n);
+      const [qx, qy] = toView(x + sign[0], y + sign[1], rot, n);
+      return { sprite: routeSignSpriteFor(qx - px, qy - py), ax, ay };
+    }
     if (w.terrain.trees[i] && !w.isWater(x, y) && tile !== TILE.ROAD) return { sprite: treeSpriteFor(w.terrain.trees[i], w.variant[i]), ax, ay };
     return null;
   }
@@ -706,14 +728,19 @@ export class MapRenderer {
   }
 
   private drawRoad(vx: number, vy: number, pts: Pt[], i: number): void {
-    this.poly(pts, PAL.sidewalk);
+    // The route has no pavement strip: its asphalt runs to the edge of the cell.
+    if (!this.routeBands || !this.world.route[i]) this.poly(pts, PAL.sidewalk);
     this.drawAsphalt(vx, vy, pts, i);
   }
 
   private drawAsphalt(vx: number, vy: number, pts: Pt[], i: number): void {
+    if (this.routeBands && this.world.route[i]) {
+      this.drawRouteAsphalt(vx, vy, pts, i);
+      return;
+    }
     const code = this.bands[i];
     if (kindOf(code) > KIND.PLAIN) {
-      this.drawWideAsphalt(vx, vy, pts, code);
+      this.drawWideAsphalt(vx, vy, pts, i, code);
       return;
     }
     const up = this.isRoadView(vx, vy - 1);
@@ -770,7 +797,7 @@ export class MapRenderer {
    * the road continues, so sidewalk is left only along the outer edges of the whole band, and
    * the lane lines go on the boundaries between its lanes.
    */
-  private drawWideAsphalt(vx: number, vy: number, pts: Pt[], code: number): void {
+  private drawWideAsphalt(vx: number, vy: number, pts: Pt[], i: number, code: number): void {
     const up = this.isRoadView(vx, vy - 1);
     const right = this.isRoadView(vx + 1, vy);
     const down = this.isRoadView(vx, vy + 1);
@@ -803,7 +830,10 @@ export class MapRenderer {
       const n = this.world.n;
       if (nvx < 0 || nvy < 0 || nvx >= n || nvy >= n) return -1;
       const [x, y] = fromView(nvx, nvy, this.rot, n);
-      const other = this.bands[this.world.idx(x, y)];
+      const j = this.world.idx(x, y);
+      // No lane line between a street and the provincial route beside it.
+      if (this.world.route[j] !== this.world.route[i]) return -1;
+      const other = this.bands[j];
       if (kindOf(other) !== kind || widthOf(other) !== lanes || Math.abs(indexOf(other) - lane) !== 1) return -1;
       return Math.min(lane, indexOf(other));
     };
@@ -826,6 +856,47 @@ export class MapRenderer {
     if (jUp >= 0) stroke(laneLine(lanes, jUp), (t, off) => bilinear(pts, t, off), left ? -e : a, right ? 1 : b);
     const jLeft = boundary(vx - 1, vy);
     if (jLeft >= 0) stroke(laneLine(lanes, jLeft), (t, off) => bilinear(pts, off, t), up ? -e : a, down ? 1 : b);
+  }
+
+  /**
+   * A cell of the provincial route: dark asphalt over the whole cell, with one continuous yellow
+   * line between its two lanes. Like the lane lines of an avenue, each cell paints the line on
+   * its up and left edges, and it comes from the route's own band analysis, so it does not break
+   * where a street joins the route.
+   */
+  private drawRouteAsphalt(vx: number, vy: number, pts: Pt[], i: number): void {
+    this.poly(pts, ROUTE_ASPHALT);
+    const bands = this.routeBands!;
+    const code = bands[i];
+    const kind = kindOf(code);
+    if (kind !== KIND.BAND_X && kind !== KIND.BAND_Y) return;
+    const lane = indexOf(code);
+    const partner = (nvx: number, nvy: number): boolean => {
+      const n = this.world.n;
+      if (nvx < 0 || nvy < 0 || nvx >= n || nvy >= n) return false;
+      const [x, y] = fromView(nvx, nvy, this.rot, n);
+      const other = bands[this.world.idx(x, y)];
+      return kindOf(other) === kind && widthOf(other) === widthOf(code) && Math.abs(indexOf(other) - lane) === 1;
+    };
+    const along = (nvx: number, nvy: number): boolean => {
+      const n = this.world.n;
+      if (nvx < 0 || nvy < 0 || nvx >= n || nvy >= n) return false;
+      const [x, y] = fromView(nvx, nvy, this.rot, n);
+      return kindOf(bands[this.world.idx(x, y)]) === kind;
+    };
+    const g = this.g;
+    g.strokeStyle = AVENUE_LINE;
+    g.lineWidth = 1.1;
+    g.setLineDash([]);
+    const e = 0.04;
+    const stroke = (p: Pt, q: Pt) => {
+      g.beginPath();
+      g.moveTo(p[0], p[1]);
+      g.lineTo(q[0], q[1]);
+      g.stroke();
+    };
+    if (partner(vx, vy - 1)) stroke(bilinear(pts, along(vx - 1, vy) ? -e : 0, 0), bilinear(pts, 1, 0));
+    if (partner(vx - 1, vy)) stroke(bilinear(pts, 0, along(vx, vy - 1) ? -e : 0), bilinear(pts, 0, 1));
   }
 
   private drawBridge(vx: number, vy: number, pts: Pt[], i: number): void {

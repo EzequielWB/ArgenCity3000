@@ -76,6 +76,12 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   const height = `Altura: ${Math.max(0, max - SEA_LEVEL) * 5} m sobre el río`;
   const zone = zoneOf(tile);
 
+  if (tile === TILE.ROAD && w.route[i]) {
+    return {
+      title: 'Ruta provincial',
+      lines: ['No se puede tocar: la topadora y las demás obras la respetan', 'No cuesta nada: no paga mantenimiento', 'Por acá llegan los vecinos nuevos'],
+    };
+  }
   if (tile === TILE.ROAD) {
     return {
       title: water ? 'Puente' : 'Calle',

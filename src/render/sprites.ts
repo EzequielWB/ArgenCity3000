@@ -981,3 +981,28 @@ export function parkSpriteFor(variant: number): Sprite {
 export function poleSpriteFor(): Sprite {
   return cached('pole', poleSprite);
 }
+
+/** Kilometre sign of the provincial route: a green panel with "RP" on a post. */
+function routeSignSprite(dvx: number, dvy: number): Sprite {
+  const p = painter(1, 26);
+  // The post stands near the edge of the cell that faces the inside of the map.
+  const [x, y] = p.P(0.5 + 0.34 * dvx, 0.5 + 0.34 * dvy, 0);
+  const g = p.g;
+  g.fillStyle = '#8a8d90';
+  g.fillRect(Math.round(x) - 0.5, y - 12, 1.2, 12);
+  g.fillStyle = '#ffffff';
+  g.fillRect(Math.round(x) - 7.5, y - 22, 15, 10);
+  g.fillStyle = '#1f6b43';
+  g.fillRect(Math.round(x) - 6.5, y - 21, 13, 8);
+  g.fillStyle = '#ffffff';
+  g.font = 'bold 7px sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('RP', Math.round(x), y - 16.5);
+  return done(p);
+}
+
+/** The route sign for a view direction (-1, 0, 1 on each axis) pointing from the cell to its inner edge. */
+export function routeSignSpriteFor(dvx: number, dvy: number): Sprite {
+  return cached(`rp:${dvx},${dvy}`, () => routeSignSprite(dvx, dvy));
+}

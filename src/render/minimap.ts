@@ -18,6 +18,8 @@ const TILE_COLORS: Record<number, [number, number, number]> = {
   [TILE.RESORT]: [226, 100, 80],
   [TILE.LIGHTHOUSE]: [245, 240, 230],
 };
+/** The provincial route, brighter than a street so the strip reads on the overview. */
+const ROUTE_COLOR: [number, number, number] = [244, 208, 64];
 const ZONE_EMPTY: Record<number, [number, number, number]> = {
   [TILE.R]: [150, 200, 130],
   [TILE.C]: [140, 190, 220],
@@ -95,7 +97,8 @@ export class Minimap {
         const i = w.idx(x, y);
         const t = w.tiles[i];
         let c: [number, number, number];
-        if (TILE_COLORS[t]) c = TILE_COLORS[t];
+        if (t === TILE.ROAD && w.route[i]) c = ROUTE_COLOR;
+        else if (TILE_COLORS[t]) c = TILE_COLORS[t];
         else if (ZONE_BUILT[t]) c = w.abandoned[i] ? [95, 85, 75] : w.level[i] > 0 ? ZONE_BUILT[t] : ZONE_EMPTY[t];
         else c = terrainColor(w.terrain, x, y);
         const o = (vy * n + vx) * 4;

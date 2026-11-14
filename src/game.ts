@@ -6,7 +6,7 @@ import { attachPointer, type PointerTarget } from './input/controls';
 import { pickCell } from './render/geometry';
 import { MapRenderer } from './render/mapRenderer';
 import { Minimap } from './render/minimap';
-import { View, type Layer } from './render/view';
+import { View, startCameraCell, type Layer } from './render/view';
 import type { SaveData } from './save/save';
 import { saveToSlot } from './save/slots';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
@@ -22,7 +22,7 @@ import { APPROVAL, nextElectionYear } from './sim/politics';
 import { openApproval, openElectionLost, openElectionWon, openMilestone } from './ui/panels';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
-import { applyPlan, dragCells, isCoastTool, planTool, plantFootprint, plantKindOfTool, toolInfo, type ToolId } from './world/tools';
+import { applyPlan, dragCells, isCoastTool, planTool, plantFootprint, plantKindOfTool, routeRefusal, toolInfo, type ToolId } from './world/tools';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
 
@@ -235,16 +235,8 @@ export class Game implements PointerTarget {
   };
 
   private startCamera(): void {
-    // Start looking at the middle of the land, away from the river.
-    const n = this.world.n;
-    let best: [number, number] = [Math.floor(n / 2), Math.floor(n / 2)];
-    for (let x = Math.floor(n * 0.4); x >= 0; x--) {
-      if (!this.world.isWater(x, Math.floor(n / 2))) {
-        best = [x, Math.floor(n / 2)];
-        break;
-      }
-    }
-    this.view.centreOn(best[0], best[1]);
+    const [x, y] = startCameraCell(this.world);
+    this.view.centreOn(x, y);
   }
 
   // ---------------------------------------------------------------- tools
@@ -439,9 +431,9 @@ export class Game implements PointerTarget {
     this.minimapDirty = true;
   }
 
-  /** Why the coast tool in hand cannot build on a cell, or null (other tools, or a lot that is merely taken). */
+  /** Why the tool in hand cannot build on a cell (the route rules, or the coast ones), or null (a lot that is merely taken). */
   private refusalAt(cell: [number, number]): string | null {
-    return isCoastTool(this.tool) ? coastRefusal(this.world, this.tool, cell[0], cell[1]) : null;
+    return routeRefusal(this.world, this.tool, cell[0], cell[1]) ?? (isCoastTool(this.tool) ? coastRefusal(this.world, this.tool, cell[0], cell[1]) : null);
   }
 
   private cellsFor(a: [number, number], b: [number, number]): [number, number][] {

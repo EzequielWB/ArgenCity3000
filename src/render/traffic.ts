@@ -92,6 +92,11 @@ export class Traffic {
       for (let k = 0; k < d; k++) this.spawnCells.push(i);
     }
     this.target = Math.min(Traffic.MAX_CARS, total);
+    // On a map with a provincial route the traffic comes in from it; the density only says how much.
+    const w = this.world;
+    const entrances: number[] = [];
+    for (let i = 0; i < w.route.length; i++) if (w.route[i] && w.tiles[i] === TILE.ROAD) entrances.push(i);
+    if (entrances.length > 0) this.spawnCells = entrances;
   }
 
   private isRoad(x: number, y: number): boolean {
