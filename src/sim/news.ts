@@ -49,7 +49,7 @@ export interface NewsItem {
   text: string;
 }
 
-const MILESTONES = [100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
+const MILESTONES = [100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 200000];
 
 const TAX_NAMES = { R: ['residenciales', 'los barrios'], C: ['comerciales', 'los comercios'], I: ['industriales', 'las fábricas'] } as const;
 
@@ -107,8 +107,11 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   return out;
 }
 
+/** Settlement names that take a feminine article; "área" takes "un" because of its stressed a. */
+const FEMININE = new Set(['ciudad', 'gran ciudad', 'metrópolis', 'gran metrópolis', 'megaciudad']);
+
 function article(type: string): string {
-  return type === 'metrópolis' || type === 'ciudad' || type === 'gran ciudad' ? 'una' : 'un';
+  return FEMININE.has(type) ? 'una' : 'un';
 }
 
 /** Local color for quiet months. */

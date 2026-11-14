@@ -21,6 +21,9 @@ export const MILESTONES: readonly Milestone[] = [
   { pop: 2500, name: 'Ciudad pujante', grant: 8000, unlocks: ['plantWind'] },
   { pop: 5000, name: 'Gran ciudad', grant: 12000, unlocks: ['lighthouse'] },
   { pop: 25000, name: 'Metrópolis', grant: 30000, unlocks: [] },
+  { pop: 50000, name: 'Gran metrópolis', grant: 50000, unlocks: [] },
+  { pop: 100000, name: 'Megaciudad', grant: 80000, unlocks: [] },
+  { pop: 200000, name: 'Área metropolitana', grant: 120000, unlocks: [] },
 ];
 
 /** Index of the milestone that unlocks a tool. */

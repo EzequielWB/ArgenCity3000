@@ -14,5 +14,8 @@ export function settlementType(pop: number): string {
   if (pop < 1000) return 'pueblo';
   if (pop < 5000) return 'ciudad';
   if (pop < 25000) return 'gran ciudad';
-  return 'metrópolis';
+  if (pop < 50000) return 'metrópolis';
+  if (pop < 100000) return 'gran metrópolis';
+  if (pop < 200000) return 'megaciudad';
+  return 'área metropolitana';
 }
