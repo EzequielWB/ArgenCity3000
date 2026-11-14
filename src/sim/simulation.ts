@@ -25,6 +25,7 @@ import { computeCongestion, jamGrowthFactor, type CongestionReport } from './con
 import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
+import { foundingHeadline, electionHeadline, pollHeadline } from './mayor';
 import { advanceMilestones, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
@@ -150,16 +151,20 @@ export class Simulation {
   private seenNetwork = -1;
   private prevSnapshot: CitySnapshot;
 
-  constructor(world: World, state: SimState, cityName: string) {
+  /** The player's character, or an empty string when there is none (see `sim/mayor.ts`). */
+  readonly mayor: string;
+
+  constructor(world: World, state: SimState, cityName: string, mayor = '') {
     this.world = world;
     this.state = state;
     this.cityName = cityName;
+    this.mayor = mayor;
     this.rng = new Rng(state.rngState);
     this.refresh();
     this.prevSnapshot = this.snapshot();
     this.monthPaid = this.paidSoFar();
     if (state.tick === 0 && state.news.length === 0) {
-      this.publish(`Se funda ${cityName}: el Intendente promete calles, luz y progreso`, true);
+      this.publish(foundingHeadline(cityName, mayor), true);
     }
   }
 
@@ -511,16 +516,16 @@ export class Simulation {
     if (s.lostElection) return;
     if (!electionDue(s.tick)) {
       const left = monthsToElection(s.tick);
-      if (left === 12 || left === 6) this.publish(`Encuesta a ${left} meses de las urnas: el ${s.approval} % aprueba la gestión del Intendente`);
+      if (left === 12 || left === 6) this.publish(pollHeadline(left, s.approval, this.mayor));
       return;
     }
     // The result is news even before the paper has opened.
     if (s.approval >= APPROVAL.toWin) {
       s.terms++;
-      this.publish(`Elecciones ${year}: el Intendente fue reelecto con el ${s.approval} % de los votos`, true);
+      this.publish(electionHeadline(year, s.approval, true, this.mayor), true);
     } else {
       s.lostElection = true;
-      this.publish(`Elecciones ${year}: el Intendente perdió con el ${s.approval} % de los votos y deja la Municipalidad`, true);
+      this.publish(electionHeadline(year, s.approval, false, this.mayor), true);
     }
   }
 

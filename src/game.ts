@@ -77,6 +77,8 @@ export class Game implements PointerTarget {
   readonly view: View;
   readonly minimap: Minimap;
   readonly name: string;
+  /** The player's character, or an empty string when the save predates it. */
+  readonly mayor: string;
   readonly seed: number;
 
   tool: ToolId = 'query';
@@ -115,8 +117,9 @@ export class Game implements PointerTarget {
   constructor(data: SaveData, private hooks: GameHooks) {
     this.world = data.world;
     this.name = data.name;
+    this.mayor = data.mayor ?? '';
     this.seed = data.seed;
-    this.sim = new Simulation(this.world, data.sim, data.name);
+    this.sim = new Simulation(this.world, data.sim, data.name, this.mayor);
     this.shownTerms = data.sim.terms;
     this.shownLost = data.sim.lostElection;
     this.announcedMilestone = data.sim.milestone;
@@ -157,7 +160,7 @@ export class Game implements PointerTarget {
   }
 
   saveData(): SaveData {
-    return { name: this.name, seed: this.seed, world: this.world, sim: this.sim.state };
+    return { name: this.name, seed: this.seed, mayor: this.mayor, world: this.world, sim: this.sim.state };
   }
 
   // ---------------------------------------------------------------- loop

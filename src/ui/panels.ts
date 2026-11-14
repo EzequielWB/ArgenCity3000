@@ -264,7 +264,7 @@ function ballot(game: Game, stamp: string, won: boolean, rest: string): string {
   return `<div class="boleta${won ? '' : ' lost'}">
     <div class="band"></div>
     <h2 class="lista">Elecciones ${dateOf(s.tick).year} · Lista 3000</h2>
-    <p>Intendente de ${escapeHtml(game.name)}</p>
+    <p>${game.mayor ? `${escapeHtml(game.mayor)}, ` : ''}Intendente de ${escapeHtml(game.name)}</p>
     <div class="num">${s.approval} %</div>
     <div class="votes" role="img" aria-label="${s.approval} % de los votos; hacía falta el ${APPROVAL.toWin} %"><i style="width:${s.approval}%"></i><b style="left:${APPROVAL.toWin}%"></b></div>
     <div class="stamp">${stamp}</div>

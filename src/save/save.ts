@@ -20,19 +20,22 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
  * versions 1 to 3 had only coal plants (a plant without a kind is a coal one); versions 1 to 4
- * had no municipal loan, so they owe nothing.
+ * had no municipal loan, so they owe nothing; versions 1 to 5 had no mayor's name, so the
+ * Intendente is simply the Intendente.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
   name: string;
   seed: number;
+  /** The player's character. Absent in saves written before version 6. */
+  mayor?: string;
   world: World;
   sim: SimState;
 }
@@ -68,6 +71,7 @@ export function serialize(d: SaveData): string {
     game: GAME_ID,
     version: SAVE_VERSION,
     name: d.name,
+    mayor: d.mayor ?? '',
     seed: d.seed,
     savedAt: new Date().toISOString(),
     n: w.n,
@@ -143,6 +147,7 @@ export function deserialize(text: string): SaveData {
   return {
     name: typeof data.name === 'string' ? data.name.slice(0, 40) : 'Ciudad sin nombre',
     seed: isInt(data.seed) ? data.seed : 0,
+    mayor: typeof data.mayor === 'string' ? data.mayor.slice(0, 40) : '',
     world,
     sim: parseSim(data.sim),
   };

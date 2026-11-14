@@ -5,6 +5,7 @@ import { hashString } from './core/rng';
 import { Game } from './game';
 import { paintTerrainPreview } from './render/minimap';
 import type { SaveData } from './save/save';
+import { pickMayorName } from './sim/mayor';
 import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
 import { installOrnaments } from './ui/filete';
@@ -120,6 +121,7 @@ function showStart(): void {
   $('#start').classList.remove('hidden');
   const name = $<HTMLInputElement>('#startName');
   name.value = CITY_NAMES[Math.floor(Math.random() * CITY_NAMES.length)];
+  $<HTMLInputElement>('#startMayor').value = pickMayorName();
   $<HTMLInputElement>('#startSeed').value = String(randomSeed());
   $<HTMLSelectElement>('#startMapKind').value = '';
   showKindNote(); // the kind and size picked last time stay selected
@@ -134,21 +136,22 @@ function launch(data: SaveData): void {
   $('#app').classList.remove('hidden');
   game = new Game(data, { isModalOpen, sound, leave: showStart });
   if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
-  if (data.sim.tick === 0) toast(`¡Bienvenido, Intendente! Empezá por una usina (9) y unas calles (3).`);
+  if (data.sim.tick === 0) toast(data.mayor ? `¡Arranca la gestión de ${data.mayor}! Empezá por una usina (9) y unas calles (3).` : `¡Bienvenido, Intendente! Empezá por una usina (9) y unas calles (3).`);
   else toast(`Partida cargada: ${data.name}`);
 }
 
 function startNew(): void {
   const name = $<HTMLInputElement>('#startName').value.trim() || 'Villa Sin Nombre';
+  const mayor = $<HTMLInputElement>('#startMayor').value.trim();
   if ($<HTMLSelectElement>('#startMapKind').value !== '') {
     if (!preset) return; // still loading
     const seed = hashString(preset.id) % 1_000_000_000;
-    launch({ name, seed, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed) });
+    launch({ name, seed, mayor, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed) });
     return;
   }
   const seed = parseSeed($<HTMLInputElement>('#startSeed').value);
   const world = new World(pickedTerrain(seed));
-  launch({ name, seed, world, sim: newSimState(seed) });
+  launch({ name, seed, mayor, world, sim: newSimState(seed) });
 }
 
 $('#startReroll').addEventListener('click', () => {
