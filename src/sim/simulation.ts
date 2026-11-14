@@ -2,6 +2,7 @@ import {
   DEFAULT_FUNDING,
   DEFAULT_TAX,
   FIRE_SAFE_COVER,
+  GOVERNMENTS,
   INITIAL_CASH,
   LOANS,
   MAX_FUNDING,
@@ -10,6 +11,7 @@ import {
   TICKS_PER_MONTH,
   TICKS_PER_WEEK,
   WEEKS_PER_MONTH,
+  type GovernmentKind,
   type ServiceFunding,
   type ServiceKind,
   type ZoneTaxes,
@@ -57,11 +59,17 @@ export interface SimState {
   lostElection: boolean;
   /** The municipal loan being paid off, or null. One at a time. */
   loan: Loan | null;
+  /** The form of government chosen when founding the city. */
+  government: GovernmentKind;
+  /** Name of the party in charge: what the diary and the politics panel call it. */
+  party: string;
 }
 
-export function newSimState(seed: number): SimState {
+export function newSimState(seed: number, government: GovernmentKind = 'democracia', party = ''): SimState {
   return {
     tick: 0,
+    government,
+    party,
     cash: INITIAL_CASH,
     taxes: { R: DEFAULT_TAX, C: DEFAULT_TAX, I: DEFAULT_TAX },
     funding: { ...DEFAULT_FUNDING },
@@ -165,7 +173,7 @@ export class Simulation {
     this.prevSnapshot = this.snapshot();
     this.monthPaid = this.paidSoFar();
     if (state.tick === 0 && state.news.length === 0) {
-      this.publish(foundingHeadline(cityName, mayor), true);
+      this.publish(foundingHeadline(cityName, mayor, state.party, state.government), true);
     }
   }
 
@@ -229,7 +237,7 @@ export class Simulation {
     for (let i = 0; i < this.world.level.length; i++) if (this.world.level[i] > 0) built++;
     const blighted = built > 20 && this.abandonedCount / built > ABANDON_LIMIT;
     this.stall = this.power.shortage ? 'shortage' : averageTax(this.state.taxes) > APPETITE_MAX_TAX ? 'taxes' : blighted ? 'blight' : null;
-    this.appetite = this.stall ? 1 : GROWTH_APPETITE;
+    this.appetite = this.stall ? 1 : GROWTH_APPETITE * GOVERNMENTS[this.state.government].migration;
     this.demand = computeDemand(this.totals, this.state.taxes, this.appetite);
   }
 
@@ -487,9 +495,9 @@ export class Simulation {
     this.totals = cityTotals(w);
     this.abandonedCount = countAbandoned(w);
     this.updateAppetite();
-    const reached = advanceMilestones(s, this.totals.pop);
+    const reached = advanceMilestones(s, this.totals.pop, GOVERNMENTS[s.government].grants);
     this.approval = this.judge();
-    s.approval = stepApproval(s.approval, this.approval.target);
+    s.approval = stepApproval(s.approval, this.approval.target, s.government);
     s.history.push({ pop: this.totals.pop, cash: s.cash });
     if (s.history.length > MAX_HISTORY) s.history.shift();
 
@@ -516,13 +524,14 @@ export class Simulation {
   private holdElection(year: number): void {
     const s = this.state;
     if (s.lostElection) return;
-    if (!electionDue(s.tick)) {
-      const left = monthsToElection(s.tick);
+    const gov = GOVERNMENTS[s.government];
+    if (!electionDue(s.tick, s.government)) {
+      const left = monthsToElection(s.tick, s.government);
       if (left === 12 || left === 6) this.publish(pollHeadline(left, s.approval, this.mayor));
       return;
     }
     // The result is news even before the paper has opened.
-    if (s.approval >= APPROVAL.toWin) {
+    if (s.approval >= gov.toWin) {
       s.terms++;
       this.publish(electionHeadline(year, s.approval, true, this.mayor), true);
     } else {

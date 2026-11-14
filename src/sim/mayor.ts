@@ -4,6 +4,8 @@
  * a player who cleared the field) leaves every text as it always was.
  */
 
+import { GOVERNMENTS, type GovernmentKind } from '../config';
+
 /** Names the start screen draws from; short enough for the name field (32 characters). */
 export const MAYOR_NAMES: readonly string[] = [
   'Norma Quiroga',
@@ -27,8 +29,11 @@ export function intendente(mayor: string): string {
   return name ? `Intendente ${name}` : 'Intendente';
 }
 
-export function foundingHeadline(city: string, mayor: string): string {
-  return `Se funda ${city}: el ${intendente(mayor)} promete calles, luz y progreso`;
+export function foundingHeadline(city: string, mayor: string, party = '', government: GovernmentKind = 'democracia'): string {
+  const who = party ? `${intendente(mayor)}, por el partido ${party}` : intendente(mayor);
+  const base = `Se funda ${city}: el ${who} promete calles, luz y progreso`;
+  const aside = government === 'democracia' ? '' : ` La ciudad arranca bajo una ${GOVERNMENTS[government].label.toLowerCase()}.`;
+  return aside ? `${base}.${aside}` : base;
 }
 
 /** A poll before the election. */

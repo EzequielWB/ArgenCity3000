@@ -1,6 +1,6 @@
 import './ui/style.css';
 import { Sound, browserAudio, browserStorage } from './audio/sound';
-import { MAP_SIZES, PLAYABLE_SIZES, type MapSizeId } from './config';
+import { MAP_SIZES, PLAYABLE_SIZES, type GovernmentKind, type MapSizeId } from './config';
 import { hashString } from './core/rng';
 import { Game } from './game';
 import { paintTerrainPreview } from './render/minimap';
@@ -8,6 +8,7 @@ import type { SaveData } from './save/save';
 import { pickMayorName } from './sim/mayor';
 import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
+import { governmentCardsHtml } from './ui/government';
 import { installOrnaments } from './ui/filete';
 import { PHRASES, nextPhrase } from './ui/phrases';
 import { closeModal, initModal, isModalOpen, openBudget, openHelp, openSaves } from './ui/panels';
@@ -144,19 +145,28 @@ function launch(data: SaveData): void {
   else toast(`Partida cargada: ${data.name}`);
 }
 
+function chosenGovernment(): GovernmentKind {
+  const picked = document.querySelector<HTMLInputElement>('input[name="startGov"]:checked');
+  return (picked?.value as GovernmentKind | undefined) ?? 'democracia';
+}
+
+function chosenParty(): string {
+  return $<HTMLInputElement>('#startParty').value.trim().slice(0, 32);
+}
+
 function startNew(): void {
   const name = $<HTMLInputElement>('#startName').value.trim() || 'Villa Sin Nombre';
   const mayor = $<HTMLInputElement>('#startMayor').value.trim();
   if ($<HTMLSelectElement>('#startMapKind').value !== '') {
     if (!preset) return; // still loading
     const seed = hashString(preset.id) % 1_000_000_000;
-    launch({ name, seed, mayor, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed) });
+    launch({ name, seed, mayor, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed, chosenGovernment(), chosenParty()) });
     return;
   }
   const seed = parseSeed($<HTMLInputElement>('#startSeed').value);
   const world = new World(pickedTerrain(seed));
   addRoute(world, seed);
-  launch({ name, seed, mayor, world, sim: newSimState(seed) });
+  launch({ name, seed, mayor, world, sim: newSimState(seed, chosenGovernment(), chosenParty()) });
 }
 
 $('#startReroll').addEventListener('click', () => {
@@ -183,6 +193,7 @@ kindSelect.addEventListener('change', () => {
 });
 sizeSelect.addEventListener('change', refreshPreview);
 $('#startStreets').addEventListener('change', refreshPreview);
+$('#startGovernment').innerHTML = governmentCardsHtml();
 $('#startNew').addEventListener('click', startNew);
 $('#startLoad').addEventListener('click', () => openSaves(null, launch));
 $('#startName').addEventListener('keydown', (e) => {

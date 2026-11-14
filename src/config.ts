@@ -23,6 +23,68 @@ export const PLAYABLE_SIZES: readonly MapSizeId[] = ['small', 'medium', 'large']
  */
 export const ROUTE = { width: 4, inset: 1, margin: 0 } as const;
 
+/**
+ * Forms of government the player picks when founding the city. `termYears` null means there are
+ * never elections; `migration` scales how many people the city attracts; `grants` scales what the
+ * Province pays at each milestone (0 = it pays nothing); `approvalCap` is the ceiling of the
+ * neighbours' approval and `approvalStep` how far it moves in a month.
+ */
+export type GovernmentKind = 'democracia' | 'dictadura' | 'tecnocracia';
+
+export interface Government {
+  label: string;
+  blurb: string;
+  pros: readonly string[];
+  cons: readonly string[];
+  termYears: number | null;
+  toWin: number;
+  migration: number;
+  grants: number;
+  approvalCap: number;
+  approvalStep: number;
+}
+
+export const GOVERNMENT_KINDS: readonly GovernmentKind[] = ['democracia', 'dictadura', 'tecnocracia'];
+
+export const GOVERNMENTS: Record<GovernmentKind, Government> = {
+  democracia: {
+    label: 'Democracia',
+    blurb: 'La forma de siempre: el Intendente se juega el cargo cada cuatro años.',
+    pros: ['La Provincia gira los subsidios de cada hito', 'Llega toda la gente que quiere venir'],
+    cons: ['Elecciones cada 4 años: hace falta el 50 % para seguir'],
+    termYears: 4,
+    toWin: 50,
+    migration: 1,
+    grants: 1,
+    approvalCap: 100,
+    approvalStep: 4,
+  },
+  dictadura: {
+    label: 'Dictadura',
+    blurb: 'Nadie te vota: el cargo es tuyo y no hay octubre que lo discuta.',
+    pros: ['No hay elecciones: nunca perdés el poder', 'La ciudad crece con la plata que hacés vos'],
+    cons: ['Llega un 20 % menos de gente nueva', 'La Provincia no gira subsidies', 'La aprobación no pasa de 60'],
+    termYears: null,
+    toWin: 0,
+    migration: 0.8,
+    grants: 0,
+    approvalCap: 60,
+    approvalStep: 4,
+  },
+  tecnocracia: {
+    label: 'Tecnocracia',
+    blurb: 'Gobierna el que sabe: mandatos largos y la mitad de la opinión en juego.',
+    pros: ['Elecciones cada 6 años y con el 40 % alcanza', 'La Provincia gira los subsidios de cada hito'],
+    cons: ['La aprobación se mueve la mitad de rápido: si la ciudad se enoja, tardás en recuperarla', 'Llega un 5 % menos de gente nueva'],
+    termYears: 6,
+    toWin: 40,
+    migration: 0.95,
+    grants: 1,
+    approvalCap: 100,
+    approvalStep: 2,
+  },
+};
+
 export const INITIAL_CASH = 30000;
 export const DEFAULT_TAX = 7;
 export const MIN_TAX = 0;

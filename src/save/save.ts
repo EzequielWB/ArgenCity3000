@@ -1,5 +1,6 @@
 import {
   DEFAULT_FUNDING,
+  GOVERNMENT_KINDS,
   LOANS,
   MAX_FUNDING,
   MAX_LEVEL,
@@ -9,6 +10,7 @@ import {
   PLANT_KINDS,
   PLANT_SIZE,
   SERVICE_KINDS,
+  type GovernmentKind,
   type PlantKind,
   type ServiceFunding,
   type ZoneTaxes,
@@ -21,7 +23,7 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -30,9 +32,10 @@ export const SAVE_VERSION = 9;
  * Intendente is simply the Intendente; versions 1 to 6 had no buildings of the coast (the tile ids
  * from 12 on) nor the two coast lines of the budget, which count as zero; versions 1 to 7 had no
  * provincial route, so they have none and their streets are free to start anywhere; versions 1 to
- * 8 had one kind of street, so all of theirs are asphalt.
+ * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
+ * government, so they are democracies with no party.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -228,6 +231,9 @@ function parseSim(raw: unknown): SimState {
   need(s.lostElection === undefined || typeof s.lostElection === 'boolean', 'El mandato de la partida es inválido');
   // The municipal loan exists from version 5 on: older saves owe nothing.
   const loan = parseLoan(s.loan);
+  // The form of government exists from version 10 on: older saves are democracies without a party.
+  need(s.government === undefined || GOVERNMENT_KINDS.includes(s.government as GovernmentKind), 'La forma de gobierno de la partida es inválida');
+  need(s.party === undefined || (typeof s.party === 'string' && s.party.length <= 32), 'El partido de la partida es inválido');
   return {
     tick: s.tick as number,
     cash: s.cash as number,
@@ -244,6 +250,8 @@ function parseSim(raw: unknown): SimState {
     terms: (s.terms as number | undefined) ?? 0,
     lostElection: (s.lostElection as boolean | undefined) ?? false,
     loan,
+    government: (s.government as GovernmentKind | undefined) ?? 'democracia',
+    party: (s.party as string | undefined) ?? '',
   };
 }
 

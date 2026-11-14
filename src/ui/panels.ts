@@ -1,4 +1,4 @@
-import { LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, type ServiceKind } from '../config';
+import { GOVERNMENTS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, type ServiceKind } from '../config';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
 import { formatMoney, formatNumber } from '../core/format';
@@ -9,7 +9,7 @@ import { monthlyBudget, type BudgetReport } from '../sim/budget';
 import { dateOf } from '../sim/calendar';
 import { loanEndLabel, loanInstalment, loanOwed, loanTotal } from '../sim/loans';
 import { MILESTONES, unlockNames } from '../sim/milestones';
-import { APPROVAL, monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
+import { monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
 import { toolInfo } from '../world/tools';
 import { $, escapeHtml, toast } from './dom';
 
@@ -243,17 +243,22 @@ function factorRows(factors: readonly ApprovalFactor[]): string {
     .join('')}</table>`;
 }
 
-/** What the neighbours think and why, and when they vote. */
+/** What the neighbours think and why, when they vote, and who governs. */
 export function openApproval(game: Game): void {
   const s = game.sim.state;
+  const gov = GOVERNMENTS[s.government];
   const report = game.sim.approval;
   const trend = report.target > s.approval ? 'está subiendo' : report.target < s.approval ? 'está bajando' : 'se mantiene';
+  const who = s.party ? `Partido ${escapeHtml(s.party)} · ${gov.label}` : gov.label;
   const vote = s.lostElection
     ? '<p>Perdiste las últimas elecciones: la ciudad sigue en <strong>modo libre</strong>, sin más votaciones.</p>'
-    : `<p>Próximas elecciones: <strong>octubre de ${nextElectionYear(s.tick)}</strong> (faltan ${monthsToElection(s.tick)} meses). Hace falta el ${APPROVAL.toWin} % para seguir.${s.terms ? ` Mandatos ganados: ${s.terms}.` : ''}</p>`;
+    : gov.termYears === null
+      ? `<p>Gobierno de facto: <strong>no hay elecciones</strong> y la aprobación no pasa del ${gov.approvalCap} %.</p>`
+      : `<p>Próximas elecciones: <strong>octubre de ${nextElectionYear(s.tick, s.government)}</strong> (faltan ${monthsToElection(s.tick, s.government)} meses). Hace falta el ${gov.toWin} % para seguir.${s.terms ? ` Mandatos ganados: ${s.terms}.` : ''}</p>`;
   openModal(`
     <h2>Aprobación de los vecinos</h2>
-    <p>Hoy te aprueba el <strong>${s.approval} %</strong>. Por cómo está la ciudad, ${trend} hacia el <strong>${report.target} %</strong> (se mueve hasta ${APPROVAL.step} puntos por mes).</p>
+    <p class="gov-tag"><small>${who}</small></p>
+    <p>Hoy te aprueba el <strong>${s.approval} %</strong>. Por cómo está la ciudad, ${trend} hacia el <strong>${report.target} %</strong> (se mueve hasta ${gov.approvalStep} puntos por mes).</p>
     ${vote}
     <h3>Qué suma y qué resta</h3>
     <p><small>Se parte de 50 puntos.</small></p>
@@ -264,12 +269,13 @@ export function openApproval(game: Game): void {
 /** The ballot paper of an election night: the share of the votes, the bar it had to clear, and the stamp. */
 function ballot(game: Game, stamp: string, won: boolean, rest: string): string {
   const s = game.sim.state;
+  const gov = GOVERNMENTS[s.government];
   return `<div class="boleta${won ? '' : ' lost'}">
     <div class="band"></div>
     <h2 class="lista">Elecciones ${dateOf(s.tick).year} · Lista 3000</h2>
     <p>${game.mayor ? `${escapeHtml(game.mayor)}, ` : ''}Intendente de ${escapeHtml(game.name)}</p>
     <div class="num">${s.approval} %</div>
-    <div class="votes" role="img" aria-label="${s.approval} % de los votos; hacía falta el ${APPROVAL.toWin} %"><i style="width:${s.approval}%"></i><b style="left:${APPROVAL.toWin}%"></b></div>
+    <div class="votes" role="img" aria-label="${s.approval} % de los votos; hacía falta el ${gov.toWin} %"><i style="width:${s.approval}%"></i><b style="left:${gov.toWin}%"></b></div>
     <div class="stamp">${stamp}</div>
     ${rest}
   </div>`;
@@ -283,7 +289,7 @@ export function openElectionWon(game: Game): void {
       game,
       'Reelecto',
       true,
-      `<p>Hacía falta el ${APPROVAL.toWin} %. Próxima votación: octubre de ${nextElectionYear(s.tick)}.${s.terms > 1 ? ` Mandatos ganados: ${s.terms}.` : ''}</p>
+      `<p>Hacía falta el ${GOVERNMENTS[s.government].toWin} %. Próxima votación: octubre de ${nextElectionYear(s.tick, s.government)}.${s.terms > 1 ? ` Mandatos ganados: ${s.terms}.` : ''}</p>
       <div class="row"><button id="wonStay" class="primary" type="button">Seguir gobernando</button></div>`,
     ),
     undefined,
@@ -294,13 +300,14 @@ export function openElectionWon(game: Game): void {
 
 /** The night of a lost election: what went wrong, and the choice to go on in free mode or leave. */
 export function openElectionLost(game: Game, onLeave: () => void): void {
+  const gov = GOVERNMENTS[game.sim.state.government];
   const complaints = game.sim.approval.factors.filter((f) => f.points < 0).slice(0, 4);
   const body = openModal(
     ballot(
       game,
       'No reelecto',
       false,
-      `<p>Hacía falta el ${APPROVAL.toWin} %: los vecinos votaron y no te acompañaron.</p>
+      `<p>Hacía falta el ${gov.toWin} %: los vecinos votaron y no te acompañaron.</p>
       ${complaints.length ? `<h3>De qué se quejaban</h3>${factorRows(complaints)}` : ''}
       <p>Podés seguir construyendo la ciudad en modo libre (ya no habrá elecciones) o volver al inicio y fundar otra.</p>
       <div class="row"><button id="lostStay" class="primary" type="button">Seguir en modo libre</button><button id="lostLeave" type="button">Volver al inicio</button></div>`,
@@ -430,7 +437,7 @@ export function openHelp(): void {
   openModal(`
     <h2>Cómo se juega</h2>
     <ol class="steps">
-      <li><strong>Construí una usina</strong> (tecla 9). Sin luz no se levanta ni una casita.</li>
+      <li><strong>Construí una usina</strong> (tecla 9). Sin luz no se levanta ni una casita. El tiempo arranca en pausa: se pone en marcha con tu primera obra.</li>
       <li><strong>Trazá calles</strong> (3) arrastrando. Los lotes necesitan una calle a 3 lotes o menos.
         Si ponés calles pegadas una al lado de la otra, forman una <strong>avenida</strong> con más carriles cuanto más ancha sea, y aguanta más tránsito.
         Hay tres <strong>calidades</strong> y se eligen de una: asfalto (3), pavimento reforzado (R), que entra un 60 % más de tránsito y marca el medio con lucecitas amarillas,
@@ -452,7 +459,7 @@ export function openHelp(): void {
         <strong>escuela</strong> (Y) no hay torres ni oficinas. La <strong>comisaría</strong> (I) baja el delito de los barrios densos y los
         <strong>bomberos</strong> (O) apagan los incendios antes de que se pierda el edificio. Al elegirlos se ve la capa de cobertura.</li>
       <li><strong>Tránsito.</strong> Cada vecino va a trabajar al comercio y a la industria más cercanos por las calles. Si pasa más gente de la que la calle aguanta, se satura (rojo en la capa Tránsito): baja el valor del suelo, los lotes crecen despacio y los vecinos se quejan. Se arregla con avenidas, con más caminos o acercando el trabajo a las casas.</li>
-      <li><strong>Aprobación y elecciones.</strong> Arriba ves qué porcentaje de los vecinos te aprueba (clic para el detalle). Suman la salud, la educación, las tasas bajas, los barrios lindos y que la ciudad crezca; restan el delito, el humo, los apagones, el tránsito, el abandono, la falta de trabajo, las tasas altas y la caja en rojo. En octubre cada 4 años (la primera vez en 1993) hay elecciones: con 50 % o más seguís; si perdés, la ciudad queda en modo libre.</li>
+      <li><strong>Aprobación y elecciones.</strong> Arriba ves qué porcentaje de los vecinos te aprueba (clic para el detalle). Suman la salud, la educación, las tasas bajas, los barrios lindos y que la ciudad crezca; restan el delito, el humo, los apagones, el tránsito, el abandono, la falta de trabajo, las tasas altas y la caja en rojo. En octubre cada 4 años (la primera vez en 1993) hay elecciones: con 50 % o más seguís; si perdés, la ciudad queda en modo libre. La forma de gobierno que elegís al fundar cambia la regla: la <strong>dictadura</strong> no tiene elecciones, pero atrae un 20 % menos de gente, no recibe subsidios de la Provincia y no pasa del 60 % de aprobación; la <strong>tecnocracia</strong> vota cada 6 años con el 40 %, pero la aprobación se mueve la mitad de rápido.</li>
       <li><strong>Hitos.</strong> Debajo de la población está el próximo hito. Al llegar, la Provincia gira plata y se habilitan edificios: salita y bomberos con 100 habitantes, escuela y comisaría con 200, usina a gas con 1.000 y parque eólico con 2.500. Sobre la costa: el muelle con 100 habitantes, la costanera con 200, el puerto y el balneario con 1.000 y el faro con 5.000.</li>
       <li>Un edificio sin luz, sin calle, con mucho delito o con la caja en rojo puede quedar <strong>abandonado</strong>: no paga y baja el valor de alrededor.</li>
     </ol>

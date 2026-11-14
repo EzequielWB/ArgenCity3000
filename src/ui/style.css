@@ -1555,3 +1555,87 @@ ol.steps li {
     padding: 22px 18px 16px;
   }
 }
+
+/* Government picker of the start screen: one card per form, pros and cons in sight. */
+.gov-field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gov-field legend {
+  font-weight: 600;
+  padding: 0;
+}
+
+.gov-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.start-form label.gov-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(31, 22, 17, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.35);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.start-form label.gov-card input {
+  grid-row: 1 / span 3;
+  align-self: start;
+  width: auto;
+  margin-top: 3px;
+  accent-color: var(--gold);
+}
+
+.start-form label.gov-card:has(input:checked) {
+  border-color: var(--gold);
+  background: rgba(255, 248, 220, 0.75);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+
+.gov-name {
+  font-weight: 700;
+}
+
+.gov-name small {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.gov-blurb {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.gov-list {
+  list-style: none;
+  margin: 3px 0 0;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.gov-list li {
+  line-height: 1.35;
+}
+
+.gov-list .pro {
+  color: #2f6b3a;
+}
+
+.gov-list .con {
+  color: #8f3b30;
+}
+
+.gov-tag {
+  margin-top: -8px;
+  opacity: 0.8;
+}

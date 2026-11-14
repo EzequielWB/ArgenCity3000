@@ -3,7 +3,7 @@
  * Approval is 50 for a city where nothing stands out; each thing the neighbours enjoy or suffer
  * adds or takes points. Pure functions: the simulation keeps the state.
  */
-import { CAPACITY, COAST_APPROVAL, DEFAULT_TAX, START_YEAR, TICKS_PER_MONTH, type ZoneTaxes } from '../config';
+import { CAPACITY, COAST_APPROVAL, DEFAULT_TAX, GOVERNMENTS, START_YEAR, TICKS_PER_MONTH, type GovernmentKind, type ZoneTaxes } from '../config';
 import { TILE, type World } from '../world/world';
 import { averageTax } from './demand';
 
@@ -114,39 +114,47 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   return { target, factors };
 }
 
-/** The approval a month later: it moves towards the target, `APPROVAL.step` points at most. */
-export function stepApproval(current: number, target: number): number {
-  return current + clamp(target - current, -APPROVAL.step, APPROVAL.step);
+/** The approval a month later: it moves towards the target and stops at the ceiling of the
+ * form of government, which is also how fast it moves. */
+export function stepApproval(current: number, target: number, government: GovernmentKind = 'democracia'): number {
+  const gov = GOVERNMENTS[government];
+  const moved = current + clamp(target - current, -gov.approvalStep, gov.approvalStep);
+  return Math.max(0, Math.min(gov.approvalCap, moved));
 }
 
-/** Years between elections, and the first term's length is the same: the first one is in 1993. */
-const TERM_YEARS = 4;
 /** October, counted from zero. */
 const ELECTION_MONTH = 9;
 
-/** Month (counted from the start of the game) whose end holds election number `k`. */
-const electionMonth = (k: number) => ((k + 1) * TERM_YEARS - 1) * 12 + ELECTION_MONTH;
+/** Month (counted from the start of the game) whose end holds election number `k` of a term. */
+const electionMonth = (k: number, term: number) => ((k + 1) * term - 1) * 12 + ELECTION_MONTH;
 
 /** Number of the next election still to be held at `tick` (0 = the first). */
-function nextElection(tick: number): number {
+function nextElection(tick: number, term: number): number {
   const month = Math.floor(tick / TICKS_PER_MONTH);
   let k = 0;
-  while (electionMonth(k) < month) k++;
+  while (electionMonth(k, term) < month) k++;
   return k;
 }
 
 /** True at the first tick after an election October: the simulation holds the election then. */
-export function electionDue(tick: number): boolean {
+export function electionDue(tick: number, government: GovernmentKind = 'democracia'): boolean {
+  const term = GOVERNMENTS[government].termYears;
+  if (term === null) return false;
   const ended = Math.floor(tick / TICKS_PER_MONTH) - 1;
-  return ended >= 0 && ended % 12 === ELECTION_MONTH && Math.floor(ended / 12) % TERM_YEARS === TERM_YEARS - 1;
+  return ended >= 0 && ended % 12 === ELECTION_MONTH && Math.floor(ended / 12) % term === term - 1;
 }
 
-/** Months left until the next election is held (1 during the election October itself). */
-export function monthsToElection(tick: number): number {
-  return electionMonth(nextElection(tick)) + 1 - Math.floor(tick / TICKS_PER_MONTH);
+/** Months left until the next election is held (1 during the election October itself), or null
+ * when this form of government holds none. */
+export function monthsToElection(tick: number, government: GovernmentKind = 'democracia'): number | null {
+  const term = GOVERNMENTS[government].termYears;
+  if (term === null) return null;
+  return electionMonth(nextElection(tick, term), term) + 1 - Math.floor(tick / TICKS_PER_MONTH);
 }
 
-/** Year of the next election. */
-export function nextElectionYear(tick: number): number {
-  return START_YEAR + Math.floor(electionMonth(nextElection(tick)) / 12);
+/** Year of the next election, or null when this form of government holds none. */
+export function nextElectionYear(tick: number, government: GovernmentKind = 'democracia'): number | null {
+  const term = GOVERNMENTS[government].termYears;
+  if (term === null) return null;
+  return START_YEAR + Math.floor(electionMonth(nextElection(tick, term), term) / 12);
 }

@@ -49,11 +49,12 @@ export function milestoneForPop(pop: number): number {
  * Moves the city to every milestone its population has reached, paying each grant, and returns
  * the ones just reached (none most months). Never moves back.
  */
-export function advanceMilestones(state: { milestone: number; cash: number }, pop: number): Milestone[] {
+export function advanceMilestones(state: { milestone: number; cash: number }, pop: number, grants = 1): Milestone[] {
   const reached: Milestone[] = [];
   for (let next = nextMilestone(state.milestone); next && pop >= next.pop; next = nextMilestone(state.milestone)) {
     state.milestone++;
-    state.cash += next.grant;
+    // The milestone is reached either way; what the Province pays depends on the government.
+    state.cash += Math.round(next.grant * grants);
     reached.push(next);
   }
   return reached;
