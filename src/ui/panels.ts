@@ -72,9 +72,9 @@ function money(v: number, sign = false): string {
 function budgetTable(b: BudgetReport): string {
   const row = (label: string, v: number, cls = '') => `<tr class="${cls}"><td>${label}</td><td>${money(v)}</td></tr>`;
   return `<div class="planilla"><table class="budget">
-    ${row('Tasas residenciales', b.taxR)}
-    ${row('Tasas comerciales', b.taxC)}
-    ${row('Tasas industriales', b.taxI)}
+    ${row('Impuestos residenciales', b.taxR)}
+    ${row('Impuestos comerciales', b.taxC)}
+    ${row('Impuestos industriales', b.taxI)}
     ${row('Pesca y turismo', b.coastIncome)}
     ${row('Total ingresos', b.income, 'total')}
     ${row('Calles y puentes', b.roads)}
@@ -103,7 +103,7 @@ export function openBudget(game: Game): void {
         <div id="budgetNow"></div>
       </section>
       <section>
-        <h3>Tasas por zona</h3>
+        <h3>Impuestos por zona</h3>
         ${ZONE_ROWS.map(
           ([z, label]) =>
             `<div class="tax"><label for="tax${z}">${label}</label><input type="range" id="tax${z}" data-tax="${z}" min="${MIN_TAX}" max="${MAX_TAX}" step="1" value="${sim.state.taxes[z]}"><output>${sim.state.taxes[z]} %</output></div>`,
@@ -114,9 +114,8 @@ export function openBudget(game: Game): void {
           ([k, label]) =>
             `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
         ).join('')}
-        <h3>Espacios verdes</h3>
-        <div class="tax"><label for="fundgreen">Plazas</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
-        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. Las plazas son distintas: por debajo del ${PARK.care} % se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
+        <div class="tax"><label for="fundgreen">Espacios verdes</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
+        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. Los espacios verdes son distintos: por debajo del ${PARK.care} % las plazas se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
         Saldo anual estimado: <strong id="yearly"></strong><br>
@@ -140,10 +139,10 @@ export function openBudget(game: Game): void {
     const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;
     $('#taxNote').textContent =
       avg > 9
-        ? `Tasas altas: entra más plata, pero baja la demanda y la ciudad deja de atraer gente nueva. ${demand}`
+        ? `Impuestos altos: entra más plata, pero baja la demanda y la ciudad deja de atraer gente nueva. ${demand}`
         : avg < 5
-          ? `Tasas bajas: la ciudad crece más rápido pero entra menos plata. ${demand}`
-          : `Cada tasa mueve la demanda de su zona. ${demand}`;
+          ? `Impuestos bajos: la ciudad crece más rápido pero entra menos plata. ${demand}`
+          : `Cada impuesto mueve la demanda de su zona. ${demand}`;
     renderLoans();
     // Rewired on every redraw: `renderLoans` replaces the buttons it just drew.
     body.querySelectorAll<HTMLButtonElement>('button[data-loan]').forEach((btn) =>
@@ -512,7 +511,7 @@ export function openHelp(): void {
         La usina y cada edificio con luz alumbran hasta 3 lotes a su alrededor; para llevar la luz más lejos hace falta el tendido eléctrico (4), que también alumbra 3 lotes a su alrededor. Las calles no llevan luz.</li>
       <li><strong>Mirá la demanda</strong> (barras R C I arriba): la gente viene si hay trabajo, y el comercio y la industria siguen a la gente. Con apagones, con tasas de más de 9 % en promedio o con muchos edificios abandonados la ciudad deja de atraer gente nueva y la demanda se queda en cero: al lado de las barras aparece el motivo.</li>
       <li><strong>Cuidá la caja.</strong> Cada semana cobrás tasas y pagás mantenimiento. Al lado de la Caja ves el saldo estimado del mes y, si la caja no va a durar un año, cuántos meses alcanza. Con la caja en rojo no se construye nada y los vecinos empiezan a irse. Los servicios públicos cuestan una parte fija (el 25 %) y el resto según cuántos vecinos atienden.
-        En el <strong>Presupuesto</strong> (P) ponés una tasa para cada zona (cada una mueve solo la demanda de su zona) y decidís cuánto financiar cada servicio:
+        En el <strong>Presupuesto</strong> (P) ponés un impuesto para cada zona (cada una mueve solo la demanda de su zona) y decidís cuánto financiar cada servicio:
         al 50 % cuesta la mitad y cubre la mitad.
         Si la caja se queda sin resto, en el mismo panel podés <strong>pedir un crédito</strong>: entra la plata de una y se devuelve en cuotas fijas que se descuentan solas todos los meses. Uno por vez, y podés cancelar lo que queda cuando te sobre.</li>
       <li><strong>Plazas</strong> (8), agua y árboles suben el valor del suelo y dejan crecer edificios más altos. La industria contamina: alejala de las casas.</li>

@@ -21,7 +21,8 @@ Las plazas hoy son baratísimas ($2 por celda) y regalan valor de suelo desde la
   la fuerza por celda también (`0,4 + log2(área+1)/2`, tope 2,5). El tope global de +30 sigue
   vigente, así que lo que gana una plaza grande es sobre todo **cobertura**.
 - **S5 Presupuesto "Espacios verdes".** Nuevo `SimState.green` (0 a 120 %, arranca en 100), con su
-  fila en el Presupuesto. El gasto pasa a ser `celdas × UPKEEP.park × green/100`, con `UPKEEP.park`
+  slider en el Presupuesto, **en la misma lista que los servicios y justo debajo de Bomberos** (no
+  una sección aparte), rotulado "Espacios verdes". El gasto pasa a ser `celdas × UPKEEP.park × green/100`, con `UPKEEP.park`
   de 2 a 5.
 - **S6 Descuido.** `care = green` (0 a 100). El aporte se escala por `mood = (care - 50) / 50`:
   con el presupuesto al 100 % da lo de siempre; al 50 % no da nada; por debajo resta como el
@@ -98,3 +99,11 @@ Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`, `npm run probe
 - **L8, el modal mentía hasta fin de mes.** `setGreen` recalculaba parques y valor del suelo pero no
   volvía a juzgar la aprobación: el factor aparecía recién con el cierre del mes. Ahora `setGreen`
   hace `this.approval = this.judge()` y el vecino se queja en el acto.
+- **L9 (2026-11-13), copys del Presupuesto.** El jugador pidió dos cosas: que lo de residencial,
+  comercial e industria diga **"Impuestos"** y no "Tasas" (es más claro), y que los espacios verdes
+  no tengan sección propia sino un slider más, debajo de Bomberos, rotulado "Espacios verdes". Se
+  cambió todo el panel: `Impuestos por zona`, `Impuestos residenciales/comerciales/industriales` en
+  la planilla, `Impuestos altos/bajos` y `Cada impuesto mueve la demanda de su zona`. La ayuda del
+  juego (`ponés un impuesto para cada zona`) acompaña. Queda pendiente unificar el resto del juego,
+  que todavía dice "tasas": el factor `Tasas` del modal de aprobación, los titulares del diario
+  ("Suben las tasas"), el reporte de la celda y la etiqueta de estancamiento en `game.ts`.
