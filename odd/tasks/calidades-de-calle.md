@@ -31,9 +31,10 @@ trazarla y se puede mejorar en el lugar pagando la diferencia.
 > "el bulevar con farolas la verdad que no se nota mucho y no se entiende el bulevar, podrias hacer que la linea del medio sea 3 de ancho? con distintos tonos de verde para notar el pasto, y sacá el nombre "con farolas", y que deje de subir el precio de la tierra alrededor"
 
 - Se llama **Bulevar**, sin "con farolas", en la barra, la ayuda y los documentos.
-- En una avenida de bulevar de **3 carriles o más**, el medio se dibuja como un **cantero de pasto
-  de hasta 3 carriles**, con cordón contra el asfalto y **distintos tonos de verde** por celda. Con
-  2 carriles no hay lugar para el cantero y queda solo la línea verde entre las dos manos.
+- El bulevar se dibuja con un **cantero de cemento de un píxel** en el medio del camino, y **no
+  crece con el ancho**: en una avenida de ancho par va sobre el límite entre las dos manos, en una
+  de ancho impar por el medio del carril central, y en una calle de una sola celda por el medio de
+  la celda (siguiendo el trazado). Es la única marca del bulevar además de las farolas.
 - El bulevar **ya no sube el valor del suelo**. Lo único que sigue dando aparte de capacidad son sus
   farolas, que restan delito a 2 celdas o menos (con tope).
 - Aceptación: con el resto de la ciudad igual, un barrio con bulevar tiene menos delito y **el mismo
@@ -82,9 +83,10 @@ trazarla y se puede mejorar en el lugar pagando la diferencia.
 
 - Asfalto: como hoy.
 - Pavimento reforzado: asfalto más oscuro y líneas más marcadas.
-- Bulevar: cantero de pasto de hasta 3 carriles en el medio de la avenida (con tonos de verde y
-  cordón) y farolas cada pocas celdas. La regla del cantero es `medianCells` / `isMedianLane`
-  (`src/render/avenue.ts`), pura y probada.
+- Bulevar: cantero de cemento de un píxel en el medio del camino, a cualquier ancho, y farolas cada
+  pocas celdas. La regla es `boulevardMedian(lanes, lane)` (`src/render/avenue.ts`), pura y probada:
+  `'boundary'` en el límite entre las dos manos (ancho par), `'through'` por el medio de la celda
+  (ancho impar y calle de una celda), `'none'` en el resto.
 - El minimapa distingue las calidades.
 - Aceptación: en una captura con las tres calidades en el mapa, se distinguen sin leyenda.
 
@@ -103,7 +105,8 @@ línea obligaba a cambiar el formato del presupuesto en el guardado sin que el j
 | T2 Herramientas: tres calidades, costos, mejora en el lugar, ruta | S1, S2, S5, S7 | `src/config.ts`, `src/world/tools.ts`, `src/game.ts`, `src/ui/toolbar.ts` | hecho | RED visto; 7 tests de construcción/mejora; `toolgroups`, `outlook`, `coast` (la tecla `b` estaba tomada por el tamaño de bloque: el bulevar usa `t`) y `route` (versión 9) actualizados |
 | T3 Congestión: multiplicador y eslabón más débil | S4 | `src/sim/congestion.ts` | hecho | RED visto (2 de 9 rojos); 3 tests nuevos, los 6 viejos siguen verdes |
 | T4 Delito del bulevar (el valor del suelo se sacó en T7) | S3 | `src/sim/fields.ts` | hecho | RED visto (2 rojos); dentro del radio baja el delito, fuera queda igual; el valor del suelo ya no cambia |
-| T7 Bulevar sin "con farolas", cantero de 3 carriles y sin valor del suelo | S3, S8 | `src/config.ts`, `src/world/tools.ts`, `src/render/avenue.ts`, `src/render/mapRenderer.ts`, `src/sim/fields.ts`, `src/ui/panels.ts`, `README.md`, `tests/roadtier.test.ts` | hecho | ver L11 |
+| T8 Bulevar con cantero de cemento de un píxel, sin pasto | S3, S8 | `src/render/avenue.ts`, `src/render/mapRenderer.ts`, `tests/roadtier.test.ts`, `README.md`, `src/ui/panels.ts`, `src/world/tools.ts` | hecho | ver L12 |
+| T7 Bulevar sin "con farolas", sin valor del suelo | S3, S8 | `src/config.ts`, `src/world/tools.ts`, `src/render/avenue.ts`, `src/render/mapRenderer.ts`, `src/sim/fields.ts`, `src/ui/panels.ts`, `README.md`, `tests/roadtier.test.ts` | hecho | ver L11 |
 | T5 Dibujo, minimapa, ficha y presupuesto | S8, S9 | `src/render/*`, `src/sim/report.ts`, `src/sim/budget.ts` | hecho | `tierOf` en `avenue.ts` probado (banda por su celda más débil); las tres calidades miradas en el navegador con el `MapRenderer` real: asfalto más claro, reforzado más oscuro, bulevar con cantero verde y farolas |
 | T6 Documentación: README, plan, ayuda en pantalla | S1, S5 | `README.md`, `PLAN-DE-TRABAJO.txt`, `src/ui/panels.ts` | hecho | — |
 
@@ -125,3 +128,6 @@ Runner: `npm test` (Vitest) y `npm run build`. Balance: `npm run probe`.
   - Los faroles y su efecto sobre el delito quedan; lo que se fue es el valor del suelo: `BOULEVARD.value` desapareció de `config.ts` y de `computeLandValue`, y el test que exigía "sube el valor" ahora exige que **no** lo mueva.
   - Medido en el navegador headless con el `MapRenderer` real sobre una avenida de 5 carriles de bulevar, muestreando el centro de cada carril: `[[52,51,59],[106,154,78],[121,167,87],[92,139,70],[52,51,59]]` → asfalto, pasto, pasto, pasto, asfalto, con tres verdes distintos. Los archivos temporales se borraron.
   - Consecuencia de diseño, anotada a propósito: sin valor del suelo, el bulevar solo compra +0,2 de capacidad sobre el pavimento reforzado por $45 de construcción y $5 de mantenimiento más. **Puede quedar dominado**; si al jugarlo no se elige nunca, la palanca es bajar el mantenimiento o subir la capacidad.
+- **L12 (2026-11-13), pedido del usuario (verbatim):** "No, claro, el tema que por como lo hiciste, al ensanchar la calle el bulevar se vuelve gigante y no tiene sentido, en todo caso que al alargar la calle este deberia agregar bulevares, y hacelos de cemento y listo, de 1 pixel y ya está (1 pixel en el medio contiguo en una sola calle)". Se reescribieron S3 y el ítem de dibujo de S8: el cantero deja de ser pasto de hasta 3 carriles (crecía con el ancho de la avenida) y pasa a ser **una sola línea de cemento de 1 píxel** en el medio del camino, igual en cualquier ancho.
+- **L13 (2026-11-13), T8.** `boulevardMedian(lanes, lane)` (`avenue.ts`) devuelve `'boundary'` para el carril bajo del límite central de una banda par, `'through'` para el carril central de una impar y para una calle de una celda, y `'none'` para los demás. En `drawWideAsphalt`, cuando el estilo de la línea es `double` y la calidad es bulevar, se pinta **una** línea de cemento (`MEDIAN_CONCRETE`, `lineWidth 1`) en vez de las dos amarillas; para `'through'` se dibuja del medio de un lado de la celda al medio del opuesto, siguiendo el eje de la calle (se detecta por el vecino de la misma banda y el mismo carril). En `drawAsphalt` (calle de una celda) las líneas del medio hacia cada conexión pasan de punteadas crema a **sólidas de cemento**. Se fueron `medianCells`, `isMedianLane`, los cuatro verdes y los cordones: el cantero ya no ocupa celdas, así que el ancho de la avenida no lo agranda.
+  - Medido en el navegador headless con el `MapRenderer` real, muestreando el píxel exacto. Calle de una celda, centro: `[164,160,151]`. Avenida de 2: centro de carril `[52,51,59]` (asfalto) y límite `[163,159,151]` (cemento). Avenida de 4: centro de carril `[52,51,59]`, límite 0|1 `[165,158,132]` (punteado crema, el de las avenidas), límite 1|2 `[163,159,151]` (cantero). Los temporales se borraron.

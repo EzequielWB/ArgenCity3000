@@ -155,20 +155,14 @@ export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: numbe
 export type LaneLine = 'dash' | 'solid' | 'double';
 
 /**
- * Width of the planted median of a boulevard band, in lanes: three in the middle when the band is
- * wide enough for a lane on each side of it, fewer when it is narrow, and none at all when the
- * band has only two lanes (there the median is just the line between them).
+ * How the concrete median of a boulevard runs through a cell of a band of `lanes` lanes, always one
+ * pixel wide whatever the width of the street: on the boundary with the lane beside it when the
+ * band has an even number of lanes, and through the middle of the cell when the middle lane is its
+ * own (an odd band, and a street of a single cell, which is `lanes === 1`).
  */
-export function medianCells(lanes: number): number {
-  return lanes >= 3 ? Math.min(3, lanes - 2) : 0;
-}
-
-/** Whether `lane` is part of the planted median of a band of `lanes` lanes. */
-export function isMedianLane(lanes: number, lane: number): boolean {
-  const m = medianCells(lanes);
-  if (m === 0) return false;
-  const first = Math.floor((lanes - m) / 2);
-  return lane >= first && lane < first + m;
+export function boulevardMedian(lanes: number, lane: number): 'boundary' | 'through' | 'none' {
+  if (lanes % 2 === 0) return lane === lanes / 2 - 1 ? 'boundary' : 'none';
+  return lane === (lanes - 1) / 2 ? 'through' : 'none';
 }
 
 /**

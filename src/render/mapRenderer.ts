@@ -4,7 +4,7 @@ import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
 import type { RoadTier } from '../config';
-import { KIND, analyzeRoads, indexOf, isMedianLane, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
+import { KIND, analyzeRoads, boulevardMedian, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
 
 /** Asphalt of each street quality: plain, reinforced pavement, boulevard. */
 const ROAD_SURFACE = [PAL.asphalt, PAL.asphaltPaved, PAL.asphaltBoulevard] as const;
@@ -67,10 +67,9 @@ const RAIL = '#d3d6cf';
 const RAIL_POST = '#6f685e';
 /** Lanes of the route that go the same way are told apart by white dashes. */
 const ROUTE_DASH = '#f2f2ee';
-/** Grass of a boulevard's median, picked by the cell's variant so the lawn is not one flat colour. */
-const MEDIAN_GRASS = ['#5c8b46', '#6a9a4e', '#79a757', '#517f3f'] as const;
-/** Curb between the median and the lanes. */
-const MEDIAN_CURB = '#cfcabf';
+/** The concrete median of a boulevard: one pixel, as wide as the division of the ways. */
+const MEDIAN_CONCRETE = '#c9c4b6';
+
 
 export interface PlacedSprite {
   sprite: Sprite;
@@ -770,11 +769,12 @@ export class MapRenderer {
     if (down) sub(a, b, b, 1);
     if (left) sub(0, a, a, b);
     if (right) sub(b, a, 1, b);
-    // Dashed centre lines towards each connection.
+    // Centre lines towards each connection: dashed on a street, and the concrete median of a
+    // boulevard, solid and one pixel wide, in the middle of a street of a single cell.
     const g = this.g;
-    g.strokeStyle = PAL.marking;
-    g.lineWidth = 0.8;
-    g.setLineDash([2, 2]);
+    g.strokeStyle = tier === 2 ? MEDIAN_CONCRETE : PAL.marking;
+    g.lineWidth = tier === 2 ? 1 : 0.8;
+    g.setLineDash(tier === 2 ? [] : [2, 2]);
     const c = bilinear(pts, 0.5, 0.5);
     const line = (u: number, v: number) => {
       const p = bilinear(pts, u, v);
@@ -847,29 +847,22 @@ export class MapRenderer {
     const isBand = kind === KIND.BAND_X || kind === KIND.BAND_Y;
     const lane = isBand ? indexOf(code) : 0;
     const lanes = isBand ? widthOf(code) : 1;
-    // The planted middle of a boulevard: whole cells of grass, with a curb against the lanes.
-    const inMedian = boulevard && isBand && isMedianLane(lanes, lane);
-    const surface = inMedian ? MEDIAN_GRASS[this.world.variant[i] & 3] : ROAD_SURFACE[tier];
+    const surface = ROAD_SURFACE[tier];
     const sub = (u0: number, v0: number, u1: number, v1: number) =>
       this.poly([bilinear(pts, u0, v0), bilinear(pts, u1, v0), bilinear(pts, u1, v1), bilinear(pts, u0, v1)], surface);
     // The pieces overlap by `e`, and reach `e` into the neighbours drawn before this cell,
     // so no seam of sidewalk colour shows through the asphalt of a wide road.
     const e = 0.04;
-    if (inMedian) {
-      // Grass over the whole cell: a median has no sidewalk and no lane line of its own.
-      this.poly(pts, surface);
-    } else {
-      sub(a, a, b, b);
-      if (up) sub(a, -e, b, a + e);
-      if (down) sub(a, b - e, b, 1);
-      if (left) sub(-e, a, a + e, b);
-      if (right) sub(b - e, a, 1, b);
-      // A corner is asphalt only when the road really wraps around it.
-      if (up && left && this.isRoadView(vx - 1, vy - 1)) sub(-e, -e, a + e, a + e);
-      if (up && right && this.isRoadView(vx + 1, vy - 1)) sub(b - e, -e, 1, a + e);
-      if (down && right && this.isRoadView(vx + 1, vy + 1)) sub(b - e, b - e, 1, 1);
-      if (down && left && this.isRoadView(vx - 1, vy + 1)) sub(-e, b - e, a + e, 1);
-    }
+    sub(a, a, b, b);
+    if (up) sub(a, -e, b, a + e);
+    if (down) sub(a, b - e, b, 1);
+    if (left) sub(-e, a, a + e, b);
+    if (right) sub(b - e, a, 1, b);
+    // A corner is asphalt only when the road really wraps around it.
+    if (up && left && this.isRoadView(vx - 1, vy - 1)) sub(-e, -e, a + e, a + e);
+    if (up && right && this.isRoadView(vx + 1, vy - 1)) sub(b - e, -e, 1, a + e);
+    if (down && right && this.isRoadView(vx + 1, vy + 1)) sub(b - e, b - e, 1, 1);
+    if (down && left && this.isRoadView(vx - 1, vy + 1)) sub(-e, b - e, a + e, 1);
 
     if (kind === KIND.BLOB) this.drawLamps(pts, vx, vy, !up, !right, !down, !left);
     if (!isBand) return;
@@ -884,16 +877,14 @@ export class MapRenderer {
       if (this.world.route[j] !== this.world.route[i]) return -1;
       const other = this.bands[j];
       if (kindOf(other) !== kind || widthOf(other) !== lanes || Math.abs(indexOf(other) - lane) !== 1) return -1;
-      // The median is grass with a curb, not a lane line.
-      if (boulevard && (inMedian || isMedianLane(lanes, indexOf(other)))) return -1;
       return Math.min(lane, indexOf(other));
     };
     const g = this.g;
     const stroke = (style: LaneLine, at: (t: number, off: number) => Pt, t0: number, t1: number) => {
-      // A boulevard has a planted median where an avenue paints its double centre line.
+      // A boulevard has a concrete median, one pixel wide, where an avenue paints its double line.
       const median = boulevard && style === 'double';
-      g.strokeStyle = median ? PAL.median : style === 'dash' ? PAL.marking : AVENUE_LINE;
-      g.lineWidth = median ? 1.8 : style === 'dash' ? 0.8 : 0.9;
+      g.strokeStyle = median ? MEDIAN_CONCRETE : style === 'dash' ? PAL.marking : AVENUE_LINE;
+      g.lineWidth = median ? 1 : style === 'dash' ? 0.8 : 0.9;
       g.setLineDash(!boulevard && style === 'dash' ? [2, 2] : []);
       for (const off of median ? [0] : style === 'double' ? [-DOUBLE_GAP, DOUBLE_GAP] : [0]) {
         const p = at(t0, off);
@@ -905,42 +896,46 @@ export class MapRenderer {
       }
       g.setLineDash([]);
     };
-    if (inMedian) {
-      // A curb wherever the grass meets asphalt, and along the outer sides of a band split by it.
+    if (boulevard && boulevardMedian(lanes, lane) === 'through') {
+      // An odd band (or a street of a single cell): the median runs through the middle of this
+      // cell, so it goes from the middle of one side to the middle of the opposite one.
       const n = this.world.n;
-      const edgeOf = (dx: number, dy: number): [Pt, Pt] =>
-        dy < 0
-          ? [bilinear(pts, 0, 0), bilinear(pts, 1, 0)]
-          : dy > 0
-            ? [bilinear(pts, 0, 1), bilinear(pts, 1, 1)]
-            : dx < 0
-              ? [bilinear(pts, 0, 0), bilinear(pts, 0, 1)]
-              : [bilinear(pts, 1, 0), bilinear(pts, 1, 1)];
-      for (const [dx, dy] of [
+      const mid = (dx: number, dy: number): Pt | null => {
+        const edge = (ex: number, ey: number): [Pt, Pt] =>
+          ey < 0
+            ? [bilinear(pts, 0, 0), bilinear(pts, 1, 0)]
+            : ey > 0
+              ? [bilinear(pts, 0, 1), bilinear(pts, 1, 1)]
+              : ex < 0
+                ? [bilinear(pts, 0, 0), bilinear(pts, 0, 1)]
+                : [bilinear(pts, 1, 0), bilinear(pts, 1, 1)];
+        const nxv = vx + dx;
+        const nyv = vy + dy;
+        if (nxv < 0 || nyv < 0 || nxv >= n || nyv >= n) return null;
+        const [x, y] = fromView(nxv, nyv, this.rot, n);
+        const other = this.bands[this.world.idx(x, y)];
+        // Only along the street: the neighbour has to be the same lane of the same band.
+        if (kindOf(other) !== kind || widthOf(other) !== lanes || indexOf(other) !== lane) return null;
+        const [p, q] = edge(dx, dy);
+        return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+      };
+      const [dx, dy] = [
         [1, 0],
         [-1, 0],
         [0, 1],
         [0, -1],
-      ] as [number, number][]) {
-        const nxv = vx + dx;
-        const nyv = vy + dy;
-        let other = -1;
-        if (nxv >= 0 && nyv >= 0 && nxv < n && nyv < n) {
-          const [x, y] = fromView(nxv, nyv, this.rot, n);
-          const oc = this.bands[this.world.idx(x, y)];
-          if (kindOf(oc) === kind && widthOf(oc) === lanes) other = indexOf(oc);
-        }
-        if (other >= 0 && isMedianLane(lanes, other)) continue;
-        const [p, q] = edgeOf(dx, dy);
-        g.strokeStyle = MEDIAN_CURB;
-        g.lineWidth = 1.2;
+      ].find(([d1, d2]) => mid(d1, d2)) ?? [0, 0];
+      const from = mid(dx, dy);
+      const to = mid(-dx, -dy);
+      if (from && to) {
+        g.strokeStyle = MEDIAN_CONCRETE;
+        g.lineWidth = 1;
         g.setLineDash([]);
         g.beginPath();
-        g.moveTo(p[0], p[1]);
-        g.lineTo(q[0], q[1]);
+        g.moveTo(from[0], from[1]);
+        g.lineTo(to[0], to[1]);
         g.stroke();
       }
-      return;
     }
     const jUp = boundary(vx, vy - 1);
     if (jUp >= 0) stroke(laneLine(lanes, jUp), (t, off) => bilinear(pts, t, off), left ? -e : a, right ? 1 : b);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { COSTS, ROAD_TIERS } from '../src/config';
 import { computeCrime, computeLandValue } from '../src/sim/fields';
-import { KIND, analyzeRoads, isMedianLane, kindOf, medianCells, tierOf } from '../src/render/avenue';
+import { KIND, analyzeRoads, boulevardMedian, kindOf, tierOf } from '../src/render/avenue';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { SAVE_VERSION, deserialize, serialize, toBase64 } from '../src/save/save';
 import { isUnlocked } from '../src/sim/milestones';
@@ -200,23 +200,20 @@ describe('what the boulevard lamps are worth', () => {
   });
 });
 
-describe('the planted median of a boulevard', () => {
-  const median = (lanes: number) => [...Array(lanes).keys()].filter((lane) => isMedianLane(lanes, lane));
-
-  it('takes the middle three lanes when there is a lane left on each side', () => {
-    expect(median(5)).toEqual([1, 2, 3]);
-    expect(median(7)).toEqual([2, 3, 4]);
-    expect(median(6)).toEqual([1, 2, 3]);
+describe('the concrete median of a boulevard', () => {
+  it('is one pixel on the boundary between the ways of an even band', () => {
+    expect(boulevardMedian(2, 0)).toBe('boundary');
+    expect(boulevardMedian(2, 1)).toBe('none');
+    expect(boulevardMedian(4, 1)).toBe('boundary');
+    expect(boulevardMedian(4, 2)).toBe('none');
   });
 
-  it('takes fewer lanes when the band is narrow, and none at all with only two lanes', () => {
-    expect(median(3)).toEqual([1]);
-    expect(median(4)).toEqual([1, 2]);
-    expect(median(2)).toEqual([]);
-    expect(median(1)).toEqual([]);
-    expect(medianCells(3)).toBe(1);
-    expect(medianCells(5)).toBe(3);
-    expect(medianCells(9)).toBe(3);
+  it('runs through the middle of the middle lane of an odd band, and of a single street', () => {
+    expect(boulevardMedian(1, 0)).toBe('through');
+    expect(boulevardMedian(3, 1)).toBe('through');
+    expect(boulevardMedian(3, 0)).toBe('none');
+    expect(boulevardMedian(5, 2)).toBe('through');
+    expect(boulevardMedian(5, 1)).toBe('none');
   });
 });
 
