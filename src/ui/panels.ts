@@ -117,6 +117,7 @@ export function openBudget(game: Game): void {
         ).join('')}
         <div class="tax"><label for="fundgreen">Espacios verdes</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
         <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. Los espacios verdes son distintos: por debajo del ${PARK.care} % estos se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
+        <p class="locked-note hidden" id="lockNote"></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
         Saldo anual estimado: <strong id="yearly"></strong><br>
@@ -193,7 +194,8 @@ export function openBudget(game: Game): void {
       refresh();
     }),
   );
-  // A slider the Province tied to a deal cannot be moved: it is drawn dead, with the reason written.
+  // A slider the Province tied to a deal cannot be moved: it is drawn dead, and the panel says why.
+  const tied: string[] = [];
   for (const input of body.querySelectorAll<HTMLInputElement>('input[data-green], input[data-fund]')) {
     const key = input.dataset.green ? 'green' : (input.dataset.fund as ServiceKind);
     const months = sim.state.effects[lockOf(key)] ?? 0;
@@ -201,6 +203,13 @@ export function openBudget(game: Game): void {
     input.disabled = true;
     input.parentElement!.classList.add('locked');
     input.title = `No lo podés mover: quedan ${months === 1 ? 'un mes' : `${months} meses`} de compromiso.`;
+    const label = input.parentElement!.querySelector('label')!.textContent;
+    tied.push(`${label} no se puede mover: ${months === 1 ? 'un mes' : `${months} meses`} de compromiso`);
+  }
+  const lockNote = body.querySelector<HTMLElement>('#lockNote');
+  if (lockNote && tied.length > 0) {
+    lockNote.classList.remove('hidden');
+    lockNote.textContent = `${tied.join('. ')}.`;
   }
   const green = body.querySelector<HTMLInputElement>('input[data-green]');
   green?.addEventListener('input', () => {

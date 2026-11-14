@@ -45,15 +45,19 @@ que ya existen leen sin enterarse.
 - **S11** — `ok` — Un evento puede publicar su propio titular (`report(text)`), y puede tirar una
   chance con el RNG de la partida (`chance(p)`): la coima tapada sale a la luz con el 30 %, y queda
   escrito en el botón.
-- **S12** — Los efectos viajan en la partida (formato 14). Una partida anterior abre sin efectos, y
+- **S12** — Un freno invisible es un bug para el jugador: mientras `freeze` corre, la ciudad dice
+  por qué no llega gente nueva (`stall = 'stopped'`, el aviso ámbar del tablero: «la ciudad está
+  frenada»), y un slider clavado se explica con una nota debajo de la lista de servicios («Salitas no
+  se puede mover: 24 meses de compromiso»).
+- **S13** — Los efectos viajan en la partida (formato 14). Una partida anterior abre sin efectos, y
   un efecto sin sentido (meses negativos, nombre vacío) se rechaza al abrir.
 
 ## Tasks
 
 | ID | Qué | Specs | Dónde | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Las palancas: efectos con vencimiento y su lectura en crecimiento, demanda, costa, valor del suelo, luz y sliders | S1–S7, S10, S12 | `src/sim/effects.ts`, `src/sim/simulation.ts`, `src/sim/budget.ts`, `src/sim/fields.ts`, `src/save/save.ts` | `_` |
-| T2 | Tests de las palancas | S1–S7, S10, S12 | `tests/efectos.test.ts` | `_` |
+| T1 | Las palancas: efectos con vencimiento y su lectura en crecimiento, demanda, costa, valor del suelo, luz y sliders | S1–S7, S10, S12, S13 | `src/sim/effects.ts`, `src/sim/simulation.ts`, `src/sim/budget.ts`, `src/sim/fields.ts`, `src/save/save.ts`, `src/ui/panels.ts`, `src/game.ts` | `2893b3f` |
+| T2 | Tests de las palancas | S1–S7, S10, S12, S13 | `tests/efectos.test.ts` | `2893b3f` |
 | T3 | El catálogo: quince eventos con sus condiciones y sus dos salidas | S8, S9, S11 | `src/sim/events.ts` | `_` |
 | T4 | Tests del catálogo: cada evento aparece cuando debe y cada opción hace lo que promete | S8–S11 | `tests/eventos.test.ts` | `_` |
 
@@ -73,3 +77,16 @@ que ya existen leen sin enterarse.
   elecciones en el año.
 - **L6** — Verificación: `npm test`, `tsc`, `build`, `probe` (el año 15 tiene que seguir en ~5.400
   habitantes con el mismo seed) y las capturas de los quince eventos en el juego.
+- **L7** — La coima se disparaba siempre: con la caja cómoda era el único candidato y el jugador la
+  veía cada dos meses. Ahora también pide que la ciudad esté creciendo («hay obras en curso»): con la
+  ciudad estancada nadie pavimenta nada.
+- **L8** — Partida de quince años contestando siempre la primera opción, para ver el catálogo en
+  condiciones reales: coima, provincia, sequía, plaza, piquete, humo y corte de usina aparecieron 18
+  veces en 15 años, una cada diez meses. Los que no salieron (derrame, calor, robos, curtiembre,
+  crecida, feria, escuela, temporada) piden cosas que esa ciudad no tenía: costa construida, delito
+  alto, aprobación arriba de 55. Eso es el `when` haciendo su trabajo.
+- **L9** — El jugador no puede quedarse mirando por qué la ciudad no crece: el freno usa el mismo
+  aviso ámbar que los apagones y los impuestos altos, y un slider clavado tiene su nota en el
+  presupuesto.
+- **L10** — `695` tests, `tsc` limpio, `build` de 1,4 s, y las capturas del piquete en el juego real,
+  del aviso de la ciudad frenada, del slider clavado y de la coima.

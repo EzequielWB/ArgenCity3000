@@ -101,7 +101,7 @@ export function computePollution(w: World): void {
 const waterDistCache = new WeakMap<Uint8Array, Uint8Array>();
 
 /** Distance (capped at 6) from every cell to the nearest water cell. Terrain never changes, so it is cached. */
-function waterDistance(w: World): Uint8Array {
+export function waterDistance(w: World): Uint8Array {
   const cached = waterDistCache.get(w.terrain.corners);
   if (cached) return cached;
   const n = w.n;

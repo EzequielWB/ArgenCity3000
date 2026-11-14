@@ -285,3 +285,13 @@ describe('the effects travel with the save', () => {
     expect(() => deserialize(JSON.stringify(text))).toThrow(/efectos/i);
   });
 });
+
+describe('the brake explains itself', () => {
+  it('says on the HUD why nobody new arrives while it lasts', () => {
+    const { sim } = growing();
+    sim.effect(FREEZE, 1);
+    sim.refresh();
+    expect(sim.stall).toBe('stopped');
+    expect(sim.stallText()).toMatch(/frenada/i);
+  });
+});

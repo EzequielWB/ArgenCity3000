@@ -128,12 +128,13 @@ const FIRE_RATE = 0.00025;
  */
 const FIRE_SPREAD = 0.02;
 
-export type StallReason = 'shortage' | 'taxes' | 'blight';
+export type StallReason = 'shortage' | 'taxes' | 'blight' | 'stopped';
 
 const STALL_TEXT: Record<StallReason, string> = {
   shortage: 'Hay apagones: mientras falte luz la ciudad no atrae gente nueva. Hace falta otra usina.',
   taxes: `Los impuestos están altos: con un promedio de más de ${APPETITE_MAX_TAX} % la ciudad deja de atraer gente nueva. Bajalos en el Presupuesto.`,
   blight: 'Hay demasiados edificios abandonados (más del 5 %): hasta recuperarlos o demolerlos la ciudad no atrae gente nueva.',
+  stopped: 'La ciudad está frenada por lo que pasó: mientras dure no se levanta nada nuevo. Mirá el diario.',
 };
 
 function countAbandoned(w: World): number {
@@ -279,7 +280,15 @@ export class Simulation {
     let built = 0;
     for (let i = 0; i < this.world.level.length; i++) if (this.world.level[i] > 0) built++;
     const blighted = built > 20 && this.abandonedCount / built > ABANDON_LIMIT;
-    this.stall = this.power.shortage ? 'shortage' : averageTax(this.state.taxes) > APPETITE_MAX_TAX ? 'taxes' : blighted ? 'blight' : null;
+    this.stall = this.hasEffect(FREEZE)
+      ? 'stopped'
+      : this.power.shortage
+        ? 'shortage'
+        : averageTax(this.state.taxes) > APPETITE_MAX_TAX
+          ? 'taxes'
+          : blighted
+            ? 'blight'
+            : null;
     this.appetite = this.stall
       ? 1
       : GROWTH_APPETITE * GOVERNMENTS[this.state.government].migration * approvalAppetite(this.state.approval);
