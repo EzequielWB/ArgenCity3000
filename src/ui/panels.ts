@@ -476,7 +476,7 @@ export function openHelp(): void {
     <p><small>Con la herramienta Consulta (1) un clic muestra la ficha del lote y por qué crece o no; arrastrando movés el mapa.</small></p>
     <p><small>El Diario del Conurbano sale a la calle recién cuando hay al menos dos viviendas, dos comercios y dos fábricas construidas; hasta entonces los avisos de plata están solo en la barra superior.</small></p>
     <p><small>Al fundar una ciudad inventada elegís el tipo de mapa: Con salida al mar (lomas suaves, un río ancho al este y un arroyo), Llanura (casi llano, con arroyo y laguna), Con gran relieve (cerros y valles por todo el mapa) o Sierras (cordones de montañas con valles anchos para construir). El tamaño puede ser Chico (128 × 128 lotes), Mediano (192) o Grande (256). Los mapas reales ignoran estas opciones.</small></p>
-    <p><small>La <strong>ruta provincial</strong> es la calle ancha de asfalto oscuro y línea amarilla que corre por un borde de los mapas inventados, con un cartel verde "RP" cada tanto. No se toca ni cuesta nada, y por ahí llega la gente nueva: las calles que trazás tienen que salir de ella. Los mapas reales no la tienen.</small></p>
+    <p><small>La <strong>ruta provincial</strong> es la calle de cuatro carriles, asfalto oscuro, línea amarilla y guardarraíles, pegada al borde de los mapas inventados: se ve como la ruta que pasa por afuera de la ciudad, con un cartel verde "226" cada tanto. No se toca ni cuesta nada, y por ahí llega la gente nueva: las calles que trazás tienen que salir de ella. Los mapas reales no la tienen.</small></p>
     <p><small>Mapas reales: calles, agua y parques © colaboradores de OpenStreetMap (ODbL); relieve de Terrain Tiles (Mapzen y AWS, con datos de SRTM y otros).</small></p>
   `);
 }

@@ -183,14 +183,15 @@ export function routeSigns(route: Uint8Array, n: number): Map<number, [number, n
       const i = y * n + x;
       const code = codes[i];
       const kind = kindOf(code);
-      if ((kind !== KIND.BAND_X && kind !== KIND.BAND_Y) || widthOf(code) !== 2) continue;
+      if (kind !== KIND.BAND_X && kind !== KIND.BAND_Y) continue;
       const alongX = kind === KIND.BAND_X;
       if ((alongX ? x : y) % SIGN_EVERY !== SIGN_EVERY / 2) continue;
       const lane = indexOf(code);
+      const lanes = widthOf(code);
       const first = (alongX ? y : x) - lane;
-      // Lane 1 is the one with the higher coordinate: it faces the inside when the band is in the lower half.
-      const inwardIsHigh = first + 0.5 < (n - 1) / 2;
-      if (lane !== (inwardIsHigh ? 1 : 0)) continue;
+      // The lane with the highest coordinate faces the inside when the strip is in the lower half.
+      const inwardIsHigh = first + lanes / 2 < (n - 1) / 2;
+      if (lane !== (inwardIsHigh ? lanes - 1 : 0)) continue;
       const step = inwardIsHigh ? 1 : -1;
       signs.set(i, alongX ? [0, step] : [step, 0]);
     }

@@ -170,6 +170,14 @@ describe('routeSigns', () => {
     for (const dir of b.values()) expect(dir).toEqual([0, -1]);
   });
 
+  it('puts the signs on the innermost lane of a four-lane strip flush against the border', () => {
+    const w = new World(flat());
+    strip(w, 0, 0, N - 1, 3);
+    const signs = routeSigns(w.route, N);
+    expect([...signs.keys()].sort((a, b) => a - b)).toEqual([4, 12, 20].map((x) => w.idx(x, 3)));
+    for (const dir of signs.values()) expect(dir).toEqual([0, 1]);
+  });
+
   it('has no signs when the map has no route', () => {
     expect(routeSigns(new World(flat()).route, N).size).toBe(0);
   });

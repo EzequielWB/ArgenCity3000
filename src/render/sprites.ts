@@ -982,7 +982,7 @@ export function poleSpriteFor(): Sprite {
   return cached('pole', poleSprite);
 }
 
-/** Kilometre sign of the provincial route: a green panel with "RP" on a post. */
+/** Kilometre sign of the provincial route: a green panel with the route number, 226, on a post. */
 function routeSignSprite(dvx: number, dvy: number): Sprite {
   const p = painter(1, 26);
   // The post stands near the edge of the cell that faces the inside of the map.
@@ -991,14 +991,14 @@ function routeSignSprite(dvx: number, dvy: number): Sprite {
   g.fillStyle = '#8a8d90';
   g.fillRect(Math.round(x) - 0.5, y - 12, 1.2, 12);
   g.fillStyle = '#ffffff';
-  g.fillRect(Math.round(x) - 7.5, y - 22, 15, 10);
+  g.fillRect(Math.round(x) - 9.5, y - 22, 19, 10);
   g.fillStyle = '#1f6b43';
-  g.fillRect(Math.round(x) - 6.5, y - 21, 13, 8);
+  g.fillRect(Math.round(x) - 8.5, y - 21, 17, 8);
   g.fillStyle = '#ffffff';
   g.font = 'bold 7px sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText('RP', Math.round(x), y - 16.5);
+  g.fillText('226', Math.round(x), y - 16.5);
   return done(p);
 }
 

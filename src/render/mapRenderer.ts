@@ -62,6 +62,9 @@ const AVENUE_LINE = '#e0b53c';
 const ROUTE_ASPHALT = '#3a3a40';
 /** Distance of each line of a double centre line from the lane boundary, in cell units. */
 const DOUBLE_GAP = 0.08;
+/** Guardrail of the provincial route, and the posts that hold it. */
+const RAIL = '#d3d6cf';
+const RAIL_POST = '#6f685e';
 
 export interface PlacedSprite {
   sprite: Sprite;
@@ -905,12 +908,16 @@ export class MapRenderer {
     const kind = kindOf(code);
     if (kind !== KIND.BAND_X && kind !== KIND.BAND_Y) return;
     const lane = indexOf(code);
-    const partner = (nvx: number, nvy: number): boolean => {
+    const lanes = widthOf(code);
+    /** Lane of the neighbour across the strip, or -1 when that neighbour is not the lane beside it. */
+    const partnerLane = (nvx: number, nvy: number): number => {
       const n = this.world.n;
-      if (nvx < 0 || nvy < 0 || nvx >= n || nvy >= n) return false;
+      if (nvx < 0 || nvy < 0 || nvx >= n || nvy >= n) return -1;
       const [x, y] = fromView(nvx, nvy, this.rot, n);
       const other = bands[this.world.idx(x, y)];
-      return kindOf(other) === kind && widthOf(other) === widthOf(code) && Math.abs(indexOf(other) - lane) === 1;
+      if (kindOf(other) !== kind || widthOf(other) !== lanes) return -1;
+      const otherLane = indexOf(other);
+      return Math.abs(otherLane - lane) === 1 ? otherLane : -1;
     };
     const along = (nvx: number, nvy: number): boolean => {
       const n = this.world.n;
@@ -929,8 +936,41 @@ export class MapRenderer {
       g.lineTo(q[0], q[1]);
       g.stroke();
     };
-    if (partner(vx, vy - 1)) stroke(bilinear(pts, along(vx - 1, vy) ? -e : 0, 0), bilinear(pts, 1, 0));
-    if (partner(vx - 1, vy)) stroke(bilinear(pts, 0, along(vx, vy - 1) ? -e : 0), bilinear(pts, 0, 1));
+    if (partnerLane(vx, vy - 1) >= 0) stroke(bilinear(pts, along(vx - 1, vy) ? -e : 0, 0), bilinear(pts, 1, 0));
+    if (partnerLane(vx - 1, vy) >= 0) stroke(bilinear(pts, 0, along(vx, vy - 1) ? -e : 0), bilinear(pts, 0, 1));
+
+    // Guardrails along both long sides of the strip, so the road reads as one that passes outside
+    // the city instead of a street of it. Which way the strip runs in the view is read from the
+    // lane beside it: the outer side of the end lane is the opposite direction.
+    const edgeOf = (dx: number, dy: number): [Pt, Pt] =>
+      dy < 0 ? [bilinear(pts, 0, 0), bilinear(pts, 1, 0)] : dy > 0 ? [bilinear(pts, 0, 1), bilinear(pts, 1, 1)] : dx < 0 ? [bilinear(pts, 0, 0), bilinear(pts, 0, 1)] : [bilinear(pts, 1, 0), bilinear(pts, 1, 1)];
+    const sides: [number, number][] = [];
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as [number, number][]) {
+      const other = partnerLane(vx + dx, vy + dy);
+      if (other === lane + 1 && lane === 0) sides.push([-dx, -dy]);
+      if (other === lane - 1 && lane === lanes - 1) sides.push([-dx, -dy]);
+    }
+    for (const [dx, dy] of sides) {
+      const [p, q] = edgeOf(dx, dy);
+      g.strokeStyle = RAIL;
+      g.beginPath();
+      g.moveTo(p[0], p[1] - 1.6);
+      g.lineTo(q[0], q[1] - 1.6);
+      g.stroke();
+      if (i % 2 === 0) {
+        g.fillStyle = RAIL_POST;
+        for (const t of [0.3, 0.8]) {
+          const rx = p[0] + (q[0] - p[0]) * t;
+          const ry = p[1] + (q[1] - p[1]) * t;
+          g.fillRect(rx - 0.6, ry - 2.8, 1.2, 2.8);
+        }
+      }
+    }
   }
 
   private drawBridge(vx: number, vy: number, pts: Pt[], i: number): void {

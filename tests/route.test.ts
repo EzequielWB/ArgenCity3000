@@ -25,7 +25,7 @@ function terrainWith(n: number, low: (cx: number, cy: number) => boolean = () =>
 /** Water cells in the strip of an edge plus the cell on each side of it, counted without the module under test. */
 function bandWater(t: Terrain, edge: RouteEdge): number {
   const n = t.n;
-  const lo = ROUTE.inset - 1;
+  const lo = Math.max(0, ROUTE.inset - 1);
   const hi = ROUTE.inset + ROUTE.width;
   let count = 0;
   for (let along = ROUTE.margin; along <= n - 1 - ROUTE.margin; along++) {
@@ -37,19 +37,26 @@ function bandWater(t: Terrain, edge: RouteEdge): number {
   return count;
 }
 
-/** 32×32 land with a lake in the west, east and north bands and a smaller one by the south band: the route goes south. */
+/**
+ * 32×32 land with a lake filling the whole strip of the west, east and north borders, so the route
+ * goes along the south one. `extra` adds water anywhere else (the bridges of a test, say).
+ */
 const N = 32;
 const SEED = 5;
-function southTerrain(height: (cx: number, cy: number) => number = () => 0): Terrain {
-  return terrainWith(N, (cx, cy) => (cx === 3 && cy === 15) || (cx === N - 3 && cy === 15) || (cx === 15 && cy === 3) || (cx === 10 && cy === 28), height);
+function southTerrain(height: (cx: number, cy: number) => number = () => 0, extra: (cx: number, cy: number) => boolean = () => false): Terrain {
+  return terrainWith(
+    N,
+    (cx, cy) => extra(cx, cy) || (cy === 15 && cx <= 4) || (cy === 15 && cx >= N - 5) || (cx === 15 && cy <= 4),
+    height,
+  );
 }
 function southWorld(): World {
   const w = new World(southTerrain());
   addRoute(w, SEED);
   return w;
 }
-/** Route rows of southWorld: 29 and 30, x from 1 to 30; the row next to it is 28. */
-const ROW_NEXT = 28;
+/** Route rows of southWorld: the last four, flush against the border; the row next to them is 27. */
+const ROW_NEXT = 27;
 const ROW_ROUTE = 29;
 
 /** A free cell that touches the route by a side. */
@@ -80,7 +87,7 @@ describe('chooseRoute', () => {
     }
   });
 
-  it('is a strip 2 cells wide, one cell in from the border, along the whole side but the margin', () => {
+  it('is a strip of four lanes flush against the border, along the whole side', () => {
     for (const edge of EDGES) {
       // Water on the bands of the other three edges so that this one is the choice.
       const t = terrainWith(N, (cx, cy) => EDGES.filter((e) => e !== edge).some((e) => (e === 'west' && cx === 3 && cy === 15) || (e === 'east' && cx === N - 3 && cy === 15) || (e === 'north' && cx === 15 && cy === 3) || (e === 'south' && cx === 15 && cy === N - 3)));
@@ -96,6 +103,11 @@ describe('chooseRoute', () => {
       }
       expect(route.cells.map(([x, y]) => `${x},${y}`).sort()).toEqual(expected.sort());
       expect(route.cells).toHaveLength(ROUTE.width * (N - 2 * ROUTE.margin));
+      // Flush against the border, corners included: the outermost line of the side is the route.
+      for (let along = 0; along < N; along++) {
+        const [x, y] = edge === 'west' ? [0, along] : edge === 'east' ? [N - 1, along] : edge === 'north' ? [along, 0] : [along, N - 1];
+        expect(route.cells.some(([cx2, cy2]) => cx2 === x && cy2 === y), `${edge} ${x},${y}`).toBe(true);
+      }
     }
   });
 
@@ -110,6 +122,8 @@ describe('chooseRoute', () => {
   it('counts the water the strip crosses as bridges', () => {
     const crossed = terrainWith(N, (cx, cy) => cx === 8 || cy === 8);
     const route = chooseRoute(crossed, 3);
+    // The water line is two cells thick (a cell is water when one of its corners is) and it crosses
+    // the strip, so every lane of it is a bridge twice.
     expect(route.bridges).toBe(ROUTE.width * 2);
     expect(route.cells.filter(([x, y]) => isWaterCell(crossed, x, y))).toHaveLength(route.bridges);
     expect(chooseRoute(southTerrain(), SEED).bridges).toBe(0);
@@ -252,45 +266,53 @@ describe('streets can only start from the route', () => {
 
   it('accepts a drag that leaves the route, cell after cell', () => {
     const w = southWorld();
-    const plan = planTool(w, 'road', dragCells('road', 20, ROW_NEXT, 20, 24, 1, N));
-    expect(plan.cells).toEqual([[20, 28], [20, 27], [20, 26], [20, 25], [20, 24]]);
+    const plan = planTool(w, 'road', dragCells('road', 20, ROW_NEXT, 20, 23, 1, N));
+    expect(plan.cells).toEqual([[20, 27], [20, 26], [20, 25], [20, 24], [20, 23]]);
     expect(plan.cost).toBe(5 * COSTS.road);
   });
 
   it('only counts the previous accepted cell of the drag, so a drag that arrives at the route builds just its last cell', () => {
     const w = southWorld();
-    const plan = planTool(w, 'road', dragCells('road', 20, 24, 20, ROW_NEXT, 1, N));
+    const plan = planTool(w, 'road', dragCells('road', 20, 23, 20, ROW_NEXT, 1, N));
     expect(plan.cells).toEqual([[20, ROW_NEXT]]);
   });
 
   it('accepts a street that continues from a connected street, and refuses one that continues from a cut-off piece', () => {
     const w = southWorld();
-    applyPlan(w, planTool(w, 'road', dragCells('road', 20, ROW_NEXT, 20, 25, 1, N)));
-    expect(planTool(w, 'road', [[21, 25]]).cells).toEqual([[21, 25]]);
-    expect(planTool(w, 'road', [[20, 24]]).cells).toEqual([[20, 24]]);
+    applyPlan(w, planTool(w, 'road', dragCells('road', 20, ROW_NEXT, 20, 24, 1, N)));
+    expect(planTool(w, 'road', [[21, 24]]).cells).toEqual([[21, 24]]);
+    expect(planTool(w, 'road', [[20, 23]]).cells).toEqual([[20, 23]]);
     // The bulldozer cuts the street at its root: what is left of it no longer comes from the route.
     applyPlan(w, planTool(w, 'bulldoze', [[20, ROW_NEXT]]));
-    expect(planTool(w, 'road', [[20, 24]]).cells).toEqual([]);
+    expect(planTool(w, 'road', [[20, 23]]).cells).toEqual([]);
     expect(planTool(w, 'road', [[20, ROW_NEXT]]).cells).toEqual([[20, ROW_NEXT]]);
   });
 
   it('refuses a street that only touches the route by a corner', () => {
-    const w = southWorld();
-    // The route stops one cell short of the border: (31, 28) and (0, 28) face its first and last cell diagonally.
-    expect(planTool(w, 'road', [[N - 1, ROW_NEXT]]).cells).toEqual([]);
-    expect(planTool(w, 'road', [[0, ROW_NEXT]]).cells).toEqual([]);
-    expect(planTool(w, 'road', [[N - 1, ROW_ROUTE]]).cells).toEqual([[N - 1, ROW_ROUTE]]);
+    // A route that stops one cell short of both ends of its side, so a cell can face it diagonally.
+    const w = new World(terrainWith(N));
+    for (let y = 1; y <= N - 2; y++) {
+      for (let x = 0; x < ROUTE.width; x++) {
+        w.tiles[w.idx(x, y)] = TILE.ROAD;
+        w.route[w.idx(x, y)] = 1;
+      }
+    }
+    w.bumpNetwork();
+    expect(planTool(w, 'road', [[ROUTE.width, 0]]).cells).toEqual([]);
+    expect(planTool(w, 'road', [[ROUTE.width, 1]]).cells).toEqual([[ROUTE.width, 1]]);
   });
 
   it('applies the same rule to bridges', () => {
-    const w = southWorld();
-    // Water of the south lake: (9..10, 27..28). (10, 28) touches the route, (10, 27) does not.
-    expect(w.isWater(10, ROW_NEXT)).toBe(true);
+    const lake = (cx: number, cy: number) => (cx === 9 || cx === 10) && (cy === 26 || cy === 27);
+    const w = new World(southTerrain(() => 0, lake));
+    addRoute(w, SEED);
+    // The lake ends at (10, 27), which touches the route; (10, 26) does not.
     expect(w.isWater(10, 27)).toBe(true);
-    const off = planTool(w, 'road', [[10, 27]]);
+    expect(w.isWater(10, 26)).toBe(true);
+    const off = planTool(w, 'road', [[10, 26]]);
     expect(off.cells).toEqual([]);
-    const on = planTool(w, 'road', [[10, ROW_NEXT]]);
-    expect(on.cells).toEqual([[10, ROW_NEXT]]);
+    const on = planTool(w, 'road', [[10, 27]]);
+    expect(on.cells).toEqual([[10, 27]]);
     expect(on.cost).toBe(COSTS.bridge);
     // A bridge on the far lake, away from the route, is refused too.
     expect(w.isWater(2, 15)).toBe(true);

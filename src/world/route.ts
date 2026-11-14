@@ -31,8 +31,10 @@ function edgeCell(n: number, edge: RouteEdge, across: number, along: number): [n
 /** Water cells in the strip of an edge and in the line of cells on each side of it. */
 function waterNear(t: Terrain, edge: RouteEdge): number {
   let count = 0;
+  // A strip flush against the border has no cell on its outer side: `across` never goes negative.
+  const from = Math.max(0, ROUTE.inset - 1);
   for (let along = ROUTE.margin; along <= t.n - 1 - ROUTE.margin; along++) {
-    for (let across = ROUTE.inset - 1; across <= ROUTE.inset + ROUTE.width; across++) {
+    for (let across = from; across <= ROUTE.inset + ROUTE.width; across++) {
       const [x, y] = edgeCell(t.n, edge, across, along);
       if (isWaterCell(t, x, y)) count++;
     }
