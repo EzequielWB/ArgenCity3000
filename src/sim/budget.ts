@@ -1,4 +1,4 @@
-import { DEFAULT_FUNDING, FIXED_SHARE, ROAD_REACH, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
+import { DEFAULT_FUNDING, FIXED_SHARE, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { coastBudget, portTaxBoost } from './coast';
 import { cityTotals, zoneTaxes } from './demand';
@@ -83,8 +83,10 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
       const tile = w.tiles[i];
       if (tile === TILE.ROAD) {
         if (w.route[i] || (w.inherited[i] && !used[i])) continue;
-        if (w.isWater(x, y)) bridges++;
-        else roads++;
+        // A bridge is a surcharge on top of the quality: an asphalt bridge still costs UPKEEP.bridge.
+        const extra = ROAD_TIERS[w.roadTier[i]].upkeep - UPKEEP.road;
+        if (w.isWater(x, y)) bridges += UPKEEP.bridge + extra;
+        else roads += ROAD_TIERS[w.roadTier[i]].upkeep;
       } else if (tile === TILE.LINE) lines++;
       else if (tile === TILE.PARK) parks++;
       else {
@@ -103,7 +105,7 @@ export function monthlyBudget(w: World, tax: ZoneTaxes | number, funding: Readon
     taxR,
     taxC,
     taxI,
-    roads: Math.round(roads * UPKEEP.road + bridges * UPKEEP.bridge),
+    roads: Math.round(roads + bridges),
     lines: Math.round(lines * UPKEEP.line),
     parks: Math.round(parks * UPKEEP.park),
     plants: plantsUpkeep(w),
