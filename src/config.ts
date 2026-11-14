@@ -50,7 +50,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
   democracia: {
     label: 'Democracia',
     blurb: 'La forma de siempre: el Intendente se juega el cargo cada cuatro años.',
-    pros: ['La Provincia gira los subsidies de cada hito', 'Llega toda la gente que quiere venir'],
+    pros: ['La Provincia gira los subsidios de cada hito', 'Llega toda la gente que quiere venir'],
     cons: ['Elecciones cada 4 años: hace falta el 50 % para seguir'],
     termYears: 4,
     toWin: 50,
@@ -63,7 +63,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     label: 'Dictadura',
     blurb: 'Nadie te vota: el cargo es tuyo y no hay octubre que lo discuta.',
     pros: ['No hay elecciones: nunca perdés el poder', 'La ciudad crece con la plata que hacés vos'],
-    cons: ['Llega un 20 % menos de gente nueva', 'La Provincia no gira subsidies', 'La aprobación no pasa de 60'],
+    cons: ['Llega un 20 % menos de gente nueva', 'La Provincia no gira subsidios', 'La aprobación no pasa de 60'],
     termYears: null,
     toWin: 0,
     migration: 0.8,
@@ -74,7 +74,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
   tecnocracia: {
     label: 'Tecnocracia',
     blurb: 'Gobierna el que sabe: mandatos largos y la mitad de la opinión en juego.',
-    pros: ['Elecciones cada 6 años y con el 40 % alcanza', 'La Provincia gira los subsidies de cada hito'],
+    pros: ['Elecciones cada 6 años y con el 40 % alcanza', 'La Provincia gira los subsidios de cada hito'],
     cons: ['La aprobación se mueve la mitad de rápido: si la ciudad se enoja, tardás en recuperarla', 'Llega un 5 % menos de gente nueva'],
     termYears: 6,
     toWin: 40,
