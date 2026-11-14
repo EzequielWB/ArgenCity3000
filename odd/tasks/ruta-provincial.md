@@ -22,10 +22,13 @@ Rama: `feat/vertical-slice` · Entrega: commits por unidad en la rama; push solo
 
 | ID | Specs | Ruta | Estado | Evidencia |
 |----|-------|------|--------|-----------|
-| T1 Ruta provincial en los mapas inventados | S1, S2, S3 | delegado (writer I: respaldo de contexto del padre; empieza cuando termina el writer H de la costa, que toca los mismos archivos) | pendiente | — |
+| T1 Ruta: lógica (generación, reglas de construcción, gratis, guardado, arranque) | S1, S2, S3 | delegado (writer I-A, Sonnet; en paralelo con I-B, superficies disjuntas) | pendiente | — |
+| T2 Ruta: dibujo, tránsito, cámara y fichas | S3 | delegado (writer I-B, Sonnet; en paralelo con I-A, superficies disjuntas) | pendiente | — |
 
+Reparto de superficies. I-A: `src/world/route.ts` (nuevo), `src/world/tools.ts`, `src/world/leveling.ts`, `src/world/history.ts`, `src/sim/budget.ts`, `src/sim/outlook.ts`, `src/sim/coast.ts`, `src/save/save.ts`, `src/main.ts`, `src/config.ts`, `tests/route.test.ts`. I-B: `src/render/*`, `src/game.ts`, `src/sim/report.ts`, `src/ui/panels.ts`, `src/ui/style.css`, `tests/route-render.test.ts`. El campo `World.route` ya existe (commit `1f9fa7a`); I-B prueba con celdas marcadas a mano hasta que exista `addRoute`.
 ## Log
 
 - **L1 (2026-11-13), pedido original (verbatim):** "Otra cosa que me gustaria cambiar y no se que tan complicado es que siempre en uno de los bordes de la zona de donde se juega haya una "ruta" provincial (que no se puede tocar) y de ahí se arranca a jugar, solo de ahí se puede construrir. Claramente que si el mapa tiene salida al mar esa ruta no esté en la salida al mar."
 - **L2 (2026-11-13):** se contestó que es de dificultad media y se preguntó a qué cosas aplicar "solo de ahí"; el usuario aclaró (S2): solo mapas inventados, y lo que importa es que se arranque desde la ruta y que el tránsito venga de ella. Se tomó la opción "solo a las calles" propuesta por el padre, que coincide con lo que el usuario describió.
 - **L3 (2026-11-13):** decisión técnica: en vez de un casillero nuevo, la ruta es una calle común más una marca guardada, porque así todo lo que ya funciona sobre calles (acceso, congestión, avenidas, puentes, tránsito) queda igual. El costo es un arreglo más en el guardado.
+- **L4 (2026-11-13):** el reinicio de Claude Code cortó a los tres agentes en marcha (ciudades, ruta, verificación de la costa); los cancelados no se pueden retomar. El usuario autorizó relanzarlos y pidió acelerar: la ruta se divide en lógica (I-A) y dibujo (I-B) con archivos disjuntos, y las verificaciones se recortan a lo esencial. El padre hace al final una comprobación de costura en el navegador.
