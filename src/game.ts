@@ -65,7 +65,7 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   lighthouse: 'rgba(240,240,235,0.65)',
 };
 
-const STALL_LABELS = { shortage: 'apagones', taxes: 'tasas altas', blight: 'abandono' } as const;
+const STALL_LABELS = { shortage: 'apagones', taxes: 'impuestos altos', blight: 'abandono' } as const;
 
 /** Tools that show a coverage layer while they are picked: each service shows what it covers, the plants and the line show the light, the street shows the traffic. */
 const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', plantGas: 'power', plantWind: 'power', line: 'power', road: 'traffic', roadPaved: 'traffic', roadBoulevard: 'traffic' };

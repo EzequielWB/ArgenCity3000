@@ -116,7 +116,7 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
     raw.push(['Apagones', (-30 * dark) / built]);
     raw.push(['Edificios abandonados', -Math.min(12, (80 * inp.abandoned) / built)]);
   }
-  raw.push(['Tasas', clamp((DEFAULT_TAX - averageTax(inp.taxes)) * 2.5, -20, 10)]);
+  raw.push(['Impuestos', clamp((DEFAULT_TAX - averageTax(inp.taxes)) * 2.5, -20, 10)]);
   raw.push(['Tránsito', -15 * inp.jammedShare]);
   // A plaza nobody keeps is a dry square of dirt with no trees: the neighbours see it every day.
   if (parks > 0) raw.push(['Zonas verdes descuidadas', -(APPROVAL.greenNeglect * parksNeglected) / parks]);

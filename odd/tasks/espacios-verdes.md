@@ -104,6 +104,13 @@ Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`, `npm run probe
   no tengan sección propia sino un slider más, debajo de Bomberos, rotulado "Espacios verdes". Se
   cambió todo el panel: `Impuestos por zona`, `Impuestos residenciales/comerciales/industriales` en
   la planilla, `Impuestos altos/bajos` y `Cada impuesto mueve la demanda de su zona`. La ayuda del
-  juego (`ponés un impuesto para cada zona`) acompaña. Queda pendiente unificar el resto del juego,
-  que todavía dice "tasas": el factor `Tasas` del modal de aprobación, los titulares del diario
-  ("Suben las tasas"), el reporte de la celda y la etiqueta de estancamiento en `game.ts`.
+  juego (`ponés un impuesto para cada zona`) acompaña.
+- **L10, "impuestos" en todo el juego.** Se unificó el resto: factor `Impuestos` del modal de
+  aprobación, titulares del diario ("Suben/Bajan los impuestos …"), reporte de la celda ("El impuesto
+  comercial está en 20 %: bajalo…", "no paga impuestos", "Los impuestos industriales rinden…"),
+  etiqueta de estancamiento (`impuestos altos`), el aviso de `simulation.ts`, la frase del diario y
+  la ayuda del puerto. Los tests que buscaban `/tasa/i` ahora buscan `/impuesto/i`. El nombre
+  interno `taxes` no se toca: es el estado que viaja en el guardado.
+- **L11, el texto de espacios verdes mira al futuro.** La nota del presupuesto decía "las plazas se
+  descuidan"; el jugador va a sumar más variedad de espacios verdes, así que ahora dice "**estos** se
+  descuidan", refiriéndose a los espacios verdes y no a las plazas.

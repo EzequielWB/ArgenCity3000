@@ -92,8 +92,8 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   if (prev.abandoned >= 10 && next.abandoned < 5) out.push('Vuelven los vecinos: se recuperan los barrios abandonados');
   for (const z of ['R', 'C', 'I'] as const) {
     const [kind, who] = TAX_NAMES[z];
-    if (next.taxes[z] > prev.taxes[z]) out.push(`Suben las tasas ${kind} al ${next.taxes[z]} %: malestar en ${who}`);
-    if (next.taxes[z] < prev.taxes[z]) out.push(`Bajan las tasas ${kind} al ${next.taxes[z]} %: alivio en ${who}`);
+    if (next.taxes[z] > prev.taxes[z]) out.push(`Suben los impuestos ${kind} al ${next.taxes[z]} %: malestar en ${who}`);
+    if (next.taxes[z] < prev.taxes[z]) out.push(`Bajan los impuestos ${kind} al ${next.taxes[z]} %: alivio en ${who}`);
   }
   for (const k of SERVICE_KINDS) {
     if (prev.funding[k] >= DEEP_CUT && next.funding[k] < DEEP_CUT) out.push(CUT_NEWS[k](next.funding[k]));

@@ -52,7 +52,7 @@ describe('approval', () => {
 
   it('goes down with each thing the neighbours complain about, and names it', () => {
     const cases: [string, (w: World) => Partial<ApprovalInputs>][] = [
-      ['Tasas', () => ({ taxes: { R: 12, C: 12, I: 12 } })],
+      ['Impuestos', () => ({ taxes: { R: 12, C: 12, I: 12 } })],
       ['Caja en rojo', () => ({ crisis: true })],
       ['Tránsito', () => ({ jammedShare: 0.8 })],
       ['Edificios abandonados', () => ({ abandoned: 10 })],

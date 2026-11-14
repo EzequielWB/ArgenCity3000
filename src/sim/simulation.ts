@@ -111,7 +111,7 @@ export type StallReason = 'shortage' | 'taxes' | 'blight';
 
 const STALL_TEXT: Record<StallReason, string> = {
   shortage: 'Hay apagones: mientras falte luz la ciudad no atrae gente nueva. Hace falta otra usina.',
-  taxes: `Las tasas están altas: con un promedio de más de ${APPETITE_MAX_TAX} % la ciudad deja de atraer gente nueva. Bajalas en el Presupuesto.`,
+  taxes: `Los impuestos están altos: con un promedio de más de ${APPETITE_MAX_TAX} % la ciudad deja de atraer gente nueva. Bajalos en el Presupuesto.`,
   blight: 'Hay demasiados edificios abandonados (más del 5 %): hasta recuperarlos o demolerlos la ciudad no atrae gente nueva.',
 };
 
@@ -603,7 +603,7 @@ export class Simulation {
     hint('needC', this.demand.C > 50 && free.C === 0 && zoned > 0, 'Los comerciantes buscan locales y no encuentran');
     hint('needI', this.demand.I > 50 && free.I === 0 && zoned > 0, 'Industriales buscan terrenos para instalarse');
     hint('power', this.power.shortage, 'La usina no da abasto: los vecinos piden otra usina');
-    hint('appetite', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) > APPETITE_MAX_TAX, 'Con tasas tan altas, nadie quiere mudarse: la ciudad dejó de atraer gente');
+    hint('appetite', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) > APPETITE_MAX_TAX, 'Con impuestos tan altos, nadie quiere mudarse: la ciudad dejó de atraer gente');
     hint('blight', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) <= APPETITE_MAX_TAX && this.abandonedCount > 0, 'El abandono espanta a los nuevos vecinos: hay que recuperar o demoler los edificios vacíos');
     hint('smog', smog > 5, 'Vecinos se quejan del humo de las fábricas');
     hint('jam', this.congestion.jammedShare > JAM_NEWS_SHARE, 'Embotellamientos camino al trabajo: los vecinos piden avenidas u otro camino');

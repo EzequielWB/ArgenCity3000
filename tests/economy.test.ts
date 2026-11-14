@@ -145,7 +145,7 @@ describe('the newspaper', () => {
   it('reports which tax went up or down', () => {
     expect(headlinesFor(base, { ...base, taxes: { R: 9, C: 7, I: 7 } }, 'X').join(' ')).toMatch(/residencial/i);
     expect(headlinesFor(base, { ...base, taxes: { R: 7, C: 7, I: 5 } }, 'X').join(' ')).toMatch(/industrial/i);
-    expect(headlinesFor(base, base, 'X').join(' ')).not.toMatch(/tasa/i);
+    expect(headlinesFor(base, base, 'X').join(' ')).not.toMatch(/impuesto/i);
   });
 
   it('reports deep cuts to a service', () => {
@@ -182,7 +182,7 @@ describe('saves with the new economy', () => {
     expect(good.version).toBe(SAVE_VERSION);
     const bad1 = structuredClone(good);
     bad1.sim.taxes.C = 50;
-    expect(() => deserialize(JSON.stringify(bad1))).toThrow(/tasa/i);
+    expect(() => deserialize(JSON.stringify(bad1))).toThrow(/impuestos/i);
     const bad2 = structuredClone(good);
     bad2.sim.funding.fire = 500;
     expect(() => deserialize(JSON.stringify(bad2))).toThrow(/presupuesto/i);

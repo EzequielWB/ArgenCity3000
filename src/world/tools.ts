@@ -43,7 +43,7 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'fire', label: 'Bomberos', key: 'o', shape: 'point', help: 'Cuartel de bomberos voluntarios: apaga incendios.' },
   { id: 'fishing', label: COAST.fishing.label, key: 'z', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 12 empleos industriales y vende pescado.' },
   { id: 'promenade', label: COAST.promenade.label, key: 'x', shape: 'rect', help: 'Paseo sobre la costa, se arrastra como la plaza. Sube el valor del suelo y la aprobación.' },
-  { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 40 empleos industriales y sube las tasas de las fábricas; contamina.' },
+  { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 40 empleos industriales y sube los impuestos de las fábricas; contamina.' },
   { id: 'resort', label: COAST.resort.label, key: 'l', shape: 'point', help: 'En la playa. Con una calle cerca da 30 empleos y mucho turismo en verano.' },
   { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Suma aprobación y valor del suelo.' },
 ];

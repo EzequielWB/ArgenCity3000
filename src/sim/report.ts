@@ -161,7 +161,7 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   }
 
   if (zone && level > 0 && w.abandoned[i]) {
-    lines.push('Nadie vive ni trabaja acá: no paga tasas y baja el valor del suelo de alrededor');
+    lines.push('Nadie vive ni trabaja acá: no paga impuestos y baja el valor del suelo de alrededor');
     lines.push(w.powered[i] ? 'Con luz' : 'Sin luz');
     lines.push(w.roadAccess[i] ? 'Tiene calle cerca' : `Sin calle a menos de ${ROAD_REACH} lotes`);
     lines.push(`Delito: ${w.crime[i]}/100`, `Contaminación: ${w.pollution[i]}/100`);
@@ -209,7 +209,7 @@ function describeCoast(w: World, sim: Simulation, i: number, kind: CoastKind): C
     case 'port':
       lines.push(
         `Funcionando: ${info.jobs} puestos de trabajo industriales`,
-        `Las tasas industriales rinden un ${Math.round(PORT_TAX_BOOST.perPort * 100)} % más por puerto, hasta ${Math.round(PORT_TAX_BOOST.max * 100)} %`,
+        `Los impuestos industriales rinden un ${Math.round(PORT_TAX_BOOST.perPort * 100)} % más por puerto, hasta ${Math.round(PORT_TAX_BOOST.max * 100)} %`,
         `Contaminación local: ${w.pollution[i]}/100`,
       );
       break;
@@ -265,7 +265,7 @@ function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level:
     if (stalled) return stalled;
     const tax = sim.state.taxes[zone];
     if (tax > DEFAULT_TAX && sim.demand[zone] + (tax - DEFAULT_TAX) * TAX_DEMAND_POINTS > 0) {
-      return `La tasa ${ZONE_TAX_NAME[zone]} está en ${tax} %: bajala en el Presupuesto para que vuelva la demanda.`;
+      return `El impuesto ${ZONE_TAX_NAME[zone]} está en ${tax} %: bajalo en el Presupuesto para que vuelva la demanda.`;
     }
     return zone === 'R' ? 'No hay demanda de viviendas: hacen falta trabajos (comercio o industria).' : 'No hay demanda: hace falta más población.';
   }

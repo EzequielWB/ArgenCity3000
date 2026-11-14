@@ -36,9 +36,9 @@ describe('why the city stopped growing', () => {
     const sim = new Simulation(w, newSimState(1), 'Prueba');
     sim.setTax(12);
     expect(sim.stall).toBe('taxes');
-    expect(sim.stallText()).toMatch(/tasas/i);
+    expect(sim.stallText()).toMatch(/impuestos/i);
     expect(sim.demand.R).toBeLessThanOrEqual(0);
-    expect(hintAt(w, sim, 4)).toMatch(/tasas/i);
+    expect(hintAt(w, sim, 4)).toMatch(/impuestos/i);
     expect(hintAt(w, sim, 4)).not.toMatch(/trabajos/i);
   });
 
@@ -70,6 +70,6 @@ describe('why the city stopped growing', () => {
     sim.setTax(3, 'I');
     expect(sim.stall).toBeNull();
     expect(sim.demand.C).toBeLessThanOrEqual(0);
-    expect(hintAt(w, sim, 5)).toMatch(/tasa comercial.*20 %/i);
+    expect(hintAt(w, sim, 5)).toMatch(/impuesto comercial.*20 %/i);
   });
 });

@@ -11,7 +11,7 @@ export const PHRASES: readonly string[] = [
   'Plaza chica, corazón grande',
   'Quien zonifica con apuro, demuele con paciencia',
   'Al humo, mandalo lejos de la ropa tendida',
-  'Tasa alta, vereda vacía',
+  'Impuesto alto, vereda vacía',
   'Lo que no cubre la salita, lo cuenta el diario',
   'Octubre no perdona al que se olvidó del barrio',
   'Más vale un semáforo a tiempo que una avenida tarde',

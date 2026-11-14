@@ -177,11 +177,11 @@ function parseSim(raw: unknown): SimState {
   let taxes: ZoneTaxes;
   if (s.taxes === undefined) {
     // Older saves had one tax for every zone.
-    need(validTax(s.tax), 'La tasa de impuestos es inválida');
+    need(validTax(s.tax), 'Los impuestos por zona son inválidos');
     taxes = { R: s.tax as number, C: s.tax as number, I: s.tax as number };
   } else {
     const t = (s.taxes ?? {}) as Record<string, unknown>;
-    need(validTax(t.R) && validTax(t.C) && validTax(t.I), 'Las tasas de la partida son inválidas');
+    need(validTax(t.R) && validTax(t.C) && validTax(t.I), 'Los impuestos de la partida son inválidos');
     taxes = { R: t.R as number, C: t.C as number, I: t.I as number };
   }
   const funding: ServiceFunding = { ...DEFAULT_FUNDING };
