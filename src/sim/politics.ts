@@ -22,6 +22,12 @@ export const APPROVAL = {
   fairLandValue: 30,
   /** Crime and smoke (0 to 100) nobody complains about. */
   tolerated: 10,
+  /**
+   * How far the neighbours' mood scales the appetite for growth: the factor is `floor + span`
+   * times the approval over 100, so it is exactly 1 at 50 and runs from 0.75 to 1.25. A government
+   * capped at 60 can never reach the top of that band.
+   */
+  appetite: { floor: 0.75, span: 0.5 },
 } as const;
 
 export interface ApprovalInputs {
@@ -112,6 +118,15 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   factors.sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
   const target = clamp(50 + factors.reduce((sum, f) => sum + f.points, 0), 0, 100);
   return { target, factors };
+}
+
+/**
+ * How much the neighbours' approval scales the appetite for growth. Happy neighbours bring people;
+ * a disliked Intendente does not. Neutral (1) at 50, the score of a city where nothing stands out.
+ */
+export function approvalAppetite(approval: number): number {
+  const { floor, span } = APPROVAL.appetite;
+  return floor + span * (clamp(approval, 0, 100) / 100);
 }
 
 /** The approval a month later: it moves towards the target and stops at the ceiling of the

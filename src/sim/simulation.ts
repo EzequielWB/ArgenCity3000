@@ -32,7 +32,7 @@ import { foundingHeadline, electionHeadline, pollHeadline } from './mayor';
 import { advanceMilestones, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
-import { APPROVAL, computeApproval, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
+import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
 import { computePower, type PowerReport } from './power';
 
 export interface SimState {
@@ -244,14 +244,17 @@ export class Simulation {
 
   /**
    * A thriving city (no blackouts, reasonable taxes, little abandonment) attracts more people
-   * than its jobs justify; otherwise it only grows as far as its own economy goes.
+   * than its jobs justify; otherwise it only grows as far as its own economy goes. The neighbours'
+   * mood scales that appetite too: the happier they are, the faster people come.
    */
   private updateAppetite(): void {
     let built = 0;
     for (let i = 0; i < this.world.level.length; i++) if (this.world.level[i] > 0) built++;
     const blighted = built > 20 && this.abandonedCount / built > ABANDON_LIMIT;
     this.stall = this.power.shortage ? 'shortage' : averageTax(this.state.taxes) > APPETITE_MAX_TAX ? 'taxes' : blighted ? 'blight' : null;
-    this.appetite = this.stall ? 1 : GROWTH_APPETITE * GOVERNMENTS[this.state.government].migration;
+    this.appetite = this.stall
+      ? 1
+      : GROWTH_APPETITE * GOVERNMENTS[this.state.government].migration * approvalAppetite(this.state.approval);
     this.demand = computeDemand(this.totals, this.state.taxes, this.appetite);
   }
 
