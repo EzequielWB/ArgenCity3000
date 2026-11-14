@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toView, type Rotation } from '../src/core/iso';
-import { DECK_HEIGHT, cellScreenCorners, pickCell, surfaceHeights } from '../src/render/geometry';
+import { bridgeDeckHeight, cellScreenCorners, pickCell, surfaceHeights } from '../src/render/geometry';
 import { generateTerrain, SEA_LEVEL } from '../src/world/terrain';
 import { World, TILE } from '../src/world/world';
 
@@ -18,17 +18,25 @@ describe('bridge decks', () => {
     return new World({ n, corners, trees: new Uint8Array(n * n) });
   }
 
-  it('draws the whole span as one flat deck, at the same height everywhere', () => {
+  it('rides the whole span at the height of its higher bank, so it meets the land at both ends', () => {
     const w = lake();
     for (let x = 2; x <= 14; x++) w.setTile(x, 8, TILE.ROAD);
-    const deck = SEA_LEVEL + DECK_HEIGHT;
+    const bank = SEA_LEVEL + 2;
     let bridges = 0;
     for (let x = 2; x <= 14; x++) {
       if (!w.isWater(x, 8)) continue;
       bridges++;
-      expect(surfaceHeights(w, x, 8, 0), `celda ${x}`).toEqual([deck, deck, deck, deck]);
+      expect(surfaceHeights(w, x, 8, 0), `celda ${x}`).toEqual([bank, bank, bank, bank]);
     }
     expect(bridges).toBeGreaterThan(2);
+  });
+
+  it('takes the higher bank when the two ends are at different heights', () => {
+    const w = lake();
+    // Raise the eastern bank two levels: the deck follows it.
+    for (let cy = 0; cy <= 16; cy++) for (let cx = 10; cx <= 16; cx++) w.terrain.corners[cy * 17 + cx] = SEA_LEVEL + 4;
+    for (let x = 2; x <= 14; x++) w.setTile(x, 8, TILE.ROAD);
+    expect(bridgeDeckHeight(w, 8, 8)).toBe(SEA_LEVEL + 4);
   });
 
   it('keeps water without a road flat at sea level', () => {

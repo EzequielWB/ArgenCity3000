@@ -21,8 +21,62 @@ export function isPlatform(w: World, i: number): boolean {
   return t === TILE.PLANT || serviceOf(t) !== null || (w.level[i] > 0 && t >= TILE.R && t <= TILE.I);
 }
 
-/** How high a bridge deck rides above the sea, in levels. */
+/** Least a bridge deck rides above the sea, in levels, when its banks are lower than that. */
 export const DECK_HEIGHT = 0.75;
+
+const decks = new WeakMap<World, { version: number; heights: Map<number, number> }>();
+
+/** True on a street cell over water. */
+function isBridge(w: World, x: number, y: number): boolean {
+  return w.inBounds(x, y) && w.tiles[w.idx(x, y)] === TILE.ROAD && w.isWater(x, y);
+}
+
+/**
+ * Height of the deck a bridge cell belongs to: the whole span rides at the height of the higher
+ * bank, so the deck meets the land at its ends instead of hanging above one of them, and never
+ * dips below its clearance over the water. Kept until the street network changes.
+ */
+export function bridgeDeckHeight(w: World, x: number, y: number): number {
+  let cache = decks.get(w);
+  if (!cache || cache.version !== w.networkVersion) {
+    cache = { version: w.networkVersion, heights: new Map() };
+    decks.set(w, cache);
+  }
+  const i = w.idx(x, y);
+  const hit = cache.heights.get(i);
+  if (hit !== undefined) return hit;
+
+  let deck = SEA_LEVEL + DECK_HEIGHT;
+  const t = w.terrain;
+  for (const [dx, dy] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as [number, number][]) {
+    // Walk the span to its end, and land the deck on the bank it finds there.
+    let cx = x + dx;
+    let cy = y + dy;
+    let steps = 0;
+    while (isBridge(w, cx, cy) && steps++ < 1024) {
+      cx += dx;
+      cy += dy;
+    }
+    if (!w.inBounds(cx, cy) || w.isWater(cx, cy)) continue;
+    // The two corners of the bank cell on the edge the bridge touches.
+    const edge =
+      dx > 0
+        ? [cornerAt(t, cx, cy), cornerAt(t, cx, cy + 1)]
+        : dx < 0
+          ? [cornerAt(t, cx + 1, cy), cornerAt(t, cx + 1, cy + 1)]
+          : dy > 0
+            ? [cornerAt(t, cx, cy), cornerAt(t, cx + 1, cy)]
+            : [cornerAt(t, cx, cy + 1), cornerAt(t, cx + 1, cy + 1)];
+    deck = Math.max(deck, (edge[0] + edge[1]) / 2);
+  }
+  cache.heights.set(i, deck);
+  return deck;
+}
 
 /**
  * Heights used to draw the cell's surface: water is flat at sea level, building lots are
@@ -35,7 +89,7 @@ export function surfaceHeights(w: World, vx: number, vy: number, rot: Rotation):
   const [x, y] = fromView(vx, vy, rot, w.n);
   const i = w.idx(x, y);
   if (w.isWater(x, y)) {
-    const deck = w.tiles[i] === TILE.ROAD ? SEA_LEVEL + DECK_HEIGHT : SEA_LEVEL;
+    const deck = w.tiles[i] === TILE.ROAD ? bridgeDeckHeight(w, x, y) : SEA_LEVEL;
     return [deck, deck, deck, deck];
   }
   if (w.tiles[i] === TILE.PLANT) {
