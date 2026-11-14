@@ -4,3 +4,4 @@ ORIGINAL/
 *.log
 .DS_Store
 coverage/
+.vite/
