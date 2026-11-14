@@ -121,6 +121,8 @@ export class MapRenderer {
   private missing = 0;
   /** Whether each world cell was a road when `bands` was computed. */
   private roadSnap: Uint8Array;
+  /** The quality of each street cell when `bands` was computed: an upgrade changes the look too. */
+  private tierSnap: Uint8Array;
   /** Avenue analysis of every world cell (see avenue.ts), kept in step with the road layout. */
   private bands: Uint16Array;
   /** Band analysis of the provincial route alone (null when the map has none), and where its signs stand. */
@@ -130,6 +132,7 @@ export class MapRenderer {
   constructor(readonly world: World) {
     const n = world.n;
     this.roadSnap = new Uint8Array(n * n);
+    this.tierSnap = world.roadTier.slice();
     this.bands = new Uint16Array(n * n);
     this.width = n * TILE_W + PAD_SIDE * 2;
     this.height = n * TILE_H + PAD_TOP + PAD_BOTTOM;
@@ -263,7 +266,10 @@ export class MapRenderer {
   private refreshBands(): void {
     const w = this.world;
     this.bands = analyzeRoads((x, y) => w.tiles[y * w.n + x] === TILE.ROAD, w.n, (x, y) => w.roadTier[y * w.n + x] as RoadTier);
-    for (let i = 0; i < this.roadSnap.length; i++) this.roadSnap[i] = w.tiles[i] === TILE.ROAD ? 1 : 0;
+    for (let i = 0; i < this.roadSnap.length; i++) {
+      this.roadSnap[i] = w.tiles[i] === TILE.ROAD ? 1 : 0;
+      this.tierSnap[i] = w.roadTier[i];
+    }
   }
 
   /**
@@ -274,9 +280,11 @@ export class MapRenderer {
    */
   private syncBands(dirty: number[]): number[] {
     const tiles = this.world.tiles;
+    const tier = this.world.roadTier;
     let flipped = false;
     for (const i of dirty) {
-      if ((tiles[i] === TILE.ROAD ? 1 : 0) !== this.roadSnap[i]) {
+      // An upgrade leaves the cell a street: the layout does not flip, its quality does.
+      if ((tiles[i] === TILE.ROAD ? 1 : 0) !== this.roadSnap[i] || tier[i] !== this.tierSnap[i]) {
         flipped = true;
         break;
       }

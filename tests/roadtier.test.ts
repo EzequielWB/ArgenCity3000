@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { COSTS, ROAD_TIERS } from '../src/config';
 import { computeCrime, computeLandValue } from '../src/sim/fields';
+import { MapRenderer } from '../src/render/mapRenderer';
 import { KIND, analyzeRoads, boulevardMedian, kindOf, tierOf } from '../src/render/avenue';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { SAVE_VERSION, deserialize, serialize, toBase64 } from '../src/save/save';
@@ -214,6 +215,23 @@ describe('the concrete median of a boulevard', () => {
     expect(boulevardMedian(3, 0)).toBe('none');
     expect(boulevardMedian(5, 2)).toBe('through');
     expect(boulevardMedian(5, 1)).toBe('none');
+  });
+});
+
+describe('the map redraws a street that was only upgraded', () => {
+  it('recomputes the band of the cell, which is where the quality is drawn from', () => {
+    const w = new World(generateTerrain(11, 32));
+    for (let x = 6; x <= 12; x++) w.setTile(x, 8, TILE.ROAD);
+    const map = new MapRenderer(w);
+    map.redrawAll();
+    const bands = () => (map as unknown as { bands: Uint16Array }).bands;
+    expect(tierOf(bands()[w.idx(9, 8)])).toBe(0);
+
+    applyPlan(w, planTool(w, 'roadPaved', [[9, 8]]));
+    map.update(w.takeDirty());
+    expect(tierOf(bands()[w.idx(9, 8)])).toBe(1);
+    // The streets beside it keep their own quality.
+    expect(tierOf(bands()[w.idx(10, 8)])).toBe(0);
   });
 });
 
