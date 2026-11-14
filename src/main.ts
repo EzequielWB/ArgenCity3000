@@ -214,6 +214,14 @@ for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(
 $('#btnMenu').addEventListener('click', () => {
   if (confirm('¿Volver al inicio? Lo que no guardaste se pierde.')) showStart();
 });
+// Phone layout: the menu hides behind a burger button (the button is not shown on a wide screen).
+const burger = $('#btnBurger');
+const setMenu = (open: boolean) => {
+  $('#topbar').classList.toggle('menu-open', open);
+  burger.setAttribute('aria-expanded', String(open));
+};
+burger.addEventListener('click', () => setMenu(!$('#topbar').classList.contains('menu-open')));
+$('#menu').addEventListener('click', () => setMenu(false));
 initModal();
 
 // ---------------------------------------------------------------- filete phrases
