@@ -49,8 +49,8 @@ export function attachPointer(canvas: HTMLCanvasElement, target: PointerTarget):
   };
 
   const down = (e: PointerEvent) => {
-    if (pointer !== -1 && e.pointerId !== pointer) return;
     const [mx, my] = pos(e);
+    // A finger is counted before anything else: the second one is not "another pointer to ignore".
     if (e.pointerType === 'touch') touches.set(e.pointerId, [mx, my]);
     if (touches.size === 2) {
       // The second finger turns a stroke or a tap into a pinch: nothing gets built.
@@ -62,6 +62,7 @@ export function attachPointer(canvas: HTMLCanvasElement, target: PointerTarget):
       e.preventDefault();
       return;
     }
+    if (pointer !== -1 && e.pointerId !== pointer) return;
     if (mode === 'paint' && e.button !== 0) {
       target.dragCancel();
       mode = 'idle';
