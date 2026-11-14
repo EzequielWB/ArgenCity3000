@@ -79,7 +79,7 @@ describe('service buildings', () => {
     fields(w);
     expect(w.edu[w.idx(3, 10)]).toBe(0);
 
-    const crowded = denseCity(4);
+    const crowded = denseCity(5);
     place(crowded, 'school', 20, 22);
     fields(crowded);
     expect(crowded.edu[crowded.idx(20, 22)]).toBeGreaterThan(0);
@@ -87,7 +87,7 @@ describe('service buildings', () => {
   });
 
   it('police lowers crime in a dense city, and a small town has little crime', () => {
-    const dense = denseCity(4);
+    const dense = denseCity(5);
     fields(dense);
     const before = dense.crime[dense.idx(20, 21)];
     expect(before).toBeGreaterThan(50);
@@ -97,13 +97,13 @@ describe('service buildings', () => {
 
     const town = new World(flat());
     build(town, 'zoneR', 3, 3, 6, 6);
-    for (let i = 0; i < town.tiles.length; i++) if (town.tiles[i] === TILE.R) town.level[i] = 1;
+    for (let i = 0; i < town.tiles.length; i++) if (town.tiles[i] === TILE.R) town.level[i] = 2;
     fields(town);
     expect(Math.max(...town.crime)).toBeLessThan(10);
   });
 
   it('education and health raise land value, crime lowers it', () => {
-    const w = denseCity(2);
+    const w = denseCity(3);
     fields(w);
     const plain = w.landValue[w.idx(20, 21)];
     place(w, 'school', 20, 18);
@@ -115,13 +115,13 @@ describe('service buildings', () => {
 });
 
 describe('levelCap with services', () => {
-  it('needs health for the third level and education for the fourth', () => {
-    expect(levelCap('R', 100, 50000, { edu: 0, health: 0 })).toBe(2);
-    expect(levelCap('R', 100, 50000, { edu: 0, health: 100 })).toBe(3);
-    expect(levelCap('R', 100, 50000, { edu: 100, health: 100 })).toBe(4);
-    expect(levelCap('C', 100, 50000, { edu: 0, health: 0 })).toBe(3);
-    expect(levelCap('C', 100, 50000, { edu: 100, health: 0 })).toBe(4);
-    expect(levelCap('I', 100, 50000, { edu: 0, health: 0 })).toBe(4);
+  it('needs a clinic to go past the chalet and a school to go past the PH', () => {
+    expect(levelCap('R', 100, 50000, { edu: 0, health: 0 })).toBe(3);
+    expect(levelCap('R', 100, 50000, { edu: 0, health: 100 })).toBe(4);
+    expect(levelCap('R', 100, 50000, { edu: 100, health: 100 })).toBe(5);
+    expect(levelCap('C', 100, 50000, { edu: 0, health: 0 })).toBe(4);
+    expect(levelCap('C', 100, 50000, { edu: 100, health: 0 })).toBe(5);
+    expect(levelCap('I', 100, 50000, { edu: 0, health: 0 })).toBe(5);
   });
 });
 
@@ -153,7 +153,7 @@ describe('budget with services', () => {
   });
 
   it('charges the whole upkeep to a service used to its capacity', () => {
-    const { w, cells, budget } = servicesAmongHomes(4);
+    const { w, cells, budget } = servicesAmongHomes(5);
     for (const kind of ['school', 'clinic', 'police', 'fire'] as const) {
       const [x, y] = cells[kind];
       expect(residentsServed(w, w.idx(x, y), kind)).toBeGreaterThanOrEqual(SERVICES[kind].capacity);
@@ -165,15 +165,15 @@ describe('budget with services', () => {
   });
 
   it('puts the funding share on top of the use-based cost', () => {
-    const { budget: full } = servicesAmongHomes(4);
-    const { budget: cut } = servicesAmongHomes(4, { school: 50, clinic: 0, police: 120, fire: 100 });
+    const { budget: full } = servicesAmongHomes(5);
+    const { budget: cut } = servicesAmongHomes(5, { school: 50, clinic: 0, police: 120, fire: 100 });
     expect(cut.schools).toBe(Math.round(full.schools * 0.5));
     expect(cut.clinics).toBe(0);
     expect(cut.police).toBe(Math.round(full.police * 1.2));
     expect(cut.firefighters).toBe(full.firefighters);
     // a partly used service funded at 50 % costs half of its partly used cost
-    const half = servicesAmongHomes(1);
-    const halfCut = servicesAmongHomes(1, { school: 50, clinic: 100, police: 100, fire: 100 });
+    const half = servicesAmongHomes(2);
+    const halfCut = servicesAmongHomes(2, { school: 50, clinic: 100, police: 100, fire: 100 });
     expect(halfCut.budget.schools).toBe(Math.round(half.budget.schools / 2));
   });
 
@@ -197,7 +197,7 @@ describe('residentsServed', () => {
     const w = new World(flat());
     build(w, 'zoneR', 10, 10, 30, 30);
     build(w, 'zoneC', 10, 32, 30, 33);
-    for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === TILE.R || w.tiles[i] === TILE.C) w.level[i] = 2;
+    for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === TILE.R || w.tiles[i] === TILE.C) w.level[i] = 3;
     place(w, 'police', 20, 20);
     const at = w.idx(20, 20);
     const r = SERVICES.police.radius;
@@ -216,7 +216,7 @@ describe('residentsServed', () => {
   });
 
   it('is the same count the coverage drops by when the service is overcrowded', () => {
-    const w = denseCity(4);
+    const w = denseCity(5);
     place(w, 'school', 20, 12);
     fields(w);
     const at = w.idx(20, 12);
@@ -229,13 +229,13 @@ describe('residentsServed', () => {
 describe('fires', () => {
   /** News are capped at 50 entries, so `fireHeadlines` remembers whether any month ever carried one. */
   function run(cover: boolean): Simulation & { fireHeadlines: boolean } {
-    const w = denseCity(3);
+    const w = denseCity(4);
     if (cover) for (const x of [8, 20, 32]) for (const y of [12, 22, 32]) place(w, 'fire', x, y);
     // The newspaper only starts writing with two built lots of each basic zone.
     build(w, 'zoneC', 3, 5, 4, 5);
     build(w, 'zoneI', 3, 7, 4, 7);
-    for (const y of [5, 7]) for (const x of [3, 4]) w.level[w.idx(x, y)] = 1;
-    const sim = new Simulation(w, newSimState(9), 'X');
+    for (const y of [5, 7]) for (const x of [3, 4]) w.level[w.idx(x, y)] = 2;
+    const sim = new Simulation(w, newSimState(1), 'X');
     sim.state.cash = 10_000_000;
     let fireHeadlines = false;
     for (let i = 0; i < TICKS_PER_MONTH * 60; i++) {
@@ -262,7 +262,7 @@ describe('fires', () => {
 
 describe('save with services', () => {
   it('round-trips service buildings and fires', () => {
-    const w = denseCity(2);
+    const w = denseCity(3);
     place(w, 'school', 20, 10);
     w.fire[w.idx(5, 11)] = 40;
     const sim = new Simulation(w, newSimState(1), 'X');
@@ -272,7 +272,7 @@ describe('save with services', () => {
   });
 
   it('loads budgets saved before services existed, with those lines at zero', () => {
-    const w = denseCity(2);
+    const w = denseCity(3);
     const sim = new Simulation(w, newSimState(1), 'X');
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
     const data = JSON.parse(serialize({ name: 'X', seed: 1, world: w, sim: sim.state }));

@@ -390,7 +390,7 @@ describe('the budget of the coast', () => {
   it('boosts the industrial taxes 15 % per working port, up to 45 %', () => {
     const industrial = (ports: number, withRoad = true): number => {
       const w = new World(shore());
-      for (let k = 0; k < 6; k++) w.setTile(20 + k, 5, TILE.I, 4);
+      for (let k = 0; k < 6; k++) w.setTile(20 + k, 5, TILE.I, 5);
       if (withRoad) build(w, 'road', 10, 3, 10, 30);
       for (let k = 0; k < ports; k++) build(w, 'port', 8, 3 + 2 * k);
       computeRoadAccess(w);
@@ -628,7 +628,7 @@ describe('the streets to a working port', () => {
   function village(withPort: boolean, withStreet = true): World {
     const w = new World(shore());
     build(w, 'road', 10, 7, 20, 7);
-    for (const x of [15, 16]) w.setTile(x, 6, TILE.R, 3);
+    for (const x of [15, 16]) w.setTile(x, 6, TILE.R, 4);
     if (withPort) build(w, 'port', 8, withStreet ? 7 : 25);
     computeRoadAccess(w);
     return w;

@@ -1,4 +1,5 @@
 import {
+  MAX_LEVEL,
   CAPACITY,
   COAST,
   COAST_APPROVAL,
@@ -25,19 +26,20 @@ import { TILE, World, coastOf, serviceOf, zoneOf, type ZoneKind } from '../world
 import { serviceUpkeep } from './budget';
 import { dateOf } from './calendar';
 import { coastWorks, seasonOf, tourismFor, type Season } from './coast';
-import { SERVICE_NEED, TAX_DEMAND_POINTS, levelCap } from './demand';
+import { HUMBLE, SERVICE_NEED, TAX_DEMAND_POINTS, isHoldout, levelCap } from './demand';
 import { residentsServed, utilization } from './fields';
 import { plantCapacity } from './plants';
 import type { Simulation } from './simulation';
 
 const NAMES: Record<ZoneKind, string[]> = {
-  R: ['Lote residencial vacío', 'Casita', 'Chalet', 'PH', 'Torre de departamentos'],
-  C: ['Lote comercial vacío', 'Kiosco', 'Almacén de barrio', 'Galería comercial', 'Edificio de oficinas'],
-  I: ['Lote industrial vacío', 'Taller', 'Galpón', 'Fábrica', 'Planta industrial'],
+  R: ['Lote residencial vacío', 'Casa de chapa', 'Casita', 'Chalet', 'PH', 'Torre de departamentos'],
+  C: ['Lote comercial vacío', 'Kiosco', 'Almacén de barrio', 'Local comercial', 'Galería comercial', 'Edificio de oficinas'],
+  I: ['Lote industrial vacío', 'Tinglado', 'Taller', 'Galpón', 'Fábrica', 'Planta industrial'],
 };
 
 export function buildingName(zone: ZoneKind, level: number, variant: number): string {
-  if (zone === 'R' && level === 2 && variant % 2 === 1) return 'Casa chorizo';
+  if (zone === 'R' && level === 3 && variant % 2 === 1) return 'Casa chorizo';
+  if (zone === 'C' && level === 1 && variant % 2 === 1) return 'Verdulería';
   return NAMES[zone][level];
 }
 
@@ -180,7 +182,8 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
     lines.push(`Contaminación: ${w.pollution[i]}/100`);
     lines.push(...coverageLines(w, i));
     lines.push(height);
-    return { title, lines, hint: growthHint(w, sim, i, zone, level) };
+    const holdout = level === HUMBLE && isHoldout(w.variant[i]) ? 'Su dueño no piensa mejorarla: solo cambia si la demolés.' : undefined;
+    return { title, lines, hint: holdout ?? growthHint(w, sim, i, zone, level) };
   }
 
   lines.push(height, `Valor del suelo: ${w.landValue[i]}/100`, `Contaminación: ${w.pollution[i]}/100`);
@@ -270,9 +273,9 @@ function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level:
     return zone === 'R' ? 'No hay demanda de viviendas: hacen falta trabajos (comercio o industria).' : 'No hay demanda: hace falta más población.';
   }
   const cap = levelCap(zone, w.landValue[i], sim.totals.pop, { edu: w.edu[i], health: w.health[i] });
-  if (level >= cap && level < 4) {
+  if (level >= cap && level < MAX_LEVEL) {
     if (levelCap(zone, w.landValue[i], sim.totals.pop) > cap) {
-      if (zone === 'R' && cap < 3 && w.health[i] < SERVICE_NEED) return 'Para pasar de chalet necesita una salita cerca (con luz).';
+      if (zone === 'R' && cap < 4 && w.health[i] < SERVICE_NEED) return 'Para pasar de chalet necesita una salita cerca (con luz).';
       return 'Para crecer más necesita una escuela cerca (con luz).';
     }
     return zone === 'I' ? 'Para crecer más necesita una ciudad más grande.' : 'Para crecer más necesita más valor del suelo (plazas, agua, menos humo) o más población.';

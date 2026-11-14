@@ -316,6 +316,17 @@ function residential(level: number, v: number): Sprite {
   const wall = WALLS[v % WALLS.length];
   const roof = ROOFS[(v >> 3) % ROOFS.length];
   if (level === 1) {
+    // Humble house: bare brick, a tin roof held down with stones, a door, a window and a stovepipe.
+    const p = painter(1, 22);
+    const brick = v % 2 ? PAL.brick : PAL.brickDark;
+    p.box(0.22, 0.28, 0.78, 0.72, 0, 7, brick);
+    p.left(0.72, 0.4, 0.55, 0, 5, PAL.door);
+    p.right(0.78, 0.38, 0.6, 2, 5, PAL.glassDark);
+    p.gableRoof(0.18, 0.24, 0.82, 0.76, 7, 4, v % 3 === 0 ? PAL.chapaRust : PAL.chapa, brick);
+    p.box(0.6, 0.36, 0.65, 0.41, 9, 5, '#6d6f72', false);
+    return done(p);
+  }
+  if (level === 2) {
     const p = painter(1, 24);
     if (v % 3 === 0) p.tree(0.15, 0.85, 1 + ((v >> 2) % 4), 0.75);
     p.box(0.25, 0.25, 0.75, 0.75, 0, 8, wall);
@@ -324,7 +335,7 @@ function residential(level: number, v: number): Sprite {
     p.hipRoof(0.2, 0.2, 0.8, 0.8, 8, 7, roof);
     return done(p);
   }
-  if (level === 2) {
+  if (level === 3) {
     const p = painter(1, 32);
     if (v % 2 === 0) {
       // Chalet with a tiled gable roof.
@@ -348,7 +359,7 @@ function residential(level: number, v: number): Sprite {
     }
     return done(p);
   }
-  if (level === 3) {
+  if (level === 4) {
     const p = painter(1, 48);
     const facade = v % 2 ? PAL.brick : wall;
     p.box(0.1, 0.1, 0.9, 0.9, 0, 30, facade);
@@ -376,6 +387,23 @@ function residential(level: number, v: number): Sprite {
 function commercial(level: number, v: number): Sprite {
   const [a1, a2] = AWNINGS[v % AWNINGS.length];
   if (level === 1) {
+    const p = painter(1, 22);
+    if (v % 2 === 0) {
+      // Greengrocer: an open front with a striped awning and crates of fruit and vegetables on the pavement.
+      p.box(0.24, 0.24, 0.76, 0.66, 0, 9, WALLS[(v >> 2) % WALLS.length]);
+      p.left(0.66, 0.3, 0.7, 1, 6, PAL.glassDark);
+      p.awning(0.66, 0.24, 0.76, 8, '#2f7f4f', '#f4ece0', 4);
+      for (const [u, c] of [[0.3, '#c8392f'], [0.44, '#e08a2f'], [0.58, '#5f9a3f']] as const) p.box(u, 0.7, u + 0.1, 0.8, 0, 3, c);
+    } else {
+      // Kiosk: a tiny box with a big service window, a striped awning and a sign on top.
+      p.box(0.32, 0.32, 0.68, 0.68, 0, 9, WALLS[(v >> 2) % WALLS.length]);
+      p.left(0.68, 0.37, 0.63, 2, 6, PAL.glass);
+      p.awning(0.68, 0.32, 0.68, 8, a1, a2, 3);
+      p.box(0.36, 0.36, 0.64, 0.4, 9, 3, a1, false);
+    }
+    return done(p);
+  }
+  if (level === 2) {
     const p = painter(1, 24);
     const wall = WALLS[(v >> 2) % WALLS.length];
     p.box(0.3, 0.3, 0.7, 0.7, 0, 9, wall);
@@ -384,7 +412,7 @@ function commercial(level: number, v: number): Sprite {
     p.box(0.3, 0.3, 0.7, 0.7, 9, 2, a1, false);
     return done(p);
   }
-  if (level === 2) {
+  if (level === 3) {
     const p = painter(1, 30);
     const wall = WALLS[(v >> 2) % WALLS.length];
     p.box(0.12, 0.12, 0.88, 0.88, 0, 13, wall);
@@ -396,7 +424,7 @@ function commercial(level: number, v: number): Sprite {
     for (const u of [0.25, 0.5, 0.75]) p.left(0.88, u, u + 0.04, 11, 12, '#c8392f');
     return done(p);
   }
-  if (level === 3) {
+  if (level === 4) {
     const p = painter(1, 44);
     const wall = ['#e7dccb', '#d6c3a5', '#c9d3d6'][v % 3];
     p.box(0.08, 0.08, 0.92, 0.92, 0, 24, wall);
@@ -426,6 +454,17 @@ function commercial(level: number, v: number): Sprite {
 
 function industrial(level: number, v: number): Sprite {
   if (level === 1) {
+    // A tin shed: corrugated sheet walls and roof, a wide dark door and a drum by the corner.
+    const p = painter(1, 22);
+    const sheet = v % 2 ? PAL.chapa : '#a8a398';
+    p.box(0.14, 0.2, 0.86, 0.8, 0, 9, sheet);
+    for (let u = 0.2; u < 0.86; u += 0.08) p.left(0.8, u, u + 0.02, 0, 9, shade(sheet, 0.8));
+    p.left(0.8, 0.3, 0.7, 0, 7, '#3d3f42');
+    p.gableRoof(0.1, 0.16, 0.9, 0.84, 9, 4, shade(sheet, 0.88), sheet);
+    p.cylinder(0.9, 0.9, 0.07, 0, 5, PAL.brick);
+    return done(p);
+  }
+  if (level === 2) {
     const p = painter(1, 24);
     p.box(0.12, 0.15, 0.88, 0.85, 0, 10, PAL.brick);
     p.left(0.85, 0.25, 0.65, 0, 7, '#6d6f72');
@@ -433,7 +472,7 @@ function industrial(level: number, v: number): Sprite {
     p.gableRoof(0.1, 0.12, 0.9, 0.88, 10, 5, PAL.chapa, PAL.brick);
     return done(p);
   }
-  if (level === 2) {
+  if (level === 3) {
     const p = painter(1, 28);
     const wall = v % 2 ? '#a9b4b8' : PAL.brick;
     p.box(0.06, 0.1, 0.94, 0.9, 0, 11, wall);
@@ -442,7 +481,7 @@ function industrial(level: number, v: number): Sprite {
     p.gableRoof(0.04, 0.08, 0.96, 0.92, 11, 6, '#b7bfc2', wall);
     return done(p);
   }
-  if (level === 3) {
+  if (level === 4) {
     const p = painter(1, 52);
     p.chimney(0.72, 0.1, 0.14, 40);
     p.box(0.08, 0.08, 0.92, 0.92, 0, 16, PAL.brickDark);

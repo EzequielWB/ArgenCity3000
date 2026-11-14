@@ -1,4 +1,5 @@
 import { CAPACITY, DEFAULT_TAX, MAX_LEVEL, type ZoneTaxes } from '../config';
+import { hash2 } from '../core/rng';
 import { World, zoneOf, type ZoneKind } from '../world/world';
 import { addCoastJobs } from './coast';
 
@@ -81,7 +82,9 @@ export const SERVICE_NEED = 40;
 
 /**
  * Highest level a lot can reach given its land value, the city size and the services around:
- * homes need a clinic nearby to go past level 2 and a school to go past 3; offices need a school.
+ * homes need a clinic nearby to go past a chalet and a school to go past a PH; offices need a school.
+ * The humble level 1 is never a target: the formula below counts from the casita as 1, and the
+ * result is shifted up by one.
  */
 export function levelCap(zone: ZoneKind, landValue: number, pop: number, services: ServiceLevels = { edu: 100, health: 100 }): number {
   const byValue = (step: number) => 1 + Math.floor((landValue + 15) / step);
@@ -93,5 +96,22 @@ export function levelCap(zone: ZoneKind, landValue: number, pop: number, service
     if (services.health < SERVICE_NEED) cap = Math.min(cap, 2);
     if (services.edu < SERVICE_NEED) cap = Math.min(cap, 3);
   } else if (zone === 'C' && services.edu < SERVICE_NEED) cap = Math.min(cap, 3);
-  return Math.max(1, Math.min(MAX_LEVEL, cap));
+  return Math.min(MAX_LEVEL, Math.max(1, cap) + 1);
+}
+
+/** The lowest building level: a tin-roof house, a kiosk, a shed. */
+export const HUMBLE = 1;
+/** Under this many people a new building is built humble. */
+export const EARLY_CITY = 150;
+/** Share of the humble buildings that never improve by themselves; only the player's bulldozer replaces them. */
+export const HOLDOUT_SHARE = 0.35;
+
+/** The level a new building (on an empty or demolished lot) is born at: humble in a small city, one below the cap in a grown one. */
+export function spawnLevel(pop: number, cap: number): number {
+  return pop < EARLY_CITY ? HUMBLE : Math.max(HUMBLE, cap - 1);
+}
+
+/** Whether a humble building, by its variant byte, is one of those that never improve by themselves. */
+export function isHoldout(variant: number): boolean {
+  return hash2(variant, 0, 29) < HOLDOUT_SHARE;
 }

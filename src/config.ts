@@ -192,12 +192,12 @@ export const WIND = { base: 160, perLevel: 80, coast: 80, radius: 6, min: 80, ma
 export const POWER_REACH = 3;
 export const LINE_REACH = 3;
 
-export const MAX_LEVEL = 4;
-/** Residents (R) or jobs (C, I) per building level, index = level. */
+export const MAX_LEVEL = 5;
+/** Residents (R) or jobs (C, I) per building level, index = level. Level 1 is the humble one: a tin-roof house, a kiosk, a shed. */
 export const CAPACITY = {
-  R: [0, 6, 20, 60, 160],
-  C: [0, 4, 12, 40, 100],
-  I: [0, 6, 20, 50, 120],
+  R: [0, 3, 6, 20, 60, 160],
+  C: [0, 2, 4, 12, 40, 100],
+  I: [0, 3, 6, 20, 50, 120],
 } as const;
 /**
  * What the neighbours make of a demolition. Tearing down a home, a shop, a factory or a public

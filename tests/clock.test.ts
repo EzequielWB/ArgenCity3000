@@ -5,6 +5,7 @@ import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { TICKS_PER_MONTH, TICKS_PER_WEEK, WEEKS_PER_MONTH } from '../src/config';
 import { cumulativeShare, dateLabel, weekLabel, weekOf } from '../src/sim/calendar';
 import { monthlyBudget } from '../src/sim/budget';
+import { MILESTONES } from '../src/sim/milestones';
 import { Simulation, newSimState } from '../src/sim/simulation';
 
 function flat(n = 32): Terrain {
@@ -123,8 +124,11 @@ describe('weekly money', () => {
     sim.state.cash = 1_000_000;
     for (let month = 0; month < 6; month++) {
       const before = sim.state.cash;
+      const reached = sim.state.milestone;
       const cash = weeklyCash(sim, 4);
-      expect(sim.state.cash - before).toBe(sim.state.lastBudget!.balance);
+      // A milestone reached during the month pays its grant on top of the budget.
+      const grants = MILESTONES.slice(reached + 1, sim.state.milestone + 1).reduce((sum, m) => sum + m.grant, 0);
+      expect(sim.state.cash - before).toBe(sim.state.lastBudget!.balance + grants);
       expect(cash).toHaveLength(5);
     }
     expect(sim.totals.pop).toBeGreaterThan(0);

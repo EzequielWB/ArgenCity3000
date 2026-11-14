@@ -227,7 +227,7 @@ export function computeCrime(w: World, pop: number): void {
           if (nx < 0 || nx >= n) continue;
           const j = ny * n + nx;
           if (!w.isOccupied(j)) continue;
-          density += w.level[j] * (w.tiles[j] === TILE.C ? 1.3 : 1);
+          density += Math.max(0.5, w.level[j] - 1) * (w.tiles[j] === TILE.C ? 1.3 : 1);
         }
       }
       const i = y * n + x;

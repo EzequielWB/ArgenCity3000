@@ -27,7 +27,7 @@ function city(seed = 5): { world: WorldType; sim: Simulation } {
 }
 
 /** Fills every lot of a zone with buildings of one level, the way a grown city looks. */
-function fill(world: World, zone: 'R' | 'C' | 'I', level = 2): void {
+function fill(world: World, zone: 'R' | 'C' | 'I', level = 3): void {
   for (let i = 0; i < world.tiles.length; i++) {
     if (world.tiles[i] === TILE[zone]) world.level[i] = level;
   }
@@ -36,9 +36,9 @@ function fill(world: World, zone: 'R' | 'C' | 'I', level = 2): void {
 /** The same city after a few years: every zone built up, and enough people to ask for things. */
 function grown(seed = 5): { world: WorldType; sim: Simulation } {
   const { world, sim } = city(seed);
-  fill(world, 'R', 3);
-  fill(world, 'C', 2);
-  fill(world, 'I', 2);
+  fill(world, 'R', 4);
+  fill(world, 'C', 3);
+  fill(world, 'I', 3);
   sim.refresh();
   return { world, sim };
 }
@@ -75,7 +75,7 @@ describe('the catalogue', () => {
 describe('un piquete en la avenida', () => {
   it('appears with the avenue jammed and a city of more than two thousand', () => {
     const { world, sim } = city();
-    fill(world, 'R', 3);
+    fill(world, 'R', 4);
     sim.refresh();
     expect(eventById('piquete')!.when(sim)).toBe(false); // the traffic is fine
     sim.congestion = { trips: 1000, worst: 200, jammedShare: 0.5 };
@@ -100,7 +100,7 @@ describe('un piquete en la avenida', () => {
 describe('la Provincia pone la plata', () => {
   it('only shows up when the cash is short', () => {
     const { world, sim } = city();
-    fill(world, 'R', 3);
+    fill(world, 'R', 4);
     sim.refresh();
     expect(eventById('provincia')!.when(sim)).toBe(false);
     sim.state.cash = 1200;
@@ -137,7 +137,7 @@ describe('el derrame en el arroyo', () => {
     build('plant', 2, 2);
     build('road', 0, 6, 24, 6);
     build('zoneI', 1, 7, 10, 12);
-    for (let i = 0; i < world.tiles.length; i++) if (world.tiles[i] === TILE.I) world.level[i] = 2;
+    for (let i = 0; i < world.tiles.length; i++) if (world.tiles[i] === TILE.I) world.level[i] = 3;
     const sim = new Simulation(world, newSimState(9), 'Villa Derrame');
     return { world, sim };
   }
@@ -169,7 +169,7 @@ describe('el derrame en el arroyo', () => {
 describe('la ola de calor', () => {
   it('only shows up in January and February, with the clinics stretched', () => {
     const { world, sim } = city();
-    fill(world, 'R', 3);
+    fill(world, 'R', 4);
     sim.refresh();
     sim.state.tick = TICKS_PER_MONTH * 12; // January of the second year
     expect(eventById('ola-de-calor')!.when(sim)).toBe(true);
@@ -196,7 +196,7 @@ describe('la ola de calor', () => {
 describe('la plaza que piden los vecinos', () => {
   it('appears in a city without a plaza worth the name', () => {
     const { world, sim } = city();
-    fill(world, 'R', 3);
+    fill(world, 'R', 4);
     sim.refresh();
     expect(sim.totals.pop).toBeGreaterThan(3000);
     expect(eventById('plaza-vecina')!.when(sim)).toBe(true);
@@ -229,7 +229,7 @@ describe('la plaza que piden los vecinos', () => {
 describe('la ola de robos', () => {
   it('appears with the crime high and the police short', () => {
     const { world, sim } = city();
-    fill(world, 'R', 3);
+    fill(world, 'R', 4);
     sim.refresh();
     for (let i = 0; i < world.crime.length; i++) world.crime[i] = 60;
     expect(eventById('ola-de-robos')!.when(sim)).toBe(true);
@@ -286,7 +286,7 @@ describe('la crecida', () => {
     for (let y = 0; y < world.n; y++)
       for (let x = 0; x < world.n; x++) if (world.tiles[world.idx(x, y)] === TILE.EMPTY && !world.isWater(x, y)) world.tiles[world.idx(x, y)] = TILE.PROMENADE;
     const sim = new Simulation(world, newSimState(4), 'Villa Crecida');
-    for (let i = 0; i < world.tiles.length; i++) if (world.tiles[i] === TILE.R) world.level[i] = 2;
+    for (let i = 0; i < world.tiles.length; i++) if (world.tiles[i] === TILE.R) world.level[i] = 3;
     sim.refresh();
     expect(eventById('crecida')!.when(sim)).toBe(false); // January, and hardly any people
 
@@ -398,8 +398,8 @@ describe('la coima en la obra', () => {
 describe('la sequía', () => {
   it('appears with industry and people', () => {
     const { world, sim } = city();
-    fill(world, 'I', 4);
-    fill(world, 'R', 3);
+    fill(world, 'I', 5);
+    fill(world, 'R', 4);
     sim.refresh();
     expect(eventById('sequia')!.when(sim)).toBe(true);
   });
@@ -425,7 +425,7 @@ describe('el humo', () => {
     sim.refresh();
     expect(eventById('humo')!.when(sim)).toBe(false);
     for (let i = 0; i < world.tiles.length; i++) if (world.tiles[i] === TILE.EMPTY && !world.isWater(i % world.n, Math.floor(i / world.n))) world.tiles[i] = TILE.R;
-    fill(world, 'R', 2);
+    fill(world, 'R', 3);
     sim.refresh();
     for (let i = 0; i < world.pollution.length; i++) world.pollution[i] = 80;
     sim.totals.pop = 6000;

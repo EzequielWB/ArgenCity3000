@@ -45,17 +45,17 @@ function mixed(): Simulation {
   const { world, sim } = growing();
   let workshop = 0;
   for (let i = 0; i < world.tiles.length; i++) {
-    if (world.tiles[i] === TILE.R) world.level[i] = 1;
+    if (world.tiles[i] === TILE.R) world.level[i] = 2;
     if (world.tiles[i] === TILE.I && !workshop) {
       workshop = i;
-      world.level[i] = 3;
+      world.level[i] = 4;
     }
   }
   world.tiles[workshop] = TILE.EMPTY;
   // A workshop of its own, on the far side of the street, with its level and its light.
   const cell = world.idx(28, 5);
   world.tiles[cell] = TILE.I;
-  world.level[cell] = 3;
+  world.level[cell] = 4;
   sim.refresh();
   return sim;
 }
@@ -220,7 +220,7 @@ describe('a slider nobody can move', () => {
 describe('abandoning a building by hand', () => {
   it('empties it and takes its people with it', () => {
     const { world, sim } = town();
-    for (let i = 0; i < world.tiles.length; i++) if (world.tiles[i] === TILE.I) world.level[i] = 2;
+    for (let i = 0; i < world.tiles.length; i++) if (world.tiles[i] === TILE.I) world.level[i] = 3;
     sim.refresh();
     const before = sim.totals.iJobs;
     const cell = world.idx(18, 13);

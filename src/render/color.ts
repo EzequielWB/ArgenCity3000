@@ -61,6 +61,7 @@ export const PAL = {
   glassDark: '#3f6f86',
   door: '#5b3b26',
   chapa: '#9aa3a6',
+  chapaRust: '#9b6a54',
   zoneR: '#7cc06a',
   zoneC: '#6fb7e0',
   zoneI: '#e0b542',

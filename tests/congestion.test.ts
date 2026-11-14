@@ -18,12 +18,12 @@ function road(w: World, x0: number, y0: number, x1: number, y1: number): void {
 function commuterTown(lanes = 1): World {
   const w = new World(flat());
   road(w, 0, 10, 30, 10 + lanes - 1);
-  for (let x = 0; x < 8; x++) w.setTile(x, 9, TILE.R, 4);
-  w.setTile(30, 9, TILE.I, 1);
+  for (let x = 0; x < 8; x++) w.setTile(x, 9, TILE.R, 5);
+  w.setTile(30, 9, TILE.I, 2);
   return w;
 }
 
-const residents = 8 * CAPACITY.R[4];
+const residents = 8 * CAPACITY.R[5];
 
 describe('estimated congestion', () => {
   it('loads every street cell between the homes and the jobs with the residents that pass', () => {
@@ -33,7 +33,7 @@ describe('estimated congestion', () => {
     expect(expected).toBeGreaterThan(100); // the fixture saturates a single street
     for (let x = 8; x < 30; x++) expect(w.traffic[w.idx(x, 10)]).toBe(expected);
     // The first homes add up along the way: one tower's residents at the first cell.
-    expect(w.traffic[w.idx(0, 10)]).toBe(Math.round((100 * CAPACITY.R[4]) / TRAFFIC.laneCapacity));
+    expect(w.traffic[w.idx(0, 10)]).toBe(Math.round((100 * CAPACITY.R[5]) / TRAFFIC.laneCapacity));
     expect(report.worst).toBe(expected);
     expect(report.trips).toBe(residents);
     expect(report.jammedShare).toBeGreaterThan(0.5);
@@ -103,7 +103,7 @@ describe('estimated congestion', () => {
     expect(empty.traffic[empty.idx(15, 10)]).toBe(0);
 
     const mixed = commuterTown();
-    for (let x = 0; x < 8; x++) mixed.setTile(x, 11, TILE.I, 1); // a workshop across the street from every tower
+    for (let x = 0; x < 8; x++) mixed.setTile(x, 11, TILE.I, 2); // a workshop across the street from every tower
     mixed.setTile(30, 9, TILE.EMPTY);
     computeCongestion(mixed);
     expect(mixed.traffic[mixed.idx(15, 10)]).toBe(0);
@@ -111,9 +111,9 @@ describe('estimated congestion', () => {
 
   it('splits the commuters between commerce and industry by their share of the jobs', () => {
     const w = commuterTown();
-    w.setTile(0, 11, TILE.C, 4); // 100 commerce jobs right at the homes; 6 industry jobs far east
+    w.setTile(0, 11, TILE.C, 5); // 100 commerce jobs right at the homes; 6 industry jobs far east
     computeCongestion(w);
-    const toIndustry = residents * (CAPACITY.I[1] / (CAPACITY.I[1] + CAPACITY.C[4]));
+    const toIndustry = residents * (CAPACITY.I[2] / (CAPACITY.I[2] + CAPACITY.C[5]));
     expect(w.traffic[w.idx(20, 10)]).toBe(Math.round((100 * toIndustry) / TRAFFIC.laneCapacity));
   });
 

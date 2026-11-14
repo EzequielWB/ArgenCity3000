@@ -26,10 +26,10 @@ function city(): { world: World; sim: Simulation } {
   world.tiles[world.idx(25, 12)] = TILE.PLANT;
   world.tiles[world.idx(25, 13)] = TILE.PLANT;
   world.plants.push({ kind: 'coal', x: 24, y: 12 } as never);
-  world.level[world.idx(2, 5)] = 3; // 60 residents
-  world.level[world.idx(3, 5)] = 2; // 20 residents
-  world.level[world.idx(2, 8)] = 2; // 12 jobs
-  world.level[world.idx(2, 10)] = 3; // 50 jobs
+  world.level[world.idx(2, 5)] = 4; // 60 residents
+  world.level[world.idx(3, 5)] = 3; // 20 residents
+  world.level[world.idx(2, 8)] = 3; // 12 jobs
+  world.level[world.idx(2, 10)] = 4; // 50 jobs
   const sim = new Simulation(world, newSimState(5), 'Villa Obra');
   return { world, sim };
 }
@@ -37,13 +37,13 @@ function city(): { world: World; sim: Simulation } {
 describe('what a demolition costs in people', () => {
   it('counts every resident of a home torn down', () => {
     const { sim } = city();
-    expect(sim.noteDemolition([[2, 5]])).toBe(CAPACITY.R[3] * DEMOLITION.resident);
+    expect(sim.noteDemolition([[2, 5]])).toBe(CAPACITY.R[4] * DEMOLITION.resident);
   });
 
   it('counts jobs at half, because a job hurts less than a roof', () => {
     const { sim } = city();
-    expect(sim.noteDemolition([[2, 8]])).toBe(CAPACITY.C[2] * DEMOLITION.job);
-    expect(sim.noteDemolition([[2, 10]])).toBe(CAPACITY.I[3] * DEMOLITION.job);
+    expect(sim.noteDemolition([[2, 8]])).toBe(CAPACITY.C[3] * DEMOLITION.job);
+    expect(sim.noteDemolition([[2, 10]])).toBe(CAPACITY.I[4] * DEMOLITION.job);
   });
 
   it('counts a public work or a plant as one big hit, however many cells it has', () => {
@@ -58,10 +58,10 @@ describe('what a demolition costs in people', () => {
     const { world, sim } = city();
     world.level[world.idx(4, 5)] = 0; // an empty zoned lot
     expect(sim.noteDemolition([[4, 5]])).toBe(0);
-    world.level[world.idx(5, 5)] = 2;
+    world.level[world.idx(5, 5)] = 3;
     world.abandoned[world.idx(5, 5)] = 1; // a ruin
     expect(sim.noteDemolition([[5, 5]])).toBe(0);
-    world.level[world.idx(6, 5)] = 2;
+    world.level[world.idx(6, 5)] = 3;
     world.fire[world.idx(6, 5)] = 1; // on fire
     expect(sim.noteDemolition([[6, 5]])).toBe(0);
     expect(sim.noteDemolition([[10, 10]])).toBe(0); // plain ground
@@ -72,7 +72,7 @@ describe('what a demolition costs in people', () => {
     const { sim } = city();
     sim.noteDemolition([[2, 5]]);
     sim.noteDemolition([[3, 5]]);
-    expect(sim.state.grief).toBe(CAPACITY.R[3] + CAPACITY.R[2]);
+    expect(sim.state.grief).toBe(CAPACITY.R[4] + CAPACITY.R[3]);
   });
 });
 
@@ -82,8 +82,8 @@ describe('the grudge in points of approval', () => {
   });
 
   it('grows with the people affected and shrinks with the size of the city', () => {
-    const oneHome = CAPACITY.R[2]; // 20
-    const avenue = 12 * CAPACITY.R[2]; // 240, twelve homes
+    const oneHome = CAPACITY.R[3]; // 20
+    const avenue = 12 * CAPACITY.R[3]; // 240, twelve homes
     expect(demolitionPoints(oneHome, 300)).toBeGreaterThan(demolitionPoints(oneHome, 50000));
     expect(demolitionPoints(avenue, 5000)).toBeGreaterThan(demolitionPoints(avenue, 50000));
     // The examples of the design: a village feels one house, a metropolis shrugs.

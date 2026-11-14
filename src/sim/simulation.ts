@@ -28,7 +28,7 @@ import { monthlyBudget, type BudgetReport } from './budget';
 import { cumulativeShare, dateLabel, dateOf } from './calendar';
 import { countCoast } from './coast';
 import { computeCongestion, jamGrowthFactor, type CongestionReport } from './congestion';
-import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
+import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDemand, isHoldout, levelCap, spawnLevel, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
 import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, pollHeadline } from './mayor';
@@ -545,8 +545,10 @@ export class Simulation {
         if (level > cap && rng.chance(0.002)) this.changeLevel(i, level - 1);
         continue;
       }
+      // Some humble buildings are never improved by their owners: they stay until the player tears them down.
+      if (level === HUMBLE && isHoldout(w.variant[i])) continue;
       if (rng.chance(((GROWTH_RATE * d) / 100 / (1 + level * 0.5)) * jamGrowthFactor(w.jam[i]))) {
-        this.changeLevel(i, level + 1);
+        this.changeLevel(i, level === 0 ? spawnLevel(t.pop, cap) : level + 1);
         w.variant[i] = rng.int(256);
         w.terrain.trees[i] = 0;
       }
@@ -636,8 +638,8 @@ export class Simulation {
     if (cityFactor === 0) return;
     for (let i = 0; i < w.tiles.length; i++) {
       const zone = zoneOf(w.tiles[i]);
-      if (!zone || w.level[i] < 2 || !w.isOccupied(i)) continue;
-      const risk = w.level[i] * 10 + (zone === 'I' ? 20 : zone === 'C' ? 5 : 0);
+      if (!zone || w.level[i] < 3 || !w.isOccupied(i)) continue;
+      const risk = (w.level[i] - 1) * 10 + (zone === 'I' ? 20 : zone === 'C' ? 5 : 0);
       // Coverage makes fires rarer but never impossible; covered ones get put out (see `burn`).
       const exposure = 1 - (0.7 * w.fireCover[i]) / 100;
       if (this.rng.chance(((FIRE_RATE * risk) / 10) * cityFactor * exposure * exposure)) this.ignite(i);

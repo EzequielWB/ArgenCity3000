@@ -32,7 +32,7 @@ describe('why the city stopped growing', () => {
 
   it('blames high taxes in the lot card, instead of sending the lot to wait for jobs', () => {
     const w = town();
-    for (let x = 8; x < 18; x++) w.setTile(x, 8, TILE.R, 1); // 60 residents and no jobs: little pull left
+    for (let x = 8; x < 18; x++) w.setTile(x, 8, TILE.R, 2); // 60 residents and no jobs: little pull left
     const sim = new Simulation(w, newSimState(1), 'Prueba');
     sim.setTax(12);
     expect(sim.stall).toBe('taxes');
@@ -44,7 +44,7 @@ describe('why the city stopped growing', () => {
 
   it('blames blackouts when the plant cannot keep up', () => {
     const w = town();
-    for (let x = 8; x < 20; x++) for (const y of [5, 6, 8]) w.setTile(x, y, TILE.I, 4); // 36 factories × 20 MW
+    for (let x = 8; x < 20; x++) for (const y of [5, 6, 8]) w.setTile(x, y, TILE.I, 5); // 36 factories × 20 MW
     const sim = new Simulation(w, newSimState(1), 'Prueba');
     expect(sim.power.shortage).toBe(true);
     expect(sim.stall).toBe('shortage');
@@ -53,7 +53,7 @@ describe('why the city stopped growing', () => {
 
   it('blames abandonment when too many buildings stand empty', () => {
     const w = town();
-    for (let x = 8; x < 20; x++) for (const y of [6, 8]) w.setTile(x, y, TILE.R, 1); // 24 homes
+    for (let x = 8; x < 20; x++) for (const y of [6, 8]) w.setTile(x, y, TILE.R, 2); // 24 homes
     for (let x = 8; x < 12; x++) w.abandoned[w.idx(x, 6)] = 1; // 4 of them empty: over 5 %
     const sim = new Simulation(w, newSimState(1), 'Prueba');
     expect(sim.stall).toBe('blight');
@@ -62,8 +62,8 @@ describe('why the city stopped growing', () => {
 
   it('blames the tax of one zone when only that zone is taxed out of demand', () => {
     const w = town();
-    w.setTile(8, 6, TILE.C, 1);
-    w.setTile(9, 6, TILE.C, 1); // 8 commerce jobs: a little demand left at the usual tax
+    w.setTile(8, 6, TILE.C, 2);
+    w.setTile(9, 6, TILE.C, 2); // 8 commerce jobs: a little demand left at the usual tax
     const sim = new Simulation(w, newSimState(1), 'Prueba');
     sim.setTax(20, 'C'); // the average stays at 9 or less only if the others are low
     sim.setTax(3, 'R');
