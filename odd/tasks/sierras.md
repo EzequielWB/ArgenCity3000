@@ -33,12 +33,12 @@ suben, se ven grises en la cresta, y el relieve se lee de lejos.
 
 | ID | Qué | Specs | Dónde | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Techo del mundo y perfil propio de cada generador | S1, S2 | `src/world/terrain.ts`, `src/world/mapkinds.ts` | `_` |
-| T2 | Cordones de sierra: dos escalas, bandas angostas, valles anchos | S3 | `src/world/mapkinds.ts` | `_` |
-| T3 | Piedra arriba de la línea, sin árboles | S4, S5 | `src/world/terrain.ts`, `src/render/mapRenderer.ts`, `src/render/minimap.ts`, `src/render/color.ts` | `_` |
-| T4 | Exageración vertical | S6 | `src/core/iso.ts` | `_` |
-| T5 | Mezcla de colores encadenada | S8 | `src/render/color.ts` | `_` |
-| T6 | Pruebas: techos, cordón, piedra y árboles | S1–S5, S7 | `tests/mapkinds.test.ts`, `tests/terrain.test.ts` | `_` |
+| T1 | Techo del mundo y perfil propio de cada generador | S1, S2 | `src/world/terrain.ts`, `src/world/mapkinds.ts` | `1892320` |
+| T2 | Cordones de sierra: dos escalas, bandas angostas, valles anchos | S3 | `src/world/mapkinds.ts` | `1892320` |
+| T3 | Piedra arriba de la línea, sin árboles | S4, S5 | `src/world/terrain.ts`, `src/render/mapRenderer.ts`, `src/render/minimap.ts`, `src/render/color.ts` | `1892320` |
+| T4 | Exageración vertical | S6 | `src/core/iso.ts` | `1892320` |
+| T5 | Mezcla de colores encadenada | S8 | `src/render/color.ts` | `1892320` |
+| T6 | Pruebas: techos, cordón, piedra y árboles | S1–S5, S7 | `tests/mapkinds.test.ts`, `tests/terrain.test.ts` | `1892320` |
 
 ## Log
 
