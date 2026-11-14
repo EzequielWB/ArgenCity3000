@@ -619,7 +619,11 @@ ${stalled}` : ''}`;
     const el = $('#approval');
     el.textContent = `${s.approval} %`;
     el.className = s.approval >= APPROVAL.toWin ? 'tone-good' : s.approval >= APPROVAL.toWin - 10 ? 'tone-warn' : 'tone-bad';
-    $('#election').textContent = s.lostElection ? 'modo libre' : `vota en oct ${nextElectionYear(s.tick)}`;
+    // Nobody votes under a dictatorship: the line under the approval goes away instead of lying.
+    const vote = s.lostElection ? 'modo libre' : nextElectionYear(s.tick, s.government);
+    const line = $('#election');
+    line.textContent = vote === null ? '' : typeof vote === 'string' ? vote : `vota en oct ${vote}`;
+    line.classList.toggle('hidden', vote === null);
     // One panel at a time: a ballot waits for the plaque (or whatever is open) to be closed.
     if (this.hooks.isModalOpen()) return;
     if (s.terms > this.shownTerms) {

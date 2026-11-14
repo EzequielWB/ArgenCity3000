@@ -4,6 +4,7 @@ import { SAVE_VERSION, deserialize, serialize } from '../src/save/save';
 import { governmentCardsHtml } from '../src/ui/government';
 import { advanceMilestones } from '../src/sim/milestones';
 import { electionDue, monthsToElection, nextElectionYear, stepApproval } from '../src/sim/politics';
+import { DICTATOR_FOLLOWUPS, dictatorHeadline } from '../src/sim/mayor';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { generateTerrain } from '../src/world/terrain';
 import { World } from '../src/world/world';
@@ -113,5 +114,56 @@ describe('forms of government', () => {
     const data = JSON.parse(serialize({ name: 'Villa', seed: 5, world: w, sim: sim.state }));
     data.sim.government = 'monarquia';
     expect(() => deserialize(JSON.stringify(data))).toThrow(/gobierno/i);
+  });
+});
+
+describe('la tecnocracia', () => {
+  it('se juega el cargo cada seis años y con la mitad de la aprobación', () => {
+    expect(GOVERNMENTS.tecnocracia.termYears).toBe(6);
+    expect(GOVERNMENTS.tecnocracia.toWin).toBe(50);
+    // The same bar as a democracy, but the term is longer.
+    expect(GOVERNMENTS.democracia.toWin).toBe(50);
+    expect(GOVERNMENTS.democracia.termYears).toBe(4);
+  });
+});
+
+describe('la dictadura', () => {
+  /** A dictatorship about to close the month that ends October 1993, when a democracy would vote. */
+  function october(): Simulation {
+    const world = new World(generateTerrain(5, 32));
+    const sim = new Simulation(world, newSimState(5, 'dictadura'), 'Villa Nadie');
+    sim.state.party = 'Orden y Progreso';
+    sim.state.tick = 46 * TICKS_PER_MONTH - 1;
+    return sim;
+  }
+
+  it('no anuncia votación: no hay ninguna', () => {
+    expect(nextElectionYear(0, 'dictadura')).toBeNull();
+    expect(monthsToElection(0, 'dictadura')).toBeNull();
+  });
+
+  it('igual publica su acto eleccionario, con los contrincantes desaparecidos', () => {
+    const sim = october();
+    sim.tick();
+    const texts = sim.state.news.map((n) => n.text);
+    expect(texts.some((t) => /Acto eleccionario 1993: El partido Orden y Progreso gana por amplia mayoría/.test(t))).toBe(true);
+    expect(texts.some((t) => /después de que sus contrincantes desaparecieran/.test(t))).toBe(true);
+    // And the day after, the second line: always worse than the first.
+    expect(texts.some((t) => /cuerpos|casa quedó vacía|denuncias|auto sin patente|veedores/.test(t))).toBe(true);
+    // Nobody was re-elected because nobody voted.
+    expect(sim.state.terms).toBe(0);
+    expect(sim.state.lostElection).toBe(false);
+  });
+
+  it('no lo publica en un octubre cualquiera', () => {
+    const sim = october();
+    sim.state.tick -= TICKS_PER_MONTH * 12; // a year earlier
+    sim.tick();
+    expect(sim.state.news.every((n) => !/Acto eleccionario/.test(n.text))).toBe(true);
+  });
+
+  it('nombra al Intendente cuando la partida no tiene partido', () => {
+    expect(dictatorHeadline(1993, '', 'Norma Quiroga')).toMatch(/Intendente Norma Quiroga gana por amplia mayoría/);
+    for (const line of DICTATOR_FOLLOWUPS) expect(line.length).toBeGreaterThan(50);
   });
 });

@@ -54,3 +54,23 @@ export function electionHeadline(year: number, approval: number, won: boolean, m
   }
   return `Elecciones ${year}: el ${intendente(mayor)} perdió con el ${approval} % de los votos y deja la Municipalidad`;
 }
+
+/**
+ * The "election" of a dictatorship: the calendar keeps its October, and the paper keeps publishing.
+ * It is a joke with teeth — the vote count is a formality and the rivals are missing — because that
+ * is what the regime is.
+ */
+export function dictatorHeadline(year: number, party: string, mayor: string): string {
+  const winner = party ? `El partido ${party}` : `El ${intendente(mayor)}`;
+  return `Acto eleccionario ${year}: ${winner} gana por amplia mayoría, después de que sus contrincantes desaparecieran`;
+}
+
+/** What the paper publishes the day after that act: the second line is always worse than the first. */
+export const DICTATOR_FOLLOWUPS: readonly string[] = [
+  'Hallaron tres cuerpos en el río, aguas abajo de la costanera: la Policía dice que no tienen relación con el acto',
+  'El principal opositor se fue del país y avisó que no piensa volver: su casa quedó vacía esa misma noche',
+  'La comisaría informó que no hay denuncias por desapariciones: nadie denunció nada',
+  'Un auto sin patente fue visto frente a la casa del concejal que pidió recuento; no se lo volvió a ver',
+  'El diario aclara que las elecciones no estaban en el calendario, pero el acto se hizo igual y salió bien',
+  'Los veedores internacionales felicitaron al gobierno y se retiraron antes del escrutinio',
+];

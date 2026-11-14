@@ -31,7 +31,7 @@ import { computeCongestion, jamGrowthFactor, type CongestionReport } from './con
 import { GROWTH_APPETITE, addBuilding, averageTax, cityTotals, computeDemand, levelCap, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
-import { foundingHeadline, electionHeadline, pollHeadline } from './mayor';
+import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, pollHeadline } from './mayor';
 import { advanceMilestones, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
@@ -730,6 +730,13 @@ export class Simulation {
     const s = this.state;
     if (s.lostElection) return;
     const gov = GOVERNMENTS[s.government];
+    // Under a dictatorship nobody votes, but the calendar still says October: the paper covers the act.
+    if (gov.termYears === null) {
+      if (!electionDue(s.tick, 'democracia')) return;
+      this.publish(this.rng.pick(DICTATOR_FOLLOWUPS), true);
+      this.publish(dictatorHeadline(year, s.party, this.mayor), true);
+      return;
+    }
     if (!electionDue(s.tick, s.government)) {
       const left = monthsToElection(s.tick, s.government);
       if (left === 12 || left === 6) this.publish(pollHeadline(left, s.approval, this.mayor));

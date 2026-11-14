@@ -74,10 +74,10 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
   tecnocracia: {
     label: 'Tecnocracia',
     blurb: 'Gobierna el que sabe: mandatos largos y la mitad de la opinión en juego.',
-    pros: ['Elecciones cada 6 años y con el 40 % alcanza', 'La Provincia gira los subsidios de cada hito'],
+    pros: ['Elecciones cada 6 años y con el 50 % alcanza', 'La Provincia gira los subsidios de cada hito'],
     cons: ['La aprobación se mueve la mitad de rápido: si la ciudad se enoja, tardás en recuperarla', 'Llega un 5 % menos de gente nueva'],
     termYears: 6,
-    toWin: 40,
+    toWin: 50,
     migration: 0.95,
     grants: 1,
     approvalCap: 100,
