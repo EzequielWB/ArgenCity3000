@@ -55,9 +55,9 @@ function southWorld(): World {
   addRoute(w, SEED);
   return w;
 }
-/** Route rows of southWorld: the last four, flush against the border; the row next to them is 27. */
-const ROW_NEXT = 27;
-const ROW_ROUTE = 29;
+/** Route rows of southWorld: the four rows one in from the border; the row next to them is 26. */
+const ROW_NEXT = 26;
+const ROW_ROUTE = 28;
 
 /** A free cell that touches the route by a side. */
 function streetCellBeside(w: World): [number, number] {
@@ -103,10 +103,14 @@ describe('chooseRoute', () => {
       }
       expect(route.cells.map(([x, y]) => `${x},${y}`).sort()).toEqual(expected.sort());
       expect(route.cells).toHaveLength(ROUTE.width * (N - 2 * ROUTE.margin));
-      // Flush against the border, corners included: the outermost line of the side is the route.
+      // One cell in from the border, corners included: the border line is free and the next one is the route.
+      const at = (d: number, along: number): [number, number] =>
+        edge === 'west' ? [d, along] : edge === 'east' ? [N - 1 - d, along] : edge === 'north' ? [along, d] : [along, N - 1 - d];
       for (let along = 0; along < N; along++) {
-        const [x, y] = edge === 'west' ? [0, along] : edge === 'east' ? [N - 1, along] : edge === 'north' ? [along, 0] : [along, N - 1];
-        expect(route.cells.some(([cx2, cy2]) => cx2 === x && cy2 === y), `${edge} ${x},${y}`).toBe(true);
+        const [bx, by] = at(0, along);
+        expect(route.cells.some(([cx2, cy2]) => cx2 === bx && cy2 === by), `${edge} borde ${bx},${by}`).toBe(false);
+        const [ix, iy] = at(ROUTE.inset, along);
+        expect(route.cells.some(([cx2, cy2]) => cx2 === ix && cy2 === iy), `${edge} ${ix},${iy}`).toBe(true);
       }
     }
   });
@@ -131,7 +135,7 @@ describe('chooseRoute', () => {
 });
 
 describe('addRoute', () => {
-  it('marks the strip as ordinary road, clears its trees and leaves the terrain as it was', () => {
+  it('marks the strip as ordinary road, clears its trees and flattens the ground under it', () => {
     const t = terrainWith(N);
     t.trees.fill(2);
     const corners = t.corners.slice();
@@ -144,8 +148,57 @@ describe('addRoute', () => {
       expect(w.tiles[i]).toBe(inRoute.has(i) ? TILE.ROAD : TILE.EMPTY);
       expect(w.terrain.trees[i]).toBe(inRoute.has(i) ? 0 : 2);
     }
-    expect(Array.from(w.terrain.corners)).toEqual(Array.from(corners));
     expect(w.networkVersion).toBeGreaterThan(version);
+    // The roadbed is flat: every corner under the strip is at the same height, and the ground
+    // around it meets it one level per cell.
+    const s = w.n + 1;
+    const heights = new Set<number>();
+    for (const [x, y] of route.cells) {
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) heights.add(w.terrain.corners[(y + dy) * s + x + dx]);
+    }
+    expect(heights.size).toBe(1);
+    const level = [...heights][0];
+    expect(level).toBeGreaterThanOrEqual(SEA_LEVEL);
+    for (let cy = 0; cy < s; cy++) {
+      for (let cx = 0; cx < s; cx++) {
+        for (const [dx, dy] of [[1, 0], [0, 1], [1, 1]]) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx >= s || ny >= s) continue;
+          expect(Math.abs(w.terrain.corners[cy * s + cx] - w.terrain.corners[ny * s + nx])).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+    // The corners the route left alone are only the ones it did not cover.
+    expect(corners.length).toBeGreaterThan(0);
+  });
+
+  it('levels the ground under the strip, even on a hill', () => {
+    const w = new World(terrainWith(N, () => false, (cx, cy) => (cx + cy) % 5));
+    const route = addRoute(w, 3);
+    const s = N + 1;
+    const heights = new Set<number>();
+    for (const [x, y] of route.cells) {
+      if (w.isWater(x, y)) continue;
+      for (const [dx, dy] of [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1],
+      ]) {
+        heights.add(w.terrain.corners[(y + dy) * s + x + dx]);
+      }
+    }
+    expect(heights.size).toBe(1);
+  });
+
+  it('does not fill a lake the strip crosses: the ground under a bridge stays under water', () => {
+    const lake = (cx: number, cy: number) => cx === 8 || cy === 8;
+    const w = new World(terrainWith(N, lake));
+    const route = addRoute(w, 3);
+    const wetBefore = route.cells.filter(([x, y]) => isWaterCell(w.terrain, x, y));
+    expect(wetBefore.length).toBeGreaterThan(0);
+    for (const [x, y] of wetBefore) expect(w.isWater(x, y)).toBe(true);
   });
 
   it('crosses the water with bridges', () => {
@@ -266,14 +319,14 @@ describe('streets can only start from the route', () => {
 
   it('accepts a drag that leaves the route, cell after cell', () => {
     const w = southWorld();
-    const plan = planTool(w, 'road', dragCells('road', 20, ROW_NEXT, 20, 23, 1, N));
-    expect(plan.cells).toEqual([[20, 27], [20, 26], [20, 25], [20, 24], [20, 23]]);
+    const plan = planTool(w, 'road', dragCells('road', 20, ROW_NEXT, 20, 22, 1, N));
+    expect(plan.cells).toEqual([[20, 26], [20, 25], [20, 24], [20, 23], [20, 22]]);
     expect(plan.cost).toBe(5 * COSTS.road);
   });
 
   it('only counts the previous accepted cell of the drag, so a drag that arrives at the route builds just its last cell', () => {
     const w = southWorld();
-    const plan = planTool(w, 'road', dragCells('road', 20, 23, 20, ROW_NEXT, 1, N));
+    const plan = planTool(w, 'road', dragCells('road', 20, 22, 20, ROW_NEXT, 1, N));
     expect(plan.cells).toEqual([[20, ROW_NEXT]]);
   });
 
@@ -303,16 +356,16 @@ describe('streets can only start from the route', () => {
   });
 
   it('applies the same rule to bridges', () => {
-    const lake = (cx: number, cy: number) => (cx === 9 || cx === 10) && (cy === 26 || cy === 27);
+    const lake = (cx: number, cy: number) => (cx === 9 || cx === 10) && (cy === 25 || cy === 26);
     const w = new World(southTerrain(() => 0, lake));
     addRoute(w, SEED);
-    // The lake ends at (10, 27), which touches the route; (10, 26) does not.
-    expect(w.isWater(10, 27)).toBe(true);
+    // The lake ends at (10, 26), which touches the route; (10, 25) does not.
     expect(w.isWater(10, 26)).toBe(true);
-    const off = planTool(w, 'road', [[10, 26]]);
+    expect(w.isWater(10, 25)).toBe(true);
+    const off = planTool(w, 'road', [[10, 25]]);
     expect(off.cells).toEqual([]);
-    const on = planTool(w, 'road', [[10, 27]]);
-    expect(on.cells).toEqual([[10, 27]]);
+    const on = planTool(w, 'road', [[10, 26]]);
+    expect(on.cells).toEqual([[10, 26]]);
     expect(on.cost).toBe(COSTS.bridge);
     // A bridge on the far lake, away from the route, is refused too.
     expect(w.isWater(2, 15)).toBe(true);

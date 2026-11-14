@@ -155,6 +155,14 @@ export function analyzeRoads(isRoad: (x: number, y: number) => boolean, n: numbe
 export type LaneLine = 'dash' | 'solid' | 'double';
 
 /**
+ * Whether the boundary between lane `a` and lane `b` of a route strip is its centre line: the one
+ * painted solid yellow, with white dashes on the other boundaries of the lanes going each way.
+ */
+export function isRouteCentre(lanes: number, a: number, b: number): boolean {
+  return lanes % 2 === 0 && Math.min(a, b) === lanes / 2 - 1;
+}
+
+/**
  * The line between lane `j` and lane `j + 1` of a band of `lanes` lanes: a double centre line
  * in the middle of an even band, a solid line on each side of the middle lane of an odd band,
  * and dashed white lines between lanes that go the same way.

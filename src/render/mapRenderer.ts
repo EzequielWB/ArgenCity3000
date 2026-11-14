@@ -4,7 +4,7 @@ import { hash2 } from '../core/rng';
 import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
 import type { RoadTier } from '../config';
-import { KIND, analyzeRoads, indexOf, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
+import { KIND, analyzeRoads, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
 
 /** Asphalt of each street quality: plain, reinforced pavement, boulevard. */
 const ROAD_SURFACE = [PAL.asphalt, PAL.asphaltPaved, PAL.asphaltBoulevard] as const;
@@ -65,6 +65,8 @@ const DOUBLE_GAP = 0.08;
 /** Guardrail of the provincial route, and the posts that hold it. */
 const RAIL = '#d3d6cf';
 const RAIL_POST = '#6f685e';
+/** Lanes of the route that go the same way are told apart by white dashes. */
+const ROUTE_DASH = '#f2f2ee';
 
 export interface PlacedSprite {
   sprite: Sprite;
@@ -926,18 +928,23 @@ export class MapRenderer {
       return kindOf(bands[this.world.idx(x, y)]) === kind;
     };
     const g = this.g;
-    g.strokeStyle = AVENUE_LINE;
-    g.lineWidth = 1.1;
-    g.setLineDash([]);
     const e = 0.04;
-    const stroke = (p: Pt, q: Pt) => {
+    // One solid yellow line down the middle of the strip; the lanes each way are split by white dashes.
+    const stroke = (other: number, p: Pt, q: Pt) => {
+      const middle = isRouteCentre(lanes, lane, other);
+      g.strokeStyle = middle ? AVENUE_LINE : ROUTE_DASH;
+      g.lineWidth = middle ? 1.1 : 0.8;
+      g.setLineDash(middle ? [] : [2, 2]);
       g.beginPath();
       g.moveTo(p[0], p[1]);
       g.lineTo(q[0], q[1]);
       g.stroke();
+      g.setLineDash([]);
     };
-    if (partnerLane(vx, vy - 1) >= 0) stroke(bilinear(pts, along(vx - 1, vy) ? -e : 0, 0), bilinear(pts, 1, 0));
-    if (partnerLane(vx - 1, vy) >= 0) stroke(bilinear(pts, 0, along(vx, vy - 1) ? -e : 0), bilinear(pts, 0, 1));
+    const up = partnerLane(vx, vy - 1);
+    if (up >= 0) stroke(up, bilinear(pts, along(vx - 1, vy) ? -e : 0, 0), bilinear(pts, 1, 0));
+    const left = partnerLane(vx - 1, vy);
+    if (left >= 0) stroke(left, bilinear(pts, 0, along(vx, vy - 1) ? -e : 0), bilinear(pts, 0, 1));
 
     // Guardrails along both long sides of the strip, so the road reads as one that passes outside
     // the city instead of a street of it. Which way the strip runs in the view is read from the

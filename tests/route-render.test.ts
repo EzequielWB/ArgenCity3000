@@ -4,7 +4,7 @@ import { TILE, World } from '../src/world/world';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { describeCell } from '../src/sim/report';
 import { Traffic, computeTraffic } from '../src/render/traffic';
-import { routeSigns } from '../src/render/avenue';
+import { isRouteCentre, routeSigns } from '../src/render/avenue';
 import { startCameraCell } from '../src/render/view';
 
 const N = 24;
@@ -143,6 +143,17 @@ describe('startCameraCell', () => {
     const [sx, sy] = startCameraCell(side);
     expect(side.route[side.idx(sx, sy)]).toBe(1);
     expect(Math.abs(sy - (N - 1) / 2)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('the lane lines of the route', () => {
+  it('paints one solid yellow line down the middle and white dashes on the other boundaries', () => {
+    expect(isRouteCentre(4, 0, 1)).toBe(false);
+    expect(isRouteCentre(4, 1, 2)).toBe(true);
+    expect(isRouteCentre(4, 2, 3)).toBe(false);
+    expect(isRouteCentre(4, 2, 1)).toBe(true);
+    expect(isRouteCentre(2, 0, 1)).toBe(true);
+    expect(isRouteCentre(3, 0, 1)).toBe(false);
   });
 });
 

@@ -5,7 +5,8 @@
  */
 import { ROUTE } from '../config';
 import { hash2 } from '../core/rng';
-import { isWaterCell, type Terrain } from './terrain';
+import { liftSlopes } from './leveling';
+import { SEA_LEVEL, constrainSlopes, isWaterCell, type Terrain } from './terrain';
 import { TILE, type World } from './world';
 
 export type RouteEdge = 'north' | 'east' | 'south' | 'west';
@@ -58,6 +59,43 @@ export function chooseRoute(terrain: Terrain, seed: number): RouteChoice {
   return { edge, cells, bridges: cells.filter(([x, y]) => isWaterCell(terrain, x, y)).length };
 }
 
+/**
+ * Grades the ground under the route: the whole strip ends up at one height, the average of its
+ * corners rounded up, so the roadbed is flat along its length and across its lanes. The terrain
+ * around it is filled up or cut down to one level per cell, like an embankment, and the corners
+ * under the strip are frozen so those passes cannot undo it. Cells over water are left alone: a
+ * bridge crosses the river, it does not fill it.
+ */
+export function gradeRoute(w: World, cells: readonly [number, number][]): void {
+  const n = w.n;
+  const s = n + 1;
+  const c = w.terrain.corners;
+  const corners: number[] = [];
+  const frozen = new Uint8Array(s * s);
+  const wet = (x: number, y: number) => isWaterCell(w.terrain, x, y);
+  for (const [x, y] of cells) {
+    const k = [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1];
+    for (const j of k) frozen[j] = 1;
+    if (!wet(x, y)) corners.push(...k);
+  }
+  // Corners of any wet cell stay put: grading the road must not fill a lake or raise a shore.
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      if (!wet(x, y)) continue;
+      for (const j of [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1]) frozen[j] = 1;
+    }
+  }
+  if (corners.length === 0) return;
+  let sum = 0;
+  for (const j of corners) sum += c[j];
+  const target = Math.max(SEA_LEVEL + 1, Math.ceil(sum / corners.length));
+  for (const j of corners) c[j] = target;
+  // The rest of the map meets the strip at one level per cell: below it is filled, above it is cut.
+  liftSlopes(c, s, frozen);
+  constrainSlopes(c, s, frozen);
+  for (const [x, y] of cells) w.markDirty(w.idx(x, y));
+}
+
 /** Builds the route of a new generated world: road on the strip (a bridge over water), marked as route. */
 export function addRoute(w: World, seed: number): RouteChoice {
   const choice = chooseRoute(w.terrain, seed);
@@ -67,6 +105,7 @@ export function addRoute(w: World, seed: number): RouteChoice {
     w.terrain.trees[i] = 0;
     w.route[i] = 1;
   }
+  gradeRoute(w, choice.cells);
   w.bumpNetwork();
   return choice;
 }

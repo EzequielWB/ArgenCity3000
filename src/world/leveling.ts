@@ -13,7 +13,7 @@ function isBlockTile(tile: number): boolean {
  * Raises corners (except frozen ones) until none is more than one level below a neighbour:
  * the mirror of `constrainSlopes`, which only lowers. Monotone, so it terminates.
  */
-function liftSlopes(h: Uint8Array, s: number, frozen: Uint8Array): void {
+export function liftSlopes(h: Uint8Array, s: number, frozen: Uint8Array): void {
   let changed = true;
   while (changed) {
     changed = false;

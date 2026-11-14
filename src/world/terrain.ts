@@ -188,8 +188,9 @@ export function smoothCorners(c: Uint8Array, s: number, passes = 2): void {
   constrainSlopes(c, s);
 }
 
-/** Lowers corners until every 8-neighbour pair differs by at most 1. Monotone, so it terminates. */
-export function constrainSlopes(h: Uint8Array, s: number): void {
+/** Lowers corners until every 8-neighbour pair differs by at most 1. Monotone, so it terminates.
+ * The corners marked in `frozen` are left alone, so a graded strip keeps its profile. */
+export function constrainSlopes(h: Uint8Array, s: number, frozen?: Uint8Array): void {
   let changed = true;
   while (changed) {
     changed = false;
@@ -197,6 +198,7 @@ export function constrainSlopes(h: Uint8Array, s: number): void {
       const forward = pass === 0;
       for (let k = 0; k < s * s; k++) {
         const i = forward ? k : s * s - 1 - k;
+        if (frozen && frozen[i]) continue;
         const x = i % s;
         const y = (i - x) / s;
         let lim = h[i];
