@@ -1,7 +1,7 @@
 import { PARK, PLANT_SIZE } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
-import { MAX_HEIGHT, SEA_LEVEL } from '../world/terrain';
+import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
 import type { RoadTier } from '../config';
 import { KIND, analyzeRoads, boulevardMedian, centreMark, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
@@ -25,7 +25,7 @@ import {
   type ContentShape,
   type Rect,
 } from './chunks';
-import { PAL, mix, rgb, hexToRgb } from './color';
+import { PAL, mix, rgb, toRgb } from './color';
 import { isPlatform, surfaceHeights, viewCornerHeights, plantHeight, type Pt } from './geometry';
 import {
   abandonedBuildingSprite,
@@ -606,8 +606,15 @@ export class MapRenderer {
     let base: string;
     if (hmin <= SEA_LEVEL) base = PAL.sand;
     else {
-      const t = (hmin - SEA_LEVEL - 1) / Math.max(1, MAX_HEIGHT - SEA_LEVEL - 1);
+      // The grass ramp ends where the world used to: the lowlands keep the colours they had.
+      const t = Math.min(1, (hmin - SEA_LEVEL - 1) / Math.max(1, GROUND_TOP - SEA_LEVEL - 1));
       base = t < 0.5 ? mix(PAL.grassLow, PAL.grassMid, t * 2) : mix(PAL.grassMid, PAL.grassHigh, (t - 0.5) * 2);
+      // Above the rock line the ground is bare stone, lighter as it climbs to the crest.
+      const line = rockLine();
+      if (hmin > line) {
+        const k = Math.min(1, (hmin - line) / Math.max(1, MAX_HEIGHT - line));
+        base = k < 0.5 ? mix(base, PAL.rock, k * 2) : mix(PAL.rock, PAL.rockLight, (k - 0.5) * 2);
+      }
     }
     return scaleRgb(base, jitter);
   }
@@ -1176,11 +1183,7 @@ export function bilinear(p: readonly Pt[], u: number, v: number): Pt {
 }
 
 function scaleRgb(color: string, f: number): string {
-  let r: number;
-  let g: number;
-  let b: number;
-  if (color.startsWith('#')) [r, g, b] = hexToRgb(color);
-  else [r, g, b] = color.slice(4, -1).split(',').map(Number) as [number, number, number];
+  const [r, g, b] = toRgb(color);
   return rgb(r * f, g * f, b * f);
 }
 

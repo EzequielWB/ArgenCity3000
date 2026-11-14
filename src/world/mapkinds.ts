@@ -110,14 +110,18 @@ function fillSierras(raw: Float32Array, n: number, seed: number, scale: number):
   const f = 1 / (44 / scale);
   for (let y = 0; y < s; y++) {
     for (let x = 0; x < s; x++) {
-      // Ridge lines: 1 on the crest, falling to 0 away from it.
+      // Ridge lines: 1 on the crest, falling to 0 away from it. Two scales, so a range has
+      // shoulders and spurs instead of one smooth dome.
       const a = 1 - Math.abs(2 * fbm(x * f, y * f, seed + 303, 1) - 1);
-      const b = 1 - Math.abs(2 * fbm(x * f * 2.1, y * f * 2.1, seed + 404, 1) - 1);
-      const ridge = (0.75 * a + 0.25 * b) ** 5;
-      // Where the ranges stand: wide bands, so valleys stay wide.
-      const range = smooth(Math.max(0, Math.min(1, (fbm(x * f * 0.45, y * f * 0.45, seed + 505, 2) - 0.2) / 0.2)));
-      const floor = SEA_LEVEL + 1 + (fbm(x * f * 0.7, y * f * 0.7, seed + 606, 2) - 0.5) * 3.6;
-      raw[y * s + x] = floor + range * ridge * 13;
+      const b = 1 - Math.abs(2 * fbm(x * f * 2.3, y * f * 2.3, seed + 404, 1) - 1);
+      const ridge = (0.65 * a + 0.35 * b) ** 3;
+      // Where the ranges stand: narrow bands with wide valleys between them, which is where the
+      // city goes. The step is sharp, so the foot of a range is a foot and not a ramp.
+      const band = (fbm(x * f * 0.5, y * f * 0.5, seed + 505, 2) - 0.34) / 0.18;
+      const range = smooth(Math.max(0, Math.min(1, band)));
+      const floor = SEA_LEVEL + 1 + (fbm(x * f * 0.7, y * f * 0.7, seed + 606, 2) - 0.5) * 2.6;
+      // The crests climb to the ceiling of the world: tall, sharp, and with the valleys wide open.
+      raw[y * s + x] = floor + range * ridge * (MAX_HEIGHT - 1);
     }
   }
 }

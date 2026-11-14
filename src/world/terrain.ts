@@ -1,8 +1,33 @@
 import { hash2 } from '../core/rng';
 
-/** Height of the water surface. Water beds are flat at SEA_LEVEL - 1. */
+/**
+ * Height of the water surface. Water beds are flat at SEA_LEVEL - 1.
+ * `MAX_HEIGHT` is the ceiling of the whole world: high enough for the ranges of a sierra map to
+ * rise as crests instead of being cut into a table (`coast` keeps its own, softer profile).
+ */
 export const SEA_LEVEL = 3;
-export const MAX_HEIGHT = 12;
+export const MAX_HEIGHT = 18;
+/**
+ * Where the ground stops being grass and turns to rock, as a share of the climb from the sea to
+ * `MAX_HEIGHT`. It is above the highest point of the coastal map, so that one is untouched.
+ */
+export const ROCK_SHARE = 0.62;
+/**
+ * Land this high or higher is bare rock: it turns grey and grows no trees. It sits above the
+ * highest hill of the coastal map, so that one keeps its grass all the way up.
+ */
+export const rockLine = (): number => SEA_LEVEL + (MAX_HEIGHT - SEA_LEVEL) * ROCK_SHARE;
+
+/**
+ * The height the grass ramp ends at. It is the old ceiling of the world: the lowlands keep the
+ * colours they had, and only the ranges above it add the rock.
+ */
+export const GROUND_TOP = 12;
+
+/** The height the coastal generator works against: its own, so a taller world leaves it alone. */
+const COAST_SCALE = 14;
+/** The coastal map never goes above its old ceiling, whatever the world allows. */
+const COAST_MAX = 12;
 
 export interface Terrain {
   /** Cells per side. */
@@ -87,7 +112,7 @@ export function generateTerrain(seed: number, n: number): Terrain {
       const coast = Math.max(0, Math.min(1, shore / 0.3));
       const land = smooth(coast);
       const e = (0.62 * hills + 0.18 * detail) * land + 0.42 * land - 0.05;
-      raw[y * s + x] = e * (MAX_HEIGHT + 2);
+      raw[y * s + x] = e * COAST_SCALE;
     }
   }
 
@@ -104,7 +129,7 @@ export function generateTerrain(seed: number, n: number): Terrain {
   }
 
   for (let i = 0; i < raw.length; i++) {
-    corners[i] = Math.max(SEA_LEVEL - 1, Math.min(MAX_HEIGHT, Math.round(raw[i])));
+    corners[i] = Math.max(SEA_LEVEL - 1, Math.min(COAST_MAX, Math.round(raw[i])));
   }
   constrainSlopes(corners, s);
   smoothCorners(corners, s);
@@ -117,9 +142,11 @@ export function generateTerrain(seed: number, n: number): Terrain {
 /** Fills `t.trees`: copses on forest noise plus a few lone trees, never on water. */
 export function scatterTrees(t: Terrain, seed: number): void {
   const n = t.n;
+  const line = rockLine();
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
       if (isWaterCell(t, x, y)) continue;
+      if (cellMinMax(t, x, y)[0] >= line) continue; // bare rock
       const forest = fbm(x / 11, y / 11, seed + 301, 3);
       const r = hash2(x, y, seed + 999);
       if ((forest > 0.66 && r < 0.55) || r < 0.008) {

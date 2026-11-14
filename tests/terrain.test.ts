@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SEA_LEVEL, generateTerrain, isWaterCell, cornerAt, cellMinMax } from '../src/world/terrain';
+import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, cellMinMax, cornerAt, generateTerrain, isWaterCell, rockLine } from '../src/world/terrain';
+import { generateMap } from '../src/world/mapkinds';
 
 const N = 64;
 
@@ -71,5 +72,29 @@ describe('generateTerrain', () => {
       }
     }
     expect(trees).toBeGreaterThan(0);
+  });
+});
+
+describe('the rock line', () => {
+  it('sits above every hill of the coastal map, so only the ranges turn to stone', () => {
+    const line = rockLine();
+    const t = generateTerrain(7, N);
+    for (const h of t.corners) expect(h).toBeLessThanOrEqual(line);
+    expect(line).toBeGreaterThan(GROUND_TOP - 1);
+    expect(line).toBeLessThan(MAX_HEIGHT);
+  });
+
+  it('grows no trees on bare rock', () => {
+    const t = generateMap(3, N, 'sierras');
+    const line = rockLine();
+    let rocky = 0;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        if (cellMinMax(t, x, y)[0] < line) continue;
+        rocky++;
+        expect(t.trees[y * N + x]).toBe(0);
+      }
+    }
+    expect(rocky).toBeGreaterThan(0);
   });
 });

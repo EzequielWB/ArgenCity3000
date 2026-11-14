@@ -1,5 +1,5 @@
 import { fromView, type Rotation } from '../core/iso';
-import { MAX_HEIGHT, SEA_LEVEL, isWaterCell, type Terrain } from '../world/terrain';
+import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, isWaterCell, rockLine, type Terrain } from '../world/terrain';
 import { TILE, World } from '../world/world';
 import { hexToRgb, PAL } from './color';
 
@@ -44,8 +44,13 @@ function terrainColor(t: Terrain, x: number, y: number): [number, number, number
   const s = t.n + 1;
   const h = t.corners[y * s + x];
   if (h <= SEA_LEVEL) return hexToRgb(PAL.sand);
-  const k = (h - SEA_LEVEL) / (MAX_HEIGHT - SEA_LEVEL);
-  return [160 - 25 * k, 180 - 40 * k, 90 - 10 * k];
+  const k = Math.min(1, (h - SEA_LEVEL) / (GROUND_TOP - SEA_LEVEL));
+  const grass: [number, number, number] = [160 - 25 * k, 180 - 40 * k, 90 - 10 * k];
+  const line = rockLine();
+  if (h <= line) return grass;
+  // The ranges read as stone, and the higher they go, the paler they get.
+  const r = Math.min(1, (h - line) / Math.max(1, MAX_HEIGHT - line));
+  return [grass[0] + (168 - grass[0]) * r, grass[1] + (164 - grass[1]) * r, grass[2] + (150 - grass[2]) * r];
 }
 
 /**

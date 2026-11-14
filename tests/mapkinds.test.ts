@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MAP_SIZE, MAP_SIZES, PLAYABLE_SIZES } from '../src/config';
 import { hashString } from '../src/core/rng';
 import { MAP_KINDS, generateMap, terrainStats, type MapKind } from '../src/world/mapkinds';
-import { MAX_HEIGHT, SEA_LEVEL, cellMinMax, cornerAt, generateTerrain, isWaterCell, type Terrain } from '../src/world/terrain';
+import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, cellMinMax, cornerAt, generateTerrain, isWaterCell, type Terrain } from '../src/world/terrain';
 
 function checksum(t: Terrain): string {
   return hashString(Array.from(t.corners).join(',') + '|' + Array.from(t.trees).join(',')).toString(16);
@@ -163,15 +163,36 @@ describe('relief kind', () => {
   }
 });
 
+/** Share of corners standing above the grass ceiling, in percent: how much of the map is range. */
+function rangeShare(t: Terrain): number {
+  let high = 0;
+  for (const h of t.corners) if (h > GROUND_TOP) high++;
+  return (high / t.corners.length) * 100;
+}
+
 describe('sierras kind', () => {
   for (const n of SIZES) {
-    it(`has high ranges and a sizeable connected flat valley at ${n}`, () => {
+    it(`has ranges that rise above the grass and a valley to build in, at ${n}`, () => {
       for (const seed of SEEDS) {
-        const st = terrainStats(generateMap(seed, n, 'sierras'));
-        expect(st.maxHeight).toBeGreaterThanOrEqual(MAX_HEIGHT - 1);
+        const t = generateMap(seed, n, 'sierras');
+        const st = terrainStats(t);
+        // Taller than any hill of the coastal map: the crests are not cut into a table.
+        expect(st.maxHeight).toBeGreaterThan(GROUND_TOP);
+        // And a real share of the map climbs above it, not one lonely spike.
+        expect(rangeShare(t)).toBeGreaterThan(2);
         expect(st.largestFlatPct).toBeGreaterThanOrEqual(3);
         expect(st.landPct).toBeGreaterThanOrEqual(80);
       }
     });
   }
+});
+
+describe('the built-in generators keep their own ceilings', () => {
+  it('leaves the coastal map exactly as it was, whatever the world allows', () => {
+    for (const seed of SEEDS) {
+      const st = terrainStats(generateTerrain(seed, MAP_SIZES.small));
+      expect(st.maxHeight).toBe(GROUND_TOP);
+      expect(MAX_HEIGHT).toBeGreaterThan(GROUND_TOP);
+    }
+  });
 });

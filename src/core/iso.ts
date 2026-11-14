@@ -1,7 +1,7 @@
 /** Isometric metrics: a cell is a 2:1 diamond; each height level lifts it by HEIGHT_STEP px. */
 export const TILE_W = 32;
 export const TILE_H = 16;
-export const HEIGHT_STEP = 8;
+export const HEIGHT_STEP = 12;
 
 export type Rotation = 0 | 1 | 2 | 3;
 
