@@ -41,6 +41,7 @@ import {
   type Sprite,
 } from './sprites';
 import { parkTreeHere } from './park';
+import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
 const PAD_TOP = MAX_HEIGHT * HEIGHT_STEP + 120;
@@ -1087,27 +1088,33 @@ export class MapRenderer {
     }
   }
 
+  /**
+   * The cables hanging from a pole: one to the next pole on each of the sides already painted. A
+   * pole two or three cells from the next one is the same grid — the line lights everything within
+   * its reach — so the cable spans the gap instead of stopping in the air.
+   */
   private drawWires(vx: number, vy: number, pole: PlacedSprite): void {
     const s = pole.sprite;
     const top: Pt = [pole.ax + s.attach![0], pole.ay + s.attach![1]];
     const g = this.g;
+    const world = this.world;
+    const n = world.n;
+    const targets = wireTargets(vx, vy, n, (cx, cy) => {
+      const [wx, wy] = fromView(cx, cy, this.rot, n);
+      return wireCell(world, wx, wy);
+    });
     g.strokeStyle = PAL.wire;
     g.lineWidth = 0.6;
-    const n = this.world.n;
-    for (const [nx, ny] of [
-      [vx - 1, vy],
-      [vx, vy - 1],
-    ]) {
-      if (nx < 0 || ny < 0) continue;
-      const [wx, wy] = fromView(nx, ny, this.rot, n);
-      if (this.world.tileAt(wx, wy) !== TILE.LINE) continue;
-      const nh = avg(surfaceHeights(this.world, nx, ny, this.rot));
-      const [bx, by] = this.toCache(nx, ny, nh);
+    for (const target of targets) {
+      const nh = avg(surfaceHeights(world, target.vx, target.vy, this.rot));
+      const [bx, by] = this.toCache(target.vx, target.vy, nh);
       const other: Pt = [bx + s.attach![0], by + s.attach![1]];
+      // The two cables of the line, and a sag that grows with the span so a long run dips properly.
+      const sag = 3 + 2 * (target.distance - 1);
       for (const off of [-4, 4]) {
         g.beginPath();
         g.moveTo(top[0] + off, top[1]);
-        g.quadraticCurveTo((top[0] + other[0]) / 2 + off, (top[1] + other[1]) / 2 + 3, other[0] + off, other[1]);
+        g.quadraticCurveTo((top[0] + other[0]) / 2 + off, (top[1] + other[1]) / 2 + sag, other[0] + off, other[1]);
         g.stroke();
       }
     }
