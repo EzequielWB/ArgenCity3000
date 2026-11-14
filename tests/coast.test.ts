@@ -769,6 +769,7 @@ describe('the newspaper of the coast', () => {
     taxes: { R: 7, C: 7, I: 7 },
     funding: { school: 100, clinic: 100, police: 100, fire: 100 },
     green: 100,
+    grief: 0,
     month: 5,
     year: 1990,
     cash: 1000,

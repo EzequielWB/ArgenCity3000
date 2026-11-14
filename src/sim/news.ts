@@ -1,6 +1,7 @@
 import { LOANS, SERVICE_KINDS, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { formatMoney, formatNumber, settlementType } from '../core/format';
 import { TILE, type World } from '../world/world';
+import { demolitionPoints } from './politics';
 
 /** What the newspaper compares month to month. */
 export interface CitySnapshot {
@@ -13,6 +14,8 @@ export interface CitySnapshot {
   funding: ServiceFunding;
   /** Budget for green spaces, the one that decides whether the plazas are kept. */
   green: number;
+  /** People affected by the demolitions of the last months. */
+  grief: number;
   month: number;
   year: number;
   cash: number;
@@ -56,6 +59,8 @@ const MILESTONES = [100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 200
 const TAX_NAMES = { R: ['residenciales', 'los barrios'], C: ['comerciales', 'los comercios'], I: ['industriales', 'las fábricas'] } as const;
 
 /** A service funded below this percent makes the news. */
+/** Points of approval from demolitions at which the neighbours take it to the paper. */
+const STREET_ANGER = 5;
 const DEEP_CUT = 50;
 const CUT_NEWS: Record<ServiceKind, (pct: number) => string> = {
   school: (p) => `Paro docente: el presupuesto de las escuelas quedó al ${p} %`,
@@ -98,6 +103,12 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   for (const k of SERVICE_KINDS) {
     if (prev.funding[k] >= DEEP_CUT && next.funding[k] < DEEP_CUT) out.push(CUT_NEWS[k](next.funding[k]));
   }
+  // Demolitions: the neighbours shout when the grudge gets loud and calm down when it fades.
+  const anger = demolitionPoints(next.grief, next.pop);
+  const angerBefore = demolitionPoints(prev.grief, prev.pop);
+  if (angerBefore < STREET_ANGER && anger >= STREET_ANGER)
+    out.push(`Demoliciones en ${city}: los vecinos desalojados reclaman en el municipio`);
+  if (angerBefore >= STREET_ANGER && anger < STREET_ANGER) out.push(`Bajan los reclamos por las demoliciones en ${city}`);
   if (prev.green >= DEEP_CUT && next.green < DEEP_CUT)
     out.push(`Plazas descuidadas: el mantenimiento de los espacios verdes quedó al ${next.green} %`);
   if (prev.green < DEEP_CUT && next.green >= DEEP_CUT) out.push('Vuelven a cuidar las plazas: los espacios verdes recuperaron su presupuesto');

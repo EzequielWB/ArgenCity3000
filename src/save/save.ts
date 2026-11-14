@@ -23,7 +23,7 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -35,7 +35,7 @@ export const SAVE_VERSION = 11;
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
  * government, so they are democracies with no party.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -195,6 +195,8 @@ function parseSim(raw: unknown): SimState {
   }
   // Format 11 added the budget for green spaces: an older save has well-kept plazas.
   need(s.green === undefined || (isInt(s.green) && s.green >= 0 && s.green <= MAX_FUNDING), 'El presupuesto de espacios verdes es inválido');
+  // Format 12 added the grudge of the demolitions; a city saved before it has none.
+  need(s.grief === undefined || (isInt(s.grief) && s.grief >= 0), 'El enojo por las demoliciones es inválido');
   need(isInt(s.rngState), 'La partida está dañada');
   need(typeof s.crisis === 'boolean', 'La partida está dañada');
   need(Array.isArray(s.news) && Array.isArray(s.history), 'La partida está dañada');
@@ -242,6 +244,7 @@ function parseSim(raw: unknown): SimState {
     taxes,
     funding,
     green: (s.green as number | undefined) ?? 100,
+    grief: (s.grief as number | undefined) ?? 0,
     rngState: (s.rngState as number) >>> 0,
     crisis: s.crisis as boolean,
     lastBudget,

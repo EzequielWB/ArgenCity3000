@@ -325,7 +325,7 @@ export function openApproval(game: Game): void {
     ${vote}
     <p>Y no es solo para las elecciones: cuanto más te aprueban los vecinos, más gente quiere venir a vivir y más rápido crece la ciudad. Si un gobierno tiene techo de aprobación, tiene el mismo techo para crecer.</p>
     <h3>Qué suma y qué resta</h3>
-    <p><small>Se parte de 50 puntos. Las plazas que nadie mantiene también restan: una ciudad con los espacios verdes abandonados se ve descuidada, igual que una con edificios en ruinas.</small></p>
+    <p><small>Se parte de 50 puntos. Las plazas que nadie mantiene también restan: una ciudad con los espacios verdes abandonados se ve descuidada, igual que una con edificios en ruinas. Y demoler algo construido enoja a los desalojados: se nota unos meses y después se olvida.</small></p>
     ${factorRows(report.factors)}
   `);
 }

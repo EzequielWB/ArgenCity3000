@@ -1,6 +1,8 @@
 import {
+  CAPACITY,
   DEFAULT_FUNDING,
   DEFAULT_TAX,
+  DEMOLITION,
   FIRE_SAFE_COVER,
   GOVERNMENTS,
   INITIAL_CASH,
@@ -19,7 +21,7 @@ import {
 import { formatMoney } from '../core/format';
 import { Rng } from '../core/rng';
 import { toolInfo } from '../world/tools';
-import { World, zoneOf, type ZoneKind } from '../world/world';
+import { TILE, World, coastOf, serviceOf, zoneOf, type ZoneKind } from '../world/world';
 import { buildingName } from './report';
 import { monthlyBudget, type BudgetReport } from './budget';
 import { cumulativeShare, dateLabel, dateOf } from './calendar';
@@ -42,6 +44,8 @@ export interface SimState {
   funding: ServiceFunding;
   /** Budget for green spaces (plazas), 0 to `MAX_FUNDING`. It decides how well plazas are kept. */
   green: number;
+  /** People affected by the demolitions of the last months. It costs approval and wears off. */
+  grief: number;
   rngState: number;
   crisis: boolean;
   lastBudget: BudgetReport | null;
@@ -76,6 +80,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     taxes: { R: DEFAULT_TAX, C: DEFAULT_TAX, I: DEFAULT_TAX },
     funding: { ...DEFAULT_FUNDING },
     green: 100,
+    grief: 0,
     rngState: seed >>> 0,
     crisis: false,
     lastBudget: null,
@@ -216,6 +221,7 @@ export class Simulation {
       crisis: this.state.cash < 0,
       jammedShare: this.congestion.jammedShare,
       abandoned: this.abandonedCount,
+      grief: this.state.grief,
       pop: this.totals.pop,
       jobs: this.totals.cJobs + this.totals.iJobs,
       growth: this.yearlyGrowth(),
@@ -302,6 +308,40 @@ export class Simulation {
     const v = Math.max(MIN_TAX, Math.min(MAX_TAX, Math.round(tax)));
     for (const z of zone ? [zone] : (['R', 'C', 'I'] as const)) this.state.taxes[z] = v;
     this.updateAppetite();
+  }
+
+  /**
+   * Adds to the neighbours' grudge whatever a plan is about to tear down. Called before the plan
+   * touches the ground, with the cells it will clear. Returns how many people were affected: a
+   * resident costs a whole point, a job half, a public work or a plant a flat 200 or 250. Ruins,
+   * fires and empty lots cost nothing: clearing those is a favour.
+   */
+  noteDemolition(cells: readonly (readonly [number, number])[]): number {
+    const w = this.world;
+    const plants = new Set<object>();
+    let affected = 0;
+    for (const [x, y] of cells) {
+      const i = w.idx(x, y);
+      const tile = w.tiles[i];
+      const plant = tile === TILE.PLANT ? w.plantAt(x, y) : undefined;
+      if (plant) {
+        if (!plants.has(plant)) {
+          plants.add(plant);
+          affected += DEMOLITION.plant;
+        }
+        continue;
+      }
+      if (serviceOf(tile) !== null || coastOf(tile) !== null) {
+        affected += DEMOLITION.work;
+        continue;
+      }
+      if (!w.isOccupied(i)) continue; // empty, abandoned or on fire: nobody to upset
+      const zone = zoneOf(tile)!;
+      affected += zone === 'R' ? CAPACITY.R[w.level[i]] * DEMOLITION.resident : CAPACITY[zone][w.level[i]] * DEMOLITION.job;
+    }
+    this.state.grief += affected;
+    if (affected > 0) this.approval = this.judge();
+    return affected;
   }
 
   /** Sets the budget for green spaces (percent); how well the plazas are kept follows. */
@@ -528,6 +568,8 @@ export class Simulation {
     const reached = advanceMilestones(s, this.totals.pop, GOVERNMENTS[s.government].grants);
     this.approval = this.judge();
     s.approval = stepApproval(s.approval, this.approval.target, s.government);
+    // The grudge of the demolitions wears off month by month, and dies below one person.
+    s.grief = s.grief > 1 ? Math.max(1, Math.floor(s.grief * DEMOLITION.keep)) : 0;
     s.history.push({ pop: this.totals.pop, cash: s.cash });
     if (s.history.length > MAX_HISTORY) s.history.shift();
 
@@ -631,6 +673,7 @@ export class Simulation {
       taxes: { ...this.state.taxes },
       funding: { ...this.state.funding },
       green: this.state.green,
+      grief: this.state.grief,
       month,
       year,
       cash: this.state.cash,

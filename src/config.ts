@@ -190,6 +190,31 @@ export const CAPACITY = {
   C: [0, 4, 12, 40, 100],
   I: [0, 6, 20, 50, 120],
 } as const;
+/**
+ * What the neighbours make of a demolition. Tearing down a home, a shop, a factory or a public
+ * work leaves a grudge that costs approval for the following months and then wears off.
+ * `weight / max(floor, pop)` turns the people affected into points: a town of 300 notices one
+ * house, a metropolis of 200.000 needs a whole avenue.
+ */
+export const DEMOLITION = {
+  /** People affected per resident left without a roof. */
+  resident: 1,
+  /** People affected per job lost: a job hurts less than a roof. */
+  job: 0.5,
+  /** A public work torn down (a service or a coast building). */
+  work: 200,
+  /** A power plant torn down. */
+  plant: 250,
+  /** Points of approval per affected person, over the population that matters for this. */
+  weight: 250,
+  /** Population under which a demolition is felt as if the city had this many people. */
+  floor: 1000,
+  /** Most points the grudge can take away at once. */
+  max: 15,
+  /** Share of the grudge that survives each month: about three months of bad mood, not a year. */
+  keep: 0.5,
+} as const;
+
 /** Power units consumed per building level. */
 export const POWER_USE = { R: 2, C: 3, I: 5 } as const;
 

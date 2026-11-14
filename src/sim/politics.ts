@@ -3,7 +3,7 @@
  * Approval is 50 for a city where nothing stands out; each thing the neighbours enjoy or suffer
  * adds or takes points. Pure functions: the simulation keeps the state.
  */
-import { CAPACITY, COAST_APPROVAL, DEFAULT_TAX, GOVERNMENTS, PARK, START_YEAR, TICKS_PER_MONTH, type GovernmentKind, type ZoneTaxes } from '../config';
+import { CAPACITY, COAST_APPROVAL, DEFAULT_TAX, DEMOLITION, GOVERNMENTS, PARK, START_YEAR, TICKS_PER_MONTH, type GovernmentKind, type ZoneTaxes } from '../config';
 import { TILE, type World } from '../world/world';
 import { averageTax } from './demand';
 
@@ -32,6 +32,15 @@ export const APPROVAL = {
   appetite: { floor: 0.75, span: 0.5 },
 } as const;
 
+/**
+ * How much the neighbours resent the demolitions of the last months, in points of approval. The
+ * grudge is counted in people affected and divided by the population: in a village one house is
+ * an outrage, in a metropolis it is nothing.
+ */
+export function demolitionPoints(grief: number, pop: number): number {
+  return Math.min(DEMOLITION.max, (DEMOLITION.weight * grief) / Math.max(DEMOLITION.floor, pop));
+}
+
 export interface ApprovalInputs {
   taxes: ZoneTaxes;
   /** The cash is in the red. */
@@ -40,6 +49,8 @@ export interface ApprovalInputs {
   jammedShare: number;
   /** Abandoned buildings. */
   abandoned: number;
+  /** People affected by recent demolitions; see `demolitionPoints`. Missing means none. */
+  grief?: number;
   pop: number;
   /** Commerce plus industry jobs. */
   jobs: number;
@@ -118,6 +129,9 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   }
   raw.push(['Impuestos', clamp((DEFAULT_TAX - averageTax(inp.taxes)) * 2.5, -20, 10)]);
   raw.push(['Tránsito', -15 * inp.jammedShare]);
+  // A roof torn down is not forgotten overnight: the grudge fades month by month.
+  const anger = demolitionPoints(inp.grief ?? 0, inp.pop);
+  if (anger >= 0.5) raw.push(['Demoliciones', -anger]);
   // A plaza nobody keeps is a dry square of dirt with no trees: the neighbours see it every day.
   if (parks > 0) raw.push(['Zonas verdes descuidadas', -(APPROVAL.greenNeglect * parksNeglected) / parks]);
   // A city that keeps receiving people is a city on the move; one that empties is not.

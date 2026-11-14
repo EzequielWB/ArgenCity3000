@@ -389,9 +389,13 @@ export class Game implements PointerTarget {
       return;
     }
     this.history.record(this.world, plan, this.sim.state.tick);
+    // Whatever the plan tears down is counted before the ground changes, and the neighbours hold it
+    // against the Intendente for a few months. Undo does not pass through here, so it upsets nobody.
+    const affected = this.sim.noteDemolition(plan.cells);
     applyPlan(this.world, plan);
     this.hooks.sound.play(this.tool === 'bulldoze' ? 'bulldoze' : 'build');
     this.afterEdit();
+    if (affected > 0) toast(`Demolición: ${formatNumber(Math.round(affected))} vecinos afectados`);
     if (this.waitingForFirstWork) {
       // The first work is the starting gun: the clock was holding for it.
       this.waitingForFirstWork = false;
