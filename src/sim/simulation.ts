@@ -309,6 +309,8 @@ export class Simulation {
     this.state.green = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
     computeParks(this.world, this.state.green);
     computeLandValue(this.world);
+    // The neighbours notice the dry plazas at once, not on the first of next month.
+    this.approval = this.judge();
   }
 
   /** Sets a service's budget (percent of its standard upkeep); its coverage follows at once. */

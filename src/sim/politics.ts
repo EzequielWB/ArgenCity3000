@@ -3,7 +3,7 @@
  * Approval is 50 for a city where nothing stands out; each thing the neighbours enjoy or suffer
  * adds or takes points. Pure functions: the simulation keeps the state.
  */
-import { CAPACITY, COAST_APPROVAL, DEFAULT_TAX, GOVERNMENTS, START_YEAR, TICKS_PER_MONTH, type GovernmentKind, type ZoneTaxes } from '../config';
+import { CAPACITY, COAST_APPROVAL, DEFAULT_TAX, GOVERNMENTS, PARK, START_YEAR, TICKS_PER_MONTH, type GovernmentKind, type ZoneTaxes } from '../config';
 import { TILE, type World } from '../world/world';
 import { averageTax } from './demand';
 
@@ -22,6 +22,8 @@ export const APPROVAL = {
   fairLandValue: 30,
   /** Crime and smoke (0 to 100) nobody complains about. */
   tolerated: 10,
+  /** Most points the neighbours take away for green spaces left untended, with every plaza dry. */
+  greenNeglect: 10,
   /**
    * How far the neighbours' mood scales the appetite for growth: the factor is `floor + span`
    * times the approval over 100, so it is exactly 1 at 50 and runs from 0.75 to 1.25. A government
@@ -72,9 +74,17 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   let dark = 0;
   let promenade = 0;
   let lighthouse = 0;
+  // Green spaces: only the cells of a patch big enough to count are a plaza the neighbours notice,
+  // and how much they complain depends on how far the budget is below the care line.
+  let parks = 0;
+  let parksNeglected = 0;
   for (let i = 0; i < w.tiles.length; i++) {
     if (w.tiles[i] === TILE.PROMENADE) promenade++;
     else if (w.tiles[i] === TILE.LIGHTHOUSE) lighthouse = COAST_APPROVAL.lighthouse;
+    else if (w.tiles[i] === TILE.PARK && w.parkArea[i] >= PARK.minArea) {
+      parks++;
+      if (w.parkCare[i] < PARK.care) parksNeglected += (PARK.care - w.parkCare[i]) / PARK.care;
+    }
     if (w.level[i] === 0) continue;
     built++;
     if (!w.isOccupied(i)) continue;
@@ -108,6 +118,8 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   }
   raw.push(['Tasas', clamp((DEFAULT_TAX - averageTax(inp.taxes)) * 2.5, -20, 10)]);
   raw.push(['Tránsito', -15 * inp.jammedShare]);
+  // A plaza nobody keeps is a dry square of dirt with no trees: the neighbours see it every day.
+  if (parks > 0) raw.push(['Zonas verdes descuidadas', -(APPROVAL.greenNeglect * parksNeglected) / parks]);
   // A city that keeps receiving people is a city on the move; one that empties is not.
   raw.push(['Progreso', clamp(inp.growth * 30, -6, 6)]);
   raw.push(['Caja en rojo', inp.crisis ? -15 : 0]);

@@ -30,6 +30,13 @@ Las plazas hoy son baratísimas ($2 por celda) y regalan valor de suelo desde la
 - **S7 Se ve.** Una plaza descuidada (care < 50) pinta el suelo seco y pierde los árboles de su
   sprite. El reporte de la celda dice el tamaño de la mancha, el cuidado y si está descuidada. El
   diario avisa cuando el presupuesto verde cruza el 50 % para abajo y cuando vuelve.
+- **S9 Aprobación (pedido del jugador, verbatim).** "una plaza descuidada va a bajar la aprobación
+  general, yo creo que con eso alcanza... 'zonas verdes descuidadas' me parece una buena métrica que
+  reduzca la aprobación." Hoy la aprobación **no** miraba las plazas: solo entraban de refilón por
+  `Barrios lindos` (promedio de valor del suelo). Se agrega un factor propio,
+  `Zonas verdes descuidadas`, que resta `APPROVAL.greenNeglect (10)` por la severidad media del
+  descuido en las celdas de plaza que cuentan (`(care - 50)/50`), así que al 50 % no dice nada y con
+  todo seco resta 10 puntos enteros.
 - **S8 Guardado.** Formato 11. Un guardado viejo abre con `green = 100` (las plazas están cuidadas)
   y no cambia ningún otro campo.
 
@@ -42,6 +49,7 @@ Las plazas hoy son baratísimas ($2 por celda) y regalan valor de suelo desde la
 | T3 Descuido y penalidad | S6 | `src/sim/fields.ts` (`splatPark` con `mood`) | hecho | al 50 % no aporta, al 25 % resta, al 0 % resta más; nunca pasa el tope de 30 |
 | T4 Se ve: suelo seco, reporte y diario | S7 | `src/render/mapRenderer.ts` (`drawPark` seco, `objectAt` sin árboles), `src/render/color.ts` (`parkDry`), `src/render/sprites.ts` (`ParkLook`), `src/sim/report.ts`, `src/sim/news.ts`, `src/world/tools.ts` (ayuda del pincel) | hecho | captura 22 (3 estados) y 25 (en juego, al 0 %); el reporte dice mancha, cuidado y "descuidada"; el diario avisa al cruzar el 50 % |
 | T5 Presupuesto en pantalla | S5 | `src/ui/panels.ts` (sección "Espacios verdes" + slider `data-green`) | hecho | captura 24: fila "Plazas 100 %" y renglón "Espacios verdes $45" en el balance |
+| T7 Aprobación por zonas verdes descuidadas | S9 | `src/sim/politics.ts` (`APPROVAL.greenNeglect`, `computeApproval`), `src/sim/simulation.ts` (`setGreen` vuelve a juzgar), `src/ui/panels.ts` (textos) | hecho | con todo seco el modal muestra "Zonas verdes descuidadas −10" y el objetivo pasa de 50 a 40; al 50 % no aparece; captura 26 |
 | T6 Balance con el probe | S1 | `npm run probe` | hecho | año 15: 5.490 habitantes con plazas 2×2 (antes 8.508 con plazas de una celda): la plaza dejó de ser barata y sigue habiendo ciudad |
 
 Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`, `npm run probe`.
@@ -81,3 +89,12 @@ Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`, `npm run probe
 - **L6, lo que quedó afuera.** El árbol de una plaza no desaparece cuando la mancha es chica (solo
   cuando está descuidada): una celda suelta se ve como una plaza con su árbol y su banco, y recién
   el reporte y el valor dicen que no aporta nada.
+- **L7 (2026-11-13), la aprobación no miraba las plazas.** `computeApproval` recorría las celdas
+  para la costanera, el faro, los apagones y el valor del suelo, pero no contaba plazas: el descuido
+  solo se sentía de refilón y tarde (vía `Barrios lindos`). Se agregaron dos contadores al mismo
+  recorrido y un factor propio, con la misma forma que `Edificios abandonados` (`-min(tope, …)`).
+  Se cuentan solo las celdas de manchas que cuentan (≥ 3 celdas), así que una 1×1 seca no culpa a
+  nadie: no es un espacio verde, es un adorno.
+- **L8, el modal mentía hasta fin de mes.** `setGreen` recalculaba parques y valor del suelo pero no
+  volvía a juzgar la aprobación: el factor aparecía recién con el cierre del mes. Ahora `setGreen`
+  hace `this.approval = this.judge()` y el vecino se queja en el acto.

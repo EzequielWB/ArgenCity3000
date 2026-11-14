@@ -116,7 +116,7 @@ export function openBudget(game: Game): void {
         ).join('')}
         <h3>Espacios verdes</h3>
         <div class="tax"><label for="fundgreen">Plazas</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
-        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. Las plazas son distintas: por debajo del ${PARK.care} % se descuidan y bajan el valor del suelo alrededor.</small></p>
+        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. Las plazas son distintas: por debajo del ${PARK.care} % se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
         Saldo anual estimado: <strong id="yearly"></strong><br>
@@ -326,7 +326,7 @@ export function openApproval(game: Game): void {
     ${vote}
     <p>Y no es solo para las elecciones: cuanto más te aprueban los vecinos, más gente quiere venir a vivir y más rápido crece la ciudad. Si un gobierno tiene techo de aprobación, tiene el mismo techo para crecer.</p>
     <h3>Qué suma y qué resta</h3>
-    <p><small>Se parte de 50 puntos.</small></p>
+    <p><small>Se parte de 50 puntos. Las plazas que nadie mantiene también restan: una ciudad con los espacios verdes abandonados se ve descuidada, igual que una con edificios en ruinas.</small></p>
     ${factorRows(report.factors)}
   `);
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PARK, UPKEEP } from '../src/config';
 import { monthlyBudget } from '../src/sim/budget';
+import { APPROVAL, computeApproval } from '../src/sim/politics';
 import { headlinesFor, type CitySnapshot } from '../src/sim/news';
 import { computeLandValue, computeParks, computePollution } from '../src/sim/fields';
 import { Simulation, newSimState } from '../src/sim/simulation';
@@ -192,5 +193,54 @@ describe('moving the budget repaints the plazas at once', () => {
     expect(sim.state.green).toBe(120);
     sim.setGreen(-10);
     expect(sim.state.green).toBe(0);
+  });
+});
+
+describe('neglected plazas cost approval', () => {
+  /** A city with homes around a 3×3 plaza, kept as well as `green` says. */
+  const city = (green: number, park: [number, number, number, number] | null = [10, 10, 3, 3]) => {
+    const w = new World(flat(40));
+    for (let y = 5; y < 25; y++) for (let x = 5; x < 25; x++) w.tiles[w.idx(x, y)] = TILE.R;
+    if (park) {
+      const [px, py, cw, ch] = park;
+      for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) w.tiles[w.idx(px + x, py + y)] = TILE.PARK;
+    }
+    computeParks(w, green);
+    computeLandValue(w);
+    return computeApproval(w, {
+      taxes: { R: 7, C: 7, I: 7 },
+      crisis: false,
+      jammedShare: 0,
+      abandoned: 0,
+      pop: 400,
+      jobs: 200,
+      growth: 0,
+    });
+  };
+  const green = (r: { factors: { label: string; points: number }[] }) => r.factors.find((f) => f.label === 'Zonas verdes descuidadas')?.points ?? 0;
+
+  it('says nothing while the plazas are kept', () => {
+    expect(green(city(100))).toBe(0);
+    expect(green(city(PARK.care))).toBe(0);
+  });
+
+  it('takes points once they are left untended, and more the drier they get', () => {
+    const half = green(city(25));
+    const dry = green(city(0));
+    expect(half).toBeLessThan(0);
+    expect(dry).toBeLessThan(half);
+    expect(dry).toBe(-APPROVAL.greenNeglect);
+  });
+
+  it('pulls the whole approval down with it', () => {
+    const kept = city(100).target;
+    const dry = city(0).target;
+    expect(dry).toBe(kept - APPROVAL.greenNeglect);
+  });
+
+  it('does not blame a city that has no plaza, nor the single tiles that do not count', () => {
+    expect(green(city(0, null))).toBe(0);
+    expect(green(city(0, [10, 10, 1, 1]))).toBe(0);
+    expect(green(city(0, [10, 10, 1, 2]))).toBe(0);
   });
 });
