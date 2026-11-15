@@ -1,86 +1,102 @@
-/** The little bubbles over a building that has a problem (see `buildingIssues`): a disc with a drawing of the trouble. */
+/**
+ * The little bubbles over a building that has a problem (see `buildingIssues`). They are drawn pixel by pixel,
+ * like the buildings: a speech bubble of paper with a dark edge and a tail, and inside it a small picture of
+ * the trouble in the colours of the rest of the game.
+ */
 import type { Issue } from '../sim/warnings';
 
-const DISC: Record<Issue, string> = {
-  power: '#c8392f',
-  crime: '#33384f',
-  health: '#f4f0e6',
-  smoke: '#6b707a',
+/** Width and height of a bubble in pixels, tail included. */
+export const BUBBLE_W = 13;
+export const BUBBLE_H = 15;
+
+/** The bubble itself: `k` is the edge, `p` the paper (tinted per issue). Rows 2 to 10 are the room for the picture. */
+const BODY = [
+  '..kkkkkkkkk..',
+  '.kpppppppppk.',
+  'kpppppppppppk',
+  'kpppppppppppk',
+  'kpppppppppppk',
+  'kpppppppppppk',
+  'kpppppppppppk',
+  'kpppppppppppk',
+  'kpppppppppppk',
+  'kpppppppppppk',
+  'kpppppppppppk',
+  '.kpppppppppk.',
+  '..kkkkpkkkk..',
+  '.....kpk.....',
+  '......k......',
+];
+
+/** The pictures, 9×9, to go at column 2, row 2 of the body. `.` is empty. */
+const ICONS: Record<Issue, string[]> = {
+  // A lightning bolt, yellow with a dark orange edge.
+  power: ['....oo...', '...oyyo..', '..oyyo...', '.oyyyyyo.', '.ooyyyyo.', '...oyyo..', '...oyo...', '..oyo....', '..oo.....'],
+  // A head in a balaclava: black wool and a strip of skin with the eyes.
+  crime: ['..bbbbb..', '.bbbbbbb.', '.bfffffb.', '.bfkfkfb.', '.bfffffb.', '.bbbbbbb.', '..bbbbb..', '.bbbbbbb.', 'bbbbbbbbb'],
+  // A red cross with a dark red edge.
+  health: ['...ddd...', '...drd...', '...drd...', 'ddddrdddd', 'drrrrrrrd', 'ddddrdddd', '...drd...', '...drd...', '...ddd...'],
+  // A puff of smoke, light on top and grey underneath.
+  smoke: ['....ooo..', '...owwwo.', '.ooowwwwo', 'owwwwwwwo', 'owwwwwggo', 'owwwggggo', '.ogggggo.', '..ooooo..', '.........'],
 };
 
-const icons = new Map<Issue, string>();
+const COLORS: Record<string, string> = {
+  k: '#2b1d12',
+  o: '#3d3a40',
+  y: '#f2c230',
+  b: '#17161c',
+  f: '#e8c9a0',
+  r: '#d23a32',
+  d: '#7a1d17',
+  w: '#e9e9ee',
+  g: '#8d919a',
+};
 
-/** The bubble as a small picture (a data URL, drawn once) for the card that explains it. */
+/** The paper of each bubble: a little warmer for the dark, a little bluer for the crime. */
+const PAPER: Record<Issue, string> = {
+  power: '#f6dc9a',
+  crime: '#c9cde0',
+  health: '#f4f0e6',
+  smoke: '#d6d9de',
+};
+
+const sprites = new Map<Issue, HTMLCanvasElement>();
+
+/** The bubble of an issue as a picture, drawn once. */
+function spriteOf(issue: Issue): HTMLCanvasElement {
+  let c = sprites.get(issue);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = BUBBLE_W;
+  c.height = BUBBLE_H;
+  const g = c.getContext('2d')!;
+  BODY.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === '.') continue;
+      g.fillStyle = row[x] === 'p' ? PAPER[issue] : COLORS.k;
+      g.fillRect(x, y, 1, 1);
+    }
+  });
+  ICONS[issue].forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === '.') continue;
+      g.fillStyle = COLORS[row[x]];
+      g.fillRect(2 + x, 2 + y, 1, 1);
+    }
+  });
+  sprites.set(issue, c);
+  return c;
+}
+
+/** The bubble as a data URL, for the card that explains it (shown enlarged without smoothing). */
 export function bubbleIcon(issue: Issue): string {
-  let url = icons.get(issue);
-  if (!url) {
-    const c = document.createElement('canvas');
-    c.width = c.height = 24;
-    const g = c.getContext('2d')!;
-    g.scale(2.3, 2.3);
-    drawBubble(g, issue, 5.2, 5.2);
-    url = c.toDataURL();
-    icons.set(issue, url);
-  }
-  return url;
+  return spriteOf(issue).toDataURL();
 }
 
-/** Draws the bubble of `issue` centred on (cx, cy), 9 px across. */
+/** Draws the bubble of `issue` with its middle on (cx, cy), in whole pixels so the edges stay sharp at any zoom. */
 export function drawBubble(g: CanvasRenderingContext2D, issue: Issue, cx: number, cy: number): void {
-  g.fillStyle = DISC[issue];
-  g.beginPath();
-  g.arc(cx, cy, 4.8, 0, Math.PI * 2);
-  g.fill();
-  g.strokeStyle = 'rgba(0,0,0,0.55)';
-  g.lineWidth = 0.8;
-  g.stroke();
-  if (issue === 'power') bolt(g, cx, cy);
-  else if (issue === 'crime') masked(g, cx, cy);
-  else if (issue === 'health') cross(g, cx, cy);
-  else cloud(g, cx, cy);
-}
-
-/** A yellow lightning bolt. */
-function bolt(g: CanvasRenderingContext2D, cx: number, cy: number): void {
-  g.fillStyle = '#ffd84a';
-  g.beginPath();
-  g.moveTo(cx + 0.8, cy - 3.2);
-  g.lineTo(cx - 1.8, cy + 0.6);
-  g.lineTo(cx - 0.1, cy + 0.6);
-  g.lineTo(cx - 0.8, cy + 3.2);
-  g.lineTo(cx + 1.8, cy - 0.6);
-  g.lineTo(cx + 0.1, cy - 0.6);
-  g.closePath();
-  g.fill();
-}
-
-/** A head in a balaclava: dark wool, a strip of skin for the eyes, and the shoulders. */
-function masked(g: CanvasRenderingContext2D, cx: number, cy: number): void {
-  g.fillStyle = '#0d0e14';
-  g.beginPath();
-  g.arc(cx, cy - 0.9, 2.2, 0, Math.PI * 2);
-  g.fill();
-  g.beginPath();
-  g.ellipse(cx, cy + 3.4, 3.2, 2, 0, Math.PI, 0);
-  g.fill();
-  g.fillStyle = '#e8c9a0';
-  g.fillRect(cx - 1.6, cy - 1.5, 3.2, 1);
-}
-
-/** A red cross, the sign of a health post. */
-function cross(g: CanvasRenderingContext2D, cx: number, cy: number): void {
-  g.fillStyle = '#d23a32';
-  g.fillRect(cx - 1, cy - 3, 2, 6);
-  g.fillRect(cx - 3, cy - 1, 6, 2);
-}
-
-/** A little cloud of smoke. */
-function cloud(g: CanvasRenderingContext2D, cx: number, cy: number): void {
-  g.fillStyle = '#e9e9ee';
-  g.beginPath();
-  g.arc(cx - 1.4, cy + 0.4, 1.6, 0, Math.PI * 2);
-  g.arc(cx + 0.4, cy - 0.8, 1.9, 0, Math.PI * 2);
-  g.arc(cx + 1.8, cy + 0.5, 1.4, 0, Math.PI * 2);
-  g.fill();
-  g.fillRect(cx - 2.8, cy + 0.4, 5.6, 1.4);
+  const smoothing = g.imageSmoothingEnabled;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(spriteOf(issue), Math.round(cx) - 6, Math.round(cy) - 7);
+  g.imageSmoothingEnabled = smoothing;
 }

@@ -2285,5 +2285,6 @@ textarea {
 }
 
 .card .issue img {
+  image-rendering: pixelated;
   flex: none;
 }
