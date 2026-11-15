@@ -17,15 +17,15 @@ export interface PresetInfo {
 }
 
 export const PRESETS: readonly PresetInfo[] = [
-  { id: 'mar-del-plata', name: 'Mar del Plata', blurb: 'El centro, la Perla y la costa hasta el puerto.' },
-  { id: 'buenos-aires', name: 'Buenos Aires', blurb: 'El centro y el puerto, frente al Río de la Plata.' },
-  { id: 'rosario', name: 'Rosario', blurb: 'La barranca sobre el Paraná y el centro de la ciudad.' },
-  { id: 'cordoba', name: 'Córdoba', blurb: 'El centro y el río Suquía que cruza la ciudad.' },
-  { id: 'mendoza', name: 'Mendoza', blurb: 'La ciudad al pie de la precordillera, en pendiente.' },
   { id: 'bariloche', name: 'Bariloche', blurb: 'La costa del Nahuel Huapi, con la montaña detrás.' },
-  { id: 'ushuaia', name: 'Ushuaia', blurb: 'La bahía sobre el canal Beagle, con los cerros atrás.' },
-  { id: 'tandil', name: 'Tandil', blurb: 'El centro con sus cuatro avenidas, el dique del Fuerte y las sierras.' },
+  { id: 'buenos-aires', name: 'Buenos Aires', blurb: 'El centro y el puerto, frente al Río de la Plata.' },
+  { id: 'cordoba', name: 'Córdoba', blurb: 'El centro y el río Suquía que cruza la ciudad.' },
   { id: 'las-flores', name: 'Las Flores', blurb: 'El pueblo entero, con la laguna La Blanca y la del Difunto Manuel.' },
+  { id: 'mar-del-plata', name: 'Mar del Plata', blurb: 'El centro, la Perla y la costa hasta el puerto.' },
+  { id: 'mendoza', name: 'Mendoza', blurb: 'La ciudad al pie de la precordillera, en pendiente.' },
+  { id: 'rosario', name: 'Rosario', blurb: 'La barranca sobre el Paraná y el centro de la ciudad.' },
+  { id: 'tandil', name: 'Tandil', blurb: 'El centro con sus cuatro avenidas, el dique del Fuerte y las sierras.' },
+  { id: 'ushuaia', name: 'Ushuaia', blurb: 'La bahía sobre el canal Beagle, con los cerros atrás.' },
 ];
 
 export interface MapPreset {

@@ -42,17 +42,17 @@ interface City {
 }
 
 const CITIES: City[] = [
-  { id: 'mar-del-plata', name: 'Mar del Plata', center: [-38.0019, -57.543], cellMeters: 20, metersPerLevel: 5 },
-  { id: 'buenos-aires', name: 'Buenos Aires', center: [-34.598, -58.365], cellMeters: 20, metersPerLevel: 9, size: 256 },
-  { id: 'rosario', name: 'Rosario', center: [-32.947, -60.636], cellMeters: 20, metersPerLevel: 4, size: 192 },
-  { id: 'cordoba', name: 'Córdoba', center: [-31.4167, -64.1836], cellMeters: 20, metersPerLevel: 8, size: 192 },
-  { id: 'mendoza', name: 'Mendoza', center: [-32.8895, -68.874], cellMeters: 25, metersPerLevel: 25, size: 256, waterwayMaxM: 800 },
   { id: 'bariloche', name: 'Bariloche', center: [-41.138, -71.31], cellMeters: 25, metersPerLevel: 30, size: 192, waterLevelM: 772 },
-  { id: 'ushuaia', name: 'Ushuaia', center: [-54.805, -68.31], cellMeters: 20, metersPerLevel: 20, size: 192 },
-  // Midway between the centre (Plaza Independencia) and the Lago del Fuerte, 2.6 km to the south of it.
-  { id: 'tandil', name: 'Tandil', center: [-37.332, -59.133], cellMeters: 20, metersPerLevel: 8, size: 256, landLiftM: 20 },
+  { id: 'buenos-aires', name: 'Buenos Aires', center: [-34.598, -58.365], cellMeters: 20, metersPerLevel: 9, size: 256 },
+  { id: 'cordoba', name: 'Córdoba', center: [-31.4167, -64.1836], cellMeters: 20, metersPerLevel: 8, size: 192 },
   // The town, not the Buenos Aires neighbourhood of Flores: its whole ejido fits in 256 cells of 25 m.
   { id: 'las-flores', name: 'Las Flores', center: [-36.0143, -59.0999], cellMeters: 25, metersPerLevel: 5, size: 256 },
+  { id: 'mar-del-plata', name: 'Mar del Plata', center: [-38.0019, -57.543], cellMeters: 20, metersPerLevel: 5 },
+  { id: 'mendoza', name: 'Mendoza', center: [-32.8895, -68.874], cellMeters: 25, metersPerLevel: 25, size: 256, waterwayMaxM: 800 },
+  { id: 'rosario', name: 'Rosario', center: [-32.947, -60.636], cellMeters: 20, metersPerLevel: 4, size: 192 },
+  // Midway between the centre (Plaza Independencia) and the Lago del Fuerte, 2.6 km to the south of it.
+  { id: 'tandil', name: 'Tandil', center: [-37.332, -59.133], cellMeters: 20, metersPerLevel: 8, size: 256, landLiftM: 20 },
+  { id: 'ushuaia', name: 'Ushuaia', center: [-54.805, -68.31], cellMeters: 20, metersPerLevel: 20, size: 192 },
 ];
 
 const env = (globalThis as unknown as { process: { argv: string[]; env: Record<string, string | undefined> } }).process;

@@ -222,7 +222,7 @@ describe('map presets', () => {
   });
 
   const files = import.meta.glob('../public/maps/*.json', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-  const cities = ['mar-del-plata', 'buenos-aires', 'rosario', 'cordoba', 'mendoza', 'bariloche', 'ushuaia', 'tandil', 'las-flores'];
+  const cities = ['bariloche', 'buenos-aires', 'cordoba', 'las-flores', 'mar-del-plata', 'mendoza', 'rosario', 'tandil', 'ushuaia'];
 
   it('list the cities, each with a name and a line for the start screen', () => {
     expect(PRESETS.map((p) => p.id)).toEqual(cities);
