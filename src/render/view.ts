@@ -6,6 +6,7 @@ import { PAL } from './color';
 import { cellScreenCorners, type Pt } from './geometry';
 import { FRAME_BUDGET_MS, MapRenderer } from './mapRenderer';
 import { Traffic, drawTraffic } from './traffic';
+import { Vessels, drawBoats, drawPlanes } from './vessels';
 
 export type Layer = 'none' | 'power' | 'traffic' | 'pollution' | 'landValue' | 'crime' | 'edu' | 'health' | 'fireCover';
 
@@ -57,6 +58,8 @@ export class View {
   private lastTime = 0;
   private lastCam = { x: -1, y: -1, zoom: 0 };
   readonly traffic: Traffic;
+  /** The planes and boats of the airports and harbours. */
+  readonly vessels: Vessels;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -65,6 +68,7 @@ export class View {
   ) {
     this.ctx = canvas.getContext('2d')!;
     this.traffic = new Traffic(world, 12345);
+    this.vessels = new Vessels(world, 54321);
     this.refreshTraffic();
     this.resize();
   }
@@ -105,6 +109,7 @@ export class View {
   /** Recounts cars per street; call after edits and every month. */
   refreshTraffic(): void {
     this.traffic.refresh();
+    this.vessels.refresh();
   }
 
   /** Screen (CSS px) → cache canvas coordinates. */
@@ -222,7 +227,9 @@ export class View {
     const [vx1, vy1] = this.screenToCache(this.width, this.height);
     const visible = (x: number, y: number, m = 40) => x > vx0 - m && x < vx1 + m && y > vy0 - m && y < vy1 + m;
 
+    if (z >= 0.5) drawBoats(g, this.vessels, this.map, [vx0, vy0, vx1, vy1]);
     if (z >= 1) drawTraffic(g, this.traffic, this.map, [vx0, vy0, vx1, vy1]);
+    if (z >= 0.5) drawPlanes(g, this.vessels, this.map, [vx0, vy0, vx1, vy1]);
     if (z >= 0.5) this.drawSmoke(g, time, visible);
     this.drawPowerWarnings(g, time, visible);
     this.drawPreview(g);

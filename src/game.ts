@@ -197,6 +197,7 @@ export class Game implements PointerTarget {
     }
     const running = SPEEDS[this.speed] > 0 && !this.hooks.isModalOpen();
     this.view.traffic.update(running ? (dt / 1000) * (this.speed === 3 ? 1.6 : 1) : 0);
+    this.view.vessels.update(running ? (dt / 1000) * (this.speed === 3 ? 1.6 : 1) : 0);
     if (running) {
       this.acc += (dt * SPEEDS[this.speed]) / 1000;
       const steps = Math.min(8, Math.floor(this.acc));

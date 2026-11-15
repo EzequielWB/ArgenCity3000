@@ -426,7 +426,7 @@ function drawCar(g: CanvasRenderingContext2D, c: Car, s: { sx: number; sy: numbe
 }
 
 /** Surface height inside a view cell at fractional (u, v), as drawn by the map. */
-function heightAt(w: World, rot: Rotation, vx: number, vy: number, u: number, v: number): number {
+export function heightAt(w: World, rot: Rotation, vx: number, vy: number, u: number, v: number): number {
   const [t, r, b, l] = surfaceHeights(w, vx, vy, rot);
   return t * (1 - u) * (1 - v) + r * u * (1 - v) + b * u * v + l * (1 - u) * v;
 }

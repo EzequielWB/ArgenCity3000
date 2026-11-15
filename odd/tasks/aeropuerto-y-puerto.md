@@ -63,14 +63,16 @@ Runner: `npx vitest run`, `npx tsc --noEmit`.
 
 ## Tasks
 
-- [ ] T1 — S1, S2, S3, S5 — inline — Datos y colocación: tiles, lista de instalaciones, huella de varias celdas, demolición, deshacer y guardado.
-- [ ] T2 — S2, S3, S4 — inline — Niveles por piezas pegadas, empleos, ingresos, ruido, presupuesto, desbloqueo y ficha del lote.
-- [ ] T3 — S6 — inline — Dibujo: sprites por nivel de aeropuerto y de puerto, con la vista rotada.
-- [ ] T4 — S6 — inline — Aviones y barcos en movimiento.
-- [ ] T5 — S1–S6 — inline — Ayuda, README y verificación en el juego.
+- [x] T1 — S1, S2, S3, S5 — inline — Datos y colocación: tiles, lista de instalaciones, huella de varias celdas, demolición, deshacer y guardado. Commit 839ec36.
+- [x] T2 — S2, S3, S4 — inline — Niveles por piezas pegadas, empleos, ingresos, ruido, presupuesto, desbloqueo y ficha del lote. Commit fb3682a.
+- [x] T3 — S6 — inline — Dibujo: sprites por nivel de aeropuerto y de puerto, con la vista rotada. Commit f4fb077.
+- [x] T4 — S6 — inline — Aviones y barcos en movimiento.
+- [x] T5 — S1–S6 — inline — Ayuda, README y verificación en el juego.
 
 ## Log
 
 - L1 (2026-11-15, usuario): "Bien, ahora me gustaria implementar un sistema de aeropuerto y barcos, la idea que se me ocurre podria ser (estos irian en la categoria de transporte claramente). Aeropuerto: que sea de 3x2 siempre y que tenga 3 niveles, si pones uno es un hangar con salida de uno o 2 aviones, algo chico, si pones uno al lado se ensancha a mas tamaño y si pones 4 se vuelve un aeropuerto internacional, que opinas? Y barcos mas o menos lo mismo, 2x2 siempre y que sea una pequeña salida con barco, si pones uno al lado se vuelve un puerto mas grande y si pones 3 (quedaria 6x2) se vuelve un puerto con barco, crucero, etc. Tambien habria que implementar diseño de aviones y barcos"
 - L2 (2026-11-15, usuario): "La idea de esto es que sea algo mas "comercial" barcos que dan paseos y hasta cruceros en el mas grande. Está bien que las piezas no sean cuadradas, entiendo que es logico, o decis de si o si cuadrado todo? sinó que sea cuadrado y listo"
 - L3: Exploración: las usinas (2×2) son el modelo de una obra de varias celdas: lista `World.plants` con el ancla, tile compartido, demolición de la obra entera, guardado y deshacer propios, y un sprite que se dibuja una sola vez en la celda de adelante. Las plazas son el modelo de "manchas": un efecto que depende del tamaño de las celdas pegadas.
+- L4: T1 a T3 hechos y commiteados. Las piezas se guardan como lista (`World.hubs`, formato 16) y el nivel sale de las piezas que se tocan, sin estado extra por instalación. El dibujo del aeropuerto se hace a lo largo de la pista, así que vale con la vista girada; el del puerto lleva el muelle hacia el agua.
+- L5: T4 y T5 hechos: aviones que despegan y aterrizan sobre la pista de cada pieza (uno por nivel) y barcos que pasean por el agua cerca del puerto, con un crucero en el nivel 3 (`src/render/vessels.ts`). Verificado en el juego sobre Mar del Plata: puerto de 2 piezas con barcos navegando y aeródromo de 2 piezas con aviones despegando. `tsc` y los tests pasan. No se vio el puerto de 3 piezas (el mapa no tenía un tramo de costa recto con calle cerca) ni el aeropuerto con el mapa girado.
