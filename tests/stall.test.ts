@@ -32,12 +32,12 @@ describe('why the city stopped growing', () => {
 
   it('blames high taxes in the lot card, instead of sending the lot to wait for jobs', () => {
     const w = town();
-    for (let x = 8; x < 18; x++) w.setTile(x, 8, TILE.R, 2); // 60 residents and no jobs: little pull left
+    for (let x = 8; x < 20; x++) w.setTile(x, 8, TILE.R, 2); // 72 residents and no jobs: little pull left
     const sim = new Simulation(w, newSimState(1), 'Prueba');
     sim.setTax(20);
     expect(sim.stall).toBe('taxes');
     expect(sim.stallText()).toMatch(/impuestos/i);
-    expect(sim.demand.R).toBeLessThan(10); // what is left of the pull, after the taxes
+    expect(sim.demand.R).toBeLessThanOrEqual(0);
     expect(hintAt(w, sim, 4)).toMatch(/impuestos/i);
     expect(hintAt(w, sim, 4)).not.toMatch(/trabajos/i);
   });
