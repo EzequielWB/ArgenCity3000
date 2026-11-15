@@ -11,6 +11,7 @@ import { View, startCameraCell, type Layer } from './render/view';
 import type { SaveData } from './save/save';
 import { saveToSlot } from './save/slots';
 import { incomeFactor } from './sim/effects';
+import { moodOf } from './sim/favor';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
 import { dateLabel, dateOf, weekLabel } from './sim/calendar';
 import { coastRefusal } from './sim/coast';
@@ -683,13 +684,20 @@ ${stalled}` : ''}`;
   private updateApproval(): void {
     const s = this.sim.state;
     const el = $('#approval');
-    el.textContent = `${s.approval} %`;
-    el.className = s.approval >= APPROVAL.toWin ? 'tone-good' : s.approval >= APPROVAL.toWin - 10 ? 'tone-warn' : 'tone-bad';
+    // Under a theocracy the plaque is the favor of God, in its own dress; the neighbours' approval goes under it.
+    const divine = s.government === 'teocracia';
+    const box = $('#approvalBox');
+    box.classList.toggle('divino', divine);
+    box.dataset.mood = divine ? moodOf(s.favor) : '';
+    box.title = divine ? 'Aprobación divina: clic para ver el detalle' : 'Aprobación de los vecinos: clic para ver el detalle';
+    $('#approvalTag').textContent = divine ? 'Aprobación divina' : 'Aprobación';
+    el.textContent = `${divine ? s.favor : s.approval} %`;
+    el.className = divine ? '' : s.approval >= APPROVAL.toWin ? 'tone-good' : s.approval >= APPROVAL.toWin - 10 ? 'tone-warn' : 'tone-bad';
     // Nobody votes under a dictatorship: the line under the approval goes away instead of lying.
     const vote = s.lostElection ? 'modo libre' : nextElectionYear(s.tick, s.government);
     const line = $('#election');
-    line.textContent = vote === null ? '' : typeof vote === 'string' ? vote : `vota en oct ${vote}`;
-    line.classList.toggle('hidden', vote === null);
+    line.textContent = divine ? `Vecinos ${s.approval} %` : vote === null ? '' : typeof vote === 'string' ? vote : s.government === 'comunismo' ? `congreso en oct ${vote}` : `vota en oct ${vote}`;
+    line.classList.toggle('hidden', vote === null && !divine);
     // One panel at a time: a ballot waits for the plaque (or whatever is open) to be closed.
     if (this.hooks.isModalOpen()) return;
     if (s.terms > this.shownTerms) {

@@ -21,3 +21,4 @@ Objective: two new forms of government. Branch: feat/vertical-slice. Delivery: a
 ## Log
 
 - L1 (2026-11-15) "Hacelo dale los dos juntos, lo que si hacé que el marco de Aprobación divina tenga un aspecto "Divino" medio blanco y letritas doradas, con buen contraste y respetando la estetica, no super increible sinó cambiado."
+- 2026-11-15 T1-T3 done in 0598dfb (config, budget factors, favor.ts, plan.ts, save v17, 15 tests in tests/gobiernos.test.ts). T4: divine plaque (ivory, gold letters), approval panel sections, README; checked on screen at 1280x720 and 390x760. 828 tests pass.

@@ -9,6 +9,8 @@ import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } fr
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
 import { dateOf } from '../sim/calendar';
 import { COAST_BOOST, factorOf, incomeFactor, lockOf } from '../sim/effects';
+import { FAVOR, moodOf } from '../sim/favor';
+import { PLAN, planMonthsLeft, planPremium } from '../sim/plan';
 import { loanEndLabel, loanInstalment, loanOwed, loanTotal } from '../sim/loans';
 import { MILESTONES, unlockNames } from '../sim/milestones';
 import { monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
@@ -354,6 +356,31 @@ export function openGovernment(game: Game): void {
   input.focus();
 }
 
+const MOOD_TEXT = { wrath: 'Está furioso: puede mandar una catástrofe cada mes', calm: 'Está tranquilo', grace: 'Está complacido: puede mandar un milagro cada mes' } as const;
+
+/** The favor of God: where it stands, where it goes, and what pleases and angers Him. Only for a theocracy. */
+function divineSection(game: Game): string {
+  const s = game.sim.state;
+  const report = game.sim.favorReport();
+  const trend = report.target > s.favor ? 'está subiendo' : report.target < s.favor ? 'está bajando' : 'se mantiene';
+  return `<h2 class="divino-title">Aprobación divina</h2>
+    <p>Dios te mira desde arriba con un <strong>${s.favor} %</strong> de favor. ${MOOD_TEXT[moodOf(s.favor)]}. ${trend[0].toUpperCase()}${trend.slice(1)} hacia el <strong>${report.target} %</strong> (se mueve hasta ${FAVOR.step} puntos por mes).</p>
+    <p><small>Por debajo de ${FAVOR.wrath} % caen catástrofes: rayos con incendios en un barrio, plagas que vacían edificios, sequías que recortan los ingresos y revueltas que bajan la aprobación. Por encima de ${FAVOR.grace} % llegan milagros: más ingresos, familias que vuelven a las casas vacías, trabajo y procesiones que suben la aprobación.</small></p>
+    <h3>Qué lo agrada y qué lo enoja</h3>
+    ${factorRows(report.factors)}`;
+}
+
+/** The five-year plan of the Party. Only for communism. */
+function planSection(game: Game): string {
+  const s = game.sim.state;
+  const plan = s.plan;
+  if (!plan) return '';
+  const jobs = game.sim.totals.iJobs;
+  return `<h2 class="divino-title">Plan quinquenal</h2>
+    <p>El Partido pide <strong>${formatNumber(plan.jobs)} puestos industriales</strong> y hoy hay <strong>${formatNumber(jobs)}</strong>. Faltan ${planMonthsLeft(plan, s.tick)} meses.</p>
+    <p><small>Si se cumple, el Partido premia con ${formatMoney(planPremium(plan))} y los vecinos suman ${PLAN.kept} puntos. Si se llega a la fecha sin cumplirlo, restan ${PLAN.broken} puntos. Después viene otro plan, más ambicioso.</small></p>`;
+}
+
 /** What the neighbours think and why, when they vote, and who governs. */
 export function openApproval(game: Game): void {
   const s = game.sim.state;
@@ -364,12 +391,15 @@ export function openApproval(game: Game): void {
   const vote = s.lostElection
     ? '<p>Perdiste las últimas elecciones: la ciudad sigue en <strong>modo libre</strong>, sin más votaciones.</p>'
     : gov.termYears === null
-      ? `<p>Gobierno de facto: <strong>no hay elecciones</strong> y la aprobación no pasa del ${gov.approvalCap} %.</p>`
-      : `<p>Próximas elecciones: <strong>octubre de ${nextElectionYear(s.tick, s.government)}</strong> (faltan ${monthsToElection(s.tick, s.government)} meses). Hace falta el ${gov.toWin} % para seguir.${s.terms ? ` Mandatos ganados: ${s.terms}.` : ''}</p>`;
+      ? s.government === 'teocracia'
+        ? `<p>Gobierno de la fe: <strong>no hay elecciones</strong> y los vecinos te aprueban hasta el ${gov.approvalCap} %. Lo que decide es la aprobación divina.</p>`
+        : `<p>Gobierno de facto: <strong>no hay elecciones</strong> y la aprobación no pasa del ${gov.approvalCap} %.</p>`
+      : `<p>${s.government === 'comunismo' ? 'Próximo Congreso del Partido' : 'Próximas elecciones'}: <strong>octubre de ${nextElectionYear(s.tick, s.government)}</strong> (faltan ${monthsToElection(s.tick, s.government)} meses). Hace falta el ${gov.toWin} % para seguir.${s.terms ? ` Mandatos ganados: ${s.terms}.` : ''}</p>`;
   openModal(`
+    ${s.government === 'teocracia' ? divineSection(game) + '<hr class="gov-sep">' : ''}${s.government === 'comunismo' ? planSection(game) + '<hr class="gov-sep">' : ''}
     <h2>Aprobación de los vecinos</h2>
     <p class="gov-tag"><small>${who}</small></p>
-    <p>Hoy te aprueba el <strong>${s.approval} %</strong>. Por cómo está la ciudad, ${trend} hacia el <strong>${report.target} %</strong> (se mueve hasta ${gov.approvalStep} puntos por mes).</p>
+    <p>Hoy te aprueba el <strong>${s.approval} %</strong>. Por cómo está la ciudad, ${trend} hacia el <strong>${report.target} %</strong> (se mueve hasta ${gov.approvalStep} punto${gov.approvalStep === 1 ? "" : "s"} por mes).</p>
     ${vote}
     <p>Y no es solo para las elecciones: cuanto más te aprueban los vecinos, más gente quiere venir a vivir y más rápido crece la ciudad. Si un gobierno tiene techo de aprobación, tiene el mismo techo para crecer.</p>
     <h3>Qué suma y qué resta</h3>

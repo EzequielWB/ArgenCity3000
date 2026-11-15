@@ -2288,3 +2288,62 @@ textarea {
   image-rendering: pixelated;
   flex: none;
 }
+
+/* Aprobación divina (theocracy): the same enamel plaque, dressed in ivory with gold letters and a soft halo. */
+.chapa.divino {
+  background: radial-gradient(ellipse at 50% -20%, #ffffff 0%, rgba(255, 255, 255, 0) 65%), linear-gradient(180deg, #fffdf3 0%, #f2e8c8 100%);
+  border-color: #f4d06a;
+  outline-color: #a87a14;
+  box-shadow: 3px 3px 0 #000, 0 0 12px rgba(255, 233, 150, 0.55);
+  color: #6b4a0a;
+}
+
+.chapa.divino::before,
+.chapa.divino::after {
+  background: #e3b94a;
+  box-shadow: 1px 1px 0 #7a5710;
+}
+
+.chapa.divino .tag {
+  color: #7a5710;
+  font-weight: 600;
+}
+
+.chapa.divino strong {
+  color: #6b4a0a;
+  text-shadow: 0 1px 0 #fffbe8, 0 0 6px rgba(255, 224, 120, 0.7);
+}
+
+.chapa.divino small {
+  color: #7a5710;
+}
+
+.chapa.divino[data-mood='wrath'] strong {
+  color: #8f1d17;
+}
+
+button.chapa.divino:hover {
+  background: radial-gradient(ellipse at 50% -20%, #ffffff 0%, rgba(255, 255, 255, 0) 65%), linear-gradient(180deg, #ffffff 0%, #f8efd2 100%);
+  border-color: #ffe38a;
+}
+
+button.chapa.divino:focus-visible {
+  outline: 2px solid #6b4a0a;
+}
+
+.divino-title {
+  color: #fff3c4;
+  text-shadow: 0 0 10px rgba(255, 226, 130, 0.5);
+}
+
+.gov-sep {
+  margin: 16px 0 6px;
+  border: 0;
+  border-top: 2px dotted var(--gold-dark);
+}
+
+/* The pros and cons of a form of government are short lines, not running text: no justifying. */
+#modalBody .gov-list li {
+  text-align: left;
+  hyphens: manual;
+}
