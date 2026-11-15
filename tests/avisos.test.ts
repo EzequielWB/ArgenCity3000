@@ -20,6 +20,7 @@ function home(tile: number = TILE.R): { w: World; i: number } {
   w.setTile(3, 3, tile, 2);
   const i = w.idx(3, 3);
   w.powered[i] = 1;
+  w.roadAccess[i] = 1;
   w.health[i] = 80;
   return { w, i };
 }
@@ -68,6 +69,29 @@ describe('the bubbles over a building', () => {
     expect(buildingIssues(s.w, s.i, all)).toEqual(['crime']);
   });
 
+  it('asks for a street when none reaches the building, after the light and before the rest', () => {
+    const { w, i } = home();
+    w.roadAccess[i] = 0;
+    w.crime[i] = 90;
+    expect(buildingIssues(w, i, all)).toEqual(['road', 'crime']);
+    w.powered[i] = 0;
+    expect(buildingIssues(w, i, all)).toEqual(['power']);
+  });
+
+  it('asks the buildings of the coast for light and a street, and the services for neither street', () => {
+    const w = new World(flat());
+    w.setTile(3, 3, TILE.FISHING);
+    const i = w.idx(3, 3);
+    expect(buildingIssues(w, i, all)).toEqual(['power']);
+    w.powered[i] = 1;
+    expect(buildingIssues(w, i, all)).toEqual(['road']);
+    w.roadAccess[i] = 1;
+    expect(buildingIssues(w, i, all)).toEqual([]);
+    w.setTile(5, 5, TILE.SCHOOL);
+    w.powered[w.idx(5, 5)] = 1;
+    expect(buildingIssues(w, w.idx(5, 5), all)).toEqual([]);
+  });
+
   it('leaves a burning building to the firefighters', () => {
     const { w, i } = home();
     w.powered[i] = 0;
@@ -82,6 +106,7 @@ describe('what the bubble means on the card of "Consulta"', () => {
     const sim = new Simulation(w, newSimState(1), 'X');
     sim.state.milestone = Math.max(milestoneOfTool('clinic'), milestoneOfTool('police'));
     w.powered[i] = 1;
+    w.roadAccess[i] = 1;
     w.crime[i] = 75;
     w.health[i] = 5;
     const card = describeCell(w, sim, 3, 3);

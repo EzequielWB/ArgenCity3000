@@ -1,6 +1,7 @@
 import { fromView, toView } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { buildingIssues, type Issue } from '../sim/warnings';
+import { hubFacilities } from '../world/hubs';
 import { TILE, World, zoneOf } from '../world/world';
 import { CHUNK_PAD, FrameBudget, chunkRect, paddedRect, pickEvictions, renderOrder, visibleRect, type Rect } from './chunks';
 import { PAL } from './color';
@@ -311,6 +312,11 @@ export class View {
     for (let i = 0; i < w.n * w.n; i++) {
       const issues = buildingIssues(w, i, this.bubbleKinds);
       if (issues.length) items.push({ i, issues });
+    }
+    // An airport or a harbour without light or street: the bubble goes over the middle of its first piece.
+    for (const f of hubFacilities(w)) {
+      const issues: Issue[] = !f.lit ? ['power'] : !f.street ? ['road'] : [];
+      if (issues.length) items.push({ i: w.idx(Math.min(w.n - 1, f.pieces[0].x + 1), f.pieces[0].y), issues });
     }
     this.bubbles = { at: time, items };
     return items;

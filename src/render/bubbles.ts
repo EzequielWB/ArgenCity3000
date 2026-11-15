@@ -30,6 +30,8 @@ const BODY = [
 
 /** The pictures, 9×9, to go at column 2, row 2 of the body. `.` is empty. */
 const ICONS: Record<Issue, string[]> = {
+  // A traffic cone, orange with a white band: the street does not reach the building.
+  road: ['....o....', '...ocso..', '...ocso..', '..owwwwo.', '..owwwwo.', '.occcccso', '.occcccso', 'ooooooooo', '.........'],
   // A lightning bolt, yellow with a dark orange edge.
   power: ['....oo...', '...oyyo..', '..oyyo...', '.oyyyyyo.', '.ooyyyyo.', '...oyyo..', '...oyo...', '..oyo....', '..oo.....'],
   // A head in a balaclava: black wool and a strip of skin with the eyes.
@@ -50,11 +52,14 @@ const COLORS: Record<string, string> = {
   d: '#7a1d17',
   w: '#e9e9ee',
   g: '#8d919a',
+  c: '#ee7a20',
+  s: '#b85410',
 };
 
 /** The paper of each bubble: a little warmer for the dark, a little bluer for the crime. */
 const PAPER: Record<Issue, string> = {
   power: '#f6dc9a',
+  road: '#f3dcb8',
   crime: '#c9cde0',
   health: '#f4f0e6',
   smoke: '#d6d9de',

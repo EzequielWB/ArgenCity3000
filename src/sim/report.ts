@@ -83,6 +83,7 @@ export interface CellReport {
 /** What each bubble means, with the numbers of the lot. */
 function issueText(w: World, i: number, issue: Issue): string {
   if (issue === 'power') return 'Sin luz: el edificio no recibe electricidad, no funciona y no crece.';
+  if (issue === 'road') return `Sin calle: no llega ningún camino hasta acá (hace falta una calle a ${ROAD_REACH} lotes o menos). Sin calle no vive ni trabaja nadie.`;
   if (issue === 'crime') return `Mucho delito (${w.crime[i]}/100): los vecinos se van y baja el valor del suelo. Una comisaría con luz cerca lo baja.`;
   if (issue === 'health') return `No llega la salud (${w.health[i]}/100): las casas no pasan de chalet. Hace falta una salita con luz cerca.`;
   return `Mucho humo (${w.pollution[i]}/100): las casas pierden vecinos. Alejá las usinas y las fábricas de acá.`;
