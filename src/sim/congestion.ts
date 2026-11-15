@@ -91,7 +91,17 @@ function route(w: World, sources: Float32Array, sinks: Uint8Array, share: number
  * Fills `w.traffic` (load of every street cell, in percent of its capacity) and `w.jam` (the
  * traffic of the street each lot opens onto) and returns the city-wide summary.
  */
-export function computeCongestion(w: World, transport = 100): CongestionReport {
+/**
+ * How well the streets are kept, as a multiplier of what they carry: with the budget for the streets in full
+ * they carry what their quality says, at half they carry three quarters, with none only half (potholes, no
+ * repainting, lights out), and a budget above the standard gives a little more, up to a tenth.
+ */
+export function roadCondition(funding: number): number {
+  const f = Math.max(0, funding);
+  return Math.min(1.1, 0.5 + (0.5 * Math.min(f, 100)) / 100 + (0.1 * Math.max(0, f - 100)) / 20);
+}
+
+export function computeCongestion(w: World, transport = 100, roads = 100): CongestionReport {
   const n = w.n;
   const size = n * n;
   w.traffic.fill(0);
@@ -135,6 +145,7 @@ export function computeCongestion(w: World, transport = 100): CongestionReport {
   const relief = transitRelief(w, transport);
   for (let i = 0; i < size; i++) raw[i] *= 1 - relief[i];
 
+  const condition = roadCondition(roads);
   // Capacity: the lanes of the avenue a cell belongs to, each one carrying what its quality says.
   // A cell's street runs along its longer run of asphalt; its lanes are the cells beside it that
   // run the same way, and the band carries by its weakest cell.
@@ -179,7 +190,7 @@ export function computeCongestion(w: World, transport = 100): CongestionReport {
         j += dir;
       }
     }
-    const capacity = lanes * TRAFFIC.laneCapacity * ROAD_TIERS[tier].capacity;
+    const capacity = lanes * TRAFFIC.laneCapacity * ROAD_TIERS[tier].capacity * condition;
     const pct = Math.min(255, Math.round((100 * carried) / capacity));
     w.traffic[i] = pct;
     if (pct > 100) saturated[i] = 1;

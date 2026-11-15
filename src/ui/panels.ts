@@ -136,8 +136,9 @@ export function openBudget(game: Game): void {
             `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
         ).join('')}
         <div class="tax"><label for="fundgreen">Espacios verdes</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
+        <div class="tax"><label for="fundroads">Calles</label><input type="range" id="fundroads" data-roads="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.roads}"><output>${sim.state.roads} %</output></div>
         <div class="tax"><label for="fundtransport">Transporte</label><input type="range" id="fundtransport" data-transport="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.transport}"><output>${sim.state.transport} %</output></div>
-        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. El transporte es igual: al 50 % hay la mitad de colectivos y cada línea alivia la mitad del tránsito, y si lo recortás mucho los choferes pueden hacer paro. Los espacios verdes son distintos: por debajo del ${PARK.care} % estos se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
+        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. El transporte es igual: al 50 % hay la mitad de colectivos y cada línea alivia la mitad del tránsito, y si lo recortás mucho los choferes pueden hacer paro. Las calles también: con menos presupuesto se mantienen peor y llevan menos tránsito (al 0 % la mitad), así que se atascan antes. Los espacios verdes son distintos: por debajo del ${PARK.care} % estos se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
         <p class="locked-note hidden" id="lockNote"></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
@@ -154,10 +155,10 @@ export function openBudget(game: Game): void {
   `);
   const refresh = () => {
     const boost = factorOf(sim.state.effects, COAST_BOOST);
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects));
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads);
     $('#budgetNow').innerHTML = budgetTable(b);
     // The year is the average of the seasons, not the month in course.
-    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects)).balance * 12, true);
+    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads).balance * 12, true);
     const d = sim.demand;
     const avg = averageTax(sim.state.taxes);
     const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;
@@ -232,6 +233,15 @@ export function openBudget(game: Game): void {
     lockNote.classList.remove('hidden');
     lockNote.textContent = `${tied.join('. ')}.`;
   }
+  const roads = body.querySelector<HTMLInputElement>('input[data-roads]');
+  roads?.addEventListener('input', () => {
+    sim.setRoads(Number(roads.value));
+    roads.nextElementSibling!.textContent = `${sim.state.roads} %`;
+    // The same streets carry more or less: the load on them changes at once.
+    game.refreshTraffic();
+    game.view.invalidateLayer();
+    refresh();
+  });
   const transport = body.querySelector<HTMLInputElement>('input[data-transport]');
   transport?.addEventListener('input', () => {
     sim.setTransport(Number(transport.value));

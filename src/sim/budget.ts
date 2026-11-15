@@ -87,6 +87,7 @@ export function monthlyBudget(
   transport = 100,
   government: GovernmentKind = 'democracia',
   earnings = 1,
+  roadsFunding = 100,
 ): BudgetReport {
   const taxes = zoneTaxes(tax);
   const gov = GOVERNMENTS[government];
@@ -126,7 +127,7 @@ export function monthlyBudget(
     taxR,
     taxC,
     taxI,
-    roads: Math.round(roads + bridges),
+    roads: Math.round(((roads + bridges) * Math.max(0, Math.min(MAX_FUNDING, roadsFunding))) / 100),
     lines: Math.round(lines * UPKEEP.line),
     parks: Math.round(parks * UPKEEP.park * (Math.max(0, Math.min(MAX_FUNDING, green)) / 100)),
     plants: plantsUpkeep(w),
