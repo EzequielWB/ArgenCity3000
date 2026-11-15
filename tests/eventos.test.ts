@@ -48,10 +48,10 @@ function grown(seed = 5): { world: WorldType; sim: Simulation } {
 const option = (id: string, index: 0 | 1) => eventById(id)!.options[index];
 
 describe('the catalogue', () => {
-  it('has twenty-three cases, all of them different', () => {
-    expect(EVENTS.length).toBe(23);
-    expect(new Set(EVENTS.map((e) => e.id)).size).toBe(23);
-    expect(new Set(EVENTS.map((e) => e.title)).size).toBe(23);
+  it('has twenty-four cases, all of them different', () => {
+    expect(EVENTS.length).toBe(24);
+    expect(new Set(EVENTS.map((e) => e.id)).size).toBe(24);
+    expect(new Set(EVENTS.map((e) => e.title)).size).toBe(24);
   });
 
   it('gives every case two ways out, both with their consequence written', () => {
@@ -522,6 +522,24 @@ describe('the newer cases', () => {
     sim.state.funding.school = EVENT.strikeBelow - 1;
     expect(eventById('paro-docente')!.when(sim)).toBe(true);
 
+    // The strike covers the university too, with its own budget; and the hospital has one of its own.
+    sim.state.funding.school = 100;
+    expect(eventById('paro-docente')!.when(sim)).toBe(false);
+    world.setTile(46, 44, TILE.UNIVERSITY);
+    expect(eventById('paro-docente')!.when(sim)).toBe(false); // the university is paid as usual
+    sim.state.funding.university = EVENT.strikeBelow - 1;
+    expect(eventById('paro-docente')!.when(sim)).toBe(true);
+    sim.state.funding.university = 100;
+    expect(eventById('paro-de-salud')!.when(sim)).toBe(false);
+    world.setTile(47, 44, TILE.HOSPITAL);
+    expect(eventById('paro-de-salud')!.when(sim)).toBe(false); // the hospital is paid as usual
+    sim.state.funding.hospital = EVENT.strikeBelow;
+    expect(eventById('paro-de-salud')!.when(sim)).toBe(false);
+    sim.state.funding.hospital = EVENT.strikeBelow - 1;
+    expect(eventById('paro-de-salud')!.when(sim)).toBe(true);
+    sim.state.funding.hospital = 100;
+    sim.state.funding.school = EVENT.strikeBelow - 1; // back to the cut the next lines expect
+
     // Paro de colectivos: needs a bus line, and the budget for transport cut below ${EVENT.strikeBelow} %.
     expect(eventById('paro-de-colectivos')!.when(sim)).toBe(false);
     world.setTile(45, 44, TILE.BUS);
@@ -575,6 +593,7 @@ describe('the newer cases', () => {
   const outcomes: [string, number, 1 | -1, number, 1 | -1][] = [
     ['paro-docente', -7000, 1, 0, -1],
     ['paro-de-colectivos', -5000, 1, 0, -1],
+    ['paro-de-salud', -9000, 1, 0, -1],
     ['barro-en-las-calles', -3000, 1, 0, -1],
     ['brote-de-gripe', -6000, 1, 0, -1],
     ['granizada', -7000, 1, 0, -1],
@@ -602,6 +621,19 @@ describe('the newer cases', () => {
     b.state.funding.school = 40;
     option('paro-docente', 1).apply(b);
     expect(b.state.funding.school).toBe(40);
+
+    // The strike of the hospital, and the one of the teachers when the university was cut as well.
+    const h = city().sim;
+    h.state.funding.hospital = 40;
+    option('paro-de-salud', 0).apply(h);
+    expect(h.state.funding.hospital).toBe(100);
+    const u = city().sim;
+    u.state.funding.school = 40;
+    u.state.funding.university = 40;
+    const cash = u.state.cash;
+    option('paro-docente', 0).apply(u);
+    expect(u.state.funding.university).toBe(100);
+    expect(u.state.cash).toBe(cash - 13000);
 
     const c = city().sim;
     c.setTransport(30);

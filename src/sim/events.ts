@@ -499,27 +499,65 @@ function dirtStreets(w: World): number {
   return n;
 }
 
+/** Buildings of one kind on the map. */
+function countTile(w: World, tile: number): number {
+  let n = 0;
+  for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === tile) n++;
+  return n;
+}
+
 /** True in the months of the given list (1 = January). */
 const inMonths = (sim: Simulation, months: readonly number[]): boolean => months.includes(dateOf(sim.state.tick).month);
 
 const PARO_DOCENTE: CityEvent = {
   id: 'paro-docente',
   title: 'Paro docente',
-  text: 'Los maestros paran tres días: con el presupuesto de las escuelas recortado, los sueldos no alcanzan. Las aulas quedan vacías y los padres no saben con quién dejar a los chicos.',
-  when: (sim) => countSchools(sim.world) > 0 && sim.totals.pop > 1500 && sim.state.funding.school < EVENT.strikeBelow,
+  text: 'Los docentes paran tres días: con el presupuesto de las escuelas y de la universidad recortado, los sueldos no alcanzan. Las aulas quedan vacías y los padres no saben con quién dejar a los chicos.',
+  when: (sim) =>
+    sim.totals.pop > 1500 &&
+    ((countSchools(sim.world) > 0 && sim.state.funding.school < EVENT.strikeBelow) || (countTile(sim.world, TILE.UNIVERSITY) > 0 && sim.state.funding.university < EVENT.strikeBelow)),
   options: [
     {
       label: 'Pagar lo adeudado',
-      detail: 'Cuestan $7.000 y el presupuesto de escuelas vuelve al 100 %. Vuelven las clases y los docentes lo reconocen: sube la aprobación.',
+      detail: 'Cuestan $7.000 ($13.000 si la universidad también está recortada) y los presupuestos vuelven al 100 %. Vuelven las clases y los docentes lo reconocen: sube la aprobación.',
       apply: (sim) => {
         sim.state.cash -= 7000;
         sim.setFunding('school', 100);
+        // The university is paid too when its budget was the one that was cut.
+        if (sim.state.funding.university < EVENT.strikeBelow) {
+          sim.state.cash -= 6000;
+          sim.setFunding('university', 100);
+        }
         sim.nudgeApproval(4);
       },
     },
     {
       label: 'Descontar los días',
       detail: 'No cuesta nada, pero el paro se alarga y las familias se enojan: baja la aprobación.',
+      apply: (sim) => sim.nudgeApproval(-7),
+    },
+  ],
+};
+
+/** The doctors of the hospital stop when its budget is cut: the second-level service has its own strike. */
+const PARO_SALUD: CityEvent = {
+  id: 'paro-de-salud',
+  title: 'Paro en el hospital',
+  text: 'Los médicos y las enfermeras del hospital paran: con el presupuesto recortado, los sueldos no alcanzan y faltan insumos. Solo atienden urgencias y las salas se llenan de gente esperando.',
+  when: (sim) => countTile(sim.world, TILE.HOSPITAL) > 0 && sim.totals.pop > 1500 && sim.state.funding.hospital < EVENT.strikeBelow,
+  options: [
+    {
+      label: 'Pagar lo adeudado',
+      detail: 'Cuestan $9.000 y el presupuesto del hospital vuelve al 100 %. Se normaliza la atención y el personal lo reconoce: sube la aprobación.',
+      apply: (sim) => {
+        sim.state.cash -= 9000;
+        sim.setFunding('hospital', 100);
+        sim.nudgeApproval(4);
+      },
+    },
+    {
+      label: 'Esperar que se cansen',
+      detail: 'No cuesta nada, pero el hospital sigue a medias y los vecinos se enojan: baja la aprobación.',
       apply: (sim) => sim.nudgeApproval(-7),
     },
   ],
@@ -705,6 +743,7 @@ export const EVENTS: readonly CityEvent[] = [
   TEMPORADA,
   PARO_DOCENTE,
   PARO_COLECTIVOS,
+  PARO_SALUD,
   BARRO,
   BROTE,
   GRANIZADA,
