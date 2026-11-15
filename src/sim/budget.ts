@@ -79,6 +79,7 @@ export function monthlyBudget(
   month?: number,
   green = 100,
   coastFactor = 1,
+  transport = 100,
 ): BudgetReport {
   const taxes = zoneTaxes(tax);
   const t = cityTotals(w);
@@ -126,7 +127,7 @@ export function monthlyBudget(
     police: funded('police'),
     firefighters: funded('fire'),
     loan: loanDue,
-    transport: transitUpkeep(w),
+    transport: transitUpkeep(w, transport),
     coast: coast.upkeep,
     coastIncome: Math.round(coast.income * coastFactor),
   };

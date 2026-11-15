@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUS, BUS_COLORS, MAX_BUS_NUMBER } from '../src/config';
+import { BUS, BUS_COLORS, MAX_BUS_NUMBER, MAX_FUNDING } from '../src/config';
 import { Traffic } from '../src/render/traffic';
 import { deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
@@ -7,7 +7,7 @@ import { computeCongestion } from '../src/sim/congestion';
 import { isUnlocked } from '../src/sim/milestones';
 import { describeCell } from '../src/sim/report';
 import { Simulation, newSimState } from '../src/sim/simulation';
-import { transitRelief } from '../src/sim/transit';
+import { transitBuses, transitFactor, transitRelief, transitUpkeep } from '../src/sim/transit';
 import { toolPrice } from '../src/ui/toolbar';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { UndoHistory } from '../src/world/history';
@@ -318,5 +318,85 @@ describe('the card of a bus depot', () => {
     expect(lost.title).toBe('Línea 7 (rojo)');
     expect(lost.lines.join(' ')).toMatch(/no funciona/);
     expect(lost.hint).toMatch(/calle/);
+  });
+});
+
+describe('the budget for transport', () => {
+  const at = (w: World, x: number) => w.traffic[w.idx(x, 10)];
+
+  it('sets the frequency: all of what a line does at 100 %, half at 50 %, nothing at 0 %, a bit more at 120 %', () => {
+    expect(transitFactor(100)).toBe(1);
+    expect(transitFactor(50)).toBe(0.5);
+    expect(transitFactor(0)).toBe(0);
+    expect(transitFactor(500)).toBe(MAX_FUNDING / 100); // there is a ceiling
+    const w = commuterTown();
+    depot(w, 15, 8, 0, 60);
+    const relief = (funding: number) => transitRelief(w, funding)[w.idx(15, 10)];
+    expect(relief(100)).toBeCloseTo(BUS.relief, 5);
+    expect(relief(50)).toBeCloseTo(BUS.relief / 2, 5);
+    expect(relief(0)).toBe(0);
+    expect(relief(120)).toBeGreaterThan(relief(100));
+  });
+
+  it('leaves more traffic on the street the less is spent, and takes the same cap as ever', () => {
+    const w = commuterTown();
+    depot(w, 15, 8, 0, 60);
+    computeCongestion(w, 100);
+    const full = at(w, 15);
+    computeCongestion(w, 50);
+    const half = at(w, 15);
+    computeCongestion(w, 0);
+    const none = at(w, 15);
+    expect(full).toBeLessThan(half);
+    expect(half).toBeLessThan(none);
+    for (const d of [[16, 8], [17, 8], [14, 8], [13, 8]] as const) depot(w, d[0], d[1], 0, 70 + d[0]);
+    expect(transitRelief(w, 120)[w.idx(15, 10)]).toBeCloseTo(BUS.maxRelief, 5);
+  });
+
+  it('costs the same share of the upkeep', () => {
+    const w = commuterTown();
+    depot(w, 15, 8, 0, 60);
+    depot(w, 14, 8, 1, 61);
+    const cost = (funding: number) => monthlyBudget(w, 7, undefined, null, undefined, 100, 1, funding).transport;
+    expect(cost(100)).toBe(2 * BUS.upkeep);
+    expect(cost(50)).toBe(BUS.upkeep);
+    expect(cost(0)).toBe(0);
+    expect(transitUpkeep(w, 120)).toBe(Math.round(2 * BUS.upkeep * 1.2));
+  });
+
+  it('sends more buses to the street the more is spent, and none at the bottom', () => {
+    expect(transitBuses(100)).toBe(BUS.buses);
+    expect(transitBuses(120)).toBeGreaterThan(transitBuses(100));
+    expect(transitBuses(50)).toBeLessThan(transitBuses(100));
+    expect(transitBuses(0)).toBe(0);
+  });
+
+  it('is set in the simulation, kept inside its limits, and takes effect at once', () => {
+    const w = commuterTown();
+    depot(w, 15, 8, 0, 60);
+    const sim = new Simulation(w, newSimState(1), 'X');
+    sim.refresh();
+    expect(sim.state.transport).toBe(100);
+    const full = at(w, 15);
+    sim.setTransport(40);
+    expect(sim.state.transport).toBe(40);
+    expect(at(w, 15)).toBeGreaterThan(full);
+    sim.setTransport(900);
+    expect(sim.state.transport).toBe(MAX_FUNDING);
+    sim.setTransport(-5);
+    expect(sim.state.transport).toBe(0);
+  });
+
+  it('is saved with the game, an older save runs at 100 %, and an impossible value is refused', () => {
+    const w = new World(flat());
+    const sim = new Simulation(w, newSimState(1), 'X');
+    sim.setTransport(65);
+    const text = serialize({ name: 'X', seed: 1, world: w, sim: sim.state });
+    expect(deserialize(text).sim.transport).toBe(65);
+    const old = JSON.parse(text);
+    delete old.sim.transport;
+    expect(deserialize(JSON.stringify(old)).sim.transport).toBe(100);
+    old.sim.transport = MAX_FUNDING + 1;
+    expect(() => deserialize(JSON.stringify(old))).toThrow(/transporte/);
   });
 });

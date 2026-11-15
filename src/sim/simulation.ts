@@ -49,6 +49,8 @@ export interface SimState {
   funding: ServiceFunding;
   /** Budget for green spaces (plazas), 0 to `MAX_FUNDING`. It decides how well plazas are kept. */
   green: number;
+  /** Budget for the bus lines (percent of their standard upkeep), 0 to `MAX_FUNDING`: it sets the frequency. */
+  transport: number;
   /** People affected by the demolitions of the last months. It costs approval and wears off. */
   grief: number;
   /** The promise the neighbours are waiting on, or null. One at a time. */
@@ -95,6 +97,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     taxes: { R: DEFAULT_TAX, C: DEFAULT_TAX, I: DEFAULT_TAX },
     funding: { ...DEFAULT_FUNDING },
     green: 100,
+    transport: 100,
     grief: 0,
     commitment: null,
     pendingEvent: null,
@@ -270,7 +273,7 @@ export class Simulation {
     computeServices(w, this.state.funding);
     computePollution(w);
     computeCrime(w, this.totals.pop);
-    this.congestion = computeCongestion(w);
+    this.congestion = computeCongestion(w, this.state.transport);
     computeParks(w, this.state.green);
     computeLandValue(w, factorOf(this.state.effects, COAST_WORN));
   }
@@ -482,6 +485,13 @@ export class Simulation {
     this.approval = this.judge();
   }
 
+  /** Sets the budget for the bus lines (percent); how much traffic they take off follows at once. */
+  setTransport(percent: number): void {
+    this.state.transport = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
+    this.updateFields();
+    this.approval = this.judge();
+  }
+
   /** Sets a service's budget (percent of its standard upkeep); its coverage follows at once. */
   setFunding(kind: ServiceKind, percent: number): void {
     if (this.hasEffect(lockOf(kind))) return;
@@ -658,7 +668,7 @@ export class Simulation {
   private settleWeek(): void {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
-    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green).balance, week);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport).balance, week);
     s.cash += due - this.monthPaid;
     this.monthPaid = due;
     s.crisis = s.cash < 0;
@@ -672,7 +682,7 @@ export class Simulation {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
     if (week === 0) return 0;
-    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport).balance, Math.min(week, WEEKS_PER_MONTH - 1));
   }
 
   /** Counts the instalment this month paid, and closes the loan once the term is done. */
@@ -690,7 +700,7 @@ export class Simulation {
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST));
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST), s.transport);
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;

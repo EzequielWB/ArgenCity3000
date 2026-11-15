@@ -340,7 +340,7 @@ export const ROAD_REACH = 3;
  * add up, never past `maxRelief`. It needs a street within ROAD_REACH to be built. `buses` of the
  * line run on the streets of its area.
  */
-export const BUS = { label: 'Línea de colectivos', cost: 900, upkeep: 90, radius: 9, relief: 0.35, maxRelief: 0.6, buses: 2 } as const;
+export const BUS = { label: 'Línea de colectivos', cost: 900, upkeep: 90, radius: 9, relief: 0.35, maxRelief: 0.6, buses: 3 } as const;
 /** Lines are told apart by a number of up to three digits, which no other line of the city has. */
 export const MAX_BUS_NUMBER = 999;
 /** The ten colours a line can wear, the usual ones of the buses. */

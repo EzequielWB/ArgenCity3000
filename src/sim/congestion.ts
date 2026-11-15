@@ -91,7 +91,7 @@ function route(w: World, sources: Float32Array, sinks: Uint8Array, share: number
  * Fills `w.traffic` (load of every street cell, in percent of its capacity) and `w.jam` (the
  * traffic of the street each lot opens onto) and returns the city-wide summary.
  */
-export function computeCongestion(w: World): CongestionReport {
+export function computeCongestion(w: World, transport = 100): CongestionReport {
   const n = w.n;
   const size = n * n;
   w.traffic.fill(0);
@@ -132,7 +132,7 @@ export function computeCongestion(w: World): CongestionReport {
   const raw = new Float32Array(size);
   for (const r of routes) for (let i = 0; i < size; i++) raw[i] += r.load[i];
   // The buses of the lines take part of the load off the streets of their area.
-  const relief = transitRelief(w);
+  const relief = transitRelief(w, transport);
   for (let i = 0; i < size; i++) raw[i] *= 1 - relief[i];
 
   // Capacity: the lanes of the avenue a cell belongs to, each one carrying what its quality says.
