@@ -1,5 +1,6 @@
-import { EVENT, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH } from '../config';
+import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH } from '../config';
 import type { Rng } from '../core/rng';
+import { busStations } from '../world/transport';
 import { TILE, type World, zoneOf } from '../world/world';
 import { dateOf } from './calendar';
 import { countSchools } from './commitments';
@@ -491,6 +492,198 @@ const TEMPORADA: CityEvent = {
   ],
 };
 
+/** Street cells of the lowest quality, the ones the mud takes first. */
+function dirtStreets(w: World): number {
+  let n = 0;
+  for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === TILE.ROAD && w.roadTier[i] === DIRT) n++;
+  return n;
+}
+
+/** True in the months of the given list (1 = January). */
+const inMonths = (sim: Simulation, months: readonly number[]): boolean => months.includes(dateOf(sim.state.tick).month);
+
+const PARO_DOCENTE: CityEvent = {
+  id: 'paro-docente',
+  title: 'Paro docente',
+  text: 'Los maestros paran tres días y reclaman los sueldos atrasados. Las escuelas de la ciudad quedan vacías y los padres no saben con quién dejar a los chicos.',
+  when: (sim) => countSchools(sim.world) > 0 && sim.totals.pop > 1500,
+  options: [
+    {
+      label: 'Pagar lo adeudado',
+      detail: 'Cuestan $7.000. Vuelven las clases y los docentes lo reconocen: sube la aprobación.',
+      apply: (sim) => {
+        sim.state.cash -= 7000;
+        sim.nudgeApproval(4);
+      },
+    },
+    {
+      label: 'Descontar los días',
+      detail: 'No cuesta nada, pero el paro se alarga y las familias se enojan: baja la aprobación.',
+      apply: (sim) => sim.nudgeApproval(-7),
+    },
+  ],
+};
+
+const PARO_COLECTIVOS: CityEvent = {
+  id: 'paro-de-colectivos',
+  title: 'Paro de colectivos',
+  text: 'Los choferes de las líneas de colectivos paran por los sueldos atrasados. Nadie llega al centro y los comercios abren con las persianas a medias.',
+  when: (sim) => busStations(sim.world).length > 0 && sim.totals.pop > 1500,
+  options: [
+    {
+      label: 'Pagar el atraso',
+      detail: 'Cuestan $5.000. Los colectivos vuelven a la calle y la gente lo agradece: sube la aprobación.',
+      apply: (sim) => {
+        sim.state.cash -= 5000;
+        sim.nudgeApproval(3);
+      },
+    },
+    {
+      label: 'Dejarlos parar',
+      detail: 'No cuesta nada. Un mes sin que se levante nada nuevo, porque nadie llega a las obras, y baja la aprobación.',
+      apply: (sim) => {
+        sim.nudgeApproval(-5);
+        sim.effect(FREEZE, 1);
+      },
+    },
+  ],
+};
+
+const BARRO: CityEvent = {
+  id: 'barro-en-las-calles',
+  title: 'Barro en las calles',
+  text: 'Llovió dos días seguidos y las calles de tierra son un pantano. Los remises no entran y los chicos llegan a la escuela embarrados hasta las rodillas.',
+  when: (sim) => dirtStreets(sim.world) >= 20 && sim.totals.pop > 600,
+  options: [
+    {
+      label: 'Mandar la niveladora',
+      detail: 'Cuestan $3.000 de combustible y horas de máquina. Se arreglan las calles y los vecinos lo valoran: sube la aprobación.',
+      apply: (sim) => {
+        sim.state.cash -= 3000;
+        sim.nudgeApproval(4);
+      },
+    },
+    {
+      label: 'Esperar a que seque',
+      detail: 'No cuesta nada, pero los vecinos pasan una semana en el barro y se lo anotan: baja la aprobación.',
+      apply: (sim) => sim.nudgeApproval(-5),
+    },
+  ],
+};
+
+const BROTE: CityEvent = {
+  id: 'brote-de-gripe',
+  title: 'Brote de gripe',
+  text: 'Un brote de gripe llena las guardias. Las salitas no dan abasto y los vecinos hacen cola desde la madrugada.',
+  when: (sim) => inMonths(sim, [5, 6, 7, 8]) && sim.totals.pop > 2500 && coverageOf(sim.world, sim.world.health) < 70,
+  options: [
+    {
+      label: 'Campaña de vacunación',
+      detail: 'Cuestan $6.000 de vacunas y carpas sanitarias. Se contiene el brote y sube la aprobación.',
+      apply: (sim) => {
+        sim.state.cash -= 6000;
+        sim.nudgeApproval(5);
+      },
+    },
+    {
+      label: 'Que se atiendan como puedan',
+      detail: 'No cuesta nada. El brote se extiende y los vecinos no lo perdonan: baja la aprobación.',
+      apply: (sim) => sim.nudgeApproval(-7),
+    },
+  ],
+};
+
+const GRANIZADA: CityEvent = {
+  id: 'granizada',
+  title: 'Granizada',
+  text: 'Una tormenta de granizo rompe techos, vidrios y autos en media ciudad. Los vecinos salen a la calle a ver qué se salvó.',
+  when: (sim) => inMonths(sim, [10, 11, 12, 1, 2]) && sim.totals.pop > 1500,
+  options: [
+    {
+      label: 'Ayudar a los afectados',
+      detail: 'Cuestan $7.000 de chapas y vidrios. Los barrios se levantan rápido y sube la aprobación.',
+      apply: (sim) => {
+        sim.state.cash -= 7000;
+        sim.nudgeApproval(4);
+      },
+    },
+    {
+      label: 'Que cada uno se arregle',
+      detail: 'No cuesta nada, pero muchos se sienten abandonados: baja la aprobación.',
+      apply: (sim) => sim.nudgeApproval(-5),
+    },
+  ],
+};
+
+const SHOPPING: CityEvent = {
+  id: 'shopping',
+  title: 'Un shopping en el centro',
+  text: 'Una cadena quiere levantar un shopping en el centro. Promete empleos y obras, pero los comerciantes de toda la vida ya juntan firmas en contra.',
+  when: (sim) => sim.totals.pop > 4000 && lotsOf(sim.world, 'C') > 15,
+  options: [
+    {
+      label: 'Aprobarlo',
+      detail: 'Entran $6.000 por el terreno y la ciudad suena a progreso, pero los comerciantes se enojan: baja un poco la aprobación.',
+      apply: (sim) => {
+        sim.state.cash += 6000;
+        sim.nudgeApproval(-3);
+      },
+    },
+    {
+      label: 'Frenarlo',
+      detail: 'No entra nada y se pierden las obras que prometía, pero el comercio de barrio lo agradece: sube la aprobación.',
+      apply: (sim) => sim.nudgeApproval(4),
+    },
+  ],
+};
+
+const ACTO: CityEvent = {
+  id: 'acto-politico',
+  title: 'Un acto en la plaza',
+  text: 'Se acercan las elecciones y el partido te propone un acto grande en la plaza: choripán, bombos y banderas. Los candidatos de enfrente ya alquilaron el escenario.',
+  when: (sim) => {
+    const left = monthsToElection(sim.state.tick, sim.state.government);
+    return left !== null && left <= 18 && sim.state.approval < 75 && sim.totals.pop > 1000 && sim.state.cash > 6000;
+  },
+  options: [
+    {
+      label: 'Hacer el acto',
+      detail: 'Cuestan $4.000 de escenario y choripanes. Se llena la plaza y sube bastante la aprobación.',
+      apply: (sim) => {
+        sim.state.cash -= 4000;
+        sim.nudgeApproval(7);
+      },
+    },
+    {
+      label: 'Guardar la plata',
+      detail: 'No se gasta nada, pero la oposición se queda con la plaza: baja un poco la aprobación.',
+      apply: (sim) => sim.nudgeApproval(-3),
+    },
+  ],
+};
+
+const PANTALLA: CityEvent = {
+  id: 'pantalla-gigante',
+  title: 'Pantalla gigante en la plaza',
+  text: 'La Selección juega un partido importante y los vecinos piden una pantalla gigante en la plaza para verlo juntos. Nadie quiere quedarse afuera.',
+  when: (sim) => sim.totals.pop > 1000 && sim.state.cash > 5000,
+  options: [
+    {
+      label: 'Instalar la pantalla',
+      detail: 'Cuestan $3.500 de alquiler y sonido. La plaza explota con cada gol y sube la aprobación.',
+      apply: (sim) => {
+        sim.state.cash -= 3500;
+        sim.nudgeApproval(6);
+      },
+    },
+    {
+      label: 'Que lo vean en casa',
+      detail: 'No se gasta nada, pero los que querían salir a gritar el gol se lo toman a mal: baja un poco la aprobación.',
+      apply: (sim) => sim.nudgeApproval(-2),
+    },
+  ],
+};
+
 /** The catalogue, in no particular order: `pickEvent` rolls among the ones the city deserves. */
 export const EVENTS: readonly CityEvent[] = [
   PIQUETE,
@@ -508,6 +701,14 @@ export const EVENTS: readonly CityEvent[] = [
   SEQUIA,
   HUMO,
   TEMPORADA,
+  PARO_DOCENTE,
+  PARO_COLECTIVOS,
+  BARRO,
+  BROTE,
+  GRANIZADA,
+  SHOPPING,
+  ACTO,
+  PANTALLA,
 ];
 
 export function eventById(id: string): CityEvent | undefined {

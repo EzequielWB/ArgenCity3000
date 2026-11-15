@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { EVENT, MAX_FUNDING, MAX_TAX, TICKS_PER_MONTH } from '../src/config';
+import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, TICKS_PER_MONTH } from '../src/config';
+import { packBusLine } from '../src/world/transport';
 import { deserialize, serialize } from '../src/save/save';
 import { COAST_BOOST, COAST_WORN, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, coolOf, lockOf } from '../src/sim/effects';
 import { EVENTS, eventById, pickEvent } from '../src/sim/events';
@@ -47,10 +48,10 @@ function grown(seed = 5): { world: WorldType; sim: Simulation } {
 const option = (id: string, index: 0 | 1) => eventById(id)!.options[index];
 
 describe('the catalogue', () => {
-  it('has fifteen cases, all of them different', () => {
-    expect(EVENTS.length).toBe(15);
-    expect(new Set(EVENTS.map((e) => e.id)).size).toBe(15);
-    expect(new Set(EVENTS.map((e) => e.title)).size).toBe(15);
+  it('has twenty-three cases, all of them different', () => {
+    expect(EVENTS.length).toBe(23);
+    expect(new Set(EVENTS.map((e) => e.id)).size).toBe(23);
+    expect(new Set(EVENTS.map((e) => e.title)).size).toBe(23);
   });
 
   it('gives every case two ways out, both with their consequence written', () => {
@@ -502,6 +503,95 @@ describe('which one shows up', () => {
       const chosen = pickEvent(sim, new Rng(k + 101));
       if (chosen) expect(sim.hasEffect(coolOf(chosen.id))).toBe(false);
     }
+  });
+});
+
+describe('the newer cases', () => {
+  const month = (m: number) => TICKS_PER_MONTH * (m - 1); // tick 0 is January
+
+  it('ask for the right city: each one stays quiet until its condition holds', () => {
+    const { world, sim } = grown();
+    expect(sim.totals.pop).toBeGreaterThan(4000); // the fixture is big enough for the thresholds below
+
+    // Paro docente: needs a school.
+    expect(eventById('paro-docente')!.when(sim)).toBe(false);
+    world.setTile(44, 44, TILE.SCHOOL);
+    expect(eventById('paro-docente')!.when(sim)).toBe(true);
+
+    // Paro de colectivos: needs a bus line.
+    expect(eventById('paro-de-colectivos')!.when(sim)).toBe(false);
+    world.setTile(45, 44, TILE.BUS);
+    world.busLine[world.idx(45, 44)] = packBusLine(0, 1);
+    expect(eventById('paro-de-colectivos')!.when(sim)).toBe(true);
+
+    // Barro: needs twenty dirt streets.
+    expect(eventById('barro-en-las-calles')!.when(sim)).toBe(false);
+    for (let x = 0; x < 20; x++) {
+      world.setTile(x, 20, TILE.ROAD);
+      world.roadTier[world.idx(x, 20)] = DIRT;
+    }
+    expect(eventById('barro-en-las-calles')!.when(sim)).toBe(true);
+
+    // Brote de gripe: in winter, with the clinics short.
+    sim.state.tick = month(1);
+    expect(eventById('brote-de-gripe')!.when(sim)).toBe(false);
+    sim.state.tick = month(6);
+    expect(eventById('brote-de-gripe')!.when(sim)).toBe(true);
+
+    // Granizada: in the warm months only.
+    expect(eventById('granizada')!.when(sim)).toBe(false);
+    for (const m of [10, 11, 12, 1, 2]) {
+      sim.state.tick = month(m);
+      expect(eventById('granizada')!.when(sim)).toBe(true);
+    }
+
+    // Un shopping: a big city with shops.
+    expect(eventById('shopping')!.when(sim)).toBe(true);
+    expect(eventById('shopping')!.when(new Simulation(flat(), newSimState(1), 'Chico'))).toBe(false);
+
+    // Un acto: close to an election, and only where there are elections.
+    sim.state.tick = 0;
+    expect(eventById('acto-politico')!.when(sim)).toBe(false);
+    sim.state.tick = month(37);
+    expect(eventById('acto-politico')!.when(sim)).toBe(true);
+    sim.state.government = 'dictadura';
+    expect(eventById('acto-politico')!.when(sim)).toBe(false);
+
+    // Pantalla gigante: with some cash in the box.
+    expect(eventById('pantalla-gigante')!.when(sim)).toBe(true);
+    sim.state.cash = 1000;
+    expect(eventById('pantalla-gigante')!.when(sim)).toBe(false);
+  });
+
+  // For each: what the first way out does to the cash and the approval, and the second.
+  const outcomes: [string, number, 1 | -1, number, 1 | -1][] = [
+    ['paro-docente', -7000, 1, 0, -1],
+    ['paro-de-colectivos', -5000, 1, 0, -1],
+    ['barro-en-las-calles', -3000, 1, 0, -1],
+    ['brote-de-gripe', -6000, 1, 0, -1],
+    ['granizada', -7000, 1, 0, -1],
+    ['shopping', 6000, -1, 0, 1],
+    ['acto-politico', -4000, 1, 0, -1],
+    ['pantalla-gigante', -3500, 1, 0, -1],
+  ];
+
+  it.each(outcomes)('%s: pays what it says and moves the approval the way it says', (id, cash0, sign0, cash1, sign1) => {
+    for (const [index, cash, sign] of [[0, cash0, sign0], [1, cash1, sign1]] as const) {
+      const { sim } = city();
+      const before = { cash: sim.state.cash, approval: sim.state.approval };
+      option(id, index).apply(sim);
+      expect(sim.state.cash).toBe(before.cash + cash);
+      expect(Math.sign(sim.state.approval - before.approval)).toBe(sign);
+    }
+  });
+
+  it('the bus strike freezes the works for a month when it is let run', () => {
+    const { sim } = city();
+    option('paro-de-colectivos', 1).apply(sim);
+    expect(sim.state.effects[FREEZE]).toBe(1);
+    const paid = city().sim;
+    option('paro-de-colectivos', 0).apply(paid);
+    expect(paid.state.effects[FREEZE]).toBeUndefined();
   });
 });
 
