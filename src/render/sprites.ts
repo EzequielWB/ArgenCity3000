@@ -1371,6 +1371,13 @@ export function poleSpriteFor(): Sprite {
   return cached('pole', poleSprite);
 }
 
+/** The digits of the route number, 2 2 6, as rows of a 3x5 font. */
+const ROUTE_DIGITS: string[][] = [
+  ['111', '001', '111', '100', '111'],
+  ['111', '001', '111', '100', '111'],
+  ['111', '100', '111', '101', '111'],
+];
+
 /** Kilometre sign of the provincial route: a green panel with the route number, 226, on a post. */
 function routeSignSprite(dvx: number, dvy: number): Sprite {
   const p = painter(1, 26);
@@ -1383,11 +1390,15 @@ function routeSignSprite(dvx: number, dvy: number): Sprite {
   g.fillRect(Math.round(x) - 9.5, y - 22, 19, 10);
   g.fillStyle = '#1f6b43';
   g.fillRect(Math.round(x) - 8.5, y - 21, 17, 8);
+  // The number in whole pixels, a 3x5 font: at this size a text face turns the 6 into something like an 8.
   g.fillStyle = '#ffffff';
-  g.font = 'bold 7px sans-serif';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.fillText('226', Math.round(x), y - 16.5);
+  const left = Math.round(x) - 5;
+  const top = Math.round(y) - 20;
+  ROUTE_DIGITS.forEach((rows, k) => {
+    rows.forEach((row, r) => {
+      for (let c = 0; c < 3; c++) if (row[c] === '1') g.fillRect(left + k * 4 + c, top + r, 1, 1);
+    });
+  });
   return done(p);
 }
 

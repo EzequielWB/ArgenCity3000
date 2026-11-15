@@ -1,6 +1,6 @@
 import { fromView, toView } from '../core/iso';
 import { hash2 } from '../core/rng';
-import { buildingIssues, type Issue } from '../sim/warnings';
+import { buildingIssues, type Issue, type Unlocked } from '../sim/warnings';
 import { hubFacilities } from '../world/hubs';
 import { TILE, World, zoneOf } from '../world/world';
 import { CHUNK_PAD, FrameBudget, chunkRect, paddedRect, pickEvictions, renderOrder, visibleRect, type Rect } from './chunks';
@@ -301,7 +301,7 @@ export class View {
   }
 
   /** The services the city has unlocked, which are the ones whose lack is shown with a bubble (set by the game). */
-  bubbleKinds = { health: false, crime: false };
+  bubbleKinds: Unlocked = { health: false, crime: false, fire: false, school: false };
   private bubbles: { at: number; items: { i: number; issues: Issue[] }[] } = { at: -1e9, items: [] };
 
   /** The buildings with something wrong, looked up again every half second: the fields they come from change slowly. */

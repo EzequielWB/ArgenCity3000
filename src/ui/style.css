@@ -1297,7 +1297,8 @@ table.budget tr.total td {
 }
 
 .tax label {
-  min-width: 92px;
+  /* One width for every label, the longest (Espacios verdes) included: the sliders all start and end on the same line. */
+  flex: 0 0 112px;
   font-size: 14px;
 }
 

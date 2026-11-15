@@ -84,6 +84,11 @@ export interface CellReport {
 function issueText(w: World, i: number, issue: Issue): string {
   if (issue === 'power') return 'Sin luz: el edificio no recibe electricidad, no funciona y no crece.';
   if (issue === 'road') return `Sin calle: no llega ningún camino hasta acá (hace falta una calle a ${ROAD_REACH} lotes o menos). Sin calle no vive ni trabaja nadie.`;
+  if (issue === 'fire') return `Sin bomberos cerca (cobertura ${w.fireCover[i]}/100): si se prende fuego se quema entero y puede pasar a los vecinos. Hace falta un cuartel de bomberos con luz cerca.`;
+  if (issue === 'jam') return `Calle saturada (${w.jam[i]} % de su capacidad): el lote crece despacio y el suelo vale menos. Ensanchá la calle, mejorala o abrí otro camino.`;
+  if (issue === 'school') return `Sin escuela cerca (educación ${w.edu[i]}/100): no se levantan torres ni oficinas por encima de este nivel. Hace falta una escuela con luz cerca.`;
+  if (issue === 'empty') return 'Abandonado: nadie vive ni trabaja acá, no paga impuestos y baja el valor del suelo de alrededor.';
+  if (issue === 'dry') return `Plaza descuidada (cuidado ${w.parkCare[i]}/100): se ve seca y baja el valor del suelo. Subí el presupuesto de espacios verdes.`;
   if (issue === 'crime') return `Mucho delito (${w.crime[i]}/100): los vecinos se van y baja el valor del suelo. Una comisaría con luz cerca lo baja.`;
   if (issue === 'health') return `No llega la salud (${w.health[i]}/100): las casas no pasan de chalet. Hace falta una salita con luz cerca.`;
   return `Mucho humo (${w.pollution[i]}/100): las casas pierden vecinos. Alejá las usinas y las fábricas de acá.`;
@@ -94,7 +99,7 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
   const report = describeBase(w, sim, x, y);
   const i = w.idx(x, y);
   const m = sim.state.milestone;
-  const issues = buildingIssues(w, i, { health: isUnlocked('clinic', m), crime: isUnlocked('police', m) });
+  const issues = buildingIssues(w, i, { health: isUnlocked('clinic', m), crime: isUnlocked('police', m), fire: isUnlocked('fire', m), school: isUnlocked('school', m) });
   return issues.length ? { ...report, issues: issues.map((issue) => ({ issue, text: issueText(w, i, issue) })) } : report;
 }
 

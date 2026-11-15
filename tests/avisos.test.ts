@@ -11,8 +11,8 @@ function flat(n = 16): Terrain {
   return { n, corners: new Uint8Array(s * s).fill(SEA_LEVEL + 1), trees: new Uint8Array(n * n) };
 }
 
-const all = { health: true, crime: true };
-const none = { health: false, crime: false };
+const all = { health: true, crime: true, fire: true, school: true };
+const none = { health: false, crime: false, fire: false, school: false };
 
 /** A lit home with a clinic near, safe and clean, on lot (3, 3): the starting point of each case. */
 function home(tile: number = TILE.R): { w: World; i: number } {
@@ -90,6 +90,59 @@ describe('the bubbles over a building', () => {
     w.setTile(5, 5, TILE.SCHOOL);
     w.powered[w.idx(5, 5)] = 1;
     expect(buildingIssues(w, w.idx(5, 5), all)).toEqual([]);
+  });
+
+  it('warns of a tall building with no fire station near, once the player can build one', () => {
+    const { w, i } = home();
+    w.level[i] = 3;
+    w.fireCover[i] = 10;
+    w.edu[i] = 90;
+    expect(buildingIssues(w, i, all)).toEqual(['fire']);
+    expect(buildingIssues(w, i, none)).toEqual([]);
+    w.fireCover[i] = 60;
+    expect(buildingIssues(w, i, all)).toEqual([]);
+    w.fireCover[i] = 10;
+    w.level[i] = 2; // a low building is not warned about
+    expect(buildingIssues(w, i, all)).toEqual([]);
+  });
+
+  it('warns of a street so full that the lot grows slowly', () => {
+    const { w, i } = home();
+    w.jam[i] = 120;
+    expect(buildingIssues(w, i, all)).toEqual([]);
+    w.jam[i] = 121;
+    expect(buildingIssues(w, i, all)).toEqual(['jam']);
+  });
+
+  it('warns of a home or a shop that cannot grow for lack of a school, not of a factory', () => {
+    const { w, i } = home();
+    w.level[i] = 3;
+    w.fireCover[i] = 90;
+    w.edu[i] = 5;
+    expect(buildingIssues(w, i, all)).toEqual(['school']);
+    expect(buildingIssues(w, i, { ...all, school: false })).toEqual([]);
+    const f = home(TILE.I);
+    f.w.level[f.i] = 3;
+    f.w.fireCover[f.i] = 90;
+    f.w.edu[f.i] = 5;
+    expect(buildingIssues(f.w, f.i, all)).toEqual([]);
+  });
+
+  it('shows an abandoned building as empty, and a plaza nobody keeps as dry', () => {
+    const { w, i } = home();
+    w.abandoned[i] = 1;
+    w.crime[i] = 90;
+    expect(buildingIssues(w, i, all)).toEqual(['empty']);
+    const p = new World(flat());
+    for (let x = 4; x < 7; x++) p.setTile(x, 4, TILE.PARK);
+    const j = p.idx(5, 4);
+    p.parkArea[j] = 3;
+    p.parkCare[j] = 90;
+    expect(buildingIssues(p, j, all)).toEqual([]);
+    p.parkCare[j] = 10;
+    expect(buildingIssues(p, j, all)).toEqual(['dry']);
+    p.parkArea[j] = 1; // a lone cell of park is not a plaza
+    expect(buildingIssues(p, j, all)).toEqual([]);
   });
 
   it('leaves a burning building to the firefighters', () => {

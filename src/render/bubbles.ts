@@ -32,6 +32,16 @@ const BODY = [
 const ICONS: Record<Issue, string[]> = {
   // A traffic cone, orange with a white band: the street does not reach the building.
   road: ['....o....', '...ocso..', '...ocso..', '..owwwwo.', '..owwwwo.', '.occcccso', '.occcccso', 'ooooooooo', '.........'],
+  // A flame: no fire station to put it out.
+  fire: ['....o....', '...oco...', '..occco..', '.occryco.', '.ocryyco.', 'ocryyyrco', 'ocryyyrco', '.orryyro.', '..ooooo..'],
+  // A traffic light with every lamp on: the street is full.
+  jam: ['..ooooo..', '..orrro..', '..orrro..', '..oyyyo..', '..oyyyo..', '..onnno..', '..onnno..', '..ooooo..', '....o....'],
+  // An open book: no school near.
+  school: ['.........', 'ouuuouuuo', 'owwwuwwwo', 'owkkuwkko', 'owwwuwwwo', 'owkkuwkko', 'owwwuwwwo', 'ouuuuuuuo', '.........'],
+  // A house with a red cross over it: nobody lives or works there any more.
+  empty: ['....o....', '...ogo...', '..ogggo..', '.ogggggo.', 'ogrgggrgo', 'ogggrgggo', 'ogrgggrgo', 'ogggggggo', 'ooooooooo'],
+  // A bare, dry sapling: the plaza is not kept.
+  dry: ['.y..t..y.', '..y.t.y..', '...ttt...', '.y..t....', '....t.y..', '...tt....', '....t....', '...ttt...', '.........'],
   // A lightning bolt, yellow with a dark orange edge.
   power: ['....oo...', '...oyyo..', '..oyyo...', '.oyyyyyo.', '.ooyyyyo.', '...oyyo..', '...oyo...', '..oyo....', '..oo.....'],
   // A head in a balaclava: black wool and a strip of skin with the eyes.
@@ -54,12 +64,20 @@ const COLORS: Record<string, string> = {
   g: '#8d919a',
   c: '#ee7a20',
   s: '#b85410',
+  u: '#2f63a6',
+  n: '#3fa65b',
+  t: '#6b4a2a',
 };
 
 /** The paper of each bubble: a little warmer for the dark, a little bluer for the crime. */
 const PAPER: Record<Issue, string> = {
   power: '#f6dc9a',
   road: '#f3dcb8',
+  fire: '#f3d2c2',
+  jam: '#efd0d0',
+  school: '#d5e0f2',
+  empty: '#dcd8d2',
+  dry: '#e7e0b8',
   crime: '#c9cde0',
   health: '#f4f0e6',
   smoke: '#d6d9de',
