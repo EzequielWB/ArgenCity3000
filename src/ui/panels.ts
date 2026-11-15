@@ -381,7 +381,7 @@ export function openGovernment(game: Game): void {
     <label class="gov-party">Nombre del partido
       <input id="govParty" maxlength="32" autocomplete="off" value="${escapeHtml(state.party)}" />
     </label>
-    <div class="gov-grid" role="radiogroup" aria-label="Forma de gobierno">${governmentCardsHtml(state.government)}</div>
+    <div class="gov-grid" aria-label="Forma de gobierno">${governmentCardsHtml(null)}</div>
     <div class="row"><button id="govTake" class="primary" type="button" disabled>Asumir el cargo</button></div>
     <p class="gov-hint bad" id="govHint">El nombre del partido es obligatorio.</p>`,
     () => {
@@ -392,12 +392,30 @@ export function openGovernment(game: Game): void {
   const input = body.querySelector<HTMLInputElement>('#govParty')!;
   const take = body.querySelector<HTMLButtonElement>('#govTake')!;
   const hint = body.querySelector<HTMLElement>('#govHint')!;
+  /** The form of government whose card is open, or null: none is chosen until the player opens one. */
+  let chosen: GovernmentKind | null = null;
+  const cards = [...body.querySelectorAll<HTMLElement>('.gov-card')];
   const refresh = (): void => {
     const filled = input.value.trim().length > 0;
-    take.disabled = !filled;
-    hint.classList.toggle('bad', !filled);
-    hint.textContent = filled ? 'Así va a figurar en El Diario del Conurbano.' : 'El nombre del partido es obligatorio.';
+    take.disabled = !filled || chosen === null;
+    hint.classList.toggle('bad', !filled || chosen === null);
+    hint.textContent = !filled ? 'El nombre del partido es obligatorio.' : chosen === null ? 'Tocá una forma de gobierno para ver qué hace y elegirla.' : 'Así va a figurar en El Diario del Conurbano.';
   };
+  // A card is a button: it opens to show what it does and chooses that form; opening another closes this one,
+  // and touching the open one closes it and leaves the choice empty.
+  for (const card of cards) {
+    card.querySelector('.gov-head')!.addEventListener('click', () => {
+      const wasOpen = card.classList.contains('open');
+      for (const other of cards) {
+        const open = other === card && !wasOpen;
+        other.classList.toggle('open', open);
+        other.querySelector('.gov-head')!.setAttribute('aria-expanded', String(open));
+        other.querySelector<HTMLElement>('.gov-list')!.hidden = !open;
+      }
+      chosen = wasOpen ? null : (card.dataset.gov as GovernmentKind);
+      refresh();
+    });
+  }
   input.addEventListener('input', refresh);
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !take.disabled) take.click();
@@ -405,9 +423,8 @@ export function openGovernment(game: Game): void {
   take.addEventListener('click', () => {
     const party = input.value.trim().slice(0, 32);
     if (!party) return;
-    const picked = body.querySelector<HTMLInputElement>('input[name="govPick"]:checked');
-    const government = (picked?.value as GovernmentKind | undefined) ?? 'democracia';
-    if (!GOVERNMENT_KINDS.includes(government)) return;
+    const government = chosen;
+    if (government === null || !GOVERNMENT_KINDS.includes(government)) return;
     game.found(government, party);
     $('#modalClose').classList.remove('hidden');
     closeModal();

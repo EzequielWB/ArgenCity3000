@@ -99,18 +99,22 @@ describe('forms of government', () => {
     expect(old.sim.party).toBe('');
   });
 
-  it('offers the three forms with their pros and cons, and marks the one in force', () => {
-    expect(governmentCardsHtml('dictadura')).toContain('value="dictadura" checked');
-    expect(governmentCardsHtml('dictadura').match(/checked/g)).toHaveLength(1);
-    const html = governmentCardsHtml();
-    for (const id of ['democracia', 'dictadura', 'tecnocracia']) expect(html).toContain(`value="${id}"`);
-    expect(html).toContain('value="democracia" checked');
-    expect(html.match(/checked/g)).toHaveLength(1);
+  it('offers every form as a closed card, with its pros and cons inside, and opens only the one asked for', () => {
+    const closed = governmentCardsHtml();
+    expect(closed).not.toContain('open');
+    expect(closed).not.toContain('aria-expanded="true"');
+    expect(closed.match(/aria-expanded="false"/g)).toHaveLength(5);
+    expect(closed.match(/<ul class="gov-list" hidden>/g)).toHaveLength(5);
+    for (const id of ['democracia', 'dictadura', 'tecnocracia', 'teocracia', 'comunismo']) expect(closed).toContain(`data-gov="${id}"`);
     for (const kind of ['democracia', 'dictadura', 'tecnocracia'] as const) {
-      for (const pro of GOVERNMENTS[kind].pros) expect(html).toContain(pro);
-      for (const con of GOVERNMENTS[kind].cons) expect(html).toContain(con);
+      for (const pro of GOVERNMENTS[kind].pros) expect(closed).toContain(pro);
+      for (const con of GOVERNMENTS[kind].cons) expect(closed).toContain(con);
     }
-    expect(html).toContain('(recomendada)');
+    expect(closed).toContain('(recomendada)');
+    const opened = governmentCardsHtml('dictadura');
+    expect(opened.match(/aria-expanded="true"/g)).toHaveLength(1);
+    expect(opened).toContain('class="gov-card open" data-gov="dictadura"');
+    expect(opened.match(/<ul class="gov-list" hidden>/g)).toHaveLength(4);
   });
 
   it('signs the founding: party, form of government and one headline, not two', () => {

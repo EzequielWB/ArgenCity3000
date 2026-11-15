@@ -1673,31 +1673,51 @@ ol.steps li {
 }
 
 .gov-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 10px;
-  padding: 8px 12px;
   background: var(--deep);
   border: 2px solid var(--line);
   box-shadow: var(--bevel);
-  cursor: pointer;
 }
 
 .gov-card:hover {
   border-color: var(--gold-dark);
 }
 
-.gov-card:has(input:checked) {
+.gov-card.open {
   border-color: var(--gold);
   background: var(--base);
 }
 
-.gov-card input {
-  grid-row: 1 / span 3;
-  align-self: start;
-  width: auto;
-  margin-top: 4px;
-  accent-color: var(--gold);
+/* The head of a card is a button: the name, a line about it and an arrow that says it opens. */
+.gov-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gov-head::after {
+  content: '▸';
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  color: var(--gold);
+}
+
+.gov-card.open .gov-head::after {
+  content: '▾';
+}
+
+.gov-head:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: -2px;
 }
 
 .gov-name {
@@ -1718,8 +1738,12 @@ ol.steps li {
 
 .gov-list {
   list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
+  margin: 0;
+  padding: 2px 12px 10px;
+}
+
+.gov-list[hidden] {
+  display: none;
 }
 
 .gov-list li {
@@ -2361,3 +2385,7 @@ button.chapa.divino:focus-visible {
   color: var(--gold-light);
 }
 
+
+.gov-grid + .row {
+  margin-top: 12px;
+}
