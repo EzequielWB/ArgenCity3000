@@ -5,6 +5,7 @@
  */
 import { CAPACITY, COAST_APPROVAL, DEFAULT_TAX, DEMOLITION, GOVERNMENTS, PARK, START_YEAR, TICKS_PER_MONTH, type GovernmentKind, type ZoneTaxes } from '../config';
 import { TILE, type World } from '../world/world';
+import { coastWorks } from './coast';
 import { averageTax } from './demand';
 
 export const APPROVAL = {
@@ -90,8 +91,11 @@ export function computeApproval(w: World, inp: ApprovalInputs): ApprovalReport {
   let parks = 0;
   let parksNeglected = 0;
   for (let i = 0; i < w.tiles.length; i++) {
-    if (w.tiles[i] === TILE.PROMENADE) promenade++;
-    else if (w.tiles[i] === TILE.LIGHTHOUSE) lighthouse = COAST_APPROVAL.lighthouse;
+    if (w.tiles[i] === TILE.PROMENADE) {
+      if (coastWorks(w, i)) promenade++;
+    } else if (w.tiles[i] === TILE.LIGHTHOUSE) {
+      if (coastWorks(w, i)) lighthouse = COAST_APPROVAL.lighthouse;
+    }
     else if (w.tiles[i] === TILE.PARK && w.parkArea[i] >= PARK.minArea) {
       parks++;
       if (w.parkCare[i] < PARK.care) parksNeglected += (PARK.care - w.parkCare[i]) / PARK.care;

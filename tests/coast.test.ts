@@ -24,6 +24,9 @@ const WATER = SEA_LEVEL - 1;
  * Sea to the west (cells x 0..7). North half (y < 16): a sand column at x = 8 and land from x = 9.
  * South half: land from x = 8, with no sand at all (a bluff).
  */
+/** Light everywhere: the light of the coast buildings has its own tests below. */
+const lit = (w: World): World => (w.powered.fill(1), w.roadAccess.fill(1), w);
+
 function shore(n = 32): Terrain {
   const s = n + 1;
   const corners = new Uint8Array(s * s);
@@ -56,7 +59,7 @@ function build(w: World, tool: ToolId, ax: number, ay: number, bx = ax, by = ay)
 
 /** A world on the shore with a street that reaches the beach lots, so what stands there works. */
 function streetWorld(): World {
-  const w = new World(shore());
+  const w = lit(new World(shore()));
   build(w, 'road', 10, 3, 10, 12);
   computeRoadAccess(w);
   return w;
@@ -143,7 +146,7 @@ describe('unlocking the coast tools', () => {
 
 describe('where the coast buildings go', () => {
   it('puts a fishing dock and a port on a beach lot next to the water, and charges the price', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     for (const k of ['fishing', 'port'] as const) {
       const p = plan(w, k, ...BEACH);
       expect(p.cells).toEqual([BEACH]);
@@ -152,14 +155,14 @@ describe('where the coast buildings go', () => {
   });
 
   it('accepts a bluff lot that touches the water for everything but the resort', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     for (const k of ['fishing', 'port', 'lighthouse'] as const) expect(plan(w, k, ...BLUFF).cells).toEqual([BLUFF]);
     expect(plan(w, 'promenade', ...BLUFF).cells).toEqual([BLUFF]);
     expect(plan(w, 'resort', ...BLUFF).cells).toEqual([]);
   });
 
   it('puts the resort only on sand next to the water', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     const p = plan(w, 'resort', ...BEACH);
     expect(p.cells).toEqual([BEACH]);
     expect(p.cost).toBe(COAST.resort.cost);
@@ -167,7 +170,7 @@ describe('where the coast buildings go', () => {
   });
 
   it('refuses inland lots, water and lots that are taken', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     for (const k of ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] as const) {
       expect(plan(w, k, 20, 5).cells).toEqual([]);
       expect(plan(w, k, 3, 5).cells).toEqual([]);
@@ -190,7 +193,7 @@ describe('where the coast buildings go', () => {
       [11, 11],
     ])
       corners[cy * s + cx] = WATER;
-    const w = new World({ n, corners, trees: new Uint8Array(n * n) });
+    const w = lit(new World({ n, corners, trees: new Uint8Array(n * n) }));
     expect(w.isWater(11, 11)).toBe(true);
     expect(w.isWater(12, 12)).toBe(false);
     expect(plan(w, 'port', 12, 12).cells).toEqual([[12, 12]]); // touches the lake only at a corner
@@ -199,7 +202,7 @@ describe('where the coast buildings go', () => {
   });
 
   it('drags the promenade like the plaza, keeping only the lots on the coast', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     const along = plan(w, 'promenade', 8, 3, 8, 6);
     expect(along.cells).toHaveLength(4);
     expect(along.cost).toBe(4 * COAST.promenade.cost);
@@ -209,7 +212,7 @@ describe('where the coast buildings go', () => {
   });
 
   it('puts the lighthouse on land within 2 lots of the water, one per city', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     expect(plan(w, 'lighthouse', 9, 5).cells).toEqual([[9, 5]]);
     expect(plan(w, 'lighthouse', 10, 5).cells).toEqual([]); // 3 lots from the water
     const first = build(w, 'lighthouse', 9, 5);
@@ -222,12 +225,12 @@ describe('where the coast buildings go', () => {
   });
 
   it('places nothing on a map without water', () => {
-    const w = new World(dry());
+    const w = lit(new World(dry()));
     for (const k of COAST_TOOLS) expect(plan(w, k, 10, 10).cells).toEqual([]);
   });
 
   it('does not level the ground, light the lot or clear the neighbours', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     const before = w.terrain.corners.slice();
     w.terrain.trees[w.idx(...BEACH)] = 2;
     const net = w.networkVersion;
@@ -240,7 +243,7 @@ describe('where the coast buildings go', () => {
   });
 
   it('writes its tile, and the tile of a zoned lot without building is free to build on', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     w.setTile(8, 5, TILE.R, 0);
     build(w, 'fishing', 8, 5);
     expect(w.tileAt(8, 5)).toBe(TILE.FISHING);
@@ -249,7 +252,7 @@ describe('where the coast buildings go', () => {
   });
 
   it('keeps the old tools exactly as they were', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     expect(plan(w, 'park', 20, 5).cells).toEqual([[20, 5]]);
     expect(plan(w, 'school', 20, 5).cells).toEqual([[20, 5]]);
     expect(plan(w, 'plant', 20, 5).cells).toHaveLength(4);
@@ -258,8 +261,8 @@ describe('where the coast buildings go', () => {
 
 describe('why a coast building is refused', () => {
   it('says it has to be on the coast on a map without water, and on any inland lot', () => {
-    const none = new World(dry());
-    const inland = new World(shore());
+    const none = lit(new World(dry()));
+    const inland = lit(new World(shore()));
     for (const k of COAST_TOOLS) {
       expect(coastRefusal(none, k, 10, 10)).toMatch(/costa/i);
       expect(coastRefusal(none, k, 10, 10)).toMatch(/no tiene agua/i);
@@ -269,19 +272,19 @@ describe('why a coast building is refused', () => {
   });
 
   it('asks for sand at the resort and for the water within 2 lots at the lighthouse', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     expect(coastRefusal(w, 'resort', ...BLUFF)).toMatch(/playa/i);
     expect(coastRefusal(w, 'lighthouse', 20, 5)).toMatch(/2 lotes/);
   });
 
   it('says there is already a lighthouse', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'lighthouse', 9, 5);
     expect(coastRefusal(w, 'lighthouse', 9, 8)).toMatch(/un solo faro/i);
   });
 
   it('says nothing about lots that are fine, or only taken', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     expect(coastRefusal(w, 'port', ...BEACH)).toBeNull();
     build(w, 'road', 8, 8);
     expect(coastRefusal(w, 'port', 8, 8)).toBeNull();
@@ -290,7 +293,7 @@ describe('why a coast building is refused', () => {
 
 describe('a coast building at work', () => {
   it('works with a street within 3 lots, and only then (fishing dock, port, resort)', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'fishing', 8, 5);
     build(w, 'port', 8, 8);
     build(w, 'resort', 8, 11);
@@ -301,14 +304,20 @@ describe('a coast building at work', () => {
     for (const y of [5, 8, 11]) expect(coastWorks(w, w.idx(8, y))).toBe(true);
   });
 
-  it('never needs light or a street for the promenade and the lighthouse', () => {
-    const w = new World(shore());
+  it('needs a street and light for every building of the coast, the promenade and the lighthouse included', () => {
+    const w = lit(new World(shore()));
     build(w, 'promenade', 8, 5);
     build(w, 'lighthouse', 9, 8);
+    computeRoadAccess(w); // no street at all
+    expect(coastWorks(w, w.idx(8, 5))).toBe(false);
+    expect(coastWorks(w, w.idx(9, 8))).toBe(false);
+    build(w, 'road', 10, 3, 10, 12);
     computeRoadAccess(w);
-    expect(w.powered[w.idx(8, 5)]).toBe(0);
     expect(coastWorks(w, w.idx(8, 5))).toBe(true);
     expect(coastWorks(w, w.idx(9, 8))).toBe(true);
+    w.powered.fill(0); // a street but no light
+    expect(coastWorks(w, w.idx(8, 5))).toBe(false);
+    expect(coastWorks(w, w.idx(9, 8))).toBe(false);
   });
 
   it('is false for a lot with no coast building', () => {
@@ -319,7 +328,7 @@ describe('a coast building at work', () => {
 
 describe('jobs of the coast buildings', () => {
   it('counts industrial jobs for the dock and the port, commercial for the resort, and none while they are idle', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'fishing', 8, 5);
     build(w, 'port', 8, 8);
     build(w, 'resort', 8, 11);
@@ -341,6 +350,7 @@ describe('jobs of the coast buildings', () => {
   it('feeds the simulation totals, which a refresh keeps in step with the street', () => {
     const w = streetWorld();
     build(w, 'port', 8, 8);
+    build(w, 'plant', 11, 8); // the light of the port
     const sim = new Simulation(w, newSimState(1), 'X');
     expect(sim.totals.iJobs).toBe(COAST.port.jobs);
     build(w, 'road', 8, 6, 8, 7); // does not matter: the lot already works
@@ -362,7 +372,7 @@ describe('the budget of the coast', () => {
   });
 
   it('charges the upkeep of every coast building, working or not, as the Costa expense', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'fishing', 8, 5);
     build(w, 'port', 8, 8);
     build(w, 'promenade', 8, 11, 8, 12);
@@ -377,7 +387,7 @@ describe('the budget of the coast', () => {
   });
 
   it('earns the fish sales of a working dock only', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'fishing', 8, 5);
     computeRoadAccess(w);
     expect(monthlyBudget(w, 7).coastIncome).toBe(0);
@@ -391,7 +401,7 @@ describe('the budget of the coast', () => {
 
   it('boosts the industrial taxes 15 % per working port, up to 45 %', () => {
     const industrial = (ports: number, withRoad = true): number => {
-      const w = new World(shore());
+      const w = lit(new World(shore()));
       for (let k = 0; k < 6; k++) w.setTile(20 + k, 5, TILE.I, 5);
       if (withRoad) build(w, 'road', 10, 3, 10, 30);
       for (let k = 0; k < ports; k++) build(w, 'port', 8, 3 + 2 * k);
@@ -412,7 +422,7 @@ describe('the budget of the coast', () => {
   });
 
   it('earns tourism in the resort only while it works, by the season of the month asked', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'resort', 8, 5);
     computeRoadAccess(w);
     expect(monthlyBudget(w, 7, undefined, null, 1).coastIncome).toBe(0);
@@ -436,7 +446,7 @@ describe('the budget of the coast', () => {
   });
 
   it('adds the tourism of several resorts', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'road', 10, 3, 10, 12);
     build(w, 'resort', 8, 5);
     build(w, 'resort', 8, 8);
@@ -457,9 +467,10 @@ describe('the budget of the coast', () => {
 describe('the weekly money with a resort', () => {
   /** A static city (a street and a resort): nothing grows, so the season is the only thing that moves. */
   function resortCity(month: number): Simulation {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'road', 10, 3, 10, 12);
     build(w, 'resort', 8, 5);
+    build(w, 'plant', 11, 5); // the light of the resort
     const state = newSimState(1);
     state.tick = (month - 1) * TICKS_PER_MONTH;
     return new Simulation(w, state, 'X');
@@ -546,7 +557,7 @@ describe('smoke, land value and approval', () => {
     expect(w.pollution[w.idx(8, 5)]).toBe(25);
     expect(w.pollution[w.idx(8, 9)]).toBe(5); // 4 lots away: the edge of the smoke
     expect(w.pollution[w.idx(8, 10)]).toBe(0);
-    const idle = new World(shore());
+    const idle = lit(new World(shore()));
     build(idle, 'port', 8, 5);
     computeRoadAccess(idle);
     computePollution(idle);
@@ -554,10 +565,10 @@ describe('smoke, land value and approval', () => {
   });
 
   const valueWith = (tool: ToolId, x: number, y: number, probe: [number, number]) => {
-    const base = new World(shore());
+    const base = lit(new World(shore()));
     computeParks(base, 100);
     computeLandValue(base);
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, tool, x, y);
     computeParks(w, 100);
     computeLandValue(w);
@@ -565,10 +576,10 @@ describe('smoke, land value and approval', () => {
   };
   /** The same measurement around a plaza patch of `cw`×`ch` cells, which is what counts. */
   const patchValue = (cw: number, ch: number, x: number, y: number, probe: [number, number]) => {
-    const base = new World(shore());
+    const base = lit(new World(shore()));
     computeParks(base, 100);
     computeLandValue(base);
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     for (let k = 0; k < ch; k++) for (let j = 0; j < cw; j++) build(w, 'park', x + j, y + k);
     computeParks(w, 100);
     computeLandValue(w);
@@ -600,7 +611,7 @@ describe('smoke, land value and approval', () => {
 
   it('gives the Costanera factor 1 point per 8 promenade lots, up to 5', () => {
     const lots = (count: number) => {
-      const w = new World(shore());
+      const w = lit(new World(shore()));
       for (let k = 0; k < count; k++) w.setTile(8 + (k % 3), Math.floor(k / 3), TILE.PROMENADE);
       return w;
     };
@@ -613,7 +624,7 @@ describe('smoke, land value and approval', () => {
   });
 
   it('gives the Faro factor 3 points', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     expect(factor(w, 'Faro')).toBeUndefined();
     w.setTile(9, 5, TILE.LIGHTHOUSE);
     expect(factor(w, 'Faro')?.points).toBe(3);
@@ -621,14 +632,14 @@ describe('smoke, land value and approval', () => {
   });
 
   it('leaves the approval of a city without coast as it was', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     expect(computeApproval(w, calm)).toEqual({ target: 50, factors: [] });
   });
 });
 
 describe('the streets to a working port', () => {
   function village(withPort: boolean, withStreet = true): World {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'road', 10, 7, 20, 7);
     for (const x of [15, 16]) w.setTile(x, 6, TILE.R, 4);
     if (withPort) build(w, 'port', 8, withStreet ? 7 : 25);
@@ -660,11 +671,11 @@ describe('saving the coast', () => {
 
   it('writes the current format, which is 7 or later because 7 introduced the coast tiles', () => {
     expect(SAVE_VERSION).toBeGreaterThanOrEqual(7);
-    expect(save(new World(shore())).version).toBe(SAVE_VERSION);
+    expect(save(lit(new World(shore()))).version).toBe(SAVE_VERSION);
   });
 
   it('round-trips every coast tile', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'fishing', 8, 3);
     build(w, 'promenade', 8, 5, 8, 6);
     build(w, 'port', 8, 8);
@@ -677,7 +688,7 @@ describe('saving the coast', () => {
 
   it('still opens the saves of formats 1 to 6', () => {
     for (let version = 1; version <= 6; version++) {
-      const data = save(new World(shore()));
+      const data = save(lit(new World(shore())));
       data.version = version;
       if (version < 6) delete data.mayor;
       if (version === 1) {
@@ -697,7 +708,7 @@ describe('saving the coast', () => {
   });
 
   it('refuses a tile id past the lighthouse', () => {
-    const data = save(new World(shore()));
+    const data = save(lit(new World(shore())));
     const bytes = new Uint8Array(32 * 32);
     bytes[0] = MAX_TILE + 1;
     data.tiles = toBase64(bytes);
@@ -735,7 +746,7 @@ describe('undoing a coast building', () => {
       ['resort', 8, 7],
       ['lighthouse', 9, 8],
     ] as [CoastKind, number, number][]) {
-      const w = new World(shore());
+      const w = lit(new World(shore()));
       const h = new UndoHistory();
       w.terrain.trees[w.idx(x, y)] = 3;
       const p = act(w, h, tool, x, y);
@@ -749,7 +760,7 @@ describe('undoing a coast building', () => {
   });
 
   it('undoes a dragged promenade as one action and lets the lighthouse be built again', () => {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     const h = new UndoHistory();
     const p = act(w, h, 'promenade', 8, 3, 8, 6);
     expect(p.cells).toHaveLength(4);
@@ -805,7 +816,7 @@ describe('the newspaper of the coast', () => {
 
   it('reaches the paper of a running city only when the paper is open', () => {
     // A city with no paper: a resort and the December start leave no headline in the news.
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'road', 10, 3, 10, 12);
     build(w, 'resort', 8, 5);
     const state = newSimState(1);
@@ -818,7 +829,7 @@ describe('the newspaper of the coast', () => {
 
 describe('the info card of the coast', () => {
   function city(): Simulation {
-    const w = new World(shore());
+    const w = lit(new World(shore()));
     build(w, 'road', 10, 3, 10, 12);
     build(w, 'fishing', 8, 3);
     build(w, 'promenade', 8, 5);
@@ -826,7 +837,9 @@ describe('the info card of the coast', () => {
     build(w, 'resort', 8, 9);
     build(w, 'lighthouse', 9, 13);
     build(w, 'port', 8, 28); // far from every street
-    return new Simulation(w, newSimState(1), 'X');
+    const sim = new Simulation(w, newSimState(1), 'X');
+    w.powered.fill(1); // the card only reads the light: it is lit everywhere here
+    return sim;
   }
   const card = (sim: Simulation, x: number, y: number) => {
     const r = describeCell(sim.world, sim, x, y);

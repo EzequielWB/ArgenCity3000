@@ -293,8 +293,8 @@ export function computeLandValue(w: World, coast = 1): void {
   for (let i = 0; i < n * n; i++) {
     const t = w.tiles[i];
     if (t === TILE.PARK) splatPark(w, amenities, blight, i);
-    else if (t === TILE.PROMENADE) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.promenadeValue.radius, COAST_FIELDS.promenadeValue.strength);
-    else if (t === TILE.LIGHTHOUSE) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.lighthouseValue.radius, COAST_FIELDS.lighthouseValue.strength);
+    else if (t === TILE.PROMENADE && coastWorks(w, i)) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.promenadeValue.radius, COAST_FIELDS.promenadeValue.strength);
+    else if (t === TILE.LIGHTHOUSE && coastWorks(w, i)) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.lighthouseValue.radius, COAST_FIELDS.lighthouseValue.strength);
     if (w.abandoned[i] && w.level[i] > 0) splat(blight, n, i % n, Math.floor(i / n), 2, 8);
   }
   // An airport that works is loud: its pieces take value off the lots around them.

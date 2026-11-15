@@ -263,13 +263,15 @@ function describeCoast(w: World, sim: Simulation, i: number, kind: CoastKind): C
   const info = COAST[kind];
   const upkeep = `Mantenimiento: $${formatNumber(info.upkeep)} por mes`;
   const works = coastWorks(w, i);
-  const needsStreet = kind === 'fishing' || kind === 'port' || kind === 'resort';
-  const idle: CellReport = {
-    title: info.label,
-    lines: [`Sin calle cerca: no funciona`, upkeep],
-    hint: `Sin una calle a menos de ${ROAD_REACH} lotes no da trabajo ni rinde nada. Trazá una calle que llegue hasta acá.`,
-  };
-  if (needsStreet && !works) return idle;
+  if (!works) {
+    // Every building of the coast needs a street near and light: it says which of the two is missing.
+    const noStreet = !w.roadAccess[i];
+    return {
+      title: info.label,
+      lines: [noStreet ? 'Sin calle cerca: no funciona' : 'Sin luz: no funciona', upkeep],
+      hint: noStreet ? `Sin una calle a menos de ${ROAD_REACH} lotes no da trabajo ni rinde nada. Trazá una calle que llegue hasta acá.` : noLightHint(sim, 'No funciona sin luz', 'la'),
+    };
+  }
   const lines: string[] = [];
   switch (kind) {
     case 'fishing':

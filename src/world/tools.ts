@@ -44,14 +44,14 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'clinic', label: 'Salita', key: 'u', shape: 'point', help: 'Salud: sin salita las casas no pasan de chalet.' },
   { id: 'police', label: 'Comisaría', key: 'i', shape: 'point', help: 'Seguridad: baja el delito en los barrios densos.' },
   { id: 'fire', label: 'Bomberos', key: 'o', shape: 'point', help: 'Cuartel de bomberos voluntarios: apaga incendios.' },
-  { id: 'fishing', label: COAST.fishing.label, key: 'z', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 12 empleos industriales y vende pescado.' },
-  { id: 'promenade', label: COAST.promenade.label, key: 'x', shape: 'rect', help: 'Paseo sobre la costa, se arrastra como la plaza. Sube el valor del suelo y la aprobación.' },
-  { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 40 empleos industriales y sube los impuestos de las fábricas; contamina.' },
-  { id: 'resort', label: COAST.resort.label, key: 'l', shape: 'point', help: 'En la playa. Con una calle cerca da 30 empleos y mucho turismo en verano.' },
+  { id: 'fishing', label: COAST.fishing.label, key: 'z', shape: 'point', help: 'Sobre la costa. Con calle cerca y luz da 12 empleos industriales y vende pescado.' },
+  { id: 'promenade', label: COAST.promenade.label, key: 'x', shape: 'rect', help: 'Paseo sobre la costa, se arrastra como la plaza. Con calle cerca y luz sube el valor del suelo y la aprobación.' },
+  { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con calle cerca y luz da 40 empleos industriales y sube los impuestos de las fábricas; contamina.' },
+  { id: 'resort', label: COAST.resort.label, key: 'l', shape: 'point', help: 'En la playa. Con calle cerca y luz da 30 empleos y mucho turismo en verano.' },
   { id: 'bus', label: BUS.label, key: 'ñ', shape: 'point', help: 'Se puede poner en cualquier lote de tierra, pero solo funciona con una calle a 3 lotes o menos. Alivia el tránsito de las calles a su alrededor y se ven los colectivos andar. Al colocarla elegís el color y el número de la línea.' },
   { id: 'harbor', label: HUBS.harbor.label, key: '.', shape: 'anchor', help: 'Una pieza de 2×2 pegada al agua: un muelle con un barco de paseos. Funciona con una calle a 3 lotes o menos de alguna pieza y con luz: consume mucha electricidad, más cuanto más grande. Si ponés otra pegada es un puerto más grande, y con tres o más hay cruceros. Da empleos y turismo.' },
   { id: 'airport', label: HUBS.airport.label, key: ',', shape: 'anchor', help: 'Una pieza de 3×2 en tierra: un hangar con uno o dos aviones. Funciona con una calle a 3 lotes o menos de alguna pieza y con luz: consume mucha electricidad, más cuanto más grande. Con otra pegada es un aeródromo y con cuatro o más, un aeropuerto internacional. Da empleos y turismo, pero hace ruido: baja el valor del suelo alrededor.' },
-  { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Suma aprobación y valor del suelo.' },
+  { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Con calle cerca y luz suma aprobación y valor del suelo.' },
 ];
 
 export function isServiceTool(tool: ToolId): tool is ServiceKind {
