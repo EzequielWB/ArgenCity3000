@@ -30,12 +30,12 @@ const BODY = [
 
 /** The pictures, 9×9, to go at column 2, row 2 of the body. `.` is empty. */
 const ICONS: Record<Issue, string[]> = {
-  // A traffic cone, orange with a white band: the street does not reach the building.
-  road: ['....o....', '...ocso..', '...ocso..', '..owwwwo.', '..owwwwo.', '.occcccso', '.occcccso', 'ooooooooo', '.........'],
+  // A street under a prohibition sign: the red circle crossed by its red bar. No street reaches the building.
+  road: ['..rrrrr..', '.rwwowwr.', 'rwrooowwr', 'rwwryowwr', 'rwooroowr', 'rwooyrowr', 'rwoooorwr', '.rwwwwwr.', '..rrrrr..'],
   // A traffic light with every lamp on: the street is full.
   jam: ['..ooooo..', '..orrro..', '..orrro..', '..oyyyo..', '..oyyyo..', '..onnno..', '..onnno..', '..ooooo..', '....o....'],
-  // An open book: no school near.
-  school: ['.........', 'ouuuouuuo', 'owwwuwwwo', 'owkkuwkko', 'owwwuwwwo', 'owkkuwkko', 'owwwuwwwo', 'ouuuuuuuo', '.........'],
+  // Three books piled up: no school near.
+  school: ['.ooooooo.', '.ouuuuwo.', '.ooooooo.', 'oooooooo.', 'orrrrrwo.', 'oooooooo.', '.oooooooo', '.onnnnnwo', '.oooooooo'],
   // A house with a red cross over it: nobody lives or works there any more.
   empty: ['....o....', '...ogo...', '..ogggo..', '.ogggggo.', 'ogrgggrgo', 'ogggrgggo', 'ogrgggrgo', 'ogggggggo', 'ooooooooo'],
   // A bare, dry sapling: the plaza is not kept.
