@@ -56,7 +56,7 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   road: 'rgba(85,84,90,0.55)',
   roadPaved: 'rgba(60,59,66,0.6)',
   roadBoulevard: 'rgba(124,192,106,0.55)',
-  line: 'rgba(255,216,74,0.45)',
+  line: 'rgba(255,228,120,0.8)',
   zoneR: 'rgba(124,192,106,0.55)',
   zoneC: 'rgba(111,183,224,0.55)',
   zoneI: 'rgba(224,181,66,0.55)',
@@ -537,7 +537,9 @@ export class Game implements PointerTarget {
     const cells = this.cellsFor(a, b);
     const plan = planTool(this.world, this.tool, cells);
     const plantKind = plantKindOfTool(this.tool);
-    const shown = footprintOfTool(this.tool, this.world.n, b[0], b[1]) ?? cells;
+    // A power line stands one pole every few cells: the ground in between is not a refusal, so the
+    // preview paints only the poles instead of turning the whole drag red.
+    const shown = footprintOfTool(this.tool, this.world.n, b[0], b[1]) ?? (this.tool === 'line' && plan.cells.length > 0 ? plan.cells : cells);
     this.view.preview = {
       cells: shown,
       valid: new Set(plan.cells.map(([x, y]) => this.world.idx(x, y))),

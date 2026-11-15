@@ -40,6 +40,14 @@ celdas pegadas: el poste quedaba con el cable cortado en el aire aunque la luz p
   así que un tramo horizontal o diagonal dibujaba el mismo cable dos veces encima. Ahora el
   corrimiento es perpendicular a la dirección del tramo: los tramos verticales quedan igual que
   antes y los horizontales y los diagonales muestran dos hilos.
+- **S11 El preview pinta los postes, no el arrastre (verbatim).** "cuando tiro el cable a lo largo este
+  se pone en rojo y en amarillo donde lo va a colocar, bueno pareciera el rojo que no se puede poner,
+  por tanto quedaria mejor que el color del suelo sea el normal al colocar y que al extender asi en
+  donde va a ir el palo se ilumine un poco mas fuerte". El preview pintaba el color del tool en toda
+  celda del arrastre que entraba en el plan y **rojo** en la que no, así que con S10 la mayoría de la
+  recta salía roja aunque no hubiera nada malo. Ahora, con el tendido, el preview dibuja solo las
+  celdas donde va el poste, en un amarillo más fuerte, y el suelo entre medio queda con su color
+  normal. Si no cabe ningún poste el preview sigue mostrando el arrastre en rojo con el aviso.
 - **S10 La recta aprovecha el alcance (verbatim).** "me gustaria que si yo hago una linea recta con
   el mismo, este se coloque de la forma mas eficiente posible, es decir aprovechando su rango para
   eso (cada 3 bloques uno)". Un arrastre recto ya no deja un poste por celda: deja el primero y
@@ -55,6 +63,7 @@ celdas pegadas: el poste quedaba con el cable cortado en el aire aunque la luz p
 | T2 Dibujo de los tramos y comba por distancia | S5, S6 | `src/render/mapRenderer.ts` (`drawWires`) | hecho | capturas 28 y 29: postes cada 2 y 3 celdas con el cable tendido |
 | T3 Lo que queda afuera queda escrito | S7 | este documento | hecho | S7 |
 | T4 Tramos diagonales y dos hilos perpendiculares | S8, S9 | `src/render/wire.ts`, `src/render/mapRenderer.ts` | hecho | `tests/wires.test.ts` (3 nuevos): diagonal a 2 celdas, los dos lados del fondo, y nada a 3 celdas en diagonal |
+| T6 El preview muestra postes, no el arrastre | S11 | `src/game.ts` | hecho | `npx tsc --noEmit` limpio y 870 tests en verde; el amarillo pasa de `rgba(255,216,74,0.45)` a `rgba(255,228,120,0.8)` |
 | T5 Un poste cada `LINE_REACH` en la recta | S10 | `src/world/tools.ts` | hecho | `tests/tools.test.ts` (4 nuevos): 0/3/6/9 en una recta de 10, un solo poste si entra en el alcance, ningún par a más de `LINE_REACH`, y el espaciado no se corre por una celda ocupada |
 
 Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`.
@@ -83,3 +92,12 @@ Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`.
   celdas para preguntar por la celda del medio; como esa celda ya no lleva poste, el test ahora arma
   uno solo y pregunta por él. Verificación: `npx tsc --noEmit` limpio y `npm test` con 870 tests en
   verde (863 antes, 7 nuevos).
+- **L6 (2026-11-19), el rojo que sobraba.** Pedido (verbatim): "Lo que si veo que cuando tiro el cable a
+  lo largo este se pone en rojo y en amarillo donde lo va a colocar, bueno pareciera el rojo que no se
+  puede poner, por tanto quedaria mejor que el color del suelo sea el normal al colocar y que al
+  extender asi en donde va a ir el palo se ilumine un poco mas fuerte (basicamente es cambiar como
+  estan los colores ahora)". Era una consecuencia de S10 que no se había visto: `drawPreview` pinta
+  rojo lo que queda fuera del plan, y con un poste cada tres celdas eso pasó a ser la mayor parte del
+  arrastre. Se arregló donde se arma el preview, no en el dibujo: con el tendido, `shown` son los
+  postes del plan. El rojo sigue existiendo para lo que de verdad no se puede, y para el tendido queda
+  solo cuando no entra ningún poste.
