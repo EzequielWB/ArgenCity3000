@@ -17,6 +17,8 @@ import { $, escapeHtml, toast } from './dom';
 import { governmentCardsHtml } from './government';
 
 let closeHook: (() => void) | null = null;
+/** A window that has to be answered (a random event): the backdrop, the cross and Esc do not close it. */
+let locked = false;
 
 export function isModalOpen(): boolean {
   return !$('#modal').classList.contains('hidden');
@@ -31,8 +33,21 @@ export function openModal(html: string, onClose?: () => void, shape?: ModalShape
   $('#modalCard').dataset.shape = shape ?? '';
   $('#modal').classList.remove('hidden');
   closeHook = onClose ?? null;
+  locked = false;
+  $('#modal').classList.remove('locked');
   $('#modalClose').focus();
   return body;
+}
+
+/** Makes the open window impossible to dismiss: it only closes when its own code calls `closeModal`. */
+export function lockModal(): void {
+  locked = true;
+  $('#modal').classList.add('locked');
+}
+
+/** What the player does to get out of a window: it ignores a locked one. */
+export function dismissModal(): void {
+  if (!locked) closeModal();
 }
 
 export function closeModal(): void {
@@ -45,9 +60,9 @@ export function closeModal(): void {
 }
 
 export function initModal(): void {
-  $('#modalClose').addEventListener('click', closeModal);
+  $('#modalClose').addEventListener('click', dismissModal);
   $('#modal').addEventListener('pointerdown', (e) => {
-    if (e.target === e.currentTarget) closeModal();
+    if (e.target === e.currentTarget) dismissModal();
   });
 }
 
@@ -607,8 +622,9 @@ export function openEvent(game: Game): void {
         )
         .join('')}
     </div>
-    <p><small>El tiempo está en pausa hasta que elijas.</small></p>
+    <p><small>El tiempo está en pausa hasta que elijas, y sigue solo.</small></p>
   `);
+  lockModal();
   body.querySelectorAll<HTMLButtonElement>('button[data-option]').forEach((btn) =>
     btn.addEventListener('click', () => {
       game.sim.answerEvent(Number(btn.dataset.option));

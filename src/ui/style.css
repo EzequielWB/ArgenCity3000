@@ -2269,3 +2269,8 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* A window that must be answered (a random event) has no cross: the only way out is one of its buttons. */
+#modal.locked #modalClose {
+  display: none;
+}

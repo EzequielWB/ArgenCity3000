@@ -10,7 +10,7 @@ import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
 import { installOrnaments } from './ui/filete';
 import { PHRASES, nextPhrase } from './ui/phrases';
-import { closeModal, initModal, isModalOpen, openBudget, openGovernment, openHelp, openSaves } from './ui/panels';
+import { closeModal, dismissModal, initModal, isModalOpen, openBudget, openGovernment, openHelp, openSaves } from './ui/panels';
 import { openTutorialAsk } from './ui/tutorial';
 import { MAP_KINDS, generateMap, type MapKind } from './world/mapkinds';
 import type { Terrain } from './world/terrain';
@@ -287,7 +287,7 @@ function updatePan(): void {
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return;
   if (isModalOpen()) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') dismissModal();
     return;
   }
   if (!game) return;
