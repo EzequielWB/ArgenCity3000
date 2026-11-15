@@ -2163,3 +2163,37 @@ ol.steps li {
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* The newspaper on a phone: a button on the map opens it as a sheet over part of the screen. */
+#btnDiario {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  #btnDiario {
+    display: block;
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 6;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    font-size: 20px;
+    line-height: 1;
+    background: var(--paper);
+    border: 3px solid var(--gold-dark);
+    box-shadow: 3px 3px 0 #000;
+    cursor: pointer;
+  }
+
+  #app.diario-open #diario {
+    display: flex;
+    position: fixed;
+    left: 8px;
+    z-index: 7;
+    width: min(92vw, 380px);
+    max-height: 55vh;
+    margin: 0;
+  }
+}

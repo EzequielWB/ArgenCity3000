@@ -199,6 +199,15 @@ $('#startName').addEventListener('keydown', (e) => {
 
 $('#btnBudget').addEventListener('click', () => game && openBudget(game));
 $('#btnSave').addEventListener('click', () => game && openSaves(game, launch));
+/** The newspaper on a phone: the button opens it as a sheet right under itself; it closes with the button or a tap on the map. */
+const diarioBtn = $('#btnDiario');
+const setDiario = (open: boolean): void => {
+  $('#app').classList.toggle('diario-open', open);
+  diarioBtn.setAttribute('aria-expanded', String(open));
+  if (open) $('#diario').style.top = diarioBtn.getBoundingClientRect().bottom + 6 + 'px';
+};
+diarioBtn.addEventListener('click', () => setDiario(!$('#app').classList.contains('diario-open')));
+$('#game').addEventListener('pointerdown', () => setDiario(false));
 $('#btnHelp').addEventListener('click', openHelp);
 
 function showSound(): void {
