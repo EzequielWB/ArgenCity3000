@@ -661,7 +661,9 @@ describe('the rest between repeats', () => {
     const s = sim.state as { pendingEvent: string | null; lastEvent: number; tick: number };
     s.pendingEvent = null;
     s.lastEvent = 0; // keep the gap out of the way: the rest is what is under test
-    s.tick = TICKS_PER_MONTH * 24 + seed;
+    // March, and the seed stays inside the month: the calendar has no holiday there, so this keeps
+    // being about the random catalogue.
+    s.tick = TICKS_PER_MONTH * 26 + (seed % TICKS_PER_MONTH);
     (sim as unknown as { fireEvent(): void }).fireEvent();
     const id = s.pendingEvent;
     s.pendingEvent = null;

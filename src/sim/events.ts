@@ -2,15 +2,16 @@ import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH } from '..
 import type { Rng } from '../core/rng';
 import { busStations } from '../world/transport';
 import { TILE, type World, zoneOf } from '../world/world';
-import { dateOf } from './calendar';
+import { HOLIDAYS, celebratedHolidayOf, dateOf, type Holiday } from './calendar';
+import { formatMoney } from '../core/format';
 import { countSchools } from './commitments';
-import { COAST_BOOST, COAST_WORN, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, coolOf, lockOf } from './effects';
+import { COAST_BOOST, COAST_WORN, FIESTA, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, coolOf, lockOf } from './effects';
 import { waterDistance } from './fields';
 import { isUnlocked } from './milestones';
 import { monthsToElection } from './politics';
 import type { Simulation } from './simulation';
 
-/** One of the two things the Intendente can do about an event. */
+/** One of the ways out of an event: usually two, three on a holiday. */
 export interface EventOption {
   /** The button, in the imperative: what the Intendente does. */
   label: string;
@@ -25,9 +26,11 @@ export interface CityEvent {
   id: string;
   title: string;
   text: string;
+  /** Set on a holiday: it has a fixed date, and the window says so. */
+  kind?: 'feriado';
   /** Only fires when this holds: the case has to be about *this* city. */
   when: (sim: Simulation) => boolean;
-  options: readonly [EventOption, EventOption];
+  options: readonly EventOption[];
 }
 
 /** Plain average of a per-cell measure over the buildings that are standing. */
@@ -725,6 +728,56 @@ const PANTALLA: CityEvent = {
 };
 
 /** The catalogue, in no particular order: `pickEvent` rolls among the ones the city deserves. */
+
+/** What a holiday costs and what it gives back. The big one is two and a half times the act. */
+const FESTEJO = { grande: 2250, acto: 900 } as const;
+
+/**
+ * A holiday as a case: three ways out, the two that pay and the one that only costs face. The big
+ * one also stops the works for a month, which is the production the Intendente puts in.
+ */
+function holidayEvent(h: Holiday): CityEvent {
+  return {
+    id: `feriado-${h.month}`,
+    kind: 'feriado',
+    title: `${h.name} en el pueblo`,
+    text: `Llega ${h.name} y el barrio espera ${h.what}. Como Intendente hay que decidir cuánto se pone, sabiendo que la caja no es la misma todos los meses.`,
+    when: () => true,
+    options: [
+      {
+        label: 'Festejarlo a lo grande',
+        detail: `Cuestan ${formatMoney(FESTEJO.grande)} y un mes sin obra. La aprobación sube y el pueblo gasta dos meses.`,
+        apply: (sim) => {
+          sim.state.cash -= FESTEJO.grande;
+          sim.nudgeApproval(6);
+          sim.effect(FIESTA, 2);
+          sim.effect(FREEZE, 1);
+        },
+      },
+      {
+        label: 'Un acto en la plaza',
+        detail: `Cuestan ${formatMoney(FESTEJO.acto)}. La aprobación sube un poco y el pueblo gasta un mes.`,
+        apply: (sim) => {
+          sim.state.cash -= FESTEJO.acto;
+          sim.nudgeApproval(3);
+          sim.effect(FIESTA, 1);
+        },
+      },
+      {
+        label: 'Que pase nomás',
+        detail: 'No se gasta nada, y el barrio lo nota: la aprobación baja.',
+        apply: (sim) => sim.nudgeApproval(-5),
+      },
+    ],
+  };
+}
+
+/** The six holidays as cases, in calendar order. */
+export const HOLIDAY_EVENTS: readonly CityEvent[] = HOLIDAYS.map(holidayEvent);
+
+/** The case of the holiday of `month`, or null when that month has none. */
+export const holidayEventOf = (month: number): CityEvent | null => HOLIDAY_EVENTS.find((e) => e.id === `feriado-${month}`) ?? null;
+
 export const EVENTS: readonly CityEvent[] = [
   PIQUETE,
   PROVINCIA,
@@ -753,7 +806,7 @@ export const EVENTS: readonly CityEvent[] = [
 ];
 
 export function eventById(id: string): CityEvent | undefined {
-  return EVENTS.find((e) => e.id === id);
+  return EVENTS.find((e) => e.id === id) ?? HOLIDAY_EVENTS.find((e) => e.id === id);
 }
 
 /**
@@ -763,6 +816,20 @@ export function eventById(id: string): CityEvent | undefined {
  * `EVENT.cooldown` that showed up: it has to wait for that many others first. The roll comes from the
  * simulation's own seeded rng, so a saved game replays the same.
  */
+/**
+ * The case of this month: the holiday when the month has one, or whatever the roll brings. The roll
+ * happens even on a holiday, because the growth loop shares the simulation's dice and skipping a
+ * throw would reshuffle the whole city. A month that cannot have a case (a promise being watched, a
+ * window still open, the first year) rolls nothing, exactly as before.
+ */
+export function eventOfMonth(sim: Simulation, rng: Rng): CityEvent | null {
+  const rolled = pickEvent(sim, rng);
+  const s = sim.state;
+  if (s.tick < TICKS_PER_MONTH * EVENT.firstAt) return null;
+  const { month, year } = dateOf(s.tick);
+  return celebratedHolidayOf(year, month) ? holidayEventOf(month) : rolled;
+}
+
 export function pickEvent(sim: Simulation, rng: Rng): CityEvent | null {
   const s = sim.state;
   if (s.pendingEvent || s.commitment) return null;

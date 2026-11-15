@@ -72,18 +72,28 @@ function starterCity(): World {
 
 describe('a growing city', () => {
   it('leaves a humble holdout as it is while the humble houses around it improve', () => {
+    // A whole row of each kind: the growth loop starts each month at a random lot and there is only
+    // so much demand, so one single lot growing is a lottery and not a rule.
     const w = starterCity();
     const stays = Array.from({ length: 256 }, (_, v) => v).find((v) => isHoldout(v))!;
     const grows = Array.from({ length: 256 }, (_, v) => v).find((v) => !isHoldout(v))!;
-    const [a, b] = [w.idx(3, 4), w.idx(4, 4)];
-    w.level[a] = HUMBLE;
-    w.variant[a] = stays;
-    w.level[b] = HUMBLE;
-    w.variant[b] = grows;
+    const holdouts: number[] = [];
+    const others: number[] = [];
+    for (let x = 2; x <= 20; x++) {
+      for (const [y, variant, into] of [
+        [4, stays, holdouts],
+        [5, grows, others],
+      ] as const) {
+        const i = w.idx(x, y);
+        w.level[i] = HUMBLE;
+        w.variant[i] = variant;
+        into.push(i);
+      }
+    }
     const sim = new Simulation(w, newSimState(5), 'X');
     for (let i = 0; i < TICKS_PER_MONTH * 24; i++) sim.tick();
-    expect(w.level[a]).toBe(HUMBLE);
-    expect(w.level[b]).toBeGreaterThan(HUMBLE);
+    expect(holdouts.filter((i) => w.level[i] === HUMBLE)).toEqual(holdouts);
+    expect(others.filter((i) => w.level[i] > HUMBLE).length).toBeGreaterThan(0);
     expect(sim.totals.pop).toBeGreaterThan(EARLY_CITY);
   });
 });

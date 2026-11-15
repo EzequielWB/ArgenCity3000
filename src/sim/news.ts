@@ -1,6 +1,7 @@
 import { LOANS, SERVICE_KINDS, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { formatMoney, formatNumber, settlementType } from '../core/format';
 import { TILE, type World } from '../world/world';
+import { holidayOf } from './calendar';
 import { demolitionPoints } from './politics';
 
 /** What the newspaper compares month to month. */
@@ -119,6 +120,9 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
     if (next.month === 12) out.push(`Arranca la temporada: los balnearios de ${city} esperan turistas`);
     if (next.month === 3) out.push(`Terminó la temporada: los balnearios de ${city} se vacían hasta el verano`);
   }
+  // Every holiday makes the paper, celebrated with a decision that year or not.
+  const holiday = holidayOf(next.month);
+  if (holiday && prev.month !== next.month) out.push(`${holiday.name} en ${city}: el pueblo se prepara para ${holiday.what}`);
   if (prev.month === 12 && next.month === 1) {
     out.push(`Balance ${prev.year}: ${formatNumber(next.pop)} habitantes y ${formatMoney(next.cash)} en la caja`);
   }

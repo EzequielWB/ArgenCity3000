@@ -23,6 +23,8 @@ export const MIRACLE = 'milagro';
 export const COAST_WORN = 'coastWorn';
 /** The city bought power from the Province: no blackouts while it lasts. */
 export const NO_BLACKOUT = 'noBlackout';
+/** The town is celebrating: everything it earns is a fifth more while it lasts (see `incomeFactor`). */
+export const FIESTA = 'fiesta';
 
 /** A budget slider that cannot be moved: the Province put a condition, or the money came tied. */
 export const lockOf = (kind: ServiceKind | 'green'): string => `lock:${kind}`;
@@ -38,10 +40,11 @@ export const EFFECT_FACTOR: Record<string, number> = {
   [COAST_WORN]: 0.4,
   [DROUGHT]: 0.7,
   [MIRACLE]: 1.2,
+  [FIESTA]: 1.12,
 };
 
-/** What the city earns, as a multiplier: the drought and the miracles of a theocracy. */
-export const incomeFactor = (effects: Readonly<Effects>): number => factorOf(effects, DROUGHT, MIRACLE);
+/** What the city earns, as a multiplier: the drought, the miracles of a theocracy and the holidays. */
+export const incomeFactor = (effects: Readonly<Effects>): number => factorOf(effects, DROUGHT, MIRACLE, FIESTA);
 
 /** Multiplier of `key` over the effects that are on, or 1 when none of them is. */
 export function factorOf(effects: Readonly<Effects>, ...keys: string[]): number {

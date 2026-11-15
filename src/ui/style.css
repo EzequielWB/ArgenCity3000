@@ -466,6 +466,10 @@ button.chapa:focus-visible {
 }
 
 /* The event of the month: two ways out, each with its consequence written under the label. */
+.event-kicker.feriado {
+  color: #74acdf;
+}
+
 .event-kicker {
   margin: 0 0 2px;
   font-size: 11px;

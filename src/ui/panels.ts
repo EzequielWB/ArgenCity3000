@@ -718,7 +718,7 @@ export function openEvent(game: Game): void {
   const event = game.sim.openEvent();
   if (!event) return;
   const body = openModal(`
-    <p class="event-kicker">Se cruza en la gestión</p>
+    <p class="event-kicker${event.kind === 'feriado' ? ' feriado' : ''}">${event.kind === 'feriado' ? 'Feriado' : 'Se cruza en la gestión'}</p>
     <h2>${escapeHtml(event.title)}</h2>
     <p>${escapeHtml(event.text)}</p>
     <div class="event-options">

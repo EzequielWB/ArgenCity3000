@@ -41,7 +41,7 @@ import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './
 import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
-import { eventById, pickEvent, type CityEvent } from './events';
+import { eventById, eventOfMonth, type CityEvent } from './events';
 import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
 
 export interface SimState {
@@ -429,10 +429,10 @@ export class Simulation {
     return this.state.pendingEvent ? (eventById(this.state.pendingEvent) ?? null) : null;
   }
 
-  /** Answers the pending event with one of its two options: doing nothing is not one. */
+  /** Answers the pending event with one of its options: doing nothing is not one. */
   answerEvent(index: number): void {
     const event = this.openEvent();
-    const option = event && (index === 0 || index === 1) ? event.options[index] : null;
+    const option = event && index >= 0 && index < event.options.length ? event.options[index] : null;
     this.state.pendingEvent = null;
     if (option) option.apply(this);
   }
@@ -574,7 +574,7 @@ export class Simulation {
    * window reopens after a load and nothing gets decided behind their back.
    */
   private fireEvent(): void {
-    const event = pickEvent(this, this.rng);
+    const event = eventOfMonth(this, this.rng);
     if (!event) return;
     this.state.pendingEvent = event.id;
     this.state.lastEvent = this.state.tick;
