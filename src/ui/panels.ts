@@ -1,5 +1,5 @@
 import { TILE } from '../world/world';
-import { GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, PARK, SERVICE_KINDS, type GovernmentKind, type ServiceKind } from '../config';
+import { GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, SERVICE_KINDS, type GovernmentKind, type ServiceKind } from '../config';
 import type { Simulation } from '../sim/simulation';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
@@ -137,7 +137,6 @@ export function openBudget(game: Game): void {
         <p id="taxNote"></p>
         <h3>Presupuesto de servicios</h3>
         <div class="tax general"><label for="fundall">Todos a la vez</label><input type="range" id="fundall" data-all="1" min="0" max="${MAX_FUNDING}" step="10" value="${averageFunding(sim)}"><output>${averageFunding(sim)} %</output></div>
-        <p class="general-note"><small>Mueve todos los presupuestos de abajo juntos, cada uno la misma cantidad: si uno está al 50 y otro al 70, subir 10 los deja en 60 y 80. Los impuestos no se tocan.</small></p>
         ${SERVICE_ROWS.map(
           ([k, label]) =>
             `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
@@ -146,7 +145,7 @@ export function openBudget(game: Game): void {
         <div class="tax"><label for="fundgreen">Espacios verdes</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
         <div class="tax"><label for="fundroads">Calles</label><input type="range" id="fundroads" data-roads="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.roads}"><output>${sim.state.roads} %</output></div>
         <div class="tax"><label for="fundtransport">Transporte</label><input type="range" id="fundtransport" data-transport="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.transport}"><output>${sim.state.transport} %</output></div>
-        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. El transporte es igual: al 50 % hay la mitad de colectivos y cada línea alivia la mitad del tránsito, y si lo recortás mucho los choferes pueden hacer paro. Las usinas también: con menos presupuesto generan menos (al 0 % la mitad) y puede faltar luz. Las calles igual: con menos presupuesto se mantienen peor y llevan menos tránsito (al 0 % la mitad), así que se atascan antes. Los espacios verdes son distintos: por debajo del ${PARK.care} % estos se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
+        <p><small>Cuanto menos presupuesto, peor servicio: cuesta menos pero rinde menos, y recortar de más puede traer paros. Por encima del 100 % rinde un poco más.</small></p>
         <p class="locked-note hidden" id="lockNote"></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>

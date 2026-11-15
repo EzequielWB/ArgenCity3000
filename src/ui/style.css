@@ -2361,7 +2361,3 @@ button.chapa.divino:focus-visible {
   color: var(--gold-light);
 }
 
-.general-note {
-  margin: 0 0 8px;
-  color: var(--muted);
-}
