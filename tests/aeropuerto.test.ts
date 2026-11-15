@@ -6,6 +6,7 @@ import { monthlyBudget } from '../src/sim/budget';
 import { cityTotals } from '../src/sim/demand';
 import { computeLandValue } from '../src/sim/fields';
 import { hubIncome, hubJobs, hubUpkeep } from '../src/sim/hubs';
+import { computePower } from '../src/sim/power';
 import { describeCell } from '../src/sim/report';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { toolPrice } from '../src/ui/toolbar';
@@ -26,6 +27,7 @@ function shore(n = 32): Terrain {
 /** A street along y = 10, from x = 0 to x = 19. */
 function city(): World {
   const w = new World(shore());
+  w.powered.fill(1); // lit everywhere: the light is tested on its own below
   for (let x = 0; x < 20; x++) w.setTile(x, 10, TILE.ROAD);
   return w;
 }
@@ -309,5 +311,46 @@ describe('saving the airports and harbours', () => {
     expect(() => deserialize(withHubs([{ x: 8, y: 12, kind: 'airport' }]))).toThrow(/sin terreno/);
     expect(() => deserialize(withHubs([{ x: 2, y: 12, kind: 'airport' }, { x: 3, y: 12, kind: 'airport' }]))).toThrow(/sin terreno/);
     expect(() => deserialize(withHubs([]))).toThrow(/no coinciden/);
+  });
+});
+
+describe('the light of airports and harbours', () => {
+  /** A city with no light given for free: only the plant lights things. */
+  const dark = (): World => {
+    const w = city();
+    w.powered.fill(0);
+    return w;
+  };
+
+  it('does not work in the dark, and asks for the power of its level once a plant lights it', () => {
+    const w = dark();
+    put(w, 'airport', 2, 11);
+    expect(hubFacilities(w)[0].lit).toBe(false);
+    expect(hubJobs(w)).toBe(0);
+    put(w, 'plant', 5, 11);
+    const report = computePower(w);
+    expect(hubFacilities(w)[0].lit).toBe(true);
+    expect(hubJobs(w)).toBe(HUBS.airport.jobs[0]);
+    expect(report.use).toBe(HUBS.airport.power[0]);
+  });
+
+  it('asks for more the bigger it is, shared among its pieces', () => {
+    const w = dark();
+    put(w, 'plant', 3, 8);
+    put(w, 'airport', 2, 11);
+    put(w, 'airport', 5, 11);
+    expect(computePower(w).use).toBe(HUBS.airport.power[1]);
+    expect(HUBS.airport.power[1]).toBeGreaterThan(HUBS.airport.power[0]);
+    expect(HUBS.airport.power[2]).toBeGreaterThan(HUBS.airport.power[1]);
+    expect(HUBS.harbor.power[2]).toBeGreaterThan(HUBS.harbor.power[0]);
+  });
+
+  it('says on its card what it consumes', () => {
+    const w = dark();
+    put(w, 'airport', 2, 11);
+    put(w, 'plant', 5, 11);
+    const sim = new Simulation(w, newSimState(1), 'X');
+    sim.refresh();
+    expect(describeCell(w, sim, 3, 11).lines.join(' ')).toMatch(/Consume 40 MW/);
   });
 });

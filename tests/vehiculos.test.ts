@@ -15,6 +15,7 @@ function shore(n = 40): Terrain {
 
 function city(): World {
   const w = new World(shore());
+  w.powered.fill(1);
   for (let x = 0; x < 20; x++) w.setTile(x, 10, TILE.ROAD);
   return w;
 }

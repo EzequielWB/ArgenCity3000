@@ -1,4 +1,5 @@
-import { LINE_REACH, POWER_REACH, POWER_USE, SERVICES } from '../config';
+import { HUBS, LINE_REACH, POWER_REACH, POWER_USE, SERVICES } from '../config';
+import { hubFacilities } from '../world/hubs';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { plantCapacity } from './plants';
 
@@ -20,6 +21,19 @@ export function powerNeed(w: World, i: number): number {
   const service = serviceOf(w.tiles[i]);
   if (service) return SERVICES[service].power;
   return w.isOccupied(i) ? buildingPowerUse(w.tiles[i], w.level[i]) : 0;
+}
+
+/**
+ * What the airports and harbours ask for: the facility of its level, shared by its pieces, each one asking on its own first lot.
+ * The bigger the facility, the more it takes: an international airport is half a coal plant.
+ */
+function hubPowerNeeds(w: World): Map<number, number> {
+  const needs = new Map<number, number>();
+  for (const f of hubFacilities(w)) {
+    const each = Math.ceil(HUBS[f.kind].power[f.level - 1] / f.pieces.length);
+    for (const p of f.pieces) needs.set(w.idx(p.x, p.y), each);
+  }
+  return needs;
 }
 
 /** The cells of a disc of the given radius around a cell, as dx/dy pairs (the centre excluded). */
@@ -93,6 +107,7 @@ export function computePower(w: World): PowerReport {
   let use = 0;
   let shortage = false;
   const queue = new Int32Array(n * n);
+  const hubNeed = hubPowerNeeds(w);
 
   for (const plant of w.plants) {
     const start = w.idx(plant.x, plant.y);
@@ -134,7 +149,7 @@ export function computePower(w: World): PowerReport {
     let netUse = 0;
     for (let k = 0; k < tail; k++) {
       const i = queue[k];
-      const need = powerNeed(w, i);
+      const need = hubNeed.get(i) ?? powerNeed(w, i);
       if (need === 0) continue;
       netUse += need;
       if (need <= remaining) {
@@ -146,7 +161,7 @@ export function computePower(w: World): PowerReport {
     }
     for (let k = 0; k < tail; k++) {
       const i = queue[k];
-      if (powerNeed(w, i) === 0) powered[i] = remaining > 0 ? 1 : 0;
+      if ((hubNeed.get(i) ?? powerNeed(w, i)) === 0) powered[i] = remaining > 0 ? 1 : 0;
     }
     capacity += cap;
     use += netUse;

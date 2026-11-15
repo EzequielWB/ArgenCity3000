@@ -67,8 +67,10 @@ export interface HubFacility {
   kind: HubKind;
   pieces: Hub[];
   level: number;
-  /** Whether it works: a street within reach of one of its pieces and, for a harbour, water at one of them. */
+  /** Whether it works: a street within reach of one of its pieces, water at one of them for a harbour, and light on all of them. */
   works: boolean;
+  /** True when every piece has light: airports and harbours ask for power like any other building (see `hubPowerNeeds`). */
+  lit: boolean;
 }
 
 /** The facilities of the city: its pieces, grouped by kind and by the edges they share. */
@@ -86,7 +88,8 @@ export function hubFacilities(w: World): HubFacility[] {
     const feet = pieces.map((p) => hubFootprint(kind, w.n, p.x, p.y));
     const street = feet.some((f) => f.some(([x, y]) => streetNear(w, x, y)));
     const water = kind !== 'harbor' || feet.some((f) => touchesWater(w, f));
-    return { kind, pieces, level: hubLevel(kind, pieces.length), works: street && water };
+    const lit = pieces.every((p) => w.powered[w.idx(p.x, p.y)] === 1);
+    return { kind, pieces, level: hubLevel(kind, pieces.length), works: street && water && lit, lit };
   });
 }
 

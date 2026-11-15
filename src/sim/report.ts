@@ -147,11 +147,12 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
     const pieces = facility?.pieces.length ?? 1;
     const needed = level < 3 ? HUB_LEVELS[hubKind][level] - pieces : 0;
     const works = facility?.works ?? false;
-    const why = streetNear(w, x, y) ? 'ya no toca el agua' : `sin calle a ${ROAD_REACH} lotes o menos`;
+    const why = !streetNear(w, x, y) ? `sin calle a ${ROAD_REACH} lotes o menos` : facility && !facility.lit ? 'sin electricidad: no le llega luz o la red no alcanza' : 'ya no toca el agua';
     const lines = [
       height,
       `${pieces} pieza${pieces === 1 ? '' : 's'} pegada${pieces === 1 ? '' : 's'}`,
       works ? `Da ${info.jobs[level - 1]} empleos comerciales y entran $${formatNumber(info.income[level - 1])} por mes` : `No funciona: ${why}`,
+      `Consume ${formatNumber(info.power[level - 1])} MW de electricidad`,
       `Mantenimiento: $${formatNumber(info.upkeep * pieces)} por mes`,
     ];
     if (info.noiseRadius > 0) lines.push(`Ruido: baja el valor del suelo hasta ${info.noiseRadius} lotes a la redonda`);

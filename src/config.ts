@@ -74,7 +74,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
   tecnocracia: {
     label: 'Tecnocracia',
     blurb: 'Gobierna el que sabe: mandatos largos y la mitad de la opinión en juego.',
-    pros: ['Elecciones cada 6 años y con el 50 % alcanza', 'La Provincia gira los subsidios de cada hito'],
+    pros: ['Elecciones cada 6 años', 'La Provincia gira los subsidios de cada hito'],
     cons: ['La aprobación se mueve la mitad de rápido: si la ciudad se enoja, tardás en recuperarla', 'Llega un 5 % menos de gente nueva'],
     termYears: 6,
     toWin: 50,
@@ -355,16 +355,17 @@ export type HubKind = 'airport' | 'harbor';
 export const HUB_KINDS: readonly HubKind[] = ['airport', 'harbor'];
 export const HUBS: Record<
   HubKind,
-  { label: string; w: number; h: number; cost: number; upkeep: number; jobs: readonly number[]; income: readonly number[]; names: readonly string[]; noise: readonly number[]; noiseRadius: number }
+  { label: string; w: number; h: number; cost: number; upkeep: number; jobs: readonly number[]; income: readonly number[]; power: readonly number[]; names: readonly string[]; noise: readonly number[]; noiseRadius: number }
 > = {
   airport: {
     label: 'Aeropuerto',
     w: 3,
     h: 2,
     cost: 6000,
-    upkeep: 350,
+    upkeep: 450,
     jobs: [20, 80, 300],
-    income: [300, 1200, 4000],
+    income: [250, 900, 2800],
+    power: [40, 120, 300],
     names: ['Hangar', 'Aeródromo', 'Aeropuerto internacional'],
     noise: [6, 12, 22],
     noiseRadius: 8,
@@ -374,9 +375,10 @@ export const HUBS: Record<
     w: 2,
     h: 2,
     cost: 3500,
-    upkeep: 220,
+    upkeep: 280,
     jobs: [15, 60, 200],
-    income: [200, 800, 2500],
+    income: [150, 600, 1800],
+    power: [25, 70, 160],
     names: ['Muelle de paseos', 'Puerto', 'Puerto con cruceros'],
     noise: [0, 0, 0],
     noiseRadius: 0,
