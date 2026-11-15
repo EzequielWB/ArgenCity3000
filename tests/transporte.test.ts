@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { BUS, BUS_COLORS, MAX_BUS_NUMBER } from '../src/config';
+import { Traffic } from '../src/render/traffic';
 import { deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { computeCongestion } from '../src/sim/congestion';
 import { isUnlocked } from '../src/sim/milestones';
-import { newSimState } from '../src/sim/simulation';
+import { describeCell } from '../src/sim/report';
+import { Simulation, newSimState } from '../src/sim/simulation';
 import { transitRelief } from '../src/sim/transit';
 import { toolPrice } from '../src/ui/toolbar';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
@@ -239,5 +241,82 @@ describe('what the bus lines do for the traffic', () => {
     expect(none.transport).toBe(0);
     expect(two.transport).toBe(2 * BUS.upkeep);
     expect(two.expenses - none.expenses).toBe(2 * BUS.upkeep);
+  });
+});
+
+describe('the buses on the street', () => {
+  /** A long street along y = 10 and, beside it, a depot of the given line. */
+  function lineCity(): World {
+    const w = new World(flat(48));
+    road(w, 0, 10, 40, 10);
+    depot(w, 20, 8, 3, 60);
+    return w;
+  }
+
+  it('are as many as the line has, of its colour, and drive on streets of its area only', () => {
+    const w = lineCity();
+    const traffic = new Traffic(w, 7);
+    traffic.refresh();
+    traffic.update(0.1);
+    const buses = traffic.cars.filter((c) => c.kind === 'bus');
+    expect(buses).toHaveLength(BUS.buses);
+    for (let step = 0; step < 400; step++) {
+      traffic.update(0.25);
+      for (const c of traffic.cars.filter((b) => b.kind === 'bus')) {
+        expect(c.color).toBe(3);
+        expect(w.tileAt(c.x, c.y)).toBe(TILE.ROAD);
+        expect(Math.abs(c.x - 20) + Math.abs(c.y - 8)).toBeLessThanOrEqual(BUS.radius);
+      }
+    }
+    expect(traffic.cars.filter((c) => c.kind === 'bus')).toHaveLength(BUS.buses);
+  });
+
+  it('leave with their depot, and there is no bus without a line', () => {
+    const w = lineCity();
+    const traffic = new Traffic(w, 7);
+    traffic.refresh();
+    for (let step = 0; step < 50; step++) traffic.update(0.25);
+    w.setTile(20, 8, TILE.EMPTY);
+    traffic.refresh();
+    traffic.update(0.1);
+    expect(traffic.cars.filter((c) => c.kind === 'bus')).toHaveLength(0);
+    // With houses along the street there is traffic, and none of its cars is a bus: only lines have buses.
+    for (let x = 2; x < 38; x++) w.setTile(x, 9, TILE.R, 4);
+    traffic.refresh();
+    for (let step = 0; step < 200; step++) traffic.update(0.25);
+    expect(traffic.cars.length).toBeGreaterThan(0);
+    expect(traffic.cars.some((c) => c.kind === 'bus')).toBe(false);
+  });
+
+  it('take the colour of the line of each depot', () => {
+    const w = lineCity();
+    depot(w, 8, 8, 7, 61);
+    const traffic = new Traffic(w, 3);
+    traffic.refresh();
+    traffic.update(0.1);
+    const byColor = (color: number) => traffic.cars.filter((c) => c.kind === 'bus' && c.color === color).length;
+    expect(byColor(3)).toBe(BUS.buses);
+    expect(byColor(7)).toBe(BUS.buses);
+  });
+});
+
+describe('the card of a bus depot', () => {
+  it('names the line, says what it does, and warns when no street is in reach', () => {
+    const w = new World(flat(16));
+    road(w, 0, 5, 15, 5);
+    depot(w, 4, 7, 1, 148);
+    const sim = new Simulation(w, newSimState(1), 'X');
+    sim.refresh();
+    const ok = describeCell(w, sim, 4, 7);
+    expect(ok.title).toBe('Línea 148 (azul)');
+    expect(ok.lines.join(' ')).toMatch(/Cubre 9 lotes/);
+    expect(ok.lines.join(' ')).toMatch(/\$90 por mes/);
+    expect(ok.hint).toBeUndefined();
+
+    depot(w, 12, 13, 0, 7);
+    const lost = describeCell(w, sim, 12, 13);
+    expect(lost.title).toBe('Línea 7 (rojo)');
+    expect(lost.lines.join(' ')).toMatch(/no funciona/);
+    expect(lost.hint).toMatch(/calle/);
   });
 });

@@ -1,5 +1,7 @@
 import {
   MAX_LEVEL,
+  BUS,
+  BUS_COLORS,
   CAPACITY,
   COAST,
   COAST_APPROVAL,
@@ -22,6 +24,7 @@ import {
 } from '../config';
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
+import { busColorOf, busNumberOf, streetNear } from '../world/transport';
 import { TILE, World, coastOf, serviceOf, zoneOf, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
 import { dateOf } from './calendar';
@@ -130,6 +133,21 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
         SERVICE_ROLE[service],
       ],
       hint: w.powered[i] ? undefined : noLightHint(sim, 'Necesita luz', 'la'),
+    };
+  }
+  if (tile === TILE.BUS) {
+    const works = streetNear(w, x, y);
+    const color = BUS_COLORS[busColorOf(w.busLine[i])].name.toLowerCase();
+    return {
+      title: `Línea ${busNumberOf(w.busLine[i])} (${color})`,
+      lines: [
+        height,
+        `Cubre ${BUS.radius} lotes a la redonda`,
+        `Alivia un ${Math.round(BUS.relief * 100)} % del tránsito de las calles de su área; varias líneas suman hasta ${Math.round(BUS.maxRelief * 100)} %`,
+        `Mantenimiento: $${formatNumber(BUS.upkeep)} por mes`,
+        works ? 'Con calle cerca: los colectivos andan' : `Sin calle a ${ROAD_REACH} lotes o menos: no funciona`,
+      ],
+      hint: works ? undefined : 'Sin una calle cerca no sale ningún colectivo: trazá una calle al lado de la cochera.',
     };
   }
   const coast = coastOf(tile);

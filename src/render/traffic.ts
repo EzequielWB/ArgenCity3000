@@ -1,5 +1,7 @@
+import { BUS, BUS_COLORS, ROAD_REACH } from '../config';
 import { project, rotateDir, toView, type Rotation } from '../core/iso';
 import { Rng } from '../core/rng';
+import { busStations, streetNear } from '../world/transport';
 import { TILE, World } from '../world/world';
 import { surfaceHeights, type Pt } from './geometry';
 import type { MapRenderer, PlacedSprite } from './mapRenderer';
@@ -42,9 +44,12 @@ export interface Car {
   /** Cells per second. */
   speed: number;
   kind: CarKind;
+  /** An index into `CAR_COLORS`, or into `BUS_COLORS` for the bus of a line. */
   color: number;
   age: number;
   life: number;
+  /** For the bus of a line: the cell of its depot, which is as far as the bus goes (`BUS.radius`). */
+  depot?: number;
 }
 
 const DIRS: [number, number][] = [
@@ -67,6 +72,8 @@ export class Traffic {
   cars: Car[] = [];
   target = 0;
 
+  /** The depots whose buses are on the street. */
+  private depots: { i: number; x: number; y: number; color: number }[] = [];
   private density: Uint8Array;
   private spawnCells: number[] = [];
   private rng: Rng;
@@ -92,6 +99,8 @@ export class Traffic {
       for (let k = 0; k < d; k++) this.spawnCells.push(i);
     }
     this.target = Math.min(Traffic.MAX_CARS, total);
+    this.depots = busStations(this.world).filter((s) => streetNear(this.world, s.x, s.y));
+    this.syncBuses();
     // On a map with a provincial route the traffic comes in from it; the density only says how much.
     const w = this.world;
     const entrances: number[] = [];
@@ -114,15 +123,59 @@ export class Traffic {
         this.advance(c);
       }
     }
-    while (this.cars.length > this.target) this.cars.splice(this.rng.int(this.cars.length), 1);
-    for (let k = 0; k < 6 && this.cars.length < this.target; k++) this.spawn();
+    // The buses of the lines are not part of the traffic's budget of cars: they stay as long as their depot does.
+    if (this.cars.filter((c) => c.depot !== undefined).length !== this.depots.length * BUS.buses) this.syncBuses();
+    let regular = this.cars.filter((c) => c.depot === undefined);
+    while (regular.length > this.target) {
+      const gone = regular[this.rng.int(regular.length)];
+      this.cars.splice(this.cars.indexOf(gone), 1);
+      regular = regular.filter((c) => c !== gone);
+    }
+    for (let k = 0; k < 6 && regular.length < this.target; k++) {
+      this.spawn();
+      regular = this.cars.filter((c) => c.depot === undefined);
+    }
+  }
+
+  /** Gives every depot its buses, on the street nearest to it, and drops those of depots that are gone. */
+  private syncBuses(): void {
+    this.cars = this.cars.filter((c) => c.depot === undefined || this.depots.some((d) => d.i === c.depot && d.color === c.color));
+    for (const d of this.depots) {
+      let have = this.cars.filter((c) => c.depot === d.i).length;
+      const start = this.nearestStreet(d.x, d.y);
+      if (start === null) continue;
+      while (have < BUS.buses) {
+        const options = DIRS.filter(([dx, dy]) => this.isRoad(start[0] + dx, start[1] + dy));
+        if (options.length === 0) break;
+        const [dx, dy] = this.rng.pick(options);
+        this.cars.push({ id: this.nextId++, x: start[0], y: start[1], dx, dy, t: this.rng.next() * 0.9, speed: 0.9, kind: 'bus', color: d.color, age: 1, life: Infinity, depot: d.i });
+        have++;
+      }
+    }
+  }
+
+  /** The street cell nearest to a depot, within ROAD_REACH, or null. */
+  private nearestStreet(x: number, y: number): [number, number] | null {
+    let best: [number, number] | null = null;
+    let bestDist = Infinity;
+    for (let dy = -ROAD_REACH; dy <= ROAD_REACH; dy++) {
+      for (let dx = -ROAD_REACH; dx <= ROAD_REACH; dx++) {
+        const d = Math.abs(dx) + Math.abs(dy);
+        if (d > ROAD_REACH || d >= bestDist || !this.isRoad(x + dx, y + dy)) continue;
+        best = [x + dx, y + dy];
+        bestDist = d;
+      }
+    }
+    return best;
   }
 
   /** The car reached the centre of its next cell: pick where to go from there. */
   private advance(c: Car): void {
     c.x += c.dx;
     c.y += c.dy;
-    const options = DIRS.filter(([dx, dy]) => !(dx === -c.dx && dy === -c.dy) && this.isRoad(c.x + dx, c.y + dy));
+    const depot = c.depot === undefined ? null : this.depots.find((d) => d.i === c.depot);
+    const inArea = (x: number, y: number) => !depot || Math.abs(x - depot.x) + Math.abs(y - depot.y) <= BUS.radius;
+    const options = DIRS.filter(([dx, dy]) => !(dx === -c.dx && dy === -c.dy) && this.isRoad(c.x + dx, c.y + dy) && inArea(c.x + dx, c.y + dy));
     if (options.length === 0) {
       c.dx = -c.dx;
       c.dy = -c.dy;
@@ -144,7 +197,7 @@ export class Traffic {
     if (options.length === 0) return;
     const [dx, dy] = this.rng.pick(options);
     const r = this.rng.next();
-    const kind: CarKind = r > 0.92 ? 'bus' : r > 0.74 ? 'taxi' : 'car';
+    const kind: CarKind = r > 0.8 ? 'taxi' : 'car';
     this.cars.push({
       id: this.nextId++,
       x,
@@ -152,7 +205,7 @@ export class Traffic {
       dx,
       dy,
       t: this.rng.next() * 0.9,
-      speed: kind === 'bus' ? 0.9 : 1.2 + this.rng.next() * 0.8,
+      speed: 1.2 + this.rng.next() * 0.8,
       kind,
       color: this.rng.int(CAR_COLORS.length),
       age: 0,
@@ -335,20 +388,34 @@ function layerContext(w: number, h: number): CanvasRenderingContext2D {
 }
 
 function drawCar(g: CanvasRenderingContext2D, c: Car, s: { sx: number; sy: number; sdx: number; sdy: number }, alpha: number): void {
-  const len = c.kind === 'bus' ? 3.6 : 2.1;
+  // The bus of a line is longer and taller than a car, so it reads at a glance, with a row of windows.
+  const bus = c.kind === 'bus';
+  const len = bus ? 5.4 : 2.1;
+  const top = bus ? 3.4 : 1.8;
   const dx = s.sdx * len;
   const dy = s.sdy * len;
   g.globalAlpha = alpha;
-  g.fillStyle = c.kind === 'bus' ? '#e0a526' : c.kind === 'taxi' ? '#1f1611' : CAR_COLORS[c.color];
+  g.fillStyle = bus ? BUS_COLORS[c.color].hex : c.kind === 'taxi' ? '#1f1611' : CAR_COLORS[c.color];
   g.beginPath();
-  g.moveTo(s.sx - dx, s.sy - dy - 1.8);
-  g.lineTo(s.sx + dx, s.sy + dy - 1.8);
+  g.moveTo(s.sx - dx, s.sy - dy - top);
+  g.lineTo(s.sx + dx, s.sy + dy - top);
   g.lineTo(s.sx + dx, s.sy + dy + 0.2);
   g.lineTo(s.sx - dx, s.sy - dy + 0.2);
   g.closePath();
   g.fill();
-  g.fillStyle = c.kind === 'taxi' ? '#f2c94c' : c.kind === 'bus' ? '#c8392f' : 'rgba(255,255,255,0.7)';
-  g.fillRect(s.sx - 0.7, s.sy - 2.6, 1.4, 0.9);
+  if (bus) {
+    g.fillStyle = 'rgba(25,35,45,0.65)';
+    g.beginPath();
+    g.moveTo(s.sx - dx * 0.85, s.sy - dy * 0.85 - 2.6);
+    g.lineTo(s.sx + dx * 0.85, s.sy + dy * 0.85 - 2.6);
+    g.lineTo(s.sx + dx * 0.85, s.sy + dy * 0.85 - 1.4);
+    g.lineTo(s.sx - dx * 0.85, s.sy - dy * 0.85 - 1.4);
+    g.closePath();
+    g.fill();
+  } else {
+    g.fillStyle = c.kind === 'taxi' ? '#f2c94c' : 'rgba(255,255,255,0.7)';
+    g.fillRect(s.sx - 0.7, s.sy - 2.6, 1.4, 0.9);
+  }
   g.globalAlpha = 1;
 }
 

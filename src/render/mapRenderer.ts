@@ -2,6 +2,7 @@ import { PARK, PLANT_SIZE } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
+import { busColorOf } from '../world/transport';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
 import { DIRT, type RoadTier } from '../config';
 import { KIND, analyzeRoads, boulevardMedian, centreMark, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
@@ -31,6 +32,7 @@ import {
   abandonedBuildingSprite,
   buildingSprite,
   burningBuildingSprite,
+  busDepotSprite,
   coastSprite,
   parkSpriteFor,
   plantSprite,
@@ -563,6 +565,7 @@ export class MapRenderer {
     const [ax, ay] = this.toCache(vx, vy, avg(hs));
     const coast = coastOf(tile);
     if (coast) return { sprite: coastSprite(coast, this.coastVariant(coast, vx, vy, x, y)), ax, ay };
+    if (tile === TILE.BUS) return { sprite: busDepotSprite(busColorOf(w.busLine[i])), ax, ay };
     if (tile === TILE.PARK) {
       // A plaza nobody keeps loses its trees and shows dry ground, so the city tells you at a glance.
       const neglected = w.parkArea[i] >= PARK.minArea && w.parkCare[i] < PARK.care;

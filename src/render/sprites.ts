@@ -1,5 +1,5 @@
 import { PAL, shade } from './color';
-import type { CoastKind, PlantKind, ServiceKind } from '../config';
+import { BUS_COLORS, type CoastKind, type PlantKind, type ServiceKind } from '../config';
 import type { ZoneKind } from '../world/world';
 
 /**
@@ -502,6 +502,25 @@ function industrial(level: number, v: number): Sprite {
   p.cylinder(0.68, 0.32, 0.18, 3, 14, '#d9c9a0');
   p.box(0.55, 0.55, 0.94, 0.94, 3, 20, '#a9b0b4');
   p.windows(0.55, 0.55, 0.94, 0.94, 8, 22, 6, PAL.glassDark, 2, 2);
+  return done(p);
+}
+
+/** A bus depot, painted in the colour of its line: a bus parked on a slab beside a little booth under a canopy of the same colour. */
+function busDepot(color: number): Sprite {
+  const body = BUS_COLORS[color].hex;
+  const p = painter(1, 22);
+  p.box(0.06, 0.06, 0.94, 0.94, 0, 1.5, '#a9a8ae', false);
+  // The booth, with its canopy in the line's colour.
+  p.box(0.62, 0.1, 0.9, 0.4, 1.5, 8, '#e8e4dc');
+  p.left(0.4, 0.68, 0.84, 3.5, 7, PAL.glass);
+  p.box(0.58, 0.06, 0.94, 0.44, 9.5, 2, body);
+  // The bus: a long body along u with a row of windows, a lighter roof and its wheels.
+  p.box(0.1, 0.52, 0.66, 0.88, 1.5, 8, body);
+  p.left(0.88, 0.14, 0.62, 5, 8, PAL.glassDark);
+  p.right(0.66, 0.56, 0.84, 5, 8, PAL.glassDark);
+  p.left(0.88, 0.14, 0.62, 1.5, 2.6, shade(body, 0.55));
+  p.box(0.1, 0.52, 0.66, 0.88, 9.5, 0.8, shade(body, 1.25), false);
+  for (const u of [0.2, 0.52]) p.box(u, 0.86, u + 0.1, 0.94, 1.5, 2.2, '#1f1611', false);
   return done(p);
 }
 
@@ -1062,6 +1081,11 @@ const SERVICE_SPRITES: Record<ServiceKind, () => Sprite> = { school, clinic, pol
 
 export function serviceSprite(kind: ServiceKind): Sprite {
   return cached(`svc:${kind}`, SERVICE_SPRITES[kind]);
+}
+
+/** The depot of a bus line, in the colour (an index into `BUS_COLORS`) of the line. */
+export function busDepotSprite(color: number): Sprite {
+  return cached(`bus:${color}`, () => busDepot(color));
 }
 
 const PLANT_SPRITES: Record<PlantKind, () => Sprite> = { coal: plant, gas: gasPlant, wind: windFarm };

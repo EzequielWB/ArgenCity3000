@@ -56,13 +56,16 @@ Runner: `npx vitest run`, `npx tsc --noEmit`. Las saves viejas no importan (lo d
 
 ## Tasks
 
-- [ ] T1 — S1, S2 — inline — Datos: tile nuevo, color y número por lote, validación del número, guardado, deshacer.
-- [ ] T2 — S1, S2 — inline — Herramienta, categoría, desbloqueo y ventana de color y número.
-- [ ] T3 — S1 — inline — Efecto en el tránsito y presupuesto.
-- [ ] T4 — S3 — inline — Dibujo: la obra por color y los colectivos en la calle.
-- [ ] T5 — S1–S4 — inline — Ayuda, ficha del lote y verificación en el juego.
+- [x] T1 — S1, S2 — inline — Datos: tile nuevo, color y número por lote, validación del número, guardado, deshacer. Commit a8025ff.
+- [x] T2 — S1, S2 — inline — Herramienta, categoría, desbloqueo y ventana de color y número. Commit 2521664.
+- [x] T3 — S1 — inline — Efecto en el tránsito y presupuesto. Commit 3c0e167.
+- [x] T4 — S3 — inline — Dibujo: la obra por color y los colectivos en la calle.
+- [x] T5 — S1–S4 — inline — Ayuda, ficha del lote y verificación en el juego.
 
 ## Log
 
 - L1 (2026-11-15, usuario): "Bien, quiero implementar ahora un sistema de transporte publico, la idea es que este sirva para mejorar el transito sin necesidad de expandir infinitamente las calles. Yo creo que se podria agregar una sección de "Transportes" que permita poner estaciones de colectivos y afectan un area. Al colocar una linea de colectivo deberia salir una mini pantalla contextual que te permita elegir un color (10 colores genericos que suelen tener los colectivos) y un numero de 3 digitos maximos que NO se puede repetir (el identificador del colectivo). Claramente van a tener que verse colectivos por la calle. No hace falta mucho mas es mas que nada una herramienta util, no hay que poner paradas ni nada y cosas asi. Mas adelante en la categoria de transporte pensaba agregar aviones y barcos"
 - L2: Exploración: el tránsito es una estimación (`sim/congestion.ts`): cada vecino va al comercio y a la industria más cercanos por las calles y la carga de cada calle se compara con su capacidad. Los autos de `render/traffic.ts` son de adorno y ya incluyen un `bus` amarillo al azar. Las obras de un lote con costo, mantenimiento y sprite propio (la costa) son el modelo más parecido. El deshacer guarda tile, nivel, variante y demás por celda.
+- L3: T1 a T3 hechos y commiteados. El número de la línea y el color viven en un solo `Uint16Array` (`World.busLine`), así que demoler una cochera libera su número sin estado extra; el deshacer lo guarda junto con el resto de la celda. El guardado es la versión 15 con una lista de [celda, línea] y rechaza números repetidos o fuera de rango.
+- L4: T4 y T5 hechos: sprite de la cochera por color, colectivos de cada línea en la calle (solo dentro del área de su cochera, dos por línea), ficha del lote, ayuda y README. Se quitó el colectivo amarillo de adorno. Verificado en el juego: la ventana sugiere un número libre, un número repetido muestra "Ya hay una línea 148" y bloquea el botón, cancelar no construye ni cobra, tres líneas cuestan $270 por mes en el presupuesto.
+- L5: Verificación: `tsc` y 749 tests pasan. No se probó en un celular físico. Pendiente: espejo en Engram.

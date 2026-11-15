@@ -25,6 +25,7 @@ const TILE_COLORS: Record<number, [number, number, number]> = {
   [TILE.PORT]: [224, 165, 38],
   [TILE.RESORT]: [226, 100, 80],
   [TILE.LIGHTHOUSE]: [245, 240, 230],
+  [TILE.BUS]: [200, 140, 40],
 };
 /** The provincial route, brighter than a street so the strip reads on the overview. */
 const ROUTE_COLOR: [number, number, number] = [244, 208, 64];
