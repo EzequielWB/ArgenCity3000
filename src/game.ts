@@ -97,7 +97,6 @@ export class Game implements PointerTarget {
   readonly seed: number;
 
   tool: ToolId = 'query';
-  block = 1;
   private layerBeforeTool: Layer = 'none';
   speed = 2;
   /** A brand-new city waits, paused, for the player's first work. */
@@ -150,14 +149,12 @@ export class Game implements PointerTarget {
     this.detach = attachPointer(this.view.canvas, this);
     this.toolbar = new Toolbar($('#toolbar'), $('#flyout'), LAYERS, {
       setTool: (tool) => this.setTool(tool),
-      setBlock: (block) => this.setBlock(block),
       setLayer: (layer) => this.setLayer(layer),
       undo: () => this.undo(),
       rotate: (dir) => this.rotate(dir),
       zoom: (dir) => this.zoom(dir, this.view.width / 2, this.view.height / 2),
     });
     this.toolbar.showTool(this.tool);
-    this.toolbar.showBlock(this.block);
     this.toolbar.showLayer(this.view.layer);
     this.buildSpeed();
     this.startCamera();
@@ -316,16 +313,6 @@ export class Game implements PointerTarget {
     this.toolbar.showTool(tool);
     if (this.mouse) this.hover(...this.mouse);
     this.updateStatus();
-  }
-
-  setBlock(block: number): void {
-    this.block = block;
-    this.toolbar.showBlock(block);
-    if (this.mouse) this.hover(...this.mouse);
-  }
-
-  cycleBlock(): void {
-    this.setBlock(this.block === 1 ? 2 : this.block === 2 ? 4 : 1);
   }
 
   setLayer(layer: Layer): void {
@@ -531,7 +518,7 @@ export class Game implements PointerTarget {
   }
 
   private cellsFor(a: [number, number], b: [number, number]): [number, number][] {
-    return dragCells(this.tool, a[0], a[1], b[0], b[1], this.block, this.world.n);
+    return dragCells(this.tool, a[0], a[1], b[0], b[1], 1, this.world.n);
   }
 
   private showPreview(a: [number, number], b: [number, number], mx: number, my: number): void {

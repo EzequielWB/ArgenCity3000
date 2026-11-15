@@ -566,7 +566,7 @@ export function openHelp(): void {
     <h3>Controles</h3>
     <div class="help-grid">
       <span><kbd>1</kbd>–<kbd>9</kbd> herramientas · <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>O</kbd> servicios · <kbd>Z</kbd> <kbd>X</kbd> <kbd>V</kbd> <kbd>L</kbd> <kbd>F</kbd> costa</span>
-      <span><kbd>3</kbd> <kbd>R</kbd> <kbd>T</kbd> calidades de calle · <kbd>B</kbd> tamaño de bloque</span>
+      <span><kbd>3</kbd> <kbd>R</kbd> <kbd>T</kbd> calidades de calle</span>
       <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer la última obra (devuelve todo dentro del mes, la mitad hasta un año)</span>
       <span>Arrastrar con clic izquierdo: construir</span>
       <span>Clic derecho o rueda apretada: mover el mapa</span>

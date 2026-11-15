@@ -1,5 +1,5 @@
 /**
- * The toolbar: five categories that open a flyout with their tools, plus undo, block size, the
+ * The toolbar: five categories that open a flyout with their tools, plus undo, the
  * layers and the view controls. It only draws and reports clicks; the game decides what happens.
  */
 import { BUS, COAST, COSTS, HUBS, PLANTS, ROAD_TIERS, SERVICES } from '../config';
@@ -71,7 +71,6 @@ const LAYERS_FLYOUT = 'layers';
 
 export interface ToolbarActions {
   setTool(tool: ToolId): void;
-  setBlock(block: number): void;
   setLayer(layer: Layer): void;
   undo(): void;
   rotate(dir: number): void;
@@ -91,13 +90,8 @@ export class Toolbar {
       (g) =>
         `<button class="cat" type="button" data-fly="${g.id}" aria-expanded="false" aria-controls="flyout" title="${escapeHtml(`${g.label}: ${g.tools.map((t) => toolInfo(t).label).join(', ')}`)}">${GROUP_ICONS[g.id]}<span>${escapeHtml(g.label)}</span></button>`,
     ).join('');
-    const blocks = [1, 2, 4]
-      .map((b) => `<button type="button" data-block="${b}" aria-pressed="false" title="Bloque de ${b}×${b} para zonas, plazas y topadora (B)">${b}×${b}</button>`)
-      .join('');
     bar.innerHTML = `${cats}
       <button type="button" data-act="undo" title="Deshacer la última obra (Ctrl+Z)">Deshacer</button>
-      <div class="group-label" id="blockLabel">Bloque</div>
-      <div class="seg" role="group" aria-labelledby="blockLabel">${blocks}</div>
       <div class="group-label" id="layerLabel">Capa</div>
       <button type="button" data-fly="${LAYERS_FLYOUT}" aria-expanded="false" aria-controls="flyout" aria-describedby="layerLabel" title="Elegir la capa que se ve sobre el mapa (C pasa a la siguiente)"><span id="layerName"></span></button>
       <div class="group-label" id="viewLabel">Vista</div>
@@ -135,10 +129,6 @@ export class Toolbar {
     this.bar.querySelectorAll<HTMLElement>('.cat').forEach((b) => b.classList.toggle('current', b.dataset.fly === group));
     this.flyout.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === tool)));
     this.close();
-  }
-
-  showBlock(block: number): void {
-    this.bar.querySelectorAll<HTMLElement>('[data-block]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.block) === block)));
   }
 
   showLayer(layer: Layer): void {
@@ -197,8 +187,7 @@ export class Toolbar {
     if (b.dataset.fly) {
       if (this.opened === b.dataset.fly) this.close();
       else this.open(b.dataset.fly, e.detail === 0);
-    } else if (b.dataset.block) this.actions.setBlock(Number(b.dataset.block));
-    else if (b.dataset.act === 'undo') this.actions.undo();
+    } else if (b.dataset.act === 'undo') this.actions.undo();
     else if (b.dataset.act === 'rotl') this.actions.rotate(-1);
     else if (b.dataset.act === 'rotr') this.actions.rotate(1);
     else if (b.dataset.act === 'zin') this.actions.zoom(1);

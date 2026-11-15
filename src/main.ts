@@ -307,9 +307,6 @@ window.addEventListener('keydown', (e) => {
   const tool = TOOLS.find((t) => t.key === key);
   if (tool) return game.setTool(tool.id);
   switch (key) {
-    case 'b':
-      game.cycleBlock();
-      break;
     case 'q':
       game.rotate(-1);
       break;
