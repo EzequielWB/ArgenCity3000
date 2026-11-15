@@ -2,7 +2,7 @@
  * The toolbar: five categories that open a flyout with their tools, plus undo, block size, the
  * layers and the view controls. It only draws and reports clicks; the game decides what happens.
  */
-import { BUS, COAST, COSTS, PLANTS, ROAD_TIERS, SERVICES } from '../config';
+import { BUS, COAST, COSTS, HUBS, PLANTS, ROAD_TIERS, SERVICES } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { Layer } from '../render/view';
 import { MILESTONES, isUnlocked, milestoneOfTool } from '../sim/milestones';
@@ -21,6 +21,9 @@ export function toolPrice(tool: ToolId): number | null {
   switch (tool) {
     case 'bus':
       return BUS.cost;
+    case 'airport':
+    case 'harbor':
+      return HUBS[tool].cost;
     case 'line':
       return COSTS.line;
     case 'park':

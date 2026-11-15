@@ -18,7 +18,7 @@ describe('tool groups', () => {
       ['Servicios', ['school', 'clinic', 'police', 'fire']],
       ['Usinas', ['plant', 'plantGas', 'plantWind']],
       ['Costa', ['fishing', 'promenade', 'port', 'resort', 'lighthouse']],
-      ['Transportes', ['bus']],
+      ['Transportes', ['bus', 'harbor', 'airport']],
     ]);
   });
 

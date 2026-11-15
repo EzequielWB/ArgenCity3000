@@ -1,4 +1,4 @@
-import { PLANT_SIZE, type CoastKind, type PlantKind, type ServiceKind } from '../config';
+import { HUBS, PLANT_SIZE, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
 import { isWaterCell, cellMinMax, type Terrain } from './terrain';
 
 /** What occupies a cell. Zones keep their building level in `World.level`. */
@@ -21,8 +21,10 @@ export const TILE = {
   RESORT: 15,
   LIGHTHOUSE: 16,
   BUS: 17,
+  AIRPORT: 18,
+  HARBOR: 19,
 } as const;
-export const MAX_TILE = TILE.BUS;
+export const MAX_TILE = TILE.HARBOR;
 export type TileId = (typeof TILE)[keyof typeof TILE];
 
 export type ZoneKind = 'R' | 'C' | 'I';
@@ -74,6 +76,21 @@ export interface Plant {
   kind: PlantKind;
 }
 
+/** One piece of an airport or a harbour: its top-left cell, in world coordinates (its size is in `HUBS`). */
+export interface Hub {
+  x: number;
+  y: number;
+  kind: HubKind;
+}
+
+export function hubTile(kind: HubKind): TileId {
+  return kind === 'airport' ? TILE.AIRPORT : TILE.HARBOR;
+}
+
+export function hubOf(tile: number): HubKind | null {
+  return tile === TILE.AIRPORT ? 'airport' : tile === TILE.HARBOR ? 'harbor' : null;
+}
+
 /**
  * The city grid. Terrain is owned here too because building roads or zones removes trees.
  * Derived layers (powered, pollution, landValue, roadAccess) are recomputed by the simulation.
@@ -111,6 +128,8 @@ export class World {
   /** Ticks left of a fire burning in the cell (0 = no fire). */
   readonly fire: Uint8Array;
   plants: Plant[] = [];
+  /** The pieces of the airports and harbours, each with its anchor; pieces that touch are one facility. */
+  hubs: Hub[] = [];
 
   readonly powered: Uint8Array;
   readonly pollution: Uint8Array;
@@ -210,6 +229,11 @@ export class World {
 
   plantAt(x: number, y: number): Plant | undefined {
     return this.plants.find((p) => x >= p.x && x < p.x + PLANT_SIZE && y >= p.y && y < p.y + PLANT_SIZE);
+  }
+
+  /** The piece of an airport or a harbour that covers the cell, if any. */
+  hubAt(x: number, y: number): Hub | undefined {
+    return this.hubs.find((h) => x >= h.x && x < h.x + HUBS[h.kind].w && y >= h.y && y < h.y + HUBS[h.kind].h);
   }
 
   markDirty(i: number): void {

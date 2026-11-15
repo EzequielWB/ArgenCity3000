@@ -1,6 +1,6 @@
 import { TICKS_PER_MONTH } from '../config';
 import type { Plan, ToolId } from './tools';
-import { World, type Plant } from './world';
+import { World, type Hub, type Plant } from './world';
 
 interface CellBefore {
   i: number;
@@ -41,6 +41,7 @@ interface Entry {
   tick: number;
   cells: CellBefore[];
   plants: Plant[];
+  hubs: Hub[];
   /** Terrain before the action: zoning may level the ground around the cells it changes. */
   corners: Uint8Array;
 }
@@ -85,7 +86,7 @@ export class UndoHistory {
         bus: w.busLine[i],
       };
     });
-    this.entries.push({ tool: plan.tool, cost: plan.cost, tick, cells, plants: w.plants.map((p) => ({ ...p })), corners: w.terrain.corners.slice() });
+    this.entries.push({ tool: plan.tool, cost: plan.cost, tick, cells, plants: w.plants.map((p) => ({ ...p })), hubs: w.hubs.map((h) => ({ ...h })), corners: w.terrain.corners.slice() });
     if (this.entries.length > UndoHistory.MAX_ENTRIES) this.entries.shift();
   }
 
@@ -109,6 +110,7 @@ export class UndoHistory {
       w.busLine[c.i] = c.bus;
     }
     w.plants = e.plants.map((p) => ({ ...p }));
+    w.hubs = e.hubs.map((h) => ({ ...h }));
     restoreCorners(w, e.corners);
     w.bumpNetwork();
     const age = now - e.tick;

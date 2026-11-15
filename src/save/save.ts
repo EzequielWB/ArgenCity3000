@@ -2,6 +2,8 @@ import {
   DEFAULT_FUNDING,
   EVENT,
   GOVERNMENT_KINDS,
+  HUB_KINDS,
+  HUBS,
   LOANS,
   MAX_FUNDING,
   MAX_LEVEL,
@@ -12,6 +14,7 @@ import {
   PLANT_SIZE,
   SERVICE_KINDS,
   type GovernmentKind,
+  type HubKind,
   type PlantKind,
   type ServiceFunding,
   type ZoneTaxes,
@@ -25,9 +28,9 @@ import { APPROVAL } from '../sim/politics';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { busLineProblem, busStations } from '../world/transport';
-import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
+import { MAX_TILE, TILE, World, hubOf, hubTile, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -39,7 +42,7 @@ export const SAVE_VERSION = 15;
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
  * government, so they are democracies with no party.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -98,6 +101,7 @@ export function serialize(d: SaveData): string {
     fire: toBase64(w.fire),
     buses: busStations(w).map((b) => [b.i, b.line]),
     plants: w.plants,
+    hubs: w.hubs,
     sim: d.sim,
   });
 }
@@ -178,6 +182,31 @@ export function deserialize(text: string): SaveData {
   let tilePlants = 0;
   for (let i = 0; i < size; i++) if (tiles[i] === TILE.PLANT) tilePlants++;
   need(tilePlants === plantCells, 'Las usinas no coinciden con el plano');
+
+  // Airports and harbours exist from version 16 on: a list of pieces, each with its anchor.
+  let hubCells = 0;
+  if ((data.version as number) >= 16) {
+    need(Array.isArray(data.hubs), 'Faltan los aeropuertos y puertos');
+    const covered = new Set<number>();
+    for (const h of data.hubs as unknown[]) {
+      const { x, y, kind } = (h ?? {}) as { x?: unknown; y?: unknown; kind?: unknown };
+      need(HUB_KINDS.includes(kind as HubKind), 'Hay un aeropuerto o puerto de un tipo desconocido');
+      const { w: pw, h: ph } = HUBS[kind as HubKind];
+      need(isInt(x) && isInt(y) && x >= 0 && y >= 0 && x <= (n as number) - pw && y <= (n as number) - ph, 'Hay un aeropuerto o puerto fuera del mapa');
+      for (let dy = 0; dy < ph; dy++) {
+        for (let dx = 0; dx < pw; dx++) {
+          const cell = ((y as number) + dy) * (n as number) + (x as number) + dx;
+          need(tiles[cell] === hubTile(kind as HubKind) && !covered.has(cell), 'Hay un aeropuerto o puerto sin terreno');
+          covered.add(cell);
+        }
+      }
+      world.hubs.push({ x: x as number, y: y as number, kind: kind as HubKind });
+      hubCells += pw * ph;
+    }
+  }
+  let tileHubs = 0;
+  for (let i = 0; i < size; i++) if (hubOf(tiles[i])) tileHubs++;
+  need(tileHubs === hubCells, 'Los aeropuertos y puertos no coinciden con el plano');
 
   return {
     name: typeof data.name === 'string' ? data.name.slice(0, 40) : 'Ciudad sin nombre',

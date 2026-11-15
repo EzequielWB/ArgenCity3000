@@ -1,11 +1,12 @@
-import { ASPHALT, BUS, COAST, COSTS, DIRT, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, roadRank, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
+import { ASPHALT, BUS, COAST, COSTS, DIRT, HUBS, type HubKind, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, roadRank, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
 import { busRefusal, freeBusNumber, packBusLine } from './transport';
-import { TILE, World, coastTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
+import { hubFootprint, hubRefusal } from './hubs';
+import { TILE, World, coastTile, hubOf, hubTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'bus' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
+export type ToolId = 'query' | 'bulldoze' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -48,6 +49,8 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 40 empleos industriales y sube los impuestos de las fábricas; contamina.' },
   { id: 'resort', label: COAST.resort.label, key: 'l', shape: 'point', help: 'En la playa. Con una calle cerca da 30 empleos y mucho turismo en verano.' },
   { id: 'bus', label: BUS.label, key: 'ñ', shape: 'point', help: 'A 3 lotes o menos de una calle. Alivia el tránsito de las calles a su alrededor y se ven los colectivos andar. Al colocarla elegís el color y el número de la línea.' },
+  { id: 'harbor', label: HUBS.harbor.label, key: '.', shape: 'anchor', help: 'Una pieza de 2×2 pegada al agua y a 3 lotes o menos de una calle: un muelle con un barco de paseos. Si ponés otra pegada es un puerto más grande, y con tres o más hay cruceros. Da empleos y turismo.' },
+  { id: 'airport', label: HUBS.airport.label, key: ',', shape: 'anchor', help: 'Una pieza de 3×2 en tierra, a 3 lotes o menos de una calle: un hangar con uno o dos aviones. Con otra pegada es un aeródromo y con cuatro o más, un aeropuerto internacional. Da empleos y turismo, pero hace ruido: baja el valor del suelo alrededor.' },
   { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Suma aprobación y valor del suelo.' },
 ];
 
@@ -64,6 +67,11 @@ const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGa
 /** The kind of power plant a tool builds, or null for any other tool. */
 export function plantKindOfTool(tool: ToolId): PlantKind | null {
   return PLANT_TOOLS[tool] ?? null;
+}
+
+/** The kind of airport or harbour piece a tool builds, or null for any other tool. */
+export function hubKindOfTool(tool: ToolId): HubKind | null {
+  return tool === 'airport' || tool === 'harbor' ? tool : null;
 }
 
 export function toolInfo(id: ToolId): ToolInfo {
@@ -84,7 +92,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire'] },
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
   { id: 'coast', label: 'Costa', tools: ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] },
-  { id: 'transport', label: 'Transportes', tools: ['bus'] },
+  { id: 'transport', label: 'Transportes', tools: ['bus', 'harbor', 'airport'] },
 ];
 
 export function groupOfTool(tool: ToolId): ToolGroup {
@@ -138,6 +146,13 @@ export function dragCells(tool: ToolId, ax: number, ay: number, bx: number, by: 
   const cells: Cell[] = [];
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) cells.push([x, y]);
   return cells;
+}
+
+/** The lots a one-piece tool (a power plant, an airport or a harbour) placed at (x, y) would cover, or null for any other tool. */
+export function footprintOfTool(tool: ToolId, n: number, x: number, y: number): Cell[] | null {
+  if (plantKindOfTool(tool)) return plantFootprint(n, x, y);
+  const hub = hubKindOfTool(tool);
+  return hub ? hubFootprint(hub, n, x, y) : null;
 }
 
 /** The 2×2 cells a power plant placed at (x, y) would cover, kept inside the map. */
@@ -230,6 +245,14 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     return ok ? { tool, cells: foot, cost: PLANTS[plantKind].cost } : { tool, cells: [], cost: 0 };
   }
 
+  const hubKind = hubKindOfTool(tool);
+  if (hubKind) {
+    const [ax, ay] = cells[0] ?? [-1, -1];
+    const foot = hubFootprint(hubKind, w.n, ax, ay);
+    const ok = foot.every(([x, y]) => !w.route[w.idx(x, y)] && isFreeLot(w, x, y)) && hubRefusal(w, hubKind, foot) === null;
+    return ok ? { tool, cells: foot, cost: HUBS[hubKind].cost } : { tool, cells: [], cost: 0 };
+  }
+
   for (const [x, y] of cells) {
     if (!w.inBounds(x, y)) continue;
     const i = w.idx(x, y);
@@ -281,6 +304,16 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
               seen.add(w.idx(p.x + dx, p.y + dy));
               out.push([p.x + dx, p.y + dy]);
             }
+          }
+          cost += COSTS.bulldozePlant;
+        } else if (hubOf(t)) {
+          // A piece of an airport or a harbour comes down whole, like a power plant.
+          const p = w.hubAt(x, y);
+          if (!p || plantsSeen.has(p)) break;
+          plantsSeen.add(p);
+          for (const [cx, cy] of hubFootprint(p.kind, w.n, p.x, p.y)) {
+            seen.add(w.idx(cx, cy));
+            out.push([cx, cy]);
           }
           cost += COSTS.bulldozePlant;
         } else if (t !== TILE.EMPTY || w.terrain.trees[i]) {
@@ -366,12 +399,19 @@ export function applyPlan(w: World, plan: Plan): void {
         if (w.tiles[i] === TILE.PLANT) {
           w.plants = w.plants.filter((p) => p !== w.plantAt(x, y));
         }
+        if (hubOf(w.tiles[i])) {
+          const piece = w.hubAt(x, y);
+          w.hubs = w.hubs.filter((h) => h !== piece);
+        }
         w.setTile(x, y, TILE.EMPTY);
         w.terrain.trees[i] = 0;
         break;
       default:
         if (isServiceTool(plan.tool)) {
           w.setTile(x, y, serviceTile(plan.tool));
+          w.terrain.trees[i] = 0;
+        } else if (hubKindOfTool(plan.tool)) {
+          w.setTile(x, y, hubTile(hubKindOfTool(plan.tool)!));
           w.terrain.trees[i] = 0;
         } else if (isCoastTool(plan.tool)) {
           w.setTile(x, y, coastTile(plan.tool));
@@ -382,6 +422,11 @@ export function applyPlan(w: World, plan: Plan): void {
   if (plantKind) {
     const [x, y] = plan.cells[0];
     w.plants.push({ x, y, kind: plantKind });
+  }
+  const hubKind = hubKindOfTool(plan.tool);
+  if (hubKind) {
+    const [x, y] = plan.cells[0];
+    w.hubs.push({ x, y, kind: hubKind });
   }
   // Zoning or placing a service levels the block it belongs to (see `levelBlocks`).
   if (zone || isServiceTool(plan.tool)) levelBlocks(w, plan.cells);

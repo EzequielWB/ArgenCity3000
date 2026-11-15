@@ -67,7 +67,7 @@ describe('forms of government', () => {
     const back = deserialize(text);
     expect(back.sim.government).toBe('dictadura');
     expect(back.sim.party).toBe('Partido del Conurbano');
-    expect(SAVE_VERSION).toBe(15);
+    expect(SAVE_VERSION).toBe(16);
 
     const data = JSON.parse(text);
     data.version = 9;

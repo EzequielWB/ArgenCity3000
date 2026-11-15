@@ -70,6 +70,12 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   lighthouse: svg(
     '<path d="M3 26l13-6.5L29 26l-13 6.5z" fill="#e2cc94"/><path d="M11 27l2-17h6l2 17z" fill="#f4f0e6" stroke="#5a3a22" stroke-width="1"/><path d="M12.2 21.5l.4-4.5h6.8l.4 4.5zM13.2 14.5l.4-3h4.8l.4 3z" fill="#c8392f"/><path d="M12 10h8v-2.5h-8z" fill="#5a5560"/><rect x="13.5" y="4.5" width="5" height="3" fill="#ffd84a"/><path d="M12.5 4.5l3.5-3.5 3.5 3.5z" fill="#c8392f"/><path d="M22 6l7-2M22 6l7 2.5M10 6l-7-2M10 6l-7 2.5" stroke="#ffd84a" stroke-width="1.2" opacity=".8"/>',
   ),
+  airport: svg(
+    '<path d="M2 23l14-7 14 7-14 7z" fill="#b9b2a4"/><path d="M5 23l11-5.5L27 23l-11 5.5z" fill="#4a4a52"/><path d="M9 23.5l3-1.5m3 2.2l3-1.5m3 2.2l3-1.5" stroke="#f4f0e6" stroke-width="1.2"/><path d="M10 18l11-5.5 2 1-11 5.5z" fill="#f4f0e6" stroke="#5a5560" stroke-width=".8"/><path d="M15 15.5l-1.5-6 2.6 1.3 1.4 4.2zM21 12.5l1.2-3.2 1.4.7-.6 3.2z" fill="#d9d4cc" stroke="#5a5560" stroke-width=".6"/>',
+  ),
+  harbor: svg(
+    '<path d="M2 23l14-7 14 7-14 7z" fill="#4f8fb0"/><path d="M3 19l8-4 5 2.5-8 4z" fill="#a9763f" stroke="#5a3a22" stroke-width=".8"/><path d="M16 23l8-3.2 4 2-8 3.6z" fill="#f4f0e6" stroke="#5a5560" stroke-width=".8"/><path d="M20 19l3-1.2v3.4l-3 1.2z" fill="#6fb7e0"/><path d="M23 15.5l2.2-.9v3l-2.2.9z" fill="#c8392f"/>',
+  ),
   bus: svg(
     '<path d="M2 22l14-7 14 7-14 7z" fill="#b9b2a4"/><path d="M4 19v-7l12-6 12 6v7l-12 6z" fill="#c8392f" stroke="#5a1a14" stroke-width="1"/><path d="M4 12l12-6 12 6-12 6z" fill="#e8c0b8"/><path d="M6 14l3.5 1.8v3L6 17zM11 16.6l3.5 1.8v3L11 19.6z" fill="#9fd3ee"/><circle cx="9" cy="23" r="2" fill="#1f1611"/><circle cx="21" cy="20" r="2" fill="#1f1611"/>',
   ),

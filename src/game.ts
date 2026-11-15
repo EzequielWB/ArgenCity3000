@@ -23,7 +23,7 @@ import { APPROVAL, nextElectionYear } from './sim/politics';
 import { openApproval, openElectionLost, openElectionWon, openEvent, openMilestone } from './ui/panels';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
-import { applyPlan, dragCells, isCoastTool, planTool, plantFootprint, plantKindOfTool, routeRefusal, toolInfo, type Plan, type ToolId } from './world/tools';
+import { applyPlan, dragCells, footprintOfTool, isCoastTool, planTool, plantKindOfTool, routeRefusal, toolInfo, type Plan, type ToolId } from './world/tools';
 import { busArea, busRefusal, busLineProblem } from './world/transport';
 import { openBusLine } from './ui/busline';
 import { UndoHistory } from './world/history';
@@ -507,7 +507,7 @@ export class Game implements PointerTarget {
     const cells = this.cellsFor(a, b);
     const plan = planTool(this.world, this.tool, cells);
     const plantKind = plantKindOfTool(this.tool);
-    const shown = plantKind ? plantFootprint(this.world.n, b[0], b[1]) : cells;
+    const shown = footprintOfTool(this.tool, this.world.n, b[0], b[1]) ?? cells;
     this.view.preview = {
       cells: shown,
       valid: new Set(plan.cells.map(([x, y]) => this.world.idx(x, y))),

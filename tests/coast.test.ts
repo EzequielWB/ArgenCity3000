@@ -111,7 +111,8 @@ describe('the coast tools', () => {
     expect(COAST_TOOLS.map((k) => coastTile(k))).toEqual([TILE.FISHING, TILE.PROMENADE, TILE.PORT, TILE.RESORT, TILE.LIGHTHOUSE]);
     expect([TILE.FISHING, TILE.PROMENADE, TILE.PORT, TILE.RESORT, TILE.LIGHTHOUSE]).toEqual([12, 13, 14, 15, 16]);
     expect(TILE.BUS).toBe(TILE.LIGHTHOUSE + 1);
-    expect(MAX_TILE).toBe(TILE.BUS);
+    expect(TILE.AIRPORT).toBe(TILE.BUS + 1);
+    expect(MAX_TILE).toBe(TILE.HARBOR);
     for (const k of COAST_TOOLS) expect(coastOf(coastTile(k))).toBe(k);
     expect(coastOf(TILE.FIREHOUSE)).toBeNull();
     expect(coastOf(TILE.EMPTY)).toBeNull();

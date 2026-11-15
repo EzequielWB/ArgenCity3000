@@ -343,6 +343,48 @@ export const ROAD_REACH = 3;
  * line run on the streets of its area.
  */
 export const BUS = { label: 'Línea de colectivos', cost: 900, upkeep: 90, radius: 9, relief: 0.35, maxRelief: 0.6, buses: 3 } as const;
+/**
+ * The commercial hubs of the transport category: an airport and a harbour for walks and cruises. A
+ * piece takes `w`×`h` lots, always the same way round, and pieces that share an edge are one
+ * facility whose level is how many pieces it has (`HUB_LEVELS`: the pieces each level asks for).
+ * Per level (1 to 3) a working facility gives `jobs` commercial jobs and `income` pesos a month; each
+ * piece costs `cost` and `upkeep` a month. The airport is loud: it takes `noise` points of land value
+ * off the lots within `noiseRadius`. The harbour has to touch the water; both need a street near.
+ */
+export type HubKind = 'airport' | 'harbor';
+export const HUB_KINDS: readonly HubKind[] = ['airport', 'harbor'];
+export const HUBS: Record<
+  HubKind,
+  { label: string; w: number; h: number; cost: number; upkeep: number; jobs: readonly number[]; income: readonly number[]; names: readonly string[]; noise: readonly number[]; noiseRadius: number }
+> = {
+  airport: {
+    label: 'Aeropuerto',
+    w: 3,
+    h: 2,
+    cost: 6000,
+    upkeep: 350,
+    jobs: [20, 80, 300],
+    income: [300, 1200, 4000],
+    names: ['Hangar', 'Aeródromo', 'Aeropuerto internacional'],
+    noise: [6, 12, 22],
+    noiseRadius: 8,
+  },
+  harbor: {
+    label: 'Puerto de paseos',
+    w: 2,
+    h: 2,
+    cost: 3500,
+    upkeep: 220,
+    jobs: [15, 60, 200],
+    income: [200, 800, 2500],
+    names: ['Muelle de paseos', 'Puerto', 'Puerto con cruceros'],
+    noise: [0, 0, 0],
+    noiseRadius: 0,
+  },
+};
+/** Pieces side by side that a facility needs to reach level 1, 2 and 3. */
+export const HUB_LEVELS: Record<HubKind, readonly number[]> = { airport: [1, 2, 4], harbor: [1, 2, 3] };
+
 /** Lines are told apart by a number of up to three digits, which no other line of the city has. */
 export const MAX_BUS_NUMBER = 999;
 /** The ten colours a line can wear, the usual ones of the buses. */
