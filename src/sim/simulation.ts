@@ -33,7 +33,7 @@ import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDe
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
 import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, pollHeadline } from './mayor';
-import { advanceMilestones, unlockNames } from './milestones';
+import { advanceMilestones, nextMilestone, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
 import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
@@ -516,6 +516,7 @@ export class Simulation {
     s.crisis = s.cash < 0;
     this.burn();
     this.grow();
+    this.reachMilestones();
     s.tick++;
     if (s.tick % TICKS_PER_MONTH === 0) this.endOfMonth();
     else if (s.tick % TICKS_PER_WEEK === 0) this.settleWeek();
@@ -693,6 +694,21 @@ export class Simulation {
     if (loanPaidOff(loan)) this.state.loan = null;
   }
 
+  /**
+   * Moves the city up as soon as its population reaches a milestone, not at the end of the month: the grant,
+   * the tools it opens and the news arrive the moment the number is there.
+   */
+  private reachMilestones(): void {
+    const s = this.state;
+    const next = nextMilestone(s.milestone);
+    if (!next || this.totals.pop < next.pop) return;
+    for (const m of advanceMilestones(s, this.totals.pop, GOVERNMENTS[s.government].grants)) {
+      if (!this.paperOpen()) continue;
+      const opens = unlockNames(m, (t) => toolInfo(t).label.toLowerCase());
+      this.publish(`${this.cityName} ya es ${m.name}: la Provincia gira ${formatMoney(m.grant)}${opens ? ` y habilita ${opens}` : ''}`, true);
+    }
+  }
+
   private endOfMonth(): void {
     const s = this.state;
     const w = this.world;
@@ -709,7 +725,7 @@ export class Simulation {
     this.totals = cityTotals(w);
     this.abandonedCount = countAbandoned(w);
     this.updateAppetite();
-    const reached = advanceMilestones(s, this.totals.pop, GOVERNMENTS[s.government].grants);
+    this.reachMilestones();
     this.approval = this.judge();
     s.approval = stepApproval(s.approval, this.approval.target, s.government);
     // The promise comes first: it is what the neighbours were waiting for all month.
@@ -726,10 +742,6 @@ export class Simulation {
     const snap = this.snapshot();
     if (this.paperOpen()) {
       const lines = headlinesFor(this.prevSnapshot, snap, this.cityName);
-      for (const m of reached) {
-        const opens = unlockNames(m, (t) => toolInfo(t).label.toLowerCase());
-        lines.push(`${this.cityName} ya es ${m.name}: la Provincia gira ${formatMoney(m.grant)}${opens ? ` y habilita ${opens}` : ''}`);
-      }
       lines.push(...this.hints());
       if (lines.length === 0 && this.rng.chance(0.3)) lines.push(this.rng.pick(FILLERS));
       for (const l of lines) this.publish(l, true); // the paper is open here

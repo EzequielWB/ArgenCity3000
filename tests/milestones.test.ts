@@ -53,6 +53,15 @@ describe('milestones', () => {
     expect(sim.state.milestone).toBeGreaterThanOrEqual(2);
   });
 
+  it('is reached on the tick the population gets there, not at the end of the month', () => {
+    const w = new World(flat());
+    for (let x = 0; x < 20; x++) w.setTile(x, 5, TILE.R, 3);
+    const sim = new Simulation(w, newSimState(1), 'Prueba');
+    sim.tick();
+    expect(sim.state.tick).toBeLessThan(TICKS_PER_MONTH);
+    expect(sim.state.milestone).toBeGreaterThanOrEqual(2);
+  });
+
   it('saves the milestone, and works it out from the history for older saves', () => {
     const w = new World(flat());
     const s = newSimState(1);
