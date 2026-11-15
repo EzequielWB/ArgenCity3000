@@ -630,7 +630,7 @@ button.chapa:focus-visible {
   left: 6px;
   top: 6px;
   z-index: 4;
-  width: 286px;
+  width: 372px;
   max-width: calc(100% - 12px);
   padding: 10px;
   background: var(--base);
@@ -693,6 +693,12 @@ button.chapa:focus-visible {
   font-size: 12px;
   font-weight: 700;
   text-align: center;
+}
+
+/* A long name wraps inside its card instead of pushing the price out of it. */
+.fly .tool .name {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .fly .tool .price {

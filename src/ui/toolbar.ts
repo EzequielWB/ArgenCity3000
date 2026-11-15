@@ -157,7 +157,7 @@ export class Toolbar {
       b.classList.toggle('locked', locked);
       b.setAttribute('aria-disabled', String(locked));
       b.title = locked ? lockNotice(tool) : `${info.label} (${info.key.toUpperCase()}): ${info.help}`;
-      b.querySelector('.price')!.textContent = locked ? `${m.name}: ${formatNumber(m.pop)}` : price === null ? '' : formatMoney(price);
+      b.querySelector('.price')!.textContent = locked ? `Población: ${formatNumber(m.pop)}` : price === null ? '' : formatMoney(price);
     });
   }
 
