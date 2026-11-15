@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { BUS_COLORS, MAX_BUS_NUMBER } from '../src/config';
+import { BUS, BUS_COLORS, MAX_BUS_NUMBER } from '../src/config';
 import { deserialize, serialize } from '../src/save/save';
+import { isUnlocked } from '../src/sim/milestones';
 import { newSimState } from '../src/sim/simulation';
+import { toolPrice } from '../src/ui/toolbar';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { UndoHistory } from '../src/world/history';
-import { applyPlan, planTool } from '../src/world/tools';
-import { busColorOf, busLineProblem, busNumberOf, busStations, freeBusNumber, packBusLine } from '../src/world/transport';
+import { applyPlan, groupOfTool, planTool, toolInfo } from '../src/world/tools';
+import { busArea, busColorOf, busLineProblem, busNumberOf, busRefusal, busStations, freeBusNumber, packBusLine } from '../src/world/transport';
 import { TILE, World } from '../src/world/world';
 
 function flat(n = 16): Terrain {
@@ -111,5 +113,55 @@ describe('saving the lines', () => {
     expect(() => deserialize(withBuses([[a, packBusLine(3, 7)], [b, packBusLine(1, 1000)]]))).toThrow(/inválida/);
     expect(() => deserialize(withBuses([[a, packBusLine(3, 7)], [b, packBusLine(1, 8)], [w.idx(0, 0), 5]]))).toThrow(/cochera/);
     expect(() => deserialize(withBuses([[a, packBusLine(3, 7)]]))).toThrow(/no coinciden/);
+  });
+});
+
+describe('placing a bus line', () => {
+  /** A street along the row y = 5 and, besides it, free land. */
+  function withStreet(): World {
+    const w = new World(flat());
+    for (let x = 0; x < 16; x++) w.setTile(x, 5, TILE.ROAD);
+    return w;
+  }
+
+  it('is a one-lot tool of its own category, paid at the price of a line, and open from the first big city', () => {
+    expect(toolInfo('bus').shape).toBe('point');
+    expect(groupOfTool('bus').label).toBe('Transportes');
+    expect(toolPrice('bus')).toBe(BUS.cost);
+    expect(isUnlocked('bus', 2)).toBe(false);
+    expect(isUnlocked('bus', 3)).toBe(true);
+  });
+
+  it('goes on a free lot with a street within three lots, and costs what a line costs', () => {
+    const w = withStreet();
+    expect(planTool(w, 'bus', [[4, 8]])).toMatchObject({ cells: [[4, 8]], cost: BUS.cost });
+    expect(busRefusal(w, 4, 8)).toBeNull();
+  });
+
+  it('is refused far from a street, on a taken lot and on water, with a reason when the place is the problem', () => {
+    const w = withStreet();
+    expect(planTool(w, 'bus', [[4, 10]]).cells).toEqual([]);
+    expect(busRefusal(w, 4, 10)).toMatch(/3 lotes o menos de una calle/);
+    expect(planTool(w, 'bus', [[4, 5]]).cells).toEqual([]);
+    const lake = new World({ n: 16, corners: new Uint8Array(17 * 17).fill(SEA_LEVEL - 1), trees: new Uint8Array(256) });
+    expect(planTool(lake, 'bus', [[4, 4]]).cells).toEqual([]);
+    expect(busRefusal(lake, 4, 4)).toMatch(/en tierra/);
+  });
+
+  it('builds the depot with the line it was given, or with a free number when none is given', () => {
+    const w = withStreet();
+    const plan = planTool(w, 'bus', [[4, 7]]);
+    applyPlan(w, { ...plan, line: packBusLine(5, 148) });
+    expect(busStations(w)).toMatchObject([{ x: 4, y: 7, color: 5, number: 148 }]);
+    applyPlan(w, planTool(w, 'bus', [[8, 7]]));
+    expect(busStations(w).map((s) => s.number)).toEqual([148, 1]);
+  });
+
+  it('covers a diamond of lots around it, inside the map', () => {
+    const area = busArea(16, 0, 0);
+    expect(area).toContainEqual([0, 0]);
+    expect(area).toContainEqual([BUS.radius, 0]);
+    expect(area).not.toContainEqual([BUS.radius, 1]);
+    expect(area.every(([x, y]) => x >= 0 && y >= 0 && x < 16 && y < 16)).toBe(true);
   });
 });

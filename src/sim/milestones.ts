@@ -17,7 +17,7 @@ export const MILESTONES: readonly Milestone[] = [
   { pop: 0, name: 'Paraje', grant: 0, unlocks: ['query', 'bulldoze', 'roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line', 'zoneR', 'zoneC', 'zoneI', 'park', 'plant'] },
   { pop: 100, name: 'Caserío', grant: 1500, unlocks: ['clinic', 'fire', 'fishing'] },
   { pop: 200, name: 'Pueblo', grant: 2500, unlocks: ['school', 'police', 'promenade'] },
-  { pop: 1000, name: 'Ciudad', grant: 5000, unlocks: ['plantGas', 'port', 'resort'] },
+  { pop: 1000, name: 'Ciudad', grant: 5000, unlocks: ['plantGas', 'port', 'resort', 'bus'] },
   { pop: 2500, name: 'Ciudad pujante', grant: 8000, unlocks: ['plantWind'] },
   { pop: 5000, name: 'Gran ciudad', grant: 12000, unlocks: ['lighthouse'] },
   { pop: 25000, name: 'Metrópolis', grant: 30000, unlocks: [] },

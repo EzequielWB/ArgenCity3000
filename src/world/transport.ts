@@ -3,7 +3,7 @@
  * the number (1 to 999) in the low ten. Nothing else is stored, so a demolished depot frees its
  * number by itself.
  */
-import { BUS_COLORS, MAX_BUS_NUMBER } from '../config';
+import { BUS, BUS_COLORS, MAX_BUS_NUMBER, ROAD_REACH } from '../config';
 import { TILE, type World } from './world';
 
 const NUMBER_BITS = 10;
@@ -48,4 +48,36 @@ export function freeBusNumber(w: World): number {
   const used = new Set(busStations(w).map((s) => s.number));
   for (let k = 1; k <= MAX_BUS_NUMBER; k++) if (!used.has(k)) return k;
   return 0;
+}
+
+/** True when a street is within ROAD_REACH of the lot (Manhattan distance): the depot needs it to send its buses out. */
+export function streetNear(w: World, x: number, y: number): boolean {
+  for (let dy = -ROAD_REACH; dy <= ROAD_REACH; dy++) {
+    for (let dx = -ROAD_REACH; dx <= ROAD_REACH; dx++) {
+      if (Math.abs(dx) + Math.abs(dy) > ROAD_REACH || !w.inBounds(x + dx, y + dy)) continue;
+      if (w.tileAt(x + dx, y + dy) === TILE.ROAD) return true;
+    }
+  }
+  return false;
+}
+
+/** Why a bus depot cannot go on a lot, or null when it can (a lot that is merely taken is not a reason given here). */
+export function busRefusal(w: World, x: number, y: number): string | null {
+  if (w.isWater(x, y)) return `${BUS.label}: tiene que estar en tierra`;
+  if (!streetNear(w, x, y)) return `${BUS.label}: tiene que estar a ${ROAD_REACH} lotes o menos de una calle`;
+  return null;
+}
+
+/** The lots a depot at (x, y) covers: the diamond of `BUS.radius` lots around it, kept inside the map. */
+export function busArea(n: number, x: number, y: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (let dy = -BUS.radius; dy <= BUS.radius; dy++) {
+    for (let dx = -BUS.radius; dx <= BUS.radius; dx++) {
+      if (Math.abs(dx) + Math.abs(dy) > BUS.radius) continue;
+      const cx = x + dx;
+      const cy = y + dy;
+      if (cx >= 0 && cy >= 0 && cx < n && cy < n) out.push([cx, cy]);
+    }
+  }
+  return out;
 }

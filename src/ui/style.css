@@ -1739,6 +1739,80 @@ ol.steps li {
   color: var(--muted);
 }
 
+/* ---------- Bus line window ---------- */
+
+.modal-card:has(.bus-colors) {
+  width: min(520px, 100%);
+}
+
+.bus-lede {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.bus-colors {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.bus-swatch {
+  height: 46px;
+  padding: 0;
+  background: var(--bus);
+  border: 3px solid #000;
+}
+
+.bus-swatch[aria-checked='true'] {
+  border-color: var(--gold-light);
+  outline: 3px solid var(--gold);
+  outline-offset: 1px;
+}
+
+.bus-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.bus-number {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.bus-number input {
+  width: 110px;
+  padding: 4px 8px;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  background: var(--deep);
+  border: 2px solid var(--gold-dark);
+}
+
+.bus-badge {
+  min-width: 96px;
+  padding: 6px 14px;
+  font-family: var(--font-title);
+  font-size: 26px;
+  text-align: center;
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0 #000;
+}
+
+.bus-hint {
+  min-height: 1.3em;
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.bus-hint.bad {
+  color: #ff8f80;
+}
+
 /* ---------- Mini tutorial ---------- */
 
 /* Wider than the usual card, so the four pictures can be read. */

@@ -22,7 +22,9 @@ import { APPROVAL, nextElectionYear } from './sim/politics';
 import { openApproval, openElectionLost, openElectionWon, openEvent, openMilestone } from './ui/panels';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
-import { applyPlan, dragCells, isCoastTool, planTool, plantFootprint, plantKindOfTool, routeRefusal, toolInfo, type ToolId } from './world/tools';
+import { applyPlan, dragCells, isCoastTool, planTool, plantFootprint, plantKindOfTool, routeRefusal, toolInfo, type Plan, type ToolId } from './world/tools';
+import { busArea, busRefusal, busLineProblem } from './world/transport';
+import { openBusLine } from './ui/busline';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
 
@@ -43,6 +45,7 @@ const LAYERS: { id: Layer; label: string }[] = [
 ];
 const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   bulldoze: 'rgba(224,165,38,0.45)',
+  bus: 'rgba(224,165,38,0.55)',
   roadDirt: 'rgba(160,124,82,0.6)',
   road: 'rgba(85,84,90,0.55)',
   roadPaved: 'rgba(60,59,66,0.6)',
@@ -69,7 +72,7 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
 const STALL_LABELS = { shortage: 'apagones', taxes: 'impuestos altos', blight: 'abandono', stopped: 'la ciudad está frenada' } as const;
 
 /** Tools that show a coverage layer while they are picked: each service shows what it covers, the plants and the line show the light, the street shows the traffic. */
-const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', plantGas: 'power', plantWind: 'power', line: 'power', roadDirt: 'traffic', road: 'traffic', roadPaved: 'traffic', roadBoulevard: 'traffic' };
+const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', plant: 'power', plantGas: 'power', plantWind: 'power', line: 'power', bus: 'traffic', roadDirt: 'traffic', road: 'traffic', roadPaved: 'traffic', roadBoulevard: 'traffic' };
 
 export interface GameHooks {
   isModalOpen(): boolean;
@@ -394,6 +397,21 @@ export class Game implements PointerTarget {
       toast(this.refusalAt(target) ?? (this.tool === 'bulldoze' ? 'No hay nada para demoler ahí' : 'No se puede construir ahí'), true);
       return;
     }
+    // A bus line is asked for its colour and number first, and built when the window is confirmed.
+    if (this.tool === 'bus') {
+      openBusLine(this.world, this.world.idx(plan.cells[0][0], plan.cells[0][1]), (line) => this.build({ ...plan, line }));
+      return;
+    }
+    this.build(plan);
+  }
+
+  /** Pays for a plan and builds it: the part of a drag that is the same for every tool. */
+  private build(plan: Plan): void {
+    if (plan.tool === 'bus' && (plan.line === undefined || busLineProblem(this.world, plan.line) !== null)) {
+      this.hooks.sound.play('deny');
+      toast('Esa línea ya no se puede construir', true);
+      return;
+    }
     if (!this.sim.spend(plan.cost)) {
       this.hooks.sound.play('deny');
       toast(`No alcanza la plata: hace falta ${formatMoney(plan.cost)}`, true);
@@ -404,7 +422,7 @@ export class Game implements PointerTarget {
     // against the Intendente for a few months. Undo does not pass through here, so it upsets nobody.
     const affected = this.sim.noteDemolition(plan.cells);
     applyPlan(this.world, plan);
-    this.hooks.sound.play(this.tool === 'bulldoze' ? 'bulldoze' : 'build');
+    this.hooks.sound.play(plan.tool === 'bulldoze' ? 'bulldoze' : 'build');
     this.afterEdit();
     if (affected > 0) toast(`Demolición: ${formatNumber(Math.round(affected))} vecinos afectados`);
     if (this.waitingForFirstWork) {
@@ -471,7 +489,7 @@ export class Game implements PointerTarget {
 
   /** Why the tool in hand cannot build on a cell (the route rules, or the coast ones), or null (a lot that is merely taken). */
   private refusalAt(cell: [number, number]): string | null {
-    return routeRefusal(this.world, this.tool, cell[0], cell[1]) ?? (isCoastTool(this.tool) ? coastRefusal(this.world, this.tool, cell[0], cell[1]) : null);
+    return routeRefusal(this.world, this.tool, cell[0], cell[1]) ?? (isCoastTool(this.tool) ? coastRefusal(this.world, this.tool, cell[0], cell[1]) : this.tool === 'bus' ? busRefusal(this.world, cell[0], cell[1]) : null);
   }
 
   private cellsFor(a: [number, number], b: [number, number]): [number, number][] {
@@ -487,7 +505,7 @@ export class Game implements PointerTarget {
       cells: shown,
       valid: new Set(plan.cells.map(([x, y]) => this.world.idx(x, y))),
       color: PREVIEW_COLORS[this.tool] ?? 'rgba(255,255,255,0.4)',
-      halo: plantKind ? reachCells(this.world.n, shown, POWER_REACH) : undefined,
+      halo: plantKind ? reachCells(this.world.n, shown, POWER_REACH) : this.tool === 'bus' ? busArea(this.world.n, shown[0][0], shown[0][1]) : undefined,
     };
     const tip = $('#tooltip');
     tip.classList.remove('hidden');

@@ -2,7 +2,7 @@
  * The toolbar: five categories that open a flyout with their tools, plus undo, block size, the
  * layers and the view controls. It only draws and reports clicks; the game decides what happens.
  */
-import { COAST, COSTS, PLANTS, ROAD_TIERS, SERVICES } from '../config';
+import { BUS, COAST, COSTS, PLANTS, ROAD_TIERS, SERVICES } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { Layer } from '../render/view';
 import { MILESTONES, isUnlocked, milestoneOfTool } from '../sim/milestones';
@@ -19,6 +19,8 @@ export function toolPrice(tool: ToolId): number | null {
   if (isServiceTool(tool)) return SERVICES[tool].cost;
   if (isCoastTool(tool)) return COAST[tool].cost;
   switch (tool) {
+    case 'bus':
+      return BUS.cost;
     case 'line':
       return COSTS.line;
     case 'park':
@@ -53,6 +55,9 @@ const GROUP_ICONS: Record<ToolGroup['id'], string> = {
   ),
   plants: pixelIcon(
     px(1, 5, 8, 4, '#b36a45') + px(2, 0, 2, 5, '#c8462f') + px(2, 2, 2, 1, '#f6f2e8') + px(6, 3, 1, 2, '#ffd84a') + px(5, 5, 2, 1, '#ffd84a') + px(5, 6, 1, 2, '#ffd84a'),
+  ),
+  transport: pixelIcon(
+    px(0, 3, 10, 5, '#c8392f') + px(0, 3, 10, 1, '#e8c0b8') + px(1, 4, 2, 2, '#9fd3ee') + px(4, 4, 2, 2, '#9fd3ee') + px(7, 4, 2, 2, '#9fd3ee') + px(0, 7, 10, 1, '#7a1f19') + px(1, 8, 2, 2, '#1f1611') + px(7, 8, 2, 2, '#1f1611'),
   ),
   coast: pixelIcon(
     px(0, 6, 10, 3, '#4f8fb0') + px(0, 9, 10, 1, '#e2cc94') + px(1, 7, 2, 1, '#cfe6ec') + px(6, 8, 3, 1, '#cfe6ec') + px(4, 1, 2, 5, '#f6f2e8') + px(4, 2, 2, 1, '#c8392f') + px(4, 4, 2, 1, '#c8392f') + px(4, 0, 2, 1, '#ffd84a'),

@@ -1,10 +1,11 @@
-import { ASPHALT, COAST, COSTS, DIRT, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, roadRank, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
+import { ASPHALT, BUS, COAST, COSTS, DIRT, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, roadRank, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
+import { busRefusal, freeBusNumber, packBusLine } from './transport';
 import { TILE, World, coastTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
+export type ToolId = 'query' | 'bulldoze' | 'bus' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -46,6 +47,7 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'promenade', label: COAST.promenade.label, key: 'x', shape: 'rect', help: 'Paseo sobre la costa, se arrastra como la plaza. Sube el valor del suelo y la aprobación.' },
   { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 40 empleos industriales y sube los impuestos de las fábricas; contamina.' },
   { id: 'resort', label: COAST.resort.label, key: 'l', shape: 'point', help: 'En la playa. Con una calle cerca da 30 empleos y mucho turismo en verano.' },
+  { id: 'bus', label: BUS.label, key: 'ñ', shape: 'point', help: 'A 3 lotes o menos de una calle. Alivia el tránsito de las calles a su alrededor y se ven los colectivos andar. Al colocarla elegís el color y el número de la línea.' },
   { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Suma aprobación y valor del suelo.' },
 ];
 
@@ -69,7 +71,7 @@ export function toolInfo(id: ToolId): ToolInfo {
 }
 
 export interface ToolGroup {
-  id: 'query' | 'network' | 'zones' | 'services' | 'plants' | 'coast';
+  id: 'query' | 'network' | 'zones' | 'services' | 'plants' | 'coast' | 'transport';
   label: string;
   tools: readonly ToolId[];
 }
@@ -82,6 +84,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire'] },
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
   { id: 'coast', label: 'Costa', tools: ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] },
+  { id: 'transport', label: 'Transportes', tools: ['bus'] },
 ];
 
 export function groupOfTool(tool: ToolId): ToolGroup {
@@ -148,6 +151,8 @@ export function plantFootprint(n: number, x: number, y: number): Cell[] {
 
 export interface Plan {
   tool: ToolId;
+  /** For a bus depot: the line (colour and number, see `world/transport.ts`) it is built with. */
+  line?: number;
   /** Cells the action will actually change. */
   cells: Cell[];
   cost: number;
@@ -285,6 +290,13 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
         break;
       }
       default:
+        if (tool === 'bus') {
+          if (isFreeLot(w, x, y) && busRefusal(w, x, y) === null) {
+            out.push([x, y]);
+            cost += BUS.cost;
+          }
+          break;
+        }
         if (isServiceTool(tool)) {
           if (!water && isFreeLot(w, x, y)) {
             out.push([x, y]);
@@ -338,6 +350,11 @@ export function applyPlan(w: World, plan: Plan): void {
         break;
       case 'park':
         w.setTile(x, y, TILE.PARK);
+        break;
+      case 'bus':
+        w.setTile(x, y, TILE.BUS);
+        w.busLine[i] = plan.line ?? packBusLine(0, freeBusNumber(w));
+        w.terrain.trees[i] = 0;
         break;
       case 'plant':
       case 'plantGas':
