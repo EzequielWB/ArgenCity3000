@@ -32,7 +32,8 @@ export function intendente(mayor: string): string {
 export function foundingHeadline(city: string, mayor: string, party = '', government: GovernmentKind = 'democracia'): string {
   const who = party ? `${intendente(mayor)}, por el partido ${party}` : intendente(mayor);
   const base = `Se funda ${city}: el ${who} promete calles, luz y progreso`;
-  const aside = government === 'democracia' ? '' : ` La ciudad arranca bajo una ${GOVERNMENTS[government].label.toLowerCase()}.`;
+  const under = government === 'comunismo' ? 'el comunismo' : `una ${GOVERNMENTS[government].label.toLowerCase()}`;
+  const aside = government === 'democracia' ? '' : ` La ciudad arranca bajo ${under}.`;
   return aside ? `${base}.${aside}` : base;
 }
 
@@ -64,6 +65,9 @@ export function dictatorHeadline(year: number, party: string, mayor: string): st
   const winner = party ? `El partido ${party}` : `El ${intendente(mayor)}`;
   return `Acto eleccionario ${year}: ${winner} gana por amplia mayoría, después de que sus contrincantes desaparecieran`;
 }
+
+/** October under a theocracy: nobody votes, the city goes to Mass. */
+export const misaHeadline = (year: number): string => `Misa mayor ${year}: la ciudad entera acompaña al Intendente en procesión y le agradece al cielo`;
 
 /** What the paper publishes the day after that act: the second line is always worse than the first. */
 export const DICTATOR_FOLLOWUPS: readonly string[] = [

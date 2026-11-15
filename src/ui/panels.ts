@@ -8,7 +8,7 @@ import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
 import { dateOf } from '../sim/calendar';
-import { COAST_BOOST, factorOf, lockOf } from '../sim/effects';
+import { COAST_BOOST, factorOf, incomeFactor, lockOf } from '../sim/effects';
 import { loanEndLabel, loanInstalment, loanOwed, loanTotal } from '../sim/loans';
 import { MILESTONES, unlockNames } from '../sim/milestones';
 import { monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
@@ -152,10 +152,10 @@ export function openBudget(game: Game): void {
   `);
   const refresh = () => {
     const boost = factorOf(sim.state.effects, COAST_BOOST);
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost, sim.state.transport);
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects));
     $('#budgetNow').innerHTML = budgetTable(b);
     // The year is the average of the seasons, not the month in course.
-    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport).balance * 12, true);
+    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects)).balance * 12, true);
     const d = sim.demand;
     const avg = averageTax(sim.state.taxes);
     const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;

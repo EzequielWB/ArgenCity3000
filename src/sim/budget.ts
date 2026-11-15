@@ -1,4 +1,4 @@
-import { DEFAULT_FUNDING, FIXED_SHARE, MAX_FUNDING, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
+import { DEFAULT_FUNDING, FIXED_SHARE, GOVERNMENTS, MAX_FUNDING, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type GovernmentKind, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { coastBudget, portTaxBoost } from './coast';
 import { cityTotals, zoneTaxes } from './demand';
@@ -85,8 +85,11 @@ export function monthlyBudget(
   green = 100,
   coastFactor = 1,
   transport = 100,
+  government: GovernmentKind = 'democracia',
+  earnings = 1,
 ): BudgetReport {
   const taxes = zoneTaxes(tax);
+  const gov = GOVERNMENTS[government];
   const t = cityTotals(w);
   let roads = 0;
   let bridges = 0;
@@ -112,11 +115,12 @@ export function monthlyBudget(
       }
     }
   }
-  const taxR = Math.round(t.pop * taxes.R * 0.055);
-  const taxC = Math.round(t.cJobs * taxes.C * 0.075);
+  // The form of government and the effects that move what the city earns (see `incomeFactor`).
+  const taxR = Math.round(t.pop * taxes.R * 0.055 * gov.taxIncome.R * earnings);
+  const taxC = Math.round(t.cJobs * taxes.C * 0.075 * gov.taxIncome.C * earnings);
   const coast = coastBudget(w, month);
-  const taxI = Math.round(t.iJobs * taxes.I * 0.075 * portTaxBoost(coast.ports));
-  const funded = (k: ServiceKind) => Math.round((upkeep[k] * funding[k]) / 100);
+  const taxI = Math.round(t.iJobs * taxes.I * 0.075 * portTaxBoost(coast.ports) * gov.taxIncome.I * earnings);
+  const funded = (k: ServiceKind) => Math.round((upkeep[k] * funding[k] * gov.serviceCost) / 100);
   const loanDue = loan && !loanPaidOff(loan) ? loanInstalment(loan) : 0;
   const r = {
     taxR,
@@ -134,9 +138,9 @@ export function monthlyBudget(
     loan: loanDue,
     transport: transitUpkeep(w, transport),
     hubs: hubUpkeep(w),
-    hubIncome: hubIncome(w),
+    hubIncome: Math.round(hubIncome(w) * earnings),
     coast: coast.upkeep,
-    coastIncome: Math.round(coast.income * coastFactor),
+    coastIncome: Math.round(coast.income * coastFactor * earnings),
   };
   const income = r.taxR + r.taxC + r.taxI + r.coastIncome + r.hubIncome;
   const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan + r.coast + r.transport + r.hubs;

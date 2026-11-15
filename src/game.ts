@@ -10,6 +10,7 @@ import { Minimap } from './render/minimap';
 import { View, startCameraCell, type Layer } from './render/view';
 import type { SaveData } from './save/save';
 import { saveToSlot } from './save/slots';
+import { incomeFactor } from './sim/effects';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
 import { dateLabel, dateOf, weekLabel } from './sim/calendar';
 import { coastRefusal } from './sim/coast';
@@ -729,7 +730,7 @@ ${stalled}` : ''}`;
     const s = this.sim.state;
     const now = performance.now();
     if (force || !this.outlookBudget || now - this.outlookAt > 400) {
-      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport);
+      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects));
       this.outlookAt = now;
     }
     const o = describeOutlook(this.outlookBudget, s.cash);

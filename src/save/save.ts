@@ -23,14 +23,16 @@ import type { BudgetReport } from '../sim/budget';
 import type { Commitment } from '../sim/commitments';
 import type { Effects } from '../sim/effects';
 import type { Loan } from '../sim/loans';
+import { FAVOR } from '../sim/favor';
 import { MILESTONES, milestoneForPop } from '../sim/milestones';
+import type { FivePlan } from '../sim/plan';
 import { APPROVAL } from '../sim/politics';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { busLineProblem, busStations } from '../world/transport';
 import { MAX_TILE, TILE, World, hubOf, hubTile, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -42,7 +44,7 @@ export const SAVE_VERSION = 16;
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
  * government, so they are democracies with no party.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -323,6 +325,9 @@ function parseCommitment(raw: unknown): Commitment | null {
   // The form of government exists from version 10 on: older saves are democracies without a party.
   need(s.government === undefined || GOVERNMENT_KINDS.includes(s.government as GovernmentKind), 'La forma de gobierno de la partida es inválida');
   need(s.party === undefined || (typeof s.party === 'string' && s.party.length <= 32), 'El partido de la partida es inválido');
+  // The favor of God and the five-year plan exist from version 17 on: older cities have neither.
+  need(s.favor === undefined || (typeof s.favor === 'number' && s.favor >= 0 && s.favor <= 100), 'El favor divino de la partida es inválido');
+  const plan = parsePlan(s.plan);
   return {
     tick: s.tick as number,
     cash: s.cash as number,
@@ -349,7 +354,17 @@ function parseCommitment(raw: unknown): Commitment | null {
     loan,
     government: (s.government as GovernmentKind | undefined) ?? 'democracia',
     party: (s.party as string | undefined) ?? '',
+    favor: (s.favor as number | undefined) ?? FAVOR.start,
+    plan,
   };
+}
+
+/** The five-year plan in progress, or null. */
+function parsePlan(raw: unknown): FivePlan | null {
+  if (raw === undefined || raw === null) return null;
+  const p = raw as Partial<FivePlan>;
+  need(typeof p === 'object' && isInt(p.jobs) && p.jobs >= 0 && isInt(p.due) && p.due >= 0 && isInt(p.start) && p.start >= 0, 'El plan quinquenal de la partida es inválido');
+  return { jobs: p.jobs as number, due: p.due as number, start: p.start as number };
 }
 
 /**

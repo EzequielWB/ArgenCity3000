@@ -32,7 +32,9 @@ import { computeCongestion, jamGrowthFactor, type CongestionReport } from './con
 import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDemand, isHoldout, levelCap, spawnLevel, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
-import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, pollHeadline } from './mayor';
+import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, misaHeadline, pollHeadline } from './mayor';
+import { FAVOR, computeFavor, judgementChance, moodOf, stepFavor, type FavorReport } from './favor';
+import { PLAN, newPlan, planPremium, type FivePlan } from './plan';
 import { advanceMilestones, nextMilestone, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
@@ -40,7 +42,7 @@ import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElect
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, pickEvent, type CityEvent } from './events';
-import { COAST_BOOST, COAST_WORN, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, lockOf, tickEffects, type Effects } from './effects';
+import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
 
 export interface SimState {
   tick: number;
@@ -86,6 +88,10 @@ export interface SimState {
   government: GovernmentKind;
   /** Name of the party in charge: what the diary and the politics panel call it. */
   party: string;
+  /** Favor of God, 0 to 100 (see `sim/favor.ts`): it only moves under a theocracy. */
+  favor: number;
+  /** The five-year plan the Party asked for, or null (see `sim/plan.ts`): it only exists under communism. */
+  plan: FivePlan | null;
 }
 
 export function newSimState(seed: number, government: GovernmentKind = 'democracia', party = ''): SimState {
@@ -115,6 +121,8 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     terms: 0,
     lostElection: false,
     loan: null,
+    favor: FAVOR.start,
+    plan: government === 'comunismo' ? newPlan(0, 0) : null,
   };
 }
 
@@ -422,6 +430,119 @@ export class Simulation {
    * Checks the promise once a month: kept as soon as the city shows it, lost when the deadline
    * arrives without it. Either way it is over, and the neighbours pay or charge on the spot.
    */
+  /** What God thinks of the city today and why (only a theocracy cares: see `sim/favor.ts`). */
+  favorReport(): FavorReport {
+    const s = this.state;
+    return computeFavor(this.world, { taxes: s.taxes, crisis: s.cash < 0, abandoned: this.abandonedCount, grief: s.grief, pop: this.totals.pop, green: s.green });
+  }
+
+  /** The built lots (homes, shops and factories with people in them) within `radius` of lot `centre`. */
+  private builtAround(centre: number, radius: number): number[] {
+    const w = this.world;
+    const cx = centre % w.n;
+    const cy = Math.floor(centre / w.n);
+    const out: number[] = [];
+    for (let y = Math.max(0, cy - radius); y <= Math.min(w.n - 1, cy + radius); y++) {
+      for (let x = Math.max(0, cx - radius); x <= Math.min(w.n - 1, cx + radius); x++) {
+        const i = w.idx(x, y);
+        if (zoneOf(w.tiles[i]) && w.level[i] > 0 && w.isOccupied(i) && !w.fire[i]) out.push(i);
+      }
+    }
+    return out;
+  }
+
+  /** A random lot with a building on it, or -1. */
+  private anyBuilding(): number {
+    const w = this.world;
+    const all: number[] = [];
+    for (let i = 0; i < w.tiles.length; i++) if (zoneOf(w.tiles[i]) && w.level[i] > 0 && w.isOccupied(i)) all.push(i);
+    return all.length ? this.rng.pick(all) : -1;
+  }
+
+  /** Moves the favor of God towards what the city deserves and, when He is far from calm, rolls what falls from above. */
+  private judgement(): void {
+    const s = this.state;
+    s.favor = stepFavor(s.favor, this.favorReport().target);
+    if (this.totals.pop < 100 || !this.rng.chance(judgementChance(s.favor))) return;
+    if (moodOf(s.favor) === 'wrath') this.catastrophe((FAVOR.wrath - s.favor) / FAVOR.wrath);
+    else this.miracle();
+  }
+
+  /** A punishment: lightning and fires in one area, a plague that empties another, a drought, a revolt. */
+  private catastrophe(severity: number): void {
+    const s = this.state;
+    const centre = this.anyBuilding();
+    if (centre < 0) return;
+    const kind = this.rng.pick(['rayos', 'plaga', 'sequia', 'revuelta'] as const);
+    const city = this.cityName;
+    if (kind === 'rayos') {
+      const hit = this.builtAround(centre, 5).slice(0, 3 + Math.ceil(severity * 5));
+      for (const i of hit) this.ignite(i);
+      this.publish(`Cayeron rayos sobre ${city}: hay incendios en un barrio y dicen que es el castigo del cielo`, true);
+    } else if (kind === 'plaga') {
+      const sick = this.builtAround(centre, 7).filter((i) => zoneOf(this.world.tiles[i]) !== 'I' && !this.world.abandoned[i]).slice(0, 6 + Math.round(severity * 14));
+      for (const i of sick) this.setAbandoned(i, true);
+      this.recomputeDemand();
+      this.publish(`Plaga de langostas: ${sick.length} edificios de ${city} quedaron vacíos y la gente reza en la calle`, true);
+    } else if (kind === 'sequia') {
+      this.effect(DROUGHT, 3);
+      this.publish(`Sequía en ${city}: la plata del mes se seca durante tres meses (los ingresos caen un 30 %)`, true);
+    } else {
+      this.nudgeApproval(-(6 + Math.round(severity * 8)));
+      this.publish(`Revuelta de los fieles en ${city}: dicen que el Intendente le dio la espalda a Dios`, true);
+    }
+    s.favor = Math.min(100, s.favor + 3); // the wrath is spent: it does not fall without end
+  }
+
+  /** A reward: more income, the people come back to the empty houses, more work, the neighbours' love. */
+  private miracle(): void {
+    const city = this.cityName;
+    const abandoned = this.abandonedCount;
+    const kind = this.rng.pick(abandoned > 0 ? (['plata', 'sanacion', 'trabajo', 'fe'] as const) : (['plata', 'trabajo', 'fe'] as const));
+    if (kind === 'plata') {
+      this.effect(MIRACLE, 3);
+      this.publish(`Milagro en ${city}: la caja se llena sola durante tres meses (los ingresos suben un 20 %)`, true);
+    } else if (kind === 'sanacion') {
+      const w = this.world;
+      let back = 0;
+      for (let i = 0; i < w.tiles.length && back < 12; i++) {
+        if (w.level[i] > 0 && w.abandoned[i] && zoneOf(w.tiles[i])) {
+          this.setAbandoned(i, false);
+          back++;
+        }
+      }
+      this.recomputeDemand();
+      this.publish(`Milagro en ${city}: ${back} familias vuelven a los edificios vacíos y lo atribuyen a la fe`, true);
+    } else if (kind === 'trabajo') {
+      this.effect(INDUSTRY_BOOM, 3);
+      this.publish(`Bendición del trabajo en ${city}: las fábricas piden gente durante tres meses`, true);
+    } else {
+      this.nudgeApproval(8);
+      this.publish(`Procesión multitudinaria en ${city}: los vecinos le agradecen al Intendente`, true);
+    }
+  }
+
+  /** Closes the five-year plan when it is met or falls due, and sets the next one. Returns the headline, or null. */
+  private settlePlan(): string | null {
+    const s = this.state;
+    const jobs = this.totals.iJobs;
+    if (!s.plan) {
+      s.plan = newPlan(s.tick, jobs);
+      return null;
+    }
+    const done = jobs >= s.plan.jobs;
+    if (!done && s.tick < s.plan.due) return null;
+    const plan = s.plan;
+    s.plan = newPlan(s.tick, jobs);
+    if (done) {
+      s.cash += planPremium(plan);
+      this.nudgeApproval(PLAN.kept);
+      return `Plan quinquenal cumplido: ${plan.jobs} puestos industriales y un premio de ${formatMoney(planPremium(plan))} del Partido`;
+    }
+    this.nudgeApproval(-PLAN.broken);
+    return 'El plan quinquenal no se cumplió: el Partido pide explicaciones y el pueblo se enoja';
+  }
+
   private settlePromise(): string | null {
     const c = this.state.commitment;
     if (!c) return null;
@@ -669,7 +790,7 @@ export class Simulation {
   private settleWeek(): void {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
-    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport).balance, week);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects)).balance, week);
     s.cash += due - this.monthPaid;
     this.monthPaid = due;
     s.crisis = s.cash < 0;
@@ -683,7 +804,7 @@ export class Simulation {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
     if (week === 0) return 0;
-    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects)).balance, Math.min(week, WEEKS_PER_MONTH - 1));
   }
 
   /** Counts the instalment this month paid, and closes the loan once the term is done. */
@@ -716,7 +837,7 @@ export class Simulation {
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST), s.transport);
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects));
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
@@ -728,6 +849,8 @@ export class Simulation {
     this.reachMilestones();
     this.approval = this.judge();
     s.approval = stepApproval(s.approval, this.approval.target, s.government);
+    if (s.government === 'teocracia') this.judgement();
+    const planLine = s.government === 'comunismo' ? this.settlePlan() : null;
     // The promise comes first: it is what the neighbours were waiting for all month.
     const promiseLine = this.settlePromise();
     tickEffects(s.effects);
@@ -739,6 +862,7 @@ export class Simulation {
     this.fireEvent();
     // A promise kept or lost is news even before the paper has opened: the neighbours saw it.
     if (promiseLine) this.publish(promiseLine, true);
+    if (planLine) this.publish(planLine, true);
     const snap = this.snapshot();
     if (this.paperOpen()) {
       const lines = headlinesFor(this.prevSnapshot, snap, this.cityName);
@@ -762,6 +886,10 @@ export class Simulation {
     // Under a dictatorship nobody votes, but the calendar still says October: the paper covers the act.
     if (gov.termYears === null) {
       if (!electionDue(s.tick, 'democracia')) return;
+      if (s.government === 'teocracia') {
+        this.publish(misaHeadline(year), true);
+        return;
+      }
       this.publish(this.rng.pick(DICTATOR_FOLLOWUPS), true);
       this.publish(dictatorHeadline(year, s.party, this.mayor), true);
       return;

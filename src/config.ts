@@ -29,7 +29,7 @@ export const ROUTE = { width: 4, inset: 1, margin: 0 } as const;
  * Province pays at each milestone (0 = it pays nothing); `approvalCap` is the ceiling of the
  * neighbours' approval and `approvalStep` how far it moves in a month.
  */
-export type GovernmentKind = 'democracia' | 'dictadura' | 'tecnocracia';
+export type GovernmentKind = 'democracia' | 'dictadura' | 'tecnocracia' | 'teocracia' | 'comunismo';
 
 export interface Government {
   label: string;
@@ -42,9 +42,13 @@ export interface Government {
   grants: number;
   approvalCap: number;
   approvalStep: number;
+  /** What each zone's taxes bring in, as a multiplier (1 = the usual). */
+  taxIncome: { R: number; C: number; I: number };
+  /** What the four public services cost to keep, as a multiplier. */
+  serviceCost: number;
 }
 
-export const GOVERNMENT_KINDS: readonly GovernmentKind[] = ['democracia', 'dictadura', 'tecnocracia'];
+export const GOVERNMENT_KINDS: readonly GovernmentKind[] = ['democracia', 'dictadura', 'tecnocracia', 'teocracia', 'comunismo'];
 
 export const GOVERNMENTS: Record<GovernmentKind, Government> = {
   democracia: {
@@ -58,6 +62,8 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     grants: 1,
     approvalCap: 100,
     approvalStep: 4,
+    taxIncome: { R: 1, C: 1, I: 1 },
+    serviceCost: 1,
   },
   dictadura: {
     label: 'Dictadura',
@@ -70,6 +76,8 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     grants: 0,
     approvalCap: 60,
     approvalStep: 4,
+    taxIncome: { R: 1, C: 1, I: 1 },
+    serviceCost: 1,
   },
   tecnocracia: {
     label: 'Tecnocracia',
@@ -82,6 +90,36 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     grants: 1,
     approvalCap: 100,
     approvalStep: 2,
+    taxIncome: { R: 1, C: 1, I: 1 },
+    serviceCost: 1,
+  },
+  teocracia: {
+    label: 'Teocracia',
+    blurb: 'Gobierna la fe: no hay elecciones, pero hay que tener contento al de arriba.',
+    pros: ['No hay elecciones: nunca perdés el poder', 'Con el favor divino alto llegan milagros: más ingresos, vecinos que vuelven, trabajo', 'La Iglesia aporta la mitad de los subsidios de cada hito'],
+    cons: ['Con el favor divino bajo caen catástrofes: rayos, plagas, sequías, revueltas', 'El favor baja con el humo, el delito, las demoliciones, la usura y la caja en rojo', 'Llega un 10 % menos de gente nueva y la aprobación de los vecinos no pasa de 80'],
+    termYears: null,
+    toWin: 0,
+    migration: 0.9,
+    grants: 0.5,
+    approvalCap: 80,
+    approvalStep: 4,
+    taxIncome: { R: 1, C: 1, I: 1 },
+    serviceCost: 1,
+  },
+  comunismo: {
+    label: 'Comunismo',
+    blurb: 'Planifica el Estado: servicios baratos, fábricas a pleno y un plan cada cinco años.',
+    pros: ['Los servicios cuestan un 30 % menos de mantener', 'Las fábricas pagan un 25 % más de impuestos', 'La aprobación casi no se mueve: los vecinos no se enojan de un mes al otro', 'Cada 5 años un plan: cumplirlo da plata y aprobación'],
+    cons: ['Los comercios pagan la mitad de impuestos', 'Llega un 25 % menos de gente nueva', 'La Provincia no gira subsidios', 'Si no cumplís el plan, el pueblo se enoja', 'Congreso del Partido cada 5 años: hace falta el 40 % para seguir'],
+    termYears: 5,
+    toWin: 40,
+    migration: 0.75,
+    grants: 0,
+    approvalCap: 100,
+    approvalStep: 1,
+    taxIncome: { R: 1, C: 0.5, I: 1.25 },
+    serviceCost: 0.7,
   },
 };
 
