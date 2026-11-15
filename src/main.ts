@@ -201,8 +201,14 @@ $('#btnBudget').addEventListener('click', () => game && openBudget(game));
 $('#btnSave').addEventListener('click', () => game && openSaves(game, launch));
 /** The newspaper on a phone: the button opens it as a sheet right under itself; it closes with the button or a tap on the map. */
 const diarioBtn = $('#btnDiario');
+/** After the paper is opened the dot stays off for this long, however many stories come. */
+const DIARIO_QUIET_MS = 90_000;
 const setDiario = (open: boolean): void => {
   $('#app').classList.toggle('diario-open', open);
+  if (open) {
+    diarioBtn.classList.remove('unread');
+    diarioBtn.dataset.quietUntil = String(Date.now() + DIARIO_QUIET_MS);
+  }
   diarioBtn.setAttribute('aria-expanded', String(open));
   if (open) $('#diario').style.top = diarioBtn.getBoundingClientRect().bottom + 6 + 'px';
 };

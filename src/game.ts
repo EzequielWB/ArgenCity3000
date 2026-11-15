@@ -661,13 +661,23 @@ ${stalled}` : ''}`;
     if (force || head !== this.shownNews) {
       const fresh = !force && this.shownNews !== '';
       this.shownNews = head;
-      if (fresh) this.hooks.sound.play('news');
+      if (fresh) {
+        this.hooks.sound.play('news');
+        this.flagNews();
+      }
       $('#news').innerHTML = s.news
         .map((n, k) => `<li class="${k === 0 && fresh ? 'fresh' : ''}"><time>${escapeHtml(n.date)}</time>${escapeHtml(n.text)}</li>`)
         .join('');
     }
     if (this.queried) this.renderInfo();
     if (force) this.updateStatus();
+  }
+
+  /** A yellow dot on the newspaper button of a phone for a new story, unless the paper was read a moment ago. */
+  private flagNews(): void {
+    const btn = $('#btnDiario');
+    const quiet = Number(btn.dataset.quietUntil ?? 0);
+    if (Date.now() >= quiet && !$('#app').classList.contains('diario-open')) btn.classList.add('unread');
   }
 
   /** Approval next to the population, the date of the next election, and the ballot of an election night. */
