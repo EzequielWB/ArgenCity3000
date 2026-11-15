@@ -48,9 +48,9 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'promenade', label: COAST.promenade.label, key: 'x', shape: 'rect', help: 'Paseo sobre la costa, se arrastra como la plaza. Sube el valor del suelo y la aprobación.' },
   { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con una calle cerca da 40 empleos industriales y sube los impuestos de las fábricas; contamina.' },
   { id: 'resort', label: COAST.resort.label, key: 'l', shape: 'point', help: 'En la playa. Con una calle cerca da 30 empleos y mucho turismo en verano.' },
-  { id: 'bus', label: BUS.label, key: 'ñ', shape: 'point', help: 'A 3 lotes o menos de una calle. Alivia el tránsito de las calles a su alrededor y se ven los colectivos andar. Al colocarla elegís el color y el número de la línea.' },
-  { id: 'harbor', label: HUBS.harbor.label, key: '.', shape: 'anchor', help: 'Una pieza de 2×2 pegada al agua y a 3 lotes o menos de una calle: un muelle con un barco de paseos. Si ponés otra pegada es un puerto más grande, y con tres o más hay cruceros. Da empleos y turismo.' },
-  { id: 'airport', label: HUBS.airport.label, key: ',', shape: 'anchor', help: 'Una pieza de 3×2 en tierra, a 3 lotes o menos de una calle: un hangar con uno o dos aviones. Con otra pegada es un aeródromo y con cuatro o más, un aeropuerto internacional. Da empleos y turismo, pero hace ruido: baja el valor del suelo alrededor.' },
+  { id: 'bus', label: BUS.label, key: 'ñ', shape: 'point', help: 'Se puede poner en cualquier lote de tierra, pero solo funciona con una calle a 3 lotes o menos. Alivia el tránsito de las calles a su alrededor y se ven los colectivos andar. Al colocarla elegís el color y el número de la línea.' },
+  { id: 'harbor', label: HUBS.harbor.label, key: '.', shape: 'anchor', help: 'Una pieza de 2×2 pegada al agua: un muelle con un barco de paseos. Funciona con una calle a 3 lotes o menos de alguna pieza. Si ponés otra pegada es un puerto más grande, y con tres o más hay cruceros. Da empleos y turismo.' },
+  { id: 'airport', label: HUBS.airport.label, key: ',', shape: 'anchor', help: 'Una pieza de 3×2 en tierra: un hangar con uno o dos aviones. Funciona con una calle a 3 lotes o menos de alguna pieza. Con otra pegada es un aeródromo y con cuatro o más, un aeropuerto internacional. Da empleos y turismo, pero hace ruido: baja el valor del suelo alrededor.' },
   { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Suma aprobación y valor del suelo.' },
 ];
 

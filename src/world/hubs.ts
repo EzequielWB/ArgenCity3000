@@ -3,7 +3,7 @@
  * pieces of one kind that share an edge are one facility, and its level is how many pieces it has
  * (`HUB_LEVELS`). Like the plants, a piece is a list entry (`World.hubs`) with its anchor.
  */
-import { HUB_LEVELS, HUBS, ROAD_REACH, type HubKind } from '../config';
+import { HUB_LEVELS, HUBS, type HubKind } from '../config';
 import { streetNear } from './transport';
 import type { Hub, World } from './world';
 
@@ -35,11 +35,13 @@ function touchesWater(w: World, cells: readonly Cell[]): boolean {
   );
 }
 
-/** Why a piece cannot stand on these lots, or null when the place is right (a lot that is merely taken is not a reason given here). */
+/**
+ * Why a piece cannot stand on these lots, or null when the place is right (a lot that is merely taken is
+ * not a reason given here). A street is not needed to build it, only for the facility to work.
+ */
 export function hubRefusal(w: World, kind: HubKind, cells: readonly Cell[]): string | null {
   const label = HUBS[kind].label;
   if (cells.some(([x, y]) => w.isWater(x, y))) return `${label}: tiene que estar en tierra`;
-  if (!cells.some(([x, y]) => streetNear(w, x, y))) return `${label}: tiene que tener una calle a ${ROAD_REACH} lotes o menos`;
   if (kind === 'harbor' && !touchesWater(w, cells)) return 'El puerto tiene que estar pegado al agua';
   return null;
 }

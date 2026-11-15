@@ -74,10 +74,10 @@ describe('placing a piece', () => {
     expect(w.hubAt(8, 13)).toBeUndefined();
   });
 
-  it('is refused far from a street, over a taken lot, on water and, for a harbour, away from the water', () => {
+  it('goes anywhere on land, even far from a street, but is refused over a taken lot, on water and, for a harbour, away from the water', () => {
     const w = city();
-    expect(planTool(w, 'airport', [[5, 20]]).cells).toEqual([]); // no street near
-    expect(hubRefusal(w, 'airport', hubFootprint('airport', 32, 5, 20))).toMatch(/calle/);
+    expect(planTool(w, 'airport', [[5, 20]]).cells).toHaveLength(6); // no street near: it can be built
+    expect(hubRefusal(w, 'airport', hubFootprint('airport', 32, 5, 20))).toBeNull();
     expect(planTool(w, 'airport', [[5, 9]]).cells).toEqual([]); // over the street
     put(w, 'airport', 5, 12);
     expect(planTool(w, 'airport', [[6, 12]]).cells).toEqual([]); // over a piece
@@ -92,6 +92,28 @@ describe('placing a piece', () => {
     const plan = planTool(w, 'harbor', [[17, 12]]); // x = 17..18, the water starts at x = 19
     expect(plan.cells).toHaveLength(4);
     expect(plan.cost).toBe(HUBS.harbor.cost);
+  });
+});
+
+describe('a piece far from any street', () => {
+  it('stands there but does not work, and starts to work when a street comes within reach', () => {
+    const w = city();
+    put(w, 'airport', 5, 20);
+    expect(w.hubs).toHaveLength(1);
+    expect(hubFacilities(w)[0].works).toBe(false);
+    expect(hubJobs(w)).toBe(0);
+    for (let x = 0; x < 12; x++) w.setTile(x, 19, TILE.ROAD);
+    expect(hubFacilities(w)[0].works).toBe(true);
+    expect(hubJobs(w)).toBe(HUBS.airport.jobs[0]);
+  });
+
+  it('lets the second piece go where the first one was far from the street, and the facility works if any piece has one', () => {
+    const w = city();
+    put(w, 'airport', 2, 14); // too far from the street at y = 10
+    put(w, 'airport', 2, 12); // close enough, and touching the first
+    expect(hubFacilities(w)).toHaveLength(1);
+    expect(hubFacilities(w)[0].works).toBe(true);
+    expect(hubFacilities(w)[0].level).toBe(2);
   });
 });
 

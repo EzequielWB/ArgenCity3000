@@ -99,7 +99,7 @@ export function placementNote(tool: string): string | null {
   if (PLANT_OF_TOOL[tool]) return `luz hasta ${POWER_REACH} lotes`;
   if (tool === 'line') return `el tendido alumbra hasta ${LINE_REACH} lotes a su alrededor`;
   if (tool === 'bus') return `alivia el tránsito hasta ${BUS.radius} lotes a la redonda`;
-  if (tool === 'airport' || tool === 'harbor') return 'pegala a otra pieza para que crezca';
+  if (tool === 'airport' || tool === 'harbor') return 'pegala a otra pieza para que crezca; funciona con una calle cerca';
   return null;
 }
 

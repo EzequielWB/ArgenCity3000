@@ -143,10 +143,10 @@ describe('placing a bus line', () => {
     expect(busRefusal(w, 4, 8)).toBeNull();
   });
 
-  it('is refused far from a street, on a taken lot and on water, with a reason when the place is the problem', () => {
+  it('goes on any land, even far from a street (it only works with one), but not on a taken lot or on water', () => {
     const w = withStreet();
-    expect(planTool(w, 'bus', [[4, 10]]).cells).toEqual([]);
-    expect(busRefusal(w, 4, 10)).toMatch(/3 lotes o menos de una calle/);
+    expect(planTool(w, 'bus', [[4, 10]]).cells).toEqual([[4, 10]]);
+    expect(busRefusal(w, 4, 10)).toBeNull();
     expect(planTool(w, 'bus', [[4, 5]]).cells).toEqual([]);
     const lake = new World({ n: 16, corners: new Uint8Array(17 * 17).fill(SEA_LEVEL - 1), trees: new Uint8Array(256) });
     expect(planTool(lake, 'bus', [[4, 4]]).cells).toEqual([]);

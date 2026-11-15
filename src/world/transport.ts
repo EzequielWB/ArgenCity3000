@@ -61,11 +61,9 @@ export function streetNear(w: World, x: number, y: number): boolean {
   return false;
 }
 
-/** Why a bus depot cannot go on a lot, or null when it can (a lot that is merely taken is not a reason given here). */
+/** Why a bus depot cannot go on a lot, or null when it can (a lot that is merely taken is not a reason given here). A street is not needed to build it, only for its buses to run. */
 export function busRefusal(w: World, x: number, y: number): string | null {
-  if (w.isWater(x, y)) return `${BUS.label}: tiene que estar en tierra`;
-  if (!streetNear(w, x, y)) return `${BUS.label}: tiene que estar a ${ROAD_REACH} lotes o menos de una calle`;
-  return null;
+  return w.isWater(x, y) ? `${BUS.label}: tiene que estar en tierra` : null;
 }
 
 /** The lots a depot at (x, y) covers: the diamond of `BUS.radius` lots around it, kept inside the map. */
