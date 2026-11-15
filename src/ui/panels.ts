@@ -1,5 +1,6 @@
 import { TILE } from '../world/world';
-import { GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, PARK, type GovernmentKind, type ServiceKind } from '../config';
+import { GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, PARK, SERVICE_KINDS, type GovernmentKind, type ServiceKind } from '../config';
+import type { Simulation } from '../sim/simulation';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
 import { formatMoney, formatNumber } from '../core/format';
@@ -135,14 +136,17 @@ export function openBudget(game: Game): void {
         ).join('')}
         <p id="taxNote"></p>
         <h3>Presupuesto de servicios</h3>
+        <div class="tax general"><label for="fundall">Todos a la vez</label><input type="range" id="fundall" data-all="1" min="0" max="${MAX_FUNDING}" step="10" value="${averageFunding(sim)}"><output>${averageFunding(sim)} %</output></div>
+        <p class="general-note"><small>Mueve todos los presupuestos de abajo juntos, cada uno la misma cantidad: si uno está al 50 y otro al 70, subir 10 los deja en 60 y 80. Los impuestos no se tocan.</small></p>
         ${SERVICE_ROWS.map(
           ([k, label]) =>
             `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
         ).join('')}
+        <div class="tax"><label for="fundplants">Usinas</label><input type="range" id="fundplants" data-plants="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.plants}"><output>${sim.state.plants} %</output></div>
         <div class="tax"><label for="fundgreen">Espacios verdes</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
         <div class="tax"><label for="fundroads">Calles</label><input type="range" id="fundroads" data-roads="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.roads}"><output>${sim.state.roads} %</output></div>
         <div class="tax"><label for="fundtransport">Transporte</label><input type="range" id="fundtransport" data-transport="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.transport}"><output>${sim.state.transport} %</output></div>
-        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. El transporte es igual: al 50 % hay la mitad de colectivos y cada línea alivia la mitad del tránsito, y si lo recortás mucho los choferes pueden hacer paro. Las calles también: con menos presupuesto se mantienen peor y llevan menos tránsito (al 0 % la mitad), así que se atascan antes. Los espacios verdes son distintos: por debajo del ${PARK.care} % estos se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
+        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. El transporte es igual: al 50 % hay la mitad de colectivos y cada línea alivia la mitad del tránsito, y si lo recortás mucho los choferes pueden hacer paro. Las usinas también: con menos presupuesto generan menos (al 0 % la mitad) y puede faltar luz. Las calles igual: con menos presupuesto se mantienen peor y llevan menos tránsito (al 0 % la mitad), así que se atascan antes. Los espacios verdes son distintos: por debajo del ${PARK.care} % estos se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
         <p class="locked-note hidden" id="lockNote"></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
@@ -159,10 +163,10 @@ export function openBudget(game: Game): void {
   `);
   const refresh = () => {
     const boost = factorOf(sim.state.effects, COAST_BOOST);
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads);
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants);
     $('#budgetNow').innerHTML = budgetTable(b);
     // The year is the average of the seasons, not the month in course.
-    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads).balance * 12, true);
+    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants).balance * 12, true);
     const d = sim.demand;
     const avg = averageTax(sim.state.taxes);
     const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;
@@ -237,6 +241,14 @@ export function openBudget(game: Game): void {
     lockNote.classList.remove('hidden');
     lockNote.textContent = `${tied.join('. ')}.`;
   }
+  const plants = body.querySelector<HTMLInputElement>('input[data-plants]');
+  plants?.addEventListener('input', () => {
+    sim.setPlants(Number(plants.value));
+    plants.nextElementSibling!.textContent = `${sim.state.plants} %`;
+    // Less or more power: the light of the city changes at once.
+    game.view.invalidateLayer();
+    refresh();
+  });
   const roads = body.querySelector<HTMLInputElement>('input[data-roads]');
   roads?.addEventListener('input', () => {
     sim.setRoads(Number(roads.value));
@@ -275,8 +287,43 @@ export function openBudget(game: Game): void {
       refresh();
     }),
   );
+  const all = body.querySelector<HTMLInputElement>('input[data-all]');
+  if (all) {
+    let last = Number(all.value);
+    all.addEventListener('input', () => {
+      const delta = Number(all.value) - last;
+      last = Number(all.value);
+      if (delta === 0) return;
+      for (const input of budgetSliders(body)) {
+        if (input.disabled) continue;
+        const moved = Math.max(0, Math.min(MAX_FUNDING, Math.round((Number(input.value) + delta) / 10) * 10));
+        if (moved === Number(input.value)) continue;
+        input.value = String(moved);
+        input.dispatchEvent(new Event('input')); // the slider does its own work
+      }
+    });
+    // At the end of the gesture it shows the average of what is left, since some sliders may have reached an end.
+    all.addEventListener('change', () => {
+      all.value = String(averageFunding(sim));
+      last = Number(all.value);
+      all.nextElementSibling!.textContent = `${all.value} %`;
+    });
+    all.addEventListener('input', () => (all.nextElementSibling!.textContent = `${all.value} %`));
+  }
   refresh();
   drawHistory(body.querySelector<HTMLCanvasElement>('#chart')!, sim.state.history);
+}
+
+/** The budget sliders of the panel that the general slider moves: services, plants, plazas, streets and transport. */
+function budgetSliders(body: HTMLElement): HTMLInputElement[] {
+  return [...body.querySelectorAll<HTMLInputElement>('input[data-fund], input[data-plants], input[data-green], input[data-roads], input[data-transport]')];
+}
+
+/** The average of the budgets the general slider moves, in steps of 10, to show where it stands. */
+function averageFunding(sim: Simulation): number {
+  const s = sim.state;
+  const values = [...SERVICE_KINDS.map((k) => s.funding[k]), s.plants, s.green, s.roads, s.transport];
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length / 10) * 10;
 }
 
 function drawHistory(c: HTMLCanvasElement, history: { pop: number; cash: number }[]): void {

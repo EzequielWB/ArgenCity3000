@@ -5,6 +5,7 @@
  * side by side form an avenue, which carries as many times more as it has lanes. The bus lines
  * take a share of the load off the streets of their area (see `transit.ts`).
  */
+import { fundingCondition } from './condition';
 import { CAPACITY, COAST, ROAD_REACH, ROAD_TIERS, TRAFFIC, weakerRoad, type RoadTier } from '../config';
 import { TILE, type World } from '../world/world';
 import { coastWorks } from './coast';
@@ -91,15 +92,8 @@ function route(w: World, sources: Float32Array, sinks: Uint8Array, share: number
  * Fills `w.traffic` (load of every street cell, in percent of its capacity) and `w.jam` (the
  * traffic of the street each lot opens onto) and returns the city-wide summary.
  */
-/**
- * How well the streets are kept, as a multiplier of what they carry: with the budget for the streets in full
- * they carry what their quality says, at half they carry three quarters, with none only half (potholes, no
- * repainting, lights out), and a budget above the standard gives a little more, up to a tenth.
- */
-export function roadCondition(funding: number): number {
-  const f = Math.max(0, funding);
-  return Math.min(1.1, 0.5 + (0.5 * Math.min(f, 100)) / 100 + (0.1 * Math.max(0, f - 100)) / 20);
-}
+/** How well the streets are kept, as a multiplier of what they carry (see `fundingCondition`). */
+export const roadCondition = fundingCondition;
 
 export function computeCongestion(w: World, transport = 100, roads = 100): CongestionReport {
   const n = w.n;

@@ -1,6 +1,7 @@
 import { HUBS, LINE_REACH, POWER_REACH, POWER_USE, SERVICES } from '../config';
 import { hubFacilities } from '../world/hubs';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import { fundingCondition } from './condition';
 import { plantCapacity } from './plants';
 
 export interface PowerReport {
@@ -98,7 +99,7 @@ export function isRelay(w: World, i: number): boolean {
  * until the network runs out (a dark building still relays: connectivity does not depend on
  * capacity); cells that ask for nothing are lit when the network has spare capacity.
  */
-export function computePower(w: World): PowerReport {
+export function computePower(w: World, plantsFunding = 100): PowerReport {
   const n = w.n;
   const powered = w.powered;
   powered.fill(0);
@@ -141,7 +142,7 @@ export function computePower(w: World): PowerReport {
         const p = w.plantAt(i % n, Math.floor(i / n));
         if (p && !seenPlants.has(p)) {
           seenPlants.add(p);
-          cap += plantCapacity(w, p);
+          cap += Math.round(plantCapacity(w, p) * fundingCondition(plantsFunding));
         }
       }
     }

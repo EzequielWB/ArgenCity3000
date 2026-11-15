@@ -249,6 +249,7 @@ function parseSim(raw: unknown): SimState {
   // Format 11 added the budget for green spaces: an older save has well-kept plazas.
   need(s.green === undefined || (isInt(s.green) && s.green >= 0 && s.green <= MAX_FUNDING), 'El presupuesto de espacios verdes es inválido');
   // The budget for the bus lines came with them: an older save runs them at the standard 100 %.
+  need(s.plants === undefined || (isInt(s.plants) && s.plants >= 0 && s.plants <= MAX_FUNDING), 'El presupuesto de usinas es inválido');
   need(s.roads === undefined || (isInt(s.roads) && s.roads >= 0 && s.roads <= MAX_FUNDING), 'El presupuesto de calles es inválido');
   need(s.transport === undefined || (isInt(s.transport) && s.transport >= 0 && s.transport <= MAX_FUNDING), 'El presupuesto de transporte es inválido');
   // Format 12 added the grudge of the demolitions; a city saved before it has none.
@@ -339,6 +340,7 @@ function parseCommitment(raw: unknown): Commitment | null {
     green: (s.green as number | undefined) ?? 100,
     transport: (s.transport as number | undefined) ?? 100,
     roads: (s.roads as number | undefined) ?? 100,
+    plants: (s.plants as number | undefined) ?? 100,
     grief: (s.grief as number | undefined) ?? 0,
     commitment,
     pendingEvent: (s.pendingEvent as string | null | undefined) ?? null,

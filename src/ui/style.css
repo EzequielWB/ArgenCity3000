@@ -2348,3 +2348,20 @@ button.chapa.divino:focus-visible {
   text-align: left;
   hyphens: manual;
 }
+
+/* The general slider of the budgets: apart from the rest, with a line under it. */
+.tax.general {
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px dotted var(--gold-dark);
+}
+
+.tax.general label {
+  font-weight: 700;
+  color: var(--gold-light);
+}
+
+.general-note {
+  margin: 0 0 8px;
+  color: var(--muted);
+}

@@ -55,6 +55,8 @@ export interface SimState {
   transport: number;
   /** Budget for the streets (percent of their standard upkeep), 0 to `MAX_FUNDING`: it sets how much traffic they carry (see `roadCondition`). */
   roads: number;
+  /** Budget for the power plants (percent of their standard upkeep), 0 to `MAX_FUNDING`: it sets how much they generate (see `fundingCondition`). */
+  plants: number;
   /** People affected by the demolitions of the last months. It costs approval and wears off. */
   grief: number;
   /** The promise the neighbours are waiting on, or null. One at a time. */
@@ -107,6 +109,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     green: 100,
     transport: 100,
     roads: 100,
+    plants: 100,
     grief: 0,
     commitment: null,
     pendingEvent: null,
@@ -273,7 +276,7 @@ export class Simulation {
   }
 
   private recomputePower(): void {
-    this.power = computePower(this.world);
+    this.power = computePower(this.world, this.state.plants);
     // Power bought from the Province covers the gap for as long as the deal lasts.
     if (this.hasEffect(NO_BLACKOUT)) this.power = { ...this.power, shortage: false };
     this.powerDirty = false;
@@ -614,6 +617,12 @@ export class Simulation {
     this.approval = this.judge();
   }
 
+  /** Sets the budget for the power plants (percent); what they generate follows at once. */
+  setPlants(percent: number): void {
+    this.state.plants = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
+    this.refresh();
+  }
+
   /** Sets the budget for the streets (percent); how much traffic they carry follows at once. */
   setRoads(percent: number): void {
     this.state.roads = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
@@ -807,7 +816,7 @@ export class Simulation {
   private settleWeek(): void {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
-    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads).balance, week);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants).balance, week);
     s.cash += due - this.monthPaid;
     this.monthPaid = due;
     s.crisis = s.cash < 0;
@@ -821,7 +830,7 @@ export class Simulation {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
     if (week === 0) return 0;
-    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants).balance, Math.min(week, WEEKS_PER_MONTH - 1));
   }
 
   /** Counts the instalment this month paid, and closes the loan once the term is done. */
@@ -854,7 +863,7 @@ export class Simulation {
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads);
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants);
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
