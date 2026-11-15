@@ -70,11 +70,11 @@ describe('the favor of God', () => {
     expect(stepFavor(99, 100)).toBe(100);
   });
 
-  it('is angry under 35, pleased over 75, and sends nothing in between', () => {
+  it('is angry under 35, pleased over 66, and sends nothing in between', () => {
     expect(moodOf(34)).toBe('wrath');
     expect(moodOf(35)).toBe('calm');
-    expect(moodOf(75)).toBe('calm');
-    expect(moodOf(76)).toBe('grace');
+    expect(moodOf(66)).toBe('calm');
+    expect(moodOf(67)).toBe('grace');
     expect(judgementChance(50)).toBe(0);
     expect(judgementChance(0)).toBeGreaterThan(judgementChance(30));
     expect(judgementChance(100)).toBeGreaterThan(judgementChance(80));
@@ -152,7 +152,7 @@ describe('communism', () => {
     const approval = sim.state.approval;
     months(sim, 1);
     expect(sim.state.news.some((n) => /Plan quinquenal cumplido/.test(n.text))).toBe(true);
-    expect(sim.state.news.some((n) => /premio de [$] 150/.test(n.text))).toBe(true);
+    expect(sim.state.news.some((n) => /premio de [$] 25/.test(n.text))).toBe(true);
     expect(sim.state.approval).toBeGreaterThan(approval);
     expect(sim.state.plan?.jobs).toBeGreaterThanOrEqual(PLAN.min);
     expect(sim.state.plan?.jobs).not.toBe(1);

@@ -131,7 +131,9 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
 
 const GROWTH_RATE = 0.01;
 /** Above this average tax rate the city stops attracting extra newcomers. */
-const APPETITE_MAX_TAX = 9;
+const APPETITE_TAX_FROM = 10;
+/** ...and above this average tax rate the city attracts nobody new. */
+const APPETITE_TAX_TO = 16;
 /** Share of abandoned buildings that scares newcomers away. */
 const ABANDON_LIMIT = 0.05;
 /** Crime level above which people start leaving. */
@@ -150,7 +152,7 @@ export type StallReason = 'shortage' | 'taxes' | 'blight' | 'stopped';
 
 const STALL_TEXT: Record<StallReason, string> = {
   shortage: 'Hay apagones: mientras falte luz la ciudad no atrae gente nueva. Hace falta otra usina.',
-  taxes: `Los impuestos están altos: con un promedio de más de ${APPETITE_MAX_TAX} % la ciudad deja de atraer gente nueva. Bajalos en el Presupuesto.`,
+  taxes: `Los impuestos están altos: con un promedio de más de ${APPETITE_TAX_TO} % la ciudad deja de atraer gente nueva (desde ${APPETITE_TAX_FROM} % ya atrae menos). Bajalos en el Presupuesto.`,
   blight: 'Hay demasiados edificios abandonados (más del 5 %): hasta recuperarlos o demolerlos la ciudad no atrae gente nueva.',
   stopped: 'La ciudad está frenada por lo que pasó: mientras dure no se levanta nada nuevo. Mirá el diario.',
 };
@@ -302,14 +304,17 @@ export class Simulation {
       ? 'stopped'
       : this.power.shortage
         ? 'shortage'
-        : averageTax(this.state.taxes) > APPETITE_MAX_TAX
+        : averageTax(this.state.taxes) > APPETITE_TAX_TO
           ? 'taxes'
           : blighted
             ? 'blight'
             : null;
+    // Taxes do not switch the appetite off at a line: from `APPETITE_TAX_FROM` it fades towards neutral and is gone at `APPETITE_TAX_TO`.
+    const base = GROWTH_APPETITE * approvalAppetite(this.state.approval);
+    const taxFade = Math.max(0, Math.min(1, (averageTax(this.state.taxes) - APPETITE_TAX_FROM) / (APPETITE_TAX_TO - APPETITE_TAX_FROM)));
     this.appetite = this.stall
       ? 1
-      : GROWTH_APPETITE * GOVERNMENTS[this.state.government].migration * approvalAppetite(this.state.approval);
+      : base + (1 - base) * taxFade;
     this.recomputeDemand();
   }
 
@@ -662,6 +667,8 @@ export class Simulation {
     const size = w.n * w.n;
     const start = rng.int(size);
     const t = this.totals;
+    // How fast homes are raised, by the form of government: less people come, but they are not turned away at a line.
+    const migration = GOVERNMENTS[this.state.government].migration;
     for (let k = 0; k < size; k++) {
       const i = (start + k) % size;
       const tile = w.tiles[i];
@@ -694,7 +701,7 @@ export class Simulation {
       }
       // Some humble buildings are never improved by their owners: they stay until the player tears them down.
       if (level === HUMBLE && isHoldout(w.variant[i])) continue;
-      if (rng.chance(((GROWTH_RATE * d) / 100 / (1 + level * 0.5)) * jamGrowthFactor(w.jam[i]))) {
+      if (rng.chance(((GROWTH_RATE * d) / 100 / (1 + level * 0.5)) * jamGrowthFactor(w.jam[i]) * (zone === 'R' ? migration : 1))) {
         this.changeLevel(i, level === 0 ? spawnLevel(t.pop, cap) : level + 1);
         w.variant[i] = rng.int(256);
         w.terrain.trees[i] = 0;
@@ -952,8 +959,8 @@ export class Simulation {
     hint('needC', this.demand.C > 50 && free.C === 0 && zoned > 0, 'Los comerciantes buscan locales y no encuentran');
     hint('needI', this.demand.I > 50 && free.I === 0 && zoned > 0, 'Industriales buscan terrenos para instalarse');
     hint('power', this.power.shortage, 'La usina no da abasto: los vecinos piden otra usina');
-    hint('appetite', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) > APPETITE_MAX_TAX, 'Con impuestos tan altos, nadie quiere mudarse: la ciudad dejó de atraer gente');
-    hint('blight', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) <= APPETITE_MAX_TAX && this.abandonedCount > 0, 'El abandono espanta a los nuevos vecinos: hay que recuperar o demoler los edificios vacíos');
+    hint('appetite', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) > APPETITE_TAX_TO, 'Con impuestos tan altos, nadie quiere mudarse: la ciudad dejó de atraer gente');
+    hint('blight', this.appetite === 1 && !this.power.shortage && averageTax(s.taxes) <= APPETITE_TAX_TO && this.abandonedCount > 0, 'El abandono espanta a los nuevos vecinos: hay que recuperar o demoler los edificios vacíos');
     hint('smog', smog > 5, 'Vecinos se quejan del humo de las fábricas');
     hint('jam', this.congestion.jammedShare > JAM_NEWS_SHARE, 'Embotellamientos camino al trabajo: los vecinos piden avenidas u otro camino');
     const b = s.lastBudget;

@@ -107,7 +107,10 @@ describe('conditional growth appetite', () => {
 
     const ok = new Simulation(new World(flat()), newSimState(1), 'Y');
     expect(ok.appetite).toBeGreaterThan(1);
-    ok.setTax(12);
+    ok.setTax(12); // taxes fade the appetite from 9 % and switch it off at 15 %
+    expect(ok.appetite).toBeGreaterThan(1);
+    expect(ok.appetite).toBeLessThan(sim.appetite + 1);
+    ok.setTax(16);
     expect(ok.appetite).toBe(1);
   });
 });

@@ -14,10 +14,12 @@ export const FAVOR = {
   start: 60,
   /** Most points it moves in a month. */
   step: 3,
+  /** What a city with nothing to praise or to blame deserves. */
+  base: 55,
   /** Below this He is angry: a catastrophe may fall each month. */
   wrath: 35,
   /** Above this He is pleased: a miracle may come each month. */
-  grace: 75,
+  grace: 66,
   /** Smoke and crime (0 to 100) that He tolerates, like the neighbours. */
   tolerated: 10,
   /** Average tax rate from which He calls it usury. */
@@ -81,7 +83,7 @@ export function computeFavor(w: World, inp: FavorInputs): FavorReport {
   raw.push(['Caja en rojo', inp.crisis ? -10 : 0]);
   const factors = raw.map(([label, v]) => ({ label, points: Math.round(v) })).filter((f) => f.points !== 0);
   factors.sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
-  return { target: clamp(50 + factors.reduce((sum, f) => sum + f.points, 0), 0, 100), factors };
+  return { target: clamp(FAVOR.base + factors.reduce((sum, f) => sum + f.points, 0), 0, 100), factors };
 }
 
 /** The favor a month later: it moves towards the target, at most `FAVOR.step` points. */

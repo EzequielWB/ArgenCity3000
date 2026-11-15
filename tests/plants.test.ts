@@ -27,7 +27,7 @@ describe('power plant kinds', () => {
     const w = new World(flat());
     expect(build(w, 'plant', 4, 4)).toBe(COSTS.plant);
     expect(w.plants).toEqual([{ x: 4, y: 4, kind: 'coal' }]);
-    expect(PLANTS.coal).toMatchObject({ cost: 3000, upkeep: 350, capacity: 600 });
+    expect(PLANTS.coal).toMatchObject({ cost: 3000, upkeep: 260, capacity: 600 });
     expect(computePower(w).capacity).toBe(PLANT_CAPACITY);
     expect(monthlyBudget(w, 7).plants).toBe(UPKEEP.plant);
     computePollution(w);

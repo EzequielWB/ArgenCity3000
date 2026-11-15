@@ -6,7 +6,8 @@ import { advanceMilestones } from '../src/sim/milestones';
 import { electionDue, monthsToElection, nextElectionYear, stepApproval } from '../src/sim/politics';
 import { DICTATOR_FOLLOWUPS, dictatorHeadline } from '../src/sim/mayor';
 import { Simulation, newSimState } from '../src/sim/simulation';
-import { generateTerrain } from '../src/world/terrain';
+import { SEA_LEVEL, generateTerrain } from '../src/world/terrain';
+import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { World } from '../src/world/world';
 
 /** The first tick after the end of a month, counted from January 1990. */
@@ -49,15 +50,35 @@ describe('forms of government', () => {
     expect(paid.cash).toBe(GOVERNMENTS.democracia.grants * 1500);
   });
 
-  it('attracts fewer people under a dictatorship or a technocracy', () => {
+  it('attracts fewer people under a dictatorship or a technocracy, as a slower arrival and not as a cliff', () => {
+    // The appetite of the city is the same: the government sets how fast the homes go up.
     const appetite = (government: 'democracia' | 'dictadura' | 'tecnocracia'): number => {
       const w = new World(generateTerrain(5, 32));
-      const sim = new Simulation(w, newSimState(5, government), 'Villa');
-      return sim.appetite;
+      return new Simulation(w, newSimState(5, government), 'Villa').appetite;
     };
-    const base = appetite('democracia');
-    expect(appetite('dictadura')).toBeCloseTo(base * 0.8, 5);
-    expect(appetite('tecnocracia')).toBeCloseTo(base * 0.95, 5);
+    expect(appetite('dictadura')).toBe(appetite('democracia'));
+    expect(GOVERNMENTS.dictadura.migration).toBeLessThan(GOVERNMENTS.tecnocracia.migration);
+    // A town left to grow for years: fewer people under each, and none of them stuck at a few hundred.
+    const grown = (government: 'democracia' | 'dictadura' | 'comunismo'): number => {
+      const n = 40;
+      const w = new World({ n, corners: new Uint8Array((n + 1) * (n + 1)).fill(SEA_LEVEL + 1), trees: new Uint8Array(n * n) });
+      const build = (tool: Parameters<typeof planTool>[1], ax: number, ay: number, bx = ax, by = ay) => applyPlan(w, planTool(w, tool, dragCells(tool, ax, ay, bx, by, 1, n)));
+      for (const [x, y] of [[1, 1], [30, 1], [1, 30], [30, 30]] as const) build('plant', x, y);
+      for (const y of [8, 20]) build('line', 0, y - 5, 39, y - 5), build('line', 0, y + 5, 39, y + 5), build('road', 0, y, 39, y);
+      build('line', 5, 3, 5, 25);
+      for (const y of [8, 20]) build('zoneR', 3, y + 1, 38, y + 4), build('zoneR', 3, y - 4, 38, y - 1);
+      build('zoneC', 3, 13, 38, 15);
+      build('zoneI', 3, 17, 38, 19);
+      const sim = new Simulation(w, newSimState(3, government, 'P'), 'Villa');
+      sim.state.cash = 10_000_000;
+      for (let t = 0; t < TICKS_PER_MONTH * 5; t++) sim.tick();
+      return sim.totals.pop;
+    };
+    const democracy = grown('democracia');
+    expect(democracy).toBeGreaterThan(200);
+    // Under the slower governments the town grows all the same (it used to stay at a few hundred): no cliff.
+    expect(grown('dictadura')).toBeGreaterThan(democracy * 0.6);
+    expect(grown('comunismo')).toBeGreaterThan(democracy * 0.6);
   });
 
   it('saves the form of government and the party, and older saves are democracies', () => {
@@ -105,7 +126,7 @@ describe('forms of government', () => {
     expect(sim.state.news).toHaveLength(1);
     expect(sim.state.news[0].text).toContain('Partido del Conurbano');
     expect(sim.state.news[0].text).toContain('dictadura');
-    expect(sim.appetite).toBeCloseTo(before * GOVERNMENTS.dictadura.migration, 5);
+    expect(sim.appetite).toBeCloseTo(before, 5); // the form of government changes how fast homes go up, not the appetite
   });
 
   it('rejects a save with a government nobody knows', () => {

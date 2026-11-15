@@ -20,7 +20,9 @@ export const PLAN = {
   extra: 20,
   min: 40,
   /** Premium per job of the goal when it is met. */
-  premiumPerJob: 150,
+  premiumPerJob: 25,
+  /** ...but never more than this: the premium is a push, not the budget of the year. */
+  premiumMax: 60000,
   /** Points of approval gained when it is met and lost when it is not. */
   kept: 8,
   broken: 10,
@@ -38,5 +40,5 @@ export function planMonthsLeft(plan: FivePlan, tick: number): number {
 
 /** The premium the Party pays for a plan that was met. */
 export function planPremium(plan: FivePlan): number {
-  return plan.jobs * PLAN.premiumPerJob;
+  return Math.min(PLAN.premiumMax, plan.jobs * PLAN.premiumPerJob);
 }

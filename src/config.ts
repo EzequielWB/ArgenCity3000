@@ -185,7 +185,7 @@ export const UPKEEP = {
   line: 0.3,
   /** Per cell of plaza, at the "Espacios verdes" budget in full. A 4×4 costs $80 a month. */
   park: 5,
-  plant: 350,
+  plant: 260,
   /**
    * Administration per resident. Raised from 0.06 when service upkeep started to depend on use
    * (S22): the long-run cash no longer piled up once the early deficit was gone. It costs a
@@ -210,8 +210,8 @@ export type PlantKind = 'coal' | 'gas' | 'wind';
 export const PLANT_KINDS: readonly PlantKind[] = ['coal', 'gas', 'wind'];
 export const PLANTS: Record<PlantKind, { label: string; cost: number; upkeep: number; capacity: number; smoke: number; smokeRadius: number }> = {
   coal: { label: 'Usina térmica', cost: COSTS.plant, upkeep: UPKEEP.plant, capacity: PLANT_CAPACITY, smoke: 60, smokeRadius: 6 },
-  gas: { label: 'Usina a gas', cost: 5500, upkeep: 520, capacity: 600, smoke: 18, smokeRadius: 4 },
-  wind: { label: 'Parque eólico', cost: 4500, upkeep: 140, capacity: 400, smoke: 0, smokeRadius: 0 },
+  gas: { label: 'Usina a gas', cost: 5500, upkeep: 400, capacity: 600, smoke: 18, smokeRadius: 4 },
+  wind: { label: 'Parque eólico', cost: 4500, upkeep: 110, capacity: 400, smoke: 0, smokeRadius: 0 },
 };
 /**
  * Wind farm output in MW: `base` on open flat land, plus `perLevel` for each level its site stands

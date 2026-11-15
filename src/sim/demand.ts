@@ -40,7 +40,7 @@ function pressure(target: number, current: number): number {
 }
 
 /** Demand points a zone loses for each point of tax above the default (and gains below it). */
-export const TAX_DEMAND_POINTS = 6;
+export const TAX_DEMAND_POINTS = 1.6;
 
 /** How much bigger than today a thriving city wants to be (see `Simulation.appetite`). */
 export const GROWTH_APPETITE = 1.1;

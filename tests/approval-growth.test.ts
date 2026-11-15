@@ -53,13 +53,13 @@ describe('approval scales the appetite for growth', () => {
     expect(approvalAppetite(capped)).toBeCloseTo(1.05, 10);
     expect(approvalAppetite(95)).toBeGreaterThan(approvalAppetite(capped));
     const sim = cityWith(60, 'dictadura');
-    expect(sim.appetite).toBeCloseTo(GROWTH_APPETITE * GOVERNMENTS.dictadura.migration * 1.05, 10);
+    expect(sim.appetite).toBeCloseTo(GROWTH_APPETITE * 1.05, 10);
   });
 
   it('leaves the hard brakes alone: a stalled city does not grow on charm', () => {
     const sim = cityWith(100);
     expect(sim.appetite).toBeGreaterThan(1);
-    sim.setTax(12);
+    sim.setTax(16);
     expect(sim.appetite).toBe(1);
   });
 });
