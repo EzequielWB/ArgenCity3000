@@ -41,6 +41,8 @@ body {
   font-size: 16px;
   line-height: 1.2;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 button,
@@ -2224,5 +2226,46 @@ ol.steps li {
 @media (prefers-reduced-motion: reduce) {
   #btnDiario.unread::after {
     animation: none;
+  }
+}
+
+/* Nothing in the game is meant to be selected, only the fields where the player types. */
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Running text in windows and in the paper is justified and hyphenated (the page is in Spanish); headings, labels and buttons keep their own alignment. */
+#modalBody p:not(.event-kicker),
+#modalBody li,
+#news li:not(:first-child) {
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+#goal .goal-name {
+  display: inline;
+}
+
+@media (max-width: 600px) {
+  /* The goal under the population keeps only its number: the name is in the tooltip and in the plaque. */
+  #goal .goal-name {
+    display: none;
+  }
+
+  /* A saved game: the buttons go under the text instead of squeezing it into a column of single words. */
+  .slot {
+    flex-wrap: wrap;
+  }
+
+  .slot .meta {
+    flex: 1 1 100%;
+  }
+
+  .start-form .pair {
+    grid-template-columns: 1fr;
   }
 }

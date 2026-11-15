@@ -99,6 +99,7 @@ export class Game implements PointerTarget {
   tool: ToolId = 'query';
   private layerBeforeTool: Layer = 'none';
   speed = 2;
+  private speedBeforeEvent = 2;
   /** A brand-new city waits, paused, for the player's first work. */
   private waitingForFirstWork = false;
 
@@ -164,8 +165,7 @@ export class Game implements PointerTarget {
     $('#approvalBox').onclick = () => openApproval(this);
     // A saved game may have been left in the middle of an event: it is answered before anything else.
     if (this.sim.state.pendingEvent) {
-      this.setSpeed(0);
-      openEvent(this);
+      this.pauseForEvent();
     }
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -272,8 +272,7 @@ export class Game implements PointerTarget {
     this.refreshTraffic();
     // An event waits for an answer: the clock stops until the Intendente decides.
     if (this.sim.state.pendingEvent && !this.hooks.isModalOpen()) {
-      this.setSpeed(0);
-      openEvent(this);
+      this.pauseForEvent();
     }
     if (this.sim.state.tick % (TICKS_PER_MONTH * 12) === 0) {
       try {
@@ -474,7 +473,15 @@ export class Game implements PointerTarget {
   }
 
   /** Called when an event is answered: the answer may have moved money, approval or a promise. */
+  /** The clock stops for the event and remembers its speed, to go back to it when the Intendente answers. */
+  private pauseForEvent(): void {
+    if (this.speed > 0) this.speedBeforeEvent = this.speed;
+    this.setSpeed(0);
+    openEvent(this);
+  }
+
   afterEvent(): void {
+    this.setSpeed(this.speedBeforeEvent);
     this.afterEdit();
   }
 
@@ -610,7 +617,10 @@ export class Game implements PointerTarget {
     const s = this.sim.state;
     $('#date').textContent = weekLabel(s.tick);
     const cash = $('#cash');
-    cash.textContent = formatMoney(s.cash);
+    // On a phone the box is narrow: from a million up the amount is shown in millions, the whole figure stays in the tooltip.
+    const narrow = window.matchMedia('(max-width: 600px)').matches && Math.abs(s.cash) >= 1e6;
+    cash.textContent = narrow ? `${s.cash < 0 ? '-' : ''}$ ${(Math.abs(s.cash) / 1e6).toFixed(Math.abs(s.cash) >= 1e8 ? 0 : 1).replace('.', ',')} M` : formatMoney(s.cash);
+    cash.title = narrow ? formatMoney(s.cash) : '';
     cash.classList.toggle('neg', s.cash < 0);
     this.updateOutlook(force);
     $('#pop').textContent = formatNumber(this.sim.totals.pop);
@@ -704,7 +714,7 @@ ${stalled}` : ''}`;
     this.shownMilestone = reached;
     const next = nextMilestone(reached);
     const goal = $('#goal');
-    goal.textContent = next ? `→ ${next.name}: ${formatNumber(next.pop)}` : '';
+    goal.innerHTML = next ? `→ <span class="goal-name">${escapeHtml(next.name)}: </span>${formatNumber(next.pop)}` : '';
     if (next) {
       const opens = unlockNames(next, label);
       goal.title = `Próximo hito: ${next.name}, con ${formatNumber(next.pop)} habitantes. La Provincia gira ${formatMoney(next.grant)}${opens ? ` y se habilita ${opens}` : ''}.`;
