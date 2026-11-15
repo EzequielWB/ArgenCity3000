@@ -513,15 +513,23 @@ describe('the newer cases', () => {
     const { world, sim } = grown();
     expect(sim.totals.pop).toBeGreaterThan(4000); // the fixture is big enough for the thresholds below
 
-    // Paro docente: needs a school.
+    // Paro docente: needs a school, and the budget for the schools cut below ${EVENT.strikeBelow} %.
     expect(eventById('paro-docente')!.when(sim)).toBe(false);
     world.setTile(44, 44, TILE.SCHOOL);
+    expect(eventById('paro-docente')!.when(sim)).toBe(false); // the schools are paid as usual
+    sim.state.funding.school = EVENT.strikeBelow;
+    expect(eventById('paro-docente')!.when(sim)).toBe(false); // right at the line is not below it
+    sim.state.funding.school = EVENT.strikeBelow - 1;
     expect(eventById('paro-docente')!.when(sim)).toBe(true);
 
-    // Paro de colectivos: needs a bus line.
+    // Paro de colectivos: needs a bus line, and the budget for transport cut below ${EVENT.strikeBelow} %.
     expect(eventById('paro-de-colectivos')!.when(sim)).toBe(false);
     world.setTile(45, 44, TILE.BUS);
     world.busLine[world.idx(45, 44)] = packBusLine(0, 1);
+    expect(eventById('paro-de-colectivos')!.when(sim)).toBe(false); // the drivers are paid as usual
+    sim.state.transport = EVENT.strikeBelow;
+    expect(eventById('paro-de-colectivos')!.when(sim)).toBe(false);
+    sim.state.transport = EVENT.strikeBelow - 1;
     expect(eventById('paro-de-colectivos')!.when(sim)).toBe(true);
 
     // Barro: needs twenty dirt streets.
@@ -583,6 +591,26 @@ describe('the newer cases', () => {
       expect(sim.state.cash).toBe(before.cash + cash);
       expect(Math.sign(sim.state.approval - before.approval)).toBe(sign);
     }
+  });
+
+  it('paying the arrears brings the budget back to normal, and letting it run leaves it cut', () => {
+    const a = city().sim;
+    a.state.funding.school = 40;
+    option('paro-docente', 0).apply(a);
+    expect(a.state.funding.school).toBe(100);
+    const b = city().sim;
+    b.state.funding.school = 40;
+    option('paro-docente', 1).apply(b);
+    expect(b.state.funding.school).toBe(40);
+
+    const c = city().sim;
+    c.setTransport(30);
+    option('paro-de-colectivos', 0).apply(c);
+    expect(c.state.transport).toBe(100);
+    const d = city().sim;
+    d.setTransport(30);
+    option('paro-de-colectivos', 1).apply(d);
+    expect(d.state.transport).toBe(30);
   });
 
   it('the bus strike freezes the works for a month when it is let run', () => {

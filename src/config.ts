@@ -249,6 +249,8 @@ export const EVENT = {
   chance: 0.3,
   /** An event that showed up cannot show up again until this many other events have. */
   cooldown: 3,
+  /** A strike (teachers, bus drivers) only comes when its budget has been cut below this percent. */
+  strikeBelow: 80,
 } as const;
 
 /** Power units consumed per building level. */

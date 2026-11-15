@@ -33,12 +33,13 @@ Runner: `npx vitest run`, `npx tsc --noEmit`.
 
 ## Tasks
 
-- [ ] T1 — S1 — inline — Estado, guardado, presupuesto y alivio con el presupuesto del transporte.
-- [ ] T2 — S1 — inline — Control en el panel de presupuesto y colectivos según la frecuencia.
-- [ ] T3 — S2 — inline — Paros ligados al presupuesto, con sus tests.
+- [x] T1 — S1 — inline — Estado, guardado, presupuesto y alivio con el presupuesto del transporte. Commit 1aa1777.
+- [x] T2 — S1 — inline — Control en el panel de presupuesto y colectivos según la frecuencia. Commit e19820d.
+- [x] T3 — S2 — inline — Paros ligados al presupuesto, con sus tests.
 
 ## Log
 
 - L1 (2026-11-15, usuario): "Por qué granizada en meses calidos? Tambien sabes que falta? modificar el presupuesto del transporte y que afecte a frecuencias y eso, es mas podria ser un condicional tambien para que hagan paro y eso, como con el paro docente que me imagino que está ligado a eso también"
 - L2: La granizada va de octubre a febrero porque el granizo sale de tormentas fuertes de calor; es una elección de modelado, no se verificó con una fuente.
 - L3: Verificado en el código: el paro docente tenía por condición `countSchools > 0 && pop > 1500`, sin mirar el presupuesto de escuelas.
+- L4: Hecho y verificado en el juego con dos líneas: 6 colectivos al 100 %, 4 al 50 %, 0 al 0 % y 8 al 120 %; el renglón Transporte del presupuesto cobra $90, $0 y $216. `tsc` y 773 tests pasan. El control de Transporte siempre se ve en el panel, haya o no líneas.

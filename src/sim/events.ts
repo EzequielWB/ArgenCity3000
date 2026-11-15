@@ -505,14 +505,15 @@ const inMonths = (sim: Simulation, months: readonly number[]): boolean => months
 const PARO_DOCENTE: CityEvent = {
   id: 'paro-docente',
   title: 'Paro docente',
-  text: 'Los maestros paran tres días y reclaman los sueldos atrasados. Las escuelas de la ciudad quedan vacías y los padres no saben con quién dejar a los chicos.',
-  when: (sim) => countSchools(sim.world) > 0 && sim.totals.pop > 1500,
+  text: 'Los maestros paran tres días: con el presupuesto de las escuelas recortado, los sueldos no alcanzan. Las aulas quedan vacías y los padres no saben con quién dejar a los chicos.',
+  when: (sim) => countSchools(sim.world) > 0 && sim.totals.pop > 1500 && sim.state.funding.school < EVENT.strikeBelow,
   options: [
     {
       label: 'Pagar lo adeudado',
-      detail: 'Cuestan $7.000. Vuelven las clases y los docentes lo reconocen: sube la aprobación.',
+      detail: 'Cuestan $7.000 y el presupuesto de escuelas vuelve al 100 %. Vuelven las clases y los docentes lo reconocen: sube la aprobación.',
       apply: (sim) => {
         sim.state.cash -= 7000;
+        sim.setFunding('school', 100);
         sim.nudgeApproval(4);
       },
     },
@@ -527,14 +528,15 @@ const PARO_DOCENTE: CityEvent = {
 const PARO_COLECTIVOS: CityEvent = {
   id: 'paro-de-colectivos',
   title: 'Paro de colectivos',
-  text: 'Los choferes de las líneas de colectivos paran por los sueldos atrasados. Nadie llega al centro y los comercios abren con las persianas a medias.',
-  when: (sim) => busStations(sim.world).length > 0 && sim.totals.pop > 1500,
+  text: 'Los choferes de las líneas de colectivos paran: con el presupuesto de transporte recortado, los sueldos llegan tarde. Nadie llega al centro y los comercios abren con las persianas a medias.',
+  when: (sim) => busStations(sim.world).length > 0 && sim.totals.pop > 1500 && sim.state.transport < EVENT.strikeBelow,
   options: [
     {
       label: 'Pagar el atraso',
-      detail: 'Cuestan $5.000. Los colectivos vuelven a la calle y la gente lo agradece: sube la aprobación.',
+      detail: 'Cuestan $5.000 y el presupuesto de transporte vuelve al 100 %. Los colectivos vuelven a la calle y la gente lo agradece: sube la aprobación.',
       apply: (sim) => {
         sim.state.cash -= 5000;
+        sim.setTransport(100);
         sim.nudgeApproval(3);
       },
     },
