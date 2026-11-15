@@ -23,9 +23,10 @@ import { MILESTONES, milestoneForPop } from '../sim/milestones';
 import { APPROVAL } from '../sim/politics';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
+import { busLineProblem, busStations } from '../world/transport';
 import { MAX_TILE, TILE, World, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -37,7 +38,7 @@ export const SAVE_VERSION = 14;
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
  * government, so they are democracies with no party.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -94,6 +95,7 @@ export function serialize(d: SaveData): string {
     route: toBase64(w.route),
     roadTier: toBase64(w.roadTier),
     fire: toBase64(w.fire),
+    buses: busStations(w).map((b) => [b.i, b.line]),
     plants: w.plants,
     sim: d.sim,
   });
@@ -143,6 +145,21 @@ export function deserialize(text: string): SaveData {
     need(world.inherited[i] === 0 || tiles[i] === TILE.ROAD, 'Las calles del mapa están dañadas');
     need(world.route[i] === 0 || tiles[i] === TILE.ROAD, 'La ruta provincial está dañada');
     need(world.roadTier[i] === 0 || tiles[i] === TILE.ROAD, 'La calidad de las calles está dañada');
+  }
+
+  // Bus lines exist from version 15 on: a list of [cell, packed line], one for every depot.
+  if ((data.version as number) >= 15) {
+    need(Array.isArray(data.buses), 'Faltan las líneas de colectivos');
+    for (const b of data.buses as unknown[]) {
+      need(Array.isArray(b) && b.length === 2 && isInt(b[0]) && isInt(b[1]), 'Hay una línea de colectivos dañada');
+      const [cell, line] = b as [number, number];
+      need(cell >= 0 && cell < size && tiles[cell] === TILE.BUS, 'Hay una línea de colectivos fuera de su cochera');
+      world.busLine[cell] = line;
+    }
+  }
+  for (let i = 0; i < size; i++) {
+    need((tiles[i] === TILE.BUS) === (world.busLine[i] !== 0), 'Las líneas de colectivos no coinciden con el plano');
+    if (tiles[i] === TILE.BUS) need(busLineProblem(world, world.busLine[i], i) === null, 'Hay una línea de colectivos inválida o repetida');
   }
 
   need(Array.isArray(data.plants), 'Faltan las usinas');

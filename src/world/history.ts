@@ -11,6 +11,7 @@ interface CellBefore {
   abandoned: number;
   inherited: number;
   fire: number;
+  bus: number;
 }
 
 /** Puts back the terrain heights and redraws the lots whose ground moves. */
@@ -81,6 +82,7 @@ export class UndoHistory {
         abandoned: w.abandoned[i],
         inherited: w.inherited[i],
         fire: w.fire[i],
+        bus: w.busLine[i],
       };
     });
     this.entries.push({ tool: plan.tool, cost: plan.cost, tick, cells, plants: w.plants.map((p) => ({ ...p })), corners: w.terrain.corners.slice() });
@@ -104,6 +106,7 @@ export class UndoHistory {
       w.abandoned[c.i] = c.abandoned;
       w.inherited[c.i] = c.inherited;
       w.fire[c.i] = c.fire;
+      w.busLine[c.i] = c.bus;
     }
     w.plants = e.plants.map((p) => ({ ...p }));
     restoreCorners(w, e.corners);

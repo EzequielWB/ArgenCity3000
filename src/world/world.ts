@@ -20,8 +20,9 @@ export const TILE = {
   PORT: 14,
   RESORT: 15,
   LIGHTHOUSE: 16,
+  BUS: 17,
 } as const;
-export const MAX_TILE = TILE.LIGHTHOUSE;
+export const MAX_TILE = TILE.BUS;
 export type TileId = (typeof TILE)[keyof typeof TILE];
 
 export type ZoneKind = 'R' | 'C' | 'I';
@@ -102,6 +103,11 @@ export class World {
    * is not a street, and a cell that stops being a street loses it, like `inherited`.
    */
   readonly roadTier: Uint8Array;
+  /**
+   * The line of each bus depot: its colour (an index into `BUS_COLORS`) and its number packed in
+   * 16 bits (see `world/transport.ts`). Zero on every cell that is not a depot.
+   */
+  readonly busLine: Uint16Array;
   /** Ticks left of a fire burning in the cell (0 = no fire). */
   readonly fire: Uint8Array;
   plants: Plant[] = [];
@@ -141,6 +147,7 @@ export class World {
     this.inherited = new Uint8Array(size);
     this.route = new Uint8Array(size);
     this.roadTier = new Uint8Array(size);
+    this.busLine = new Uint16Array(size);
     this.fire = new Uint8Array(size);
     this.crime = new Uint8Array(size);
     this.edu = new Uint8Array(size);
@@ -185,6 +192,7 @@ export class World {
     this.abandoned[i] = 0;
     this.inherited[i] = 0;
     this.roadTier[i] = 0;
+    this.busLine[i] = 0;
     this.fire[i] = 0;
     this.markDirty(i);
   }

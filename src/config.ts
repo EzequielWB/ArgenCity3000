@@ -333,6 +333,29 @@ export const TRAFFIC = { laneCapacity: 1200, valueFrom: 60, valuePerPoint: 0.3, 
 export const ROAD_REACH = 3;
 
 /**
+ * Public transport. A bus line is a depot on one lot that takes load off the streets around it:
+ * every street within `radius` lots (Manhattan distance) carries `relief` less, and several lines
+ * add up, never past `maxRelief`. It needs a street within ROAD_REACH to be built. `buses` of the
+ * line run on the streets of its area.
+ */
+export const BUS = { label: 'Línea de colectivos', cost: 900, upkeep: 90, radius: 9, relief: 0.35, maxRelief: 0.6, buses: 2 } as const;
+/** Lines are told apart by a number of up to three digits, which no other line of the city has. */
+export const MAX_BUS_NUMBER = 999;
+/** The ten colours a line can wear, the usual ones of the buses. */
+export const BUS_COLORS = [
+  { name: 'Rojo', hex: '#c8392f' },
+  { name: 'Azul', hex: '#2f63a6' },
+  { name: 'Verde', hex: '#3c8d4a' },
+  { name: 'Amarillo', hex: '#e0a526' },
+  { name: 'Naranja', hex: '#e07a2f' },
+  { name: 'Celeste', hex: '#6fb7e0' },
+  { name: 'Blanco', hex: '#f4f0e6' },
+  { name: 'Violeta', hex: '#6b3fa0' },
+  { name: 'Bordó', hex: '#7a2f3a' },
+  { name: 'Gris', hex: '#7d7f86' },
+] as const;
+
+/**
  * Buildings of the coast, one lot each. A dock, a port and a resort work (give jobs and income)
  * only with a street within `ROAD_REACH`; the promenade and the lighthouse need nothing. `jobs`
  * are industrial for the dock and the port and commercial for the resort. None of them needs
