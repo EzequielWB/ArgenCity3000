@@ -1331,13 +1331,24 @@ function light(a: [number, number, number], b: [number, number, number], c: [num
   return Math.max(0.8, Math.min(1.18, dot / flat));
 }
 
+/**
+ * Adds an area to repaint, joining it to one it overlaps only when the area that holds both is not much
+ * bigger than the two together: neighbours become one, but a chain of areas that touch diagonally does
+ * not grow into a huge rectangle that repaints what nobody changed.
+ */
 function addRect(rects: Rect[], r: Rect): void {
+  const area = (a: Rect) => (a.x1 - a.x0) * (a.y1 - a.y0);
   for (const q of rects) {
     if (r.x0 <= q.x1 && r.x1 >= q.x0 && r.y0 <= q.y1 && r.y1 >= q.y0) {
-      q.x0 = Math.min(q.x0, r.x0);
-      q.y0 = Math.min(q.y0, r.y0);
-      q.x1 = Math.max(q.x1, r.x1);
-      q.y1 = Math.max(q.y1, r.y1);
+      const x0 = Math.min(q.x0, r.x0);
+      const y0 = Math.min(q.y0, r.y0);
+      const x1 = Math.max(q.x1, r.x1);
+      const y1 = Math.max(q.y1, r.y1);
+      if ((x1 - x0) * (y1 - y0) > 1.25 * (area(q) + area(r))) continue;
+      q.x0 = x0;
+      q.y0 = y0;
+      q.x1 = x1;
+      q.y1 = y1;
       return;
     }
   }

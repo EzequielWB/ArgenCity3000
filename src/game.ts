@@ -28,7 +28,9 @@ import { busArea, busRefusal, busLineProblem } from './world/transport';
 import { openBusLine } from './ui/busline';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
-
+/** Repaint budget per frame, and lots painted per batch (see repaintChanges). */
+const PATCH_BUDGET_MS = 5;
+const PATCH_BATCH = 24;
 /** Ticks per second for each speed: pause, slow, normal, fast. */
 const SPEEDS = [0, 4, 10, 30];
 const SPEED_LABELS = ['❚❚', '▶', '▶▶', '▶▶▶'];
@@ -208,11 +210,7 @@ export class Game implements PointerTarget {
         if (Math.floor(this.sim.state.tick / TICKS_PER_MONTH) !== month) this.onNewMonth();
       }
     }
-    const dirty = this.world.takeDirty();
-    if (dirty.length) {
-      this.map.update(dirty);
-      this.minimapDirty = true;
-    }
+    this.repaintChanges();
     this.view.render(t);
     if (t - this.lastHud > 250) {
       const since = this.lastHud ? (t - this.lastHud) / 1000 : 0;
@@ -226,6 +224,38 @@ export class Game implements PointerTarget {
       this.drawMinimap();
     }
   };
+
+  /** The lots that changed and are not painted yet: in a big city at full speed hundreds change every frame. */
+  private pendingDirty = new Set<number>();
+
+  /**
+   * Paints the lots that changed, a batch at a time, until `PATCH_BUDGET_MS` is spent; the rest waits for the
+   * next frame. What the player builds is a handful of lots and shows at once; the churn of a big city (levels
+   * going up and down, buildings left empty) spreads over a few frames instead of freezing one.
+   */
+  private repaintChanges(): void {
+    for (const i of this.world.takeDirty()) this.pendingDirty.add(i);
+    const pending = this.pendingDirty;
+    if (pending.size === 0) return;
+    this.minimapDirty = true;
+    // A whole block or a loaded game: the renderer redraws everything in view, there is nothing to spread.
+    if (pending.size > 2500) {
+      this.map.update([...pending]);
+      pending.clear();
+      return;
+    }
+    const start = performance.now();
+    let batch: number[] = [];
+    for (const i of pending) {
+      pending.delete(i);
+      batch.push(i);
+      if (batch.length < PATCH_BATCH) continue;
+      this.map.update(batch);
+      batch = [];
+      if (performance.now() - start > PATCH_BUDGET_MS) break;
+    }
+    if (batch.length > 0) this.map.update(batch);
+  }
 
   private updateSound(running: boolean, dt: number): void {
     const sound = this.hooks.sound;
