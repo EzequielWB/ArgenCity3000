@@ -29,9 +29,6 @@ export interface CityEvent {
   options: readonly [EventOption, EventOption];
 }
 
-/** How far from the water a spill, a flood or a drowned seafront still counts. */
-const SHORE = 6;
-
 /** Plain average of a per-cell measure over the buildings that are standing. */
 function averageOf(w: World, field: Uint8Array): number {
   let sum = 0;
@@ -82,13 +79,12 @@ function coastBuilt(w: World): boolean {
   return COAST_TILES.some((t) => w.tiles.includes(t));
 }
 
-/** The industrial building that smokes the most and still stands next to the water, or -1. */
-function dirtiestNearWater(w: World): number {
-  const water = waterDistance(w);
+/** The industrial building that smokes the most and still stands, wherever it is, or -1. */
+function dirtiestFactory(w: World): number {
   let worst = -1;
   let smoke = 0;
   for (let i = 0; i < w.tiles.length; i++) {
-    if (zoneOf(w.tiles[i]) !== 'I' || w.level[i] === 0 || w.abandoned[i] || water[i] > SHORE) continue;
+    if (zoneOf(w.tiles[i]) !== 'I' || w.level[i] === 0 || w.abandoned[i]) continue;
     if (w.pollution[i] > smoke) (smoke = w.pollution[i]), (worst = i);
   }
   return worst;
@@ -180,24 +176,24 @@ const PROVINCIA: CityEvent = {
   ],
 };
 
-const DERRAME: CityEvent = {
-  id: 'derrame',
-  title: 'Derrame en el arroyo',
-  text: 'Una fábrica del barrio sur vuelca combustible en el arroyo que cruza el distrito. El agua se ve negra.',
-  when: (sim) => lotsOf(sim.world, 'I') > 20 && smokeOf(sim.world) > 25 && dirtiestNearWater(sim.world) >= 0,
+const FABRICA: CityEvent = {
+  id: 'fabrica-sin-controles',
+  title: 'Una fábrica sin controles',
+  text: 'Una inspección sorpresa encuentra una fábrica trabajando sin las normas de seguridad al día. Pierde humo, el barrio se queja de los olores y los obreros dicen que no hay ni matafuegos.',
+  when: (sim) => lotsOf(sim.world, 'I') > 20 && smokeOf(sim.world) > 25 && dirtiestFactory(sim.world) >= 0,
   options: [
     {
       label: 'Clausurarla',
-      detail: 'La fábrica más humeante cerca del agua queda abandonada: baja el humo y se pierden sus empleos.',
+      detail: 'La fábrica que más contamina queda abandonada: baja el humo y se pierden sus empleos.',
       apply: (sim) => {
-        const cell = dirtiestNearWater(sim.world);
+        const cell = dirtiestFactory(sim.world);
         if (cell >= 0) sim.abandonBuilding(cell);
         sim.nudgeApproval(4);
       },
     },
     {
       label: 'Multarla y que siga',
-      detail: 'Entran $8.000. La fábrica sigue trabajando y el humo no baja.',
+      detail: 'Entran $8.000. La fábrica sigue sin controles: trabaja igual y el humo no baja.',
       apply: (sim) => {
         sim.state.cash += 8000;
         sim.nudgeApproval(-3);
@@ -499,7 +495,7 @@ const TEMPORADA: CityEvent = {
 export const EVENTS: readonly CityEvent[] = [
   PIQUETE,
   PROVINCIA,
-  DERRAME,
+  FABRICA,
   CALOR,
   PLAZA,
   ROBOS,
@@ -521,7 +517,8 @@ export function eventById(id: string): CityEvent | undefined {
 /**
  * The event that shows up this month, or null. Never two at once, never while a promise is being
  * watched (the city has enough to answer for), never in the first year, never sooner than
- * `EVENT.gap` after the last one, and never one that is still cooling down. The roll comes from the
+ * `EVENT.gap` after the last one, never one that is still cooling down, and never one of the last
+ * `EVENT.cooldown` that showed up: it has to wait for that many others first. The roll comes from the
  * simulation's own seeded rng, so a saved game replays the same.
  */
 export function pickEvent(sim: Simulation, rng: Rng): CityEvent | null {
@@ -530,6 +527,6 @@ export function pickEvent(sim: Simulation, rng: Rng): CityEvent | null {
   if (s.tick < TICKS_PER_MONTH * EVENT.firstAt) return null;
   if (s.tick - s.lastEvent < TICKS_PER_MONTH * EVENT.gap) return null;
   if (!rng.chance(EVENT.chance)) return null;
-  const candidates = EVENTS.filter((e) => !sim.hasEffect(coolOf(e.id)) && e.when(sim));
+  const candidates = EVENTS.filter((e) => !s.recentEvents.includes(e.id) && !sim.hasEffect(coolOf(e.id)) && e.when(sim));
   return candidates.length > 0 ? rng.pick(candidates) : null;
 }

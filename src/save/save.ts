@@ -1,5 +1,6 @@
 import {
   DEFAULT_FUNDING,
+  EVENT,
   GOVERNMENT_KINDS,
   LOANS,
   MAX_FUNDING,
@@ -220,6 +221,11 @@ function parseSim(raw: unknown): SimState {
   const commitment = parseCommitment(s.commitment);
   need(s.pendingEvent === undefined || s.pendingEvent === null || typeof s.pendingEvent === 'string', 'El evento de la partida es inválido');
   need(s.lastEvent === undefined || (isInt(s.lastEvent) && s.lastEvent >= 0), 'El evento de la partida es inválido');
+  // The last events that showed up (their cooldown); a city saved before it has none.
+  need(
+    s.recentEvents === undefined || (Array.isArray(s.recentEvents) && s.recentEvents.length <= EVENT.cooldown && s.recentEvents.every((id) => typeof id === 'string' && id.length <= 40)),
+    'Los últimos eventos de la partida son inválidos',
+  );
   // Format 14 added the temporary effects of the events (see `sim/effects.ts`).
   const effects = parseEffects(s.effects);
   need(isInt(s.rngState), 'La partida está dañada');
@@ -296,6 +302,7 @@ function parseCommitment(raw: unknown): Commitment | null {
     commitment,
     pendingEvent: (s.pendingEvent as string | null | undefined) ?? null,
     lastEvent: (s.lastEvent as number | undefined) ?? 0,
+    recentEvents: (s.recentEvents as string[] | undefined) ?? [],
     effects,
     rngState: (s.rngState as number) >>> 0,
     crisis: s.crisis as boolean,

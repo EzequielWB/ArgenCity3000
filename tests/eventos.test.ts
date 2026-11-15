@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_FUNDING, MAX_TAX, TICKS_PER_MONTH } from '../src/config';
+import { EVENT, MAX_FUNDING, MAX_TAX, TICKS_PER_MONTH } from '../src/config';
+import { deserialize, serialize } from '../src/save/save';
 import { COAST_BOOST, COAST_WORN, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, coolOf, lockOf } from '../src/sim/effects';
 import { EVENTS, eventById, pickEvent } from '../src/sim/events';
 import { Simulation, newSimState } from '../src/sim/simulation';
@@ -128,38 +129,36 @@ describe('la Provincia pone la plata', () => {
   });
 });
 
-describe('el derrame en el arroyo', () => {
-  /** A factory on the shore that smokes: the case needs water, industry and smoke at once. */
-  function spill(): { world: WorldType; sim: Simulation } {
-    const world = new World(generateWater());
-    const build = (tool: Parameters<typeof planTool>[1], ax: number, ay: number, bx = ax, by = ay) =>
-      applyPlan(world, planTool(world, tool, dragCells(tool, ax, ay, bx, by, 1, world.n)));
-    build('plant', 2, 2);
-    build('road', 0, 6, 24, 6);
-    build('zoneI', 1, 7, 10, 12);
-    for (let i = 0; i < world.tiles.length; i++) if (world.tiles[i] === TILE.I) world.level[i] = 3;
-    const sim = new Simulation(world, newSimState(9), 'Villa Derrame');
-    return { world, sim };
+describe('la fábrica sin controles', () => {
+  /** A city with a lot of industry and heavy air, on a map with no water at all. */
+  function smoky(): { world: WorldType; sim: Simulation } {
+    return grown(9);
   }
 
-  it('appears with industry on the shore and the air heavy', () => {
-    const { sim } = spill();
-    expect(eventById('derrame')!.when(sim)).toBe(true);
+  it('appears with industry and the air heavy, whether or not there is water around', () => {
+    const { world, sim } = smoky();
+    expect(world.terrain.corners.every((h) => h >= 3)).toBe(true); // not a drop of water on the map
+    expect(eventById('fabrica-sin-controles')!.when(sim)).toBe(true);
+  });
+
+  it('stays away from a city without much industry', () => {
+    const { sim } = city();
+    expect(eventById('fabrica-sin-controles')!.when(sim)).toBe(false);
   });
 
   it('closes the dirtiest factory and takes its jobs', () => {
-    const { sim } = spill();
+    const { sim } = smoky();
     const before = sim.totals.iJobs;
-    option('derrame', 0).apply(sim);
+    option('fabrica-sin-controles', 0).apply(sim);
     expect(sim.abandonedCount).toBe(1);
     expect(sim.totals.iJobs).toBeLessThan(before);
   });
 
   it('or takes the fine and lets it keep smoking', () => {
-    const { sim } = spill();
+    const { sim } = smoky();
     const cash = sim.state.cash;
     const jobs = sim.totals.iJobs;
-    option('derrame', 1).apply(sim);
+    option('fabrica-sin-controles', 1).apply(sim);
     expect(sim.state.cash).toBe(cash + 8000);
     expect(sim.totals.iJobs).toBe(jobs);
     expect(sim.abandonedCount).toBe(0);
@@ -503,6 +502,81 @@ describe('which one shows up', () => {
       const chosen = pickEvent(sim, new Rng(k + 101));
       if (chosen) expect(sim.hasEffect(coolOf(chosen.id))).toBe(false);
     }
+  });
+});
+
+describe('the rest between repeats', () => {
+  /** Lets the simulation raise an event, answers it, and returns the id of the one that showed up (or null). */
+  function raise(sim: Simulation, seed: number): string | null {
+    const s = sim.state as { pendingEvent: string | null; lastEvent: number; tick: number };
+    s.pendingEvent = null;
+    s.lastEvent = 0; // keep the gap out of the way: the rest is what is under test
+    s.tick = TICKS_PER_MONTH * 24 + seed;
+    (sim as unknown as { fireEvent(): void }).fireEvent();
+    const id = s.pendingEvent;
+    s.pendingEvent = null;
+    return id;
+  }
+
+  it('keeps the last three that showed up, the latest first', () => {
+    const { sim } = grown();
+    const seen: string[] = [];
+    for (let k = 0; k < 200 && seen.length < 5; k++) {
+      const id = raise(sim, k);
+      if (id) seen.push(id);
+    }
+    expect(seen.length).toBeGreaterThanOrEqual(2);
+    expect(sim.state.recentEvents).toEqual(seen.slice(-3).reverse());
+    expect(sim.state.recentEvents.length).toBeLessThanOrEqual(EVENT.cooldown);
+  });
+
+  it('never repeats a case until three others have shown up', () => {
+    const { sim } = grown();
+    const seen: string[] = [];
+    for (let k = 0; k < 400; k++) {
+      const id = raise(sim, k);
+      if (id) seen.push(id);
+    }
+    expect(seen.length).toBeGreaterThanOrEqual(3);
+    seen.forEach((id, i) => expect(seen.slice(Math.max(0, i - EVENT.cooldown), i)).not.toContain(id));
+  });
+
+  it('frees a case exactly when the third one after it has come', () => {
+    const { sim } = grown();
+    sim.state.tick = TICKS_PER_MONTH * 24;
+    const eligible = EVENTS.filter((e) => e.when(sim)).map((e) => e.id);
+    expect(eligible.length).toBeGreaterThanOrEqual(2);
+    const [x, a, b, c] = ["x", "a", "b", "c"];
+    const picks = (recent: string[]) => {
+      sim.state.recentEvents = recent;
+      const out = new Set<string>();
+      for (let k = 0; k < 300; k++) {
+        const e = pickEvent(sim, new Rng(k + 1));
+        if (e) out.add(e.id);
+      }
+      return out;
+    };
+    // The case itself is the latest one, two after it, three after it: only then does it come back.
+    const target = eligible[0];
+    expect(picks([target, a, b]).has(target)).toBe(false);
+    expect(picks([a, target, b]).has(target)).toBe(false);
+    expect(picks([a, b, target]).has(target)).toBe(false);
+    expect(picks([a, b, c]).has(target)).toBe(true);
+    void x;
+  });
+
+  it('is saved with the game, and an older save simply has none', () => {
+    // A map the save accepts (the cases above use heights beyond the highest ground).
+    const world = new World({ n: 16, corners: new Uint8Array(17 * 17).fill(5), trees: new Uint8Array(256) });
+    const sim = new Simulation(world, newSimState(5), 'Villa Guardada');
+    sim.state.recentEvents = ["fabrica-sin-controles", "ola-de-calor"];
+    const text = serialize({ name: "X", seed: 5, world, sim: sim.state });
+    expect(deserialize(text).sim.recentEvents).toEqual(["fabrica-sin-controles", "ola-de-calor"]);
+    const old = JSON.parse(text);
+    delete old.sim.recentEvents;
+    expect(deserialize(JSON.stringify(old)).sim.recentEvents).toEqual([]);
+    old.sim.recentEvents = ["a", "b", "c", "d"];
+    expect(() => deserialize(JSON.stringify(old))).toThrow(/últimos eventos/);
   });
 });
 

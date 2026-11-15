@@ -3,6 +3,7 @@ import {
   DEFAULT_FUNDING,
   DEFAULT_TAX,
   DEMOLITION,
+  EVENT,
   FIRE_SAFE_COVER,
   GOVERNMENTS,
   INITIAL_CASH,
@@ -56,6 +57,8 @@ export interface SimState {
   pendingEvent: string | null;
   /** Tick of the last event, to keep them apart. */
   lastEvent: number;
+  /** Ids of the last `EVENT.cooldown` events that showed up, the latest first: none of them can come back yet. */
+  recentEvents: string[];
   /** Temporary effects, in months (see `sim/effects.ts`). Empty means none. */
   effects: Effects;
   rngState: number;
@@ -96,6 +99,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     commitment: null,
     pendingEvent: null,
     lastEvent: 0,
+    recentEvents: [],
     effects: {},
     rngState: seed >>> 0,
     crisis: false,
@@ -439,6 +443,7 @@ export class Simulation {
     if (!event) return;
     this.state.pendingEvent = event.id;
     this.state.lastEvent = this.state.tick;
+    this.state.recentEvents = [event.id, ...this.state.recentEvents].slice(0, EVENT.cooldown);
   }
 
   /** Turns an effect on for `months` months, or extends it if it was already running. */

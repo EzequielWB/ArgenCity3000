@@ -247,6 +247,8 @@ export const EVENT = {
   gap: 8,
   /** Chance per month of one showing up, once the gap has passed. */
   chance: 0.3,
+  /** An event that showed up cannot show up again until this many other events have. */
+  cooldown: 3,
 } as const;
 
 /** Power units consumed per building level. */
