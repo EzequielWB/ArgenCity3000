@@ -719,6 +719,7 @@ ${stalled}` : ''}`;
       const opens = unlockNames(next, label);
       goal.title = `Próximo hito: ${next.name}, con ${formatNumber(next.pop)} habitantes. La Provincia gira ${formatMoney(next.grant)}${opens ? ` y se habilita ${opens}` : ''}.`;
     }
+    this.view.bubbleKinds = { health: isUnlocked('clinic', reached), crime: isUnlocked('police', reached) };
     this.toolbar.showLocks(reached);
   }
 

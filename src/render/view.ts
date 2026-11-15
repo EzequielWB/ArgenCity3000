@@ -1,10 +1,12 @@
 import { fromView, toView } from '../core/iso';
 import { hash2 } from '../core/rng';
-import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import { buildingIssues, type Issue } from '../sim/warnings';
+import { TILE, World, zoneOf } from '../world/world';
 import { CHUNK_PAD, FrameBudget, chunkRect, paddedRect, pickEvictions, renderOrder, visibleRect, type Rect } from './chunks';
 import { PAL } from './color';
 import { cellScreenCorners, type Pt } from './geometry';
 import { FRAME_BUDGET_MS, MapRenderer } from './mapRenderer';
+import { drawBubble } from './bubbles';
 import { Traffic, drawTraffic } from './traffic';
 import { Vessels, drawBoats, drawPlanes } from './vessels';
 
@@ -231,7 +233,7 @@ export class View {
     if (z >= 1) drawTraffic(g, this.traffic, this.map, [vx0, vy0, vx1, vy1]);
     if (z >= 0.5) drawPlanes(g, this.vessels, this.map, [vx0, vy0, vx1, vy1]);
     if (z >= 0.5) this.drawSmoke(g, time, visible);
-    this.drawPowerWarnings(g, time, visible);
+    this.drawBubbles(g, time, visible);
     this.drawPreview(g);
     this.drawHover(g);
   }
@@ -297,34 +299,41 @@ export class View {
     g.globalAlpha = 1;
   }
 
-  private drawPowerWarnings(g: CanvasRenderingContext2D, time: number, visible: (x: number, y: number) => boolean): void {
+  /** The services the city has unlocked, which are the ones whose lack is shown with a bubble (set by the game). */
+  bubbleKinds = { health: false, crime: false };
+  private bubbles: { at: number; items: { i: number; issues: Issue[] }[] } = { at: -1e9, items: [] };
+
+  /** The buildings with something wrong, looked up again every half second: the fields they come from change slowly. */
+  private bubbleItems(time: number): { i: number; issues: Issue[] }[] {
+    if (time - this.bubbles.at < 500) return this.bubbles.items;
+    const w = this.world;
+    const items: { i: number; issues: Issue[] }[] = [];
+    for (let i = 0; i < w.n * w.n; i++) {
+      const issues = buildingIssues(w, i, this.bubbleKinds);
+      if (issues.length) items.push({ i, issues });
+    }
+    this.bubbles = { at: time, items };
+    return items;
+  }
+
+  /**
+   * A bubble over each building with a problem, in the manner of the city builders: a bolt for the dark, a
+   * masked figure for crime, a red cross for the lack of a health post, a cloud for smoke. A building with several
+   * shows them one after another. They blink gently, and from afar only the dark ones are drawn.
+   */
+  private drawBubbles(g: CanvasRenderingContext2D, time: number, visible: (x: number, y: number) => boolean): void {
     if ((time / 600) % 2 < 0.7) return;
     const w = this.world;
     const n = w.n;
-    for (let i = 0; i < n * n; i++) {
-      if (w.powered[i]) continue;
-      // Buildings and services that would work with power; a burning building needs firefighters, not power.
-      const t = w.tiles[i];
-      if (!serviceOf(t) && (!zoneOf(t) || w.level[i] === 0 || w.fire[i])) continue;
+    const far = this.cam.zoom < 0.6;
+    for (const { i, issues } of this.bubbleItems(time)) {
+      const issue = issues[Math.floor(time / 1800) % issues.length];
+      if (far && issue !== 'power') continue;
       const x = i % n;
       const [vx, vy] = toView(x, (i - x) / n, this.map.rot, n);
       const [cx, cy] = this.map.toCache(vx + 0.5, vy + 0.5, w.minMax(x, (i - x) / n)[1]);
       if (!visible(cx, cy)) continue;
-      const y = cy - 18;
-      g.fillStyle = '#c8392f';
-      g.beginPath();
-      g.arc(cx, y, 4.5, 0, Math.PI * 2);
-      g.fill();
-      g.fillStyle = '#ffd84a';
-      g.beginPath();
-      g.moveTo(cx + 0.8, y - 3.2);
-      g.lineTo(cx - 1.8, y + 0.6);
-      g.lineTo(cx - 0.1, y + 0.6);
-      g.lineTo(cx - 0.8, y + 3.2);
-      g.lineTo(cx + 1.8, y - 0.6);
-      g.lineTo(cx + 0.1, y - 0.6);
-      g.closePath();
-      g.fill();
+      drawBubble(g, issue, cx, cy - 18);
     }
   }
 
