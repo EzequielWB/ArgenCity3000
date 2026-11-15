@@ -3,17 +3,16 @@
  * post near, smoke on the neighbourhood. The thresholds are the ones the simulation itself acts on
  * (abandonment, the need of a service), so a bubble is never shown for something that has no effect.
  */
-import { FIRE_SAFE_COVER, PARK, TRAFFIC } from '../config';
+import { PARK, TRAFFIC } from '../config';
 import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
 import { SERVICE_NEED } from './demand';
 
-export type Issue = 'power' | 'road' | 'fire' | 'jam' | 'crime' | 'health' | 'school' | 'smoke' | 'empty' | 'dry';
+export type Issue = 'power' | 'road' | 'jam' | 'crime' | 'health' | 'school' | 'smoke' | 'empty' | 'dry';
 
 /** The services the city has unlocked: the lack of one is not shown before the player can build it. */
 export interface Unlocked {
   health: boolean;
   crime: boolean;
-  fire: boolean;
   school: boolean;
 }
 
@@ -46,8 +45,6 @@ export function buildingIssues(w: World, i: number, kinds: Unlocked): Issue[] {
   if (w.abandoned[i]) return ['empty'];
   const out: Issue[] = [];
   if (!w.roadAccess[i]) out.push('road');
-  // A tall building with no fire station near burns whole when it catches fire.
-  if (kinds.fire && w.level[i] >= 3 && w.fireCover[i] < FIRE_SAFE_COVER) out.push('fire');
   if (w.jam[i] > TRAFFIC.slowFrom + JAM_MARGIN) out.push('jam');
   if (kinds.crime && zone !== 'I' && w.crime[i] > CRIME_BUBBLE) out.push('crime');
   if (kinds.health && zone === 'R' && w.health[i] < SERVICE_NEED) out.push('health');

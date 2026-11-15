@@ -32,8 +32,6 @@ const BODY = [
 const ICONS: Record<Issue, string[]> = {
   // A traffic cone, orange with a white band: the street does not reach the building.
   road: ['....o....', '...ocso..', '...ocso..', '..owwwwo.', '..owwwwo.', '.occcccso', '.occcccso', 'ooooooooo', '.........'],
-  // A flame: no fire station to put it out.
-  fire: ['....o....', '...oco...', '..occco..', '.occryco.', '.ocryyco.', 'ocryyyrco', 'ocryyyrco', '.orryyro.', '..ooooo..'],
   // A traffic light with every lamp on: the street is full.
   jam: ['..ooooo..', '..orrro..', '..orrro..', '..oyyyo..', '..oyyyo..', '..onnno..', '..onnno..', '..ooooo..', '....o....'],
   // An open book: no school near.
@@ -73,7 +71,6 @@ const COLORS: Record<string, string> = {
 const PAPER: Record<Issue, string> = {
   power: '#f6dc9a',
   road: '#f3dcb8',
-  fire: '#f3d2c2',
   jam: '#efd0d0',
   school: '#d5e0f2',
   empty: '#dcd8d2',

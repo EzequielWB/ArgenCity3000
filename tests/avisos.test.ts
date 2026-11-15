@@ -11,8 +11,8 @@ function flat(n = 16): Terrain {
   return { n, corners: new Uint8Array(s * s).fill(SEA_LEVEL + 1), trees: new Uint8Array(n * n) };
 }
 
-const all = { health: true, crime: true, fire: true, school: true };
-const none = { health: false, crime: false, fire: false, school: false };
+const all = { health: true, crime: true, school: true };
+const none = { health: false, crime: false, school: false };
 
 /** A lit home with a clinic near, safe and clean, on lot (3, 3): the starting point of each case. */
 function home(tile: number = TILE.R): { w: World; i: number } {
@@ -90,20 +90,6 @@ describe('the bubbles over a building', () => {
     w.setTile(5, 5, TILE.SCHOOL);
     w.powered[w.idx(5, 5)] = 1;
     expect(buildingIssues(w, w.idx(5, 5), all)).toEqual([]);
-  });
-
-  it('warns of a tall building with no fire station near, once the player can build one', () => {
-    const { w, i } = home();
-    w.level[i] = 3;
-    w.fireCover[i] = 10;
-    w.edu[i] = 90;
-    expect(buildingIssues(w, i, all)).toEqual(['fire']);
-    expect(buildingIssues(w, i, none)).toEqual([]);
-    w.fireCover[i] = 60;
-    expect(buildingIssues(w, i, all)).toEqual([]);
-    w.fireCover[i] = 10;
-    w.level[i] = 2; // a low building is not warned about
-    expect(buildingIssues(w, i, all)).toEqual([]);
   });
 
   it('warns of a street so full that the lot grows slowly', () => {

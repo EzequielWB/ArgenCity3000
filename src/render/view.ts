@@ -301,7 +301,7 @@ export class View {
   }
 
   /** The services the city has unlocked, which are the ones whose lack is shown with a bubble (set by the game). */
-  bubbleKinds: Unlocked = { health: false, crime: false, fire: false, school: false };
+  bubbleKinds: Unlocked = { health: false, crime: false, school: false };
   private bubbles: { at: number; items: { i: number; issues: Issue[] }[] } = { at: -1e9, items: [] };
 
   /** The buildings with something wrong, looked up again every half second: the fields they come from change slowly. */
