@@ -1079,59 +1079,124 @@ function airportArt(level: number, vw: number, vh: number): Sprite {
   const W = Math.min(vw, vh);
   const uv = (a: number, c: number): [number, number] => (alongU ? [a, c] : [c, a]);
   const ops: Op[] = [];
-  const box = (a0: number, c0: number, a1: number, c1: number, z0: number, h: number, color: string, outline = true, key?: number) => {
+  const put = (key: number, run: () => void) => ops.push({ key, run });
+  /** A footprint given along the runway (a) and across it (c), as view-space u0, v0, u1, v1. */
+  const norm = (a0: number, c0: number, a1: number, c1: number): [number, number, number, number] => {
     const [u0, v0] = uv(a0, c0);
     const [u1, v1] = uv(a1, c1);
-    ops.push({ key: key ?? (u0 + u1 + v0 + v1) / 2 + z0 * 0.01, run: () => p.box(Math.min(u0, u1), Math.min(v0, v1), Math.max(u0, u1), Math.max(v0, v1), z0, h, color, outline) });
+    return [Math.min(u0, u1), Math.min(v0, v1), Math.max(u0, u1), Math.max(v0, v1)];
+  };
+  const box = (a0: number, c0: number, a1: number, c1: number, z0: number, h: number, color: string, outline = true, key?: number) => {
+    const [u0, v0, u1, v1] = norm(a0, c0, a1, c1);
+    put(key ?? (u0 + u1 + v0 + v1) / 2 + z0 * 0.01, () => p.box(u0, v0, u1, v1, z0, h, color, outline));
+  };
+  /** A building: walls, a row of windows per floor and a hip roof with a small overhang. */
+  const house = (a0: number, c0: number, a1: number, c1: number, z0: number, h: number, wall: string, roof: string, rh: number, floorH = 0, cols = 3) => {
+    const [u0, v0, u1, v1] = norm(a0, c0, a1, c1);
+    put((u0 + u1 + v0 + v1) / 2 + z0 * 0.01, () => {
+      p.box(u0, v0, u1, v1, z0, h, wall);
+      if (floorH > 0) p.windows(u0, v0, u1, v1, z0 + 2, z0 + h - 0.5, floorH, PAL.glassDark, cols, 2.4);
+      p.hipRoof(u0 - 0.04, v0 - 0.04, u1 + 0.04, v1 + 0.04, z0 + h, rh, roof);
+    });
   };
   const flat = (pts: [number, number][], z: number, fill: string) =>
-    ops.push({
-      key: -1 + z * 0.001,
-      run: () =>
-        p.poly(
-          pts.map(([a, c]) => {
-            const [u, v] = uv(a, c);
-            return p.P(u, v, z);
-          }),
-          fill,
-        ),
-    });
-  /** A plane parked with its nose along the runway: a body, its wings and a tail fin. */
+    put(-1 + z * 0.001, () =>
+      p.poly(
+        pts.map(([a, c]) => {
+          const [u, v] = uv(a, c);
+          return p.P(u, v, z);
+        }),
+        fill,
+      ),
+    );
+  /** A plane parked with its nose along the runway: a body, its wings, a tail fin and a dark cockpit. */
   const plane = (a: number, c: number, s: number, body: string, wing: string) => {
     box(a - 0.32 * s, c - 0.055 * s, a + 0.32 * s, c + 0.055 * s, 1.2, 3.4 * s, body);
     box(a - 0.05 * s, c - 0.34 * s, a + 0.1 * s, c + 0.34 * s, 1.2 + 1.2 * s, 0.9 * s, wing, false);
     box(a - 0.34 * s, c - 0.02 * s, a - 0.22 * s, c + 0.02 * s, 1.2 + 2.2 * s, 3 * s, shade(body, 0.8), false);
+    box(a + 0.24 * s, c - 0.045 * s, a + 0.3 * s, c + 0.045 * s, 1.2 + 2.2 * s, 0.9 * s, PAL.glassDark, false);
+  };
+  const drum = (a: number, c: number, color: string) => {
+    const [u, v] = uv(a, c);
+    put(u + v + 0.02, () => p.cylinder(u, v, 0.06, 1.2, 3, color));
+  };
+  const lamp = (a: number, c: number) => {
+    const [u, v] = uv(a, c);
+    put(u + v + 0.02, () => {
+      p.post(u, v, 7, '#4a4440');
+      const [x, y] = p.P(u, v, 7);
+      p.g.fillStyle = '#f6d86a';
+      p.g.fillRect(Math.round(x) - 2, y - 1, 3, 1);
+    });
+  };
+  const tree = (a: number, c: number, kind: number) => {
+    const [u, v] = uv(a, c);
+    put(u + v + 0.02, () => p.tree(u, v, kind, 0.8));
+  };
+  /** The wind sock: a mast with an orange and white sleeve. */
+  const sock = (a: number, c: number) => {
+    const [u, v] = uv(a, c);
+    put(u + v + 0.02, () => {
+      p.post(u, v, 11, '#4a4440');
+      const [x, y] = p.P(u, v, 11);
+      p.g.fillStyle = '#e8702a';
+      p.g.fillRect(Math.round(x), y, 4, 2);
+      p.g.fillStyle = '#f4f0e6';
+      p.g.fillRect(Math.round(x) + 4, y, 2, 2);
+    });
+  };
+  /** A control tower: a slim shaft, a glazed cab with a roof and an aerial. */
+  const tower = (a: number, c: number, shaft: number) => {
+    const [u0, v0, u1, v1] = norm(a - 0.15, c - 0.15, a + 0.15, c + 0.15);
+    put((u0 + u1 + v0 + v1) / 2 + 0.01, () => {
+      p.box(u0, v0, u1, v1, 1.2, shaft, '#d9d4cc');
+      p.windows(u0, v0, u1, v1, 4, shaft - 2, 6, PAL.glassDark, 1, 2);
+      p.box(u0 - 0.07, v0 - 0.07, u1 + 0.07, v1 + 0.07, 1.2 + shaft, 4, '#6fb7e0');
+      p.hipRoof(u0 - 0.1, v0 - 0.1, u1 + 0.1, v1 + 0.1, 5.2 + shaft, 2.2, '#5a5560');
+      const [cu, cv] = [(u0 + u1) / 2, (v0 + v1) / 2];
+      const [x, y] = p.P(cu, cv, 7.4 + shaft);
+      p.g.fillStyle = '#4a4440';
+      p.g.fillRect(Math.round(x), y - 7, 1, 7);
+    });
   };
 
-  // The apron, the runway and its dashes.
+  // The apron, the runway with its edge lines and its dashes.
   box(0, 0, L, W, 0, 1.2, '#a9a8ae', false, -2);
   flat([[0, 0.08], [L, 0.08], [L, 0.72], [0, 0.72]], 1.2, '#44444c');
+  flat([[0, 0.1], [L, 0.1], [L, 0.12], [0, 0.12]], 1.22, '#d8d4c8');
+  flat([[0, 0.68], [L, 0.68], [L, 0.7], [0, 0.7]], 1.22, '#d8d4c8');
   for (let a = 0.2; a < L - 0.3; a += 0.55) flat([[a, 0.37], [a + 0.28, 0.37], [a + 0.28, 0.43], [a, 0.43]], 1.25, '#f4f0e6');
 
   if (level === 1) {
-    // A hangar with its door open to the apron, and a little plane in front of it.
-    box(0.2, 1.1, 1.5, 1.9, 1.2, 9, '#c9ccd1');
-    box(0.15, 1.05, 1.55, 1.95, 10.2, 1.6, '#e3e5e8');
-    box(1.49, 1.3, 1.54, 1.7, 1.2, 6.5, '#2a2c30', false);
-    plane(2.3, 1.45, 1.5, '#f4f0e6', '#c9ccd1');
+    // A small hangar with its door to the apron, fuel drums, a wind sock and a little plane.
+    house(0.25, 1.2, 1.05, 1.75, 1.2, 5.5, '#c9ccd1', '#7d8a96', 3);
+    box(1.0, 1.35, 1.06, 1.6, 1.2, 4.2, '#2a2c30', false);
+    drum(1.3, 1.9, '#2f63a6');
+    drum(1.45, 1.8, '#c8392f');
+    sock(2.7, 1.1);
+    tree(0.2, 1.95, 3);
+    plane(2.0, 1.45, 1.5, '#f4f0e6', '#c9ccd1');
   } else if (level === 2) {
-    // A terminal with a blue stripe, a control tower and two little planes.
-    box(0.1, 1.0, 1.9, 1.9, 1.2, 10, '#d7d2c8');
-    box(0.1, 1.0, 1.9, 1.9, 11.2, 1.4, '#2f63a6', false);
-    box(0.5, 0.99, 1.5, 1.01, 5, 3, PAL.glassDark, false);
-    box(2.2, 1.3, 2.55, 1.65, 1.2, 20, '#d9d4cc');
-    box(2.1, 1.2, 2.65, 1.75, 21.2, 5, '#6fb7e0');
-    box(2.05, 1.15, 2.7, 1.8, 26.2, 1, '#5a5560', false);
+    // A terminal with a blue stripe and a row of windows, a control tower, a small hangar and two planes.
+    house(0.15, 1.05, 1.55, 1.75, 1.2, 8, '#d7d2c8', '#2f63a6', 2.5, 5, 5);
+    box(0.7, 1.74, 0.9, 1.78, 1.2, 4, '#5a3d2a', false);
+    tower(2.0, 1.35, 15);
+    house(2.35, 1.1, 2.9, 1.7, 1.2, 5, '#c9ccd1', '#7d8a96', 2.6);
+    lamp(0.1, 1.9);
+    lamp(1.6, 1.9);
+    sock(2.75, 0.95);
     plane(0.8, 0.4, 1.4, '#f4f0e6', '#c9ccd1');
-    plane(2.4, 0.4, 1.2, '#e0a526', '#d9d4cc');
+    plane(2.3, 0.4, 1.2, '#e0a526', '#d9d4cc');
   } else {
-    // A long glass terminal with jet bridges, a tall tower and an airliner at the gate.
-    box(0.05, 0.95, 2.35, 1.95, 1.2, 12, '#8fb8cc');
-    box(0.05, 0.95, 2.35, 1.95, 13.2, 1.8, '#e8e4dc', false);
-    for (const a of [0.45, 1.1, 1.75]) box(a, 0.78, a + 0.12, 0.95, 4, 3.5, '#c9ccd1', false);
-    box(2.45, 1.3, 2.9, 1.75, 1.2, 30, '#d9d4cc');
-    box(2.35, 1.2, 3, 1.85, 31.2, 6, '#6fb7e0');
-    box(2.3, 1.15, 3.05, 1.9, 37.2, 1.2, '#5a5560', false);
+    // A long glass terminal with jet bridges, a tall tower, a control hangar and an airliner at the gate.
+    house(0.05, 1.0, 2.2, 1.85, 1.2, 10, '#8fb8cc', '#e8e4dc', 2.2, 4.5, 8);
+    for (const a of [0.45, 1.1, 1.75]) box(a, 0.8, a + 0.12, 1.0, 4, 3.5, '#c9ccd1', false);
+    tower(2.55, 1.4, 26);
+    house(2.4, 1.7, 2.9, 1.95, 1.2, 4.5, '#c9ccd1', '#7d8a96', 2.4);
+    lamp(0.1, 1.95);
+    lamp(1.2, 1.95);
+    lamp(2.2, 1.95);
+    sock(2.85, 0.95);
     plane(1.3, 0.42, 2.3, '#f4f0e6', '#aeb4ba');
     plane(2.6, 0.4, 1.2, '#6fb7e0', '#d9d4cc');
   }
@@ -1156,54 +1221,84 @@ function harborArt(level: number, side: number): Sprite {
   const p = rectPainter(2, 2, level === 1 ? 22 : level === 2 ? 30 : 42);
   const [sx, sy] = SIDES[side % 4];
   const ops: Op[] = [];
+  const put = (key: number, run: () => void) => ops.push({ key, run });
   const box = (u0: number, v0: number, u1: number, v1: number, z0: number, h: number, color: string, outline = true, key?: number) =>
-    ops.push({ key: key ?? (u0 + u1 + v0 + v1) / 2 + z0 * 0.01, run: () => p.box(u0, v0, u1, v1, z0, h, color, outline) });
+    put(key ?? (u0 + u1 + v0 + v1) / 2 + z0 * 0.01, () => p.box(u0, v0, u1, v1, z0, h, color, outline));
+  /** A building: walls, windows, a hip roof with a small overhang and, optionally, a striped awning on its front. */
+  const house = (cu: number, cv: number, half: number, h: number, wall: string, roof: string, rh: number, floorH: number, cols: number, awning?: [string, string]) => {
+    const [u0, v0, u1, v1] = [cu - half, cv - half, cu + half, cv + half];
+    put(cu + cv + 0.015, () => {
+      p.box(u0, v0, u1, v1, 1.5, h, wall);
+      if (floorH > 0) p.windows(u0, v0, u1, v1, 3.5, 1.5 + h - 0.5, floorH, PAL.glassDark, cols, 2.4);
+      p.left(v1, cu - half * 0.2, cu + half * 0.2, 1.5, 5.5, '#5a3d2a');
+      if (awning) p.awning(v1, u0 + half * 0.2, u1 - half * 0.2, 7.5, awning[0], awning[1], 4);
+      p.hipRoof(u0 - 0.05, v0 - 0.05, u1 + 0.05, v1 + 0.05, 1.5 + h, rh, roof);
+    });
+  };
+  const barrel = (u: number, v: number, color: string) => put(u + v + 0.02, () => p.cylinder(u, v, 0.06, 1.5, 2.6, color));
+  const crate = (u: number, v: number) => box(u - 0.07, v - 0.07, u + 0.07, v + 0.07, 1.5, 2.6, '#b88a52');
 
   box(0.04, 0.04, 1.96, 1.96, 0, 1.5, PAL.concrete, false, -2);
-  // The pier: planks from the middle of the piece out to the water, with a bollard at the end.
+  // The pier: planks from the middle of the piece out to the water, with rail posts on both edges and a bollard at the end.
   const pu0 = sx === 0 ? 0.8 : sx > 0 ? 1 : 0;
   const pu1 = sx === 0 ? 1.2 : sx > 0 ? 2 : 1;
   const pv0 = sy === 0 ? 0.8 : sy > 0 ? 1 : 0;
   const pv1 = sy === 0 ? 1.2 : sy > 0 ? 2 : 1;
   box(pu0, pv0, pu1, pv1, 1.5, 0.9, '#a9763f', false);
+  const lo = sx > 0 || sy > 0 ? 1 : 0;
+  for (const t of [0.2, 0.5, 0.8]) {
+    for (const e of [0.83, 1.17]) {
+      const [pu, pv] = sx !== 0 ? [lo + t, e] : [e, lo + t];
+      put(pu + pv + 0.01, () => p.post(pu, pv, 4, '#6b4a2a'));
+    }
+  }
   const bu = sx > 0 ? 1.9 : sx < 0 ? 0.1 : 1;
   const bv = sy > 0 ? 1.9 : sy < 0 ? 0.1 : 1;
   box(bu - 0.06, bv - 0.06, bu + 0.06, bv + 0.06, 2.4, 2.2, '#2a2c30', false);
 
-  // The building goes to the side away from the water.
+  // The building goes to the side away from the water, with the goods and the lamps of a quay around it.
   const cu = 1 - 0.5 * sx;
   const cv = 1 - 0.5 * sy;
-  const half = level === 1 ? 0.28 : level === 2 ? 0.42 : 0.5;
-  const top = level === 1 ? 7 : level === 2 ? 11 : 16;
   const wall = level === 3 ? '#e8e4dc' : '#f1e3c6';
-  const roof = level === 1 ? '#c8392f' : level === 2 ? '#2f63a6' : '#c8392f';
-  box(cu - half, cv - half, cu + half, cv + half, 1.5, top, wall);
-  box(cu - half - 0.04, cv - half - 0.04, cu + half + 0.04, cv + half + 0.04, 1.5 + top, 1.6, roof, false);
-  box(cu - half * 0.5, cv + half - 0.01, cu + half * 0.5, cv + half + 0.01, 3, top * 0.5, PAL.glassDark, false);
-  if (level >= 2) {
-    // A tourist office next to the terminal, with a striped awning.
+  if (level === 1) {
+    house(cu, cv, 0.26, 6, wall, '#c8392f', 3, 0, 1, ['#f4f0e6', '#c8392f']);
+  } else if (level === 2) {
+    house(cu, cv, 0.38, 9, wall, '#2f63a6', 3, 5, 3);
     const ou = cu + (sx === 0 ? 0.62 : 0);
     const ov = cv + (sx === 0 ? 0 : 0.62);
-    box(ou - 0.16, ov - 0.16, ou + 0.16, ov + 0.16, 1.5, 5, '#f4f0e6');
-    box(ou - 0.2, ov - 0.2, ou + 0.2, ov + 0.2, 6.5, 1.2, '#2f7f4f', false);
-  }
-  if (level === 3) {
+    house(ou, ov, 0.14, 5, '#f4f0e6', '#2f7f4f', 2, 0, 1, ['#2f7f4f', '#f4f0e6']);
+  } else {
+    house(cu, cv, 0.46, 12, wall, '#c8392f', 3.5, 4.5, 4);
+    const ou = cu + (sx === 0 ? 0.62 : 0);
+    const ov = cv + (sx === 0 ? 0 : 0.62);
+    house(ou, ov, 0.13, 5, '#f4f0e6', '#2f63a6', 2, 0, 1, ['#2f63a6', '#f4f0e6']);
     // A flagpole on the terminal, with the national flag.
-    ops.push({
-      key: cu + cv + 5,
-      run: () => {
-        const [x, y] = p.P(cu, cv, 1.5 + top + 1.6);
-        p.g.fillStyle = '#4a4440';
-        p.g.fillRect(Math.round(x), y - 14, 1, 14);
-        p.g.fillStyle = '#74acdf';
-        p.g.fillRect(Math.round(x) + 1, y - 14, 6, 2);
-        p.g.fillStyle = '#f6f2e8';
-        p.g.fillRect(Math.round(x) + 1, y - 12, 6, 2);
-        p.g.fillStyle = '#74acdf';
-        p.g.fillRect(Math.round(x) + 1, y - 10, 6, 2);
-      },
+    put(cu + cv + 5, () => {
+      const [x, y] = p.P(cu, cv, 1.5 + 12 + 3.5);
+      p.g.fillStyle = '#4a4440';
+      p.g.fillRect(Math.round(x), y - 14, 1, 14);
+      p.g.fillStyle = '#74acdf';
+      p.g.fillRect(Math.round(x) + 1, y - 14, 6, 2);
+      p.g.fillStyle = '#f6f2e8';
+      p.g.fillRect(Math.round(x) + 1, y - 12, 6, 2);
+      p.g.fillStyle = '#74acdf';
+      p.g.fillRect(Math.round(x) + 1, y - 10, 6, 2);
     });
   }
+  // Goods on the quay: next to the building, away from the pier.
+  const gu = sx === 0 ? 0.2 : cu;
+  const gv = sx === 0 ? cv : 0.2;
+  crate(gu, gv);
+  crate(gu + 0.18, gv + 0.04);
+  barrel(gu + 0.05, gv + 0.2, '#2f63a6');
+  barrel(sx === 0 ? 1.8 : cu, sx === 0 ? cv : 1.8, '#c8392f');
+  put(0.2 + 1.8 + 0.01, () => {
+    const [u, v] = sx === 0 ? [1.82, cv + 0.3 * (sy > 0 ? -1 : 1)] : [cu + 0.3 * (sx > 0 ? -1 : 1), 1.82];
+    p.post(u, v, 8, '#4a4440');
+    const [x, y] = p.P(u, v, 8);
+    p.g.fillStyle = '#f6d86a';
+    p.g.fillRect(Math.round(x) - 2, y - 1, 3, 1);
+  });
   inOrder(ops);
   return done(p);
 }
