@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { BUS, BUS_COLORS, MAX_BUS_NUMBER } from '../src/config';
 import { deserialize, serialize } from '../src/save/save';
+import { monthlyBudget } from '../src/sim/budget';
+import { computeCongestion } from '../src/sim/congestion';
 import { isUnlocked } from '../src/sim/milestones';
 import { newSimState } from '../src/sim/simulation';
+import { transitRelief } from '../src/sim/transit';
 import { toolPrice } from '../src/ui/toolbar';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { UndoHistory } from '../src/world/history';
@@ -163,5 +166,78 @@ describe('placing a bus line', () => {
     expect(area).toContainEqual([BUS.radius, 0]);
     expect(area).not.toContainEqual([BUS.radius, 1]);
     expect(area.every(([x, y]) => x >= 0 && y >= 0 && x < 16 && y < 16)).toBe(true);
+  });
+});
+
+function road(w: World, x0: number, y0: number, x1: number, y1: number): void {
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) w.setTile(x, y, TILE.ROAD);
+}
+
+/** Eight towers at the west end of a street along y = 10 and a factory at its east end: a saturated street. */
+function commuterTown(): World {
+  const w = new World(flat(48));
+  road(w, 0, 10, 30, 10);
+  for (let x = 0; x < 8; x++) w.setTile(x, 9, TILE.R, 5);
+  w.setTile(30, 9, TILE.I, 2);
+  return w;
+}
+
+describe('what the bus lines do for the traffic', () => {
+  const at = (w: World, x: number) => w.traffic[w.idx(x, 10)];
+
+  it('take a share of the load off the streets of their area, and only of those', () => {
+    const w = commuterTown();
+    computeCongestion(w);
+    const [outsideWest, middle, outsideEast] = [at(w, 5), at(w, 15), at(w, 28)];
+    expect(middle).toBeGreaterThan(outsideWest); // the first towers' share has not joined the street yet
+    depot(w, 15, 8, 0, 60); // two lots from the street, nine lots of reach
+    computeCongestion(w);
+    expect(Math.abs(at(w, 15) - middle * (1 - BUS.relief))).toBeLessThanOrEqual(1); // the percentages are rounded
+    expect(at(w, 9)).toBeLessThan(middle); // inside the diamond
+    expect(at(w, 5)).toBe(outsideWest); // outside it
+    expect(at(w, 28)).toBe(outsideEast);
+  });
+
+  it('add up where lines overlap, but never take more than the cap', () => {
+    const w = commuterTown();
+    computeCongestion(w);
+    const base = at(w, 15);
+    depot(w, 15, 8, 0, 60);
+    depot(w, 14, 8, 1, 61);
+    expect(transitRelief(w)[w.idx(15, 10)]).toBeCloseTo(1 - (1 - BUS.relief) ** 2, 5);
+    depot(w, 16, 8, 2, 62);
+    depot(w, 17, 8, 3, 63);
+    expect(transitRelief(w)[w.idx(15, 10)]).toBeCloseTo(BUS.maxRelief, 5);
+    computeCongestion(w);
+    expect(Math.abs(at(w, 15) - base * (1 - BUS.maxRelief))).toBeLessThanOrEqual(1);
+  });
+
+  it('do nothing when no street comes within reach of the depot', () => {
+    const w = commuterTown();
+    computeCongestion(w);
+    const base = at(w, 15);
+    depot(w, 15, 20, 0, 60); // ten lots from the street
+    expect(transitRelief(w).every((r) => r === 0)).toBe(true);
+    computeCongestion(w);
+    expect(at(w, 15)).toBe(base);
+  });
+
+  it('can bring a saturated street under its capacity, so the street does not have to be widened', () => {
+    const w = commuterTown();
+    expect(computeCongestion(w).worst).toBeGreaterThan(100);
+    depot(w, 12, 8, 0, 60); // covers the street from x = 5 to 19
+    depot(w, 26, 8, 1, 61); // and from x = 19 to the end
+    expect(computeCongestion(w).worst).toBeLessThan(100);
+  });
+
+  it('cost their upkeep each month, in a line of the budget of their own', () => {
+    const w = commuterTown();
+    const none = monthlyBudget(w, 7);
+    depot(w, 15, 8, 0, 60);
+    depot(w, 14, 8, 1, 61);
+    const two = monthlyBudget(w, 7);
+    expect(none.transport).toBe(0);
+    expect(two.transport).toBe(2 * BUS.upkeep);
+    expect(two.expenses - none.expenses).toBe(2 * BUS.upkeep);
   });
 });

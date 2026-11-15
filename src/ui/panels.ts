@@ -87,6 +87,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Comisarías', b.police)}
     ${row('Bomberos voluntarios', b.firefighters)}
     ${row('Costa', b.coast)}
+    ${row('Transporte', b.transport)}
     ${row('Cuota del crédito', b.loan)}
     ${row('Administración municipal', b.services)}
     ${row('Total gastos', b.expenses, 'total')}

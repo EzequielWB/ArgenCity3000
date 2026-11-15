@@ -5,6 +5,7 @@ import { cityTotals, zoneTaxes } from './demand';
 import { utilization } from './fields';
 import { loanInstalment, loanPaidOff, type Loan } from './loans';
 import { plantsUpkeep } from './plants';
+import { transitUpkeep } from './transit';
 
 export interface BudgetReport {
   taxR: number;
@@ -22,6 +23,8 @@ export interface BudgetReport {
   firefighters: number;
   /** This month's loan instalment; zero when the city owes nothing. */
   loan: number;
+  /** Upkeep of the bus lines. */
+  transport: number;
   /** Upkeep of the buildings of the coast (docks, promenade, port, resort, lighthouse). */
   coast: number;
   /** Fish sold by the docks and tourism at the resorts. */
@@ -123,10 +126,11 @@ export function monthlyBudget(
     police: funded('police'),
     firefighters: funded('fire'),
     loan: loanDue,
+    transport: transitUpkeep(w),
     coast: coast.upkeep,
     coastIncome: Math.round(coast.income * coastFactor),
   };
   const income = r.taxR + r.taxC + r.taxI + r.coastIncome;
-  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan + r.coast;
+  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan + r.coast + r.transport;
   return { ...r, income, expenses, balance: income - expenses };
 }
