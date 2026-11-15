@@ -16,9 +16,10 @@ export interface Sprite {
   attach?: [number, number];
 }
 
+/** Face tone factors: measured on the reference, a cream wall (#f6f2e8) shows its sides at #aaa69c and #918d85. */
 const TOP = 1;
-const LEFT = 0.84;
-const RIGHT = 0.64;
+const LEFT = 0.69;
+const RIGHT = 0.59;
 
 type Pt = [number, number];
 
@@ -53,7 +54,7 @@ class Painter {
     }
   }
 
-  box(u0: number, v0: number, u1: number, v1: number, z0: number, h: number, color: string, outline = true): void {
+  box(u0: number, v0: number, u1: number, v1: number, z0: number, h: number, color: string, outline = false): void {
     const z1 = z0 + h;
     const P = this.P.bind(this);
     const edge = outline ? shade(color, 0.45) : undefined;
@@ -102,21 +103,19 @@ class Painter {
   hipRoof(u0: number, v0: number, u1: number, v1: number, z: number, rh: number, color: string): void {
     const P = this.P.bind(this);
     const apex = P((u0 + u1) / 2, (v0 + v1) / 2, z + rh);
-    const dark = shade(color, 0.5);
-    this.poly([P(u0, v0, z), P(u1, v0, z), apex], shade(color, 0.95), dark);
-    this.poly([P(u0, v0, z), P(u0, v1, z), apex], shade(color, 1.05), dark);
-    this.poly([P(u0, v1, z), P(u1, v1, z), apex], shade(color, LEFT), dark);
-    this.poly([P(u1, v0, z), P(u1, v1, z), apex], shade(color, RIGHT), dark);
+    this.poly([P(u0, v0, z), P(u1, v0, z), apex], shade(color, 0.95));
+    this.poly([P(u0, v0, z), P(u0, v1, z), apex], shade(color, 1.05));
+    this.poly([P(u0, v1, z), P(u1, v1, z), apex], shade(color, LEFT));
+    this.poly([P(u1, v0, z), P(u1, v1, z), apex], shade(color, RIGHT));
   }
 
   /** Gable roof with the ridge running along u. */
   gableRoof(u0: number, v0: number, u1: number, v1: number, z: number, rh: number, color: string, wall: string): void {
     const P = this.P.bind(this);
     const vm = (v0 + v1) / 2;
-    const dark = shade(color, 0.5);
-    this.poly([P(u0, v0, z), P(u1, v0, z), P(u1, vm, z + rh), P(u0, vm, z + rh)], shade(color, 1.05), dark);
-    this.poly([P(u0, v1, z), P(u1, v1, z), P(u1, vm, z + rh), P(u0, vm, z + rh)], shade(color, LEFT), dark);
-    this.poly([P(u1, v0, z), P(u1, v1, z), P(u1, vm, z + rh)], shade(wall, RIGHT), shade(wall, 0.45));
+    this.poly([P(u0, v0, z), P(u1, v0, z), P(u1, vm, z + rh), P(u0, vm, z + rh)], shade(color, 1.05));
+    this.poly([P(u0, v1, z), P(u1, v1, z), P(u1, vm, z + rh), P(u0, vm, z + rh)], shade(color, LEFT));
+    this.poly([P(u1, v0, z), P(u1, v1, z), P(u1, vm, z + rh)], shade(wall, RIGHT));
   }
 
   cylinder(cu: number, cv: number, r: number, z0: number, h: number, color: string): void {
@@ -290,21 +289,21 @@ function done(p: Painter, attach?: [number, number]): Sprite {
   return { canvas: p.canvas, ax: p.ax, ay: p.ay, smoke: p.smoke, attach };
 }
 
-/** Trees and plazas: the greens of the terrain, one muted lilac and one muted pink. */
+/** Trees and plazas: the greens of the terrain, one violet and one pink. */
 const TREE = {
-  trunk: '#6b4a2e',
-  trunkLight: '#b3a78c',
-  jacaranda: '#8c7fae',
-  ombu: '#436e3a',
-  palo: '#c98ba8',
-  paloTrunk: '#7f9a6a',
-  eucalyptus: '#7d9464',
+  trunk: '#61472d',
+  trunkLight: '#b09e6d',
+  jacaranda: '#ae8eff',
+  ombu: '#46773b',
+  palo: '#e87fa8',
+  paloTrunk: '#879a72',
+  eucalyptus: '#809e89',
 } as const;
 
 const BENCH = '#8a6a45';
 
-const WALLS = ['#f1e3c6', '#e9b9a2', '#b5d3e0', '#f0d27c', '#c2dbb3', '#f4f0e6'];
-const ROOFS = ['#b4532f', '#9e4428', '#c06a3c', '#7d6a5e'];
+const WALLS = ['#f6f2e8', '#f4c1a6', '#ccdae4', '#f5dfa3', '#cfe3b8', '#fffce6'];
+const ROOFS = ['#c74625', '#a73b1f', '#cb632f', '#944822'];
 const AWNINGS: [string, string][] = [
   ['#c8392f', '#f4ece0'],
   ['#2f7f4f', '#f4ece0'],
