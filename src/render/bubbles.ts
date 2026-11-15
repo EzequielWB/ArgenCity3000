@@ -8,6 +8,23 @@ const DISC: Record<Issue, string> = {
   smoke: '#6b707a',
 };
 
+const icons = new Map<Issue, string>();
+
+/** The bubble as a small picture (a data URL, drawn once) for the card that explains it. */
+export function bubbleIcon(issue: Issue): string {
+  let url = icons.get(issue);
+  if (!url) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 24;
+    const g = c.getContext('2d')!;
+    g.scale(2.3, 2.3);
+    drawBubble(g, issue, 5.2, 5.2);
+    url = c.toDataURL();
+    icons.set(issue, url);
+  }
+  return url;
+}
+
 /** Draws the bubble of `issue` centred on (cx, cy), 9 px across. */
 export function drawBubble(g: CanvasRenderingContext2D, issue: Issue, cx: number, cy: number): void {
   g.fillStyle = DISC[issue];

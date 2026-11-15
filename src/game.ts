@@ -3,6 +3,7 @@ import { POWER_REACH, TICKS_PER_MONTH, type GovernmentKind } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
 import { attachPointer, type PointerTarget } from './input/controls';
+import { bubbleIcon } from './render/bubbles';
 import { pickCell } from './render/geometry';
 import { MapRenderer } from './render/mapRenderer';
 import { Minimap } from './render/minimap';
@@ -749,7 +750,7 @@ ${stalled}` : ''}`;
     card.classList.remove('hidden');
     card.innerHTML = `<button class="close" aria-label="Cerrar">✕</button><h3>${escapeHtml(r.title)}</h3><ul>${r.lines
       .map((l) => `<li>${escapeHtml(l)}</li>`)
-      .join('')}</ul>${r.hint ? `<p class="hint">${escapeHtml(r.hint)}</p>` : ''}`;
+      .join('')}</ul>${(r.issues ?? []).map((m) => `<p class="issue"><img src="${bubbleIcon(m.issue)}" alt="" width="24" height="24">${escapeHtml(m.text)}</p>`).join('')}${r.hint ? `<p class="hint">${escapeHtml(r.hint)}</p>` : ''}`;
     card.querySelector('.close')!.addEventListener('click', () => this.closeInfo());
   }
 

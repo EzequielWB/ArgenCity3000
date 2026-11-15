@@ -25,6 +25,8 @@ import {
   type ServiceKind,
 } from '../config';
 import { formatNumber } from '../core/format';
+import { isUnlocked } from './milestones';
+import { buildingIssues, type Issue } from './warnings';
 import { SEA_LEVEL } from '../world/terrain';
 import { facilityAt } from '../world/hubs';
 import { busColorOf, busNumberOf, streetNear } from '../world/transport';
@@ -74,10 +76,28 @@ export interface CellReport {
   lines: string[];
   /** What the player could do about this cell, if anything. */
   hint?: string;
+  /** The problems the bubble over the building stands for, each with what it means. */
+  issues?: { issue: Issue; text: string }[];
 }
 
-/** Everything the "Consulta" tool shows about a cell. */
+/** What each bubble means, with the numbers of the lot. */
+function issueText(w: World, i: number, issue: Issue): string {
+  if (issue === 'power') return 'Sin luz: el edificio no recibe electricidad, no funciona y no crece.';
+  if (issue === 'crime') return `Mucho delito (${w.crime[i]}/100): los vecinos se van y baja el valor del suelo. Una comisaría con luz cerca lo baja.`;
+  if (issue === 'health') return `No llega la salud (${w.health[i]}/100): las casas no pasan de chalet. Hace falta una salita con luz cerca.`;
+  return `Mucho humo (${w.pollution[i]}/100): las casas pierden vecinos. Alejá las usinas y las fábricas de acá.`;
+}
+
+/** Everything the "Consulta" tool shows about a cell, and what the bubble over the building means when it has one. */
 export function describeCell(w: World, sim: Simulation, x: number, y: number): CellReport {
+  const report = describeBase(w, sim, x, y);
+  const i = w.idx(x, y);
+  const m = sim.state.milestone;
+  const issues = buildingIssues(w, i, { health: isUnlocked('clinic', m), crime: isUnlocked('police', m) });
+  return issues.length ? { ...report, issues: issues.map((issue) => ({ issue, text: issueText(w, i, issue) })) } : report;
+}
+
+function describeBase(w: World, sim: Simulation, x: number, y: number): CellReport {
   const i = w.idx(x, y);
   const tile = w.tiles[i];
   const level = w.level[i];

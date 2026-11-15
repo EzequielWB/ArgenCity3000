@@ -2274,3 +2274,16 @@ textarea {
 #modal.locked #modalClose {
   display: none;
 }
+
+/* The card of a building with a bubble over it: the same drawing, and what it means. */
+.card .issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 0;
+  line-height: 1.25;
+}
+
+.card .issue img {
+  flex: none;
+}

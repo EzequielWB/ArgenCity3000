@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { milestoneOfTool } from '../src/sim/milestones';
+import { describeCell } from '../src/sim/report';
+import { Simulation, newSimState } from '../src/sim/simulation';
 import { buildingIssues } from '../src/sim/warnings';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { TILE, World } from '../src/world/world';
@@ -70,5 +73,30 @@ describe('the bubbles over a building', () => {
     w.powered[i] = 0;
     w.fire[i] = 1;
     expect(buildingIssues(w, i, all)).toEqual([]);
+  });
+});
+
+describe('what the bubble means on the card of "Consulta"', () => {
+  it('explains each problem of the building, with its numbers, and nothing for a healthy one', () => {
+    const { w, i } = home();
+    const sim = new Simulation(w, newSimState(1), 'X');
+    sim.state.milestone = Math.max(milestoneOfTool('clinic'), milestoneOfTool('police'));
+    w.powered[i] = 1;
+    w.crime[i] = 75;
+    w.health[i] = 5;
+    const card = describeCell(w, sim, 3, 3);
+    expect(card.issues?.map((m) => m.issue)).toEqual(['crime', 'health']);
+    expect(card.issues?.[0].text).toMatch(/Mucho delito \(75\/100\)/);
+    expect(card.issues?.[1].text).toMatch(/No llega la salud \(5\/100\)/);
+    w.crime[i] = 0;
+    w.health[i] = 90;
+    expect(describeCell(w, sim, 3, 3).issues).toBeUndefined();
+  });
+
+  it('explains the dark on the card of a building without light', () => {
+    const { w, i } = home();
+    w.powered[i] = 0;
+    const card = describeCell(w, new Simulation(w, newSimState(1), 'X'), 3, 3);
+    expect(card.issues).toEqual([{ issue: 'power', text: expect.stringMatching(/^Sin luz/) }]);
   });
 });
