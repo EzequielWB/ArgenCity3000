@@ -22,25 +22,25 @@ export const TUTORIAL_HELP = 'Si te queda alguna duda, en cualquier momento ten�
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     title: '1. Empezá por una calle',
-    text: 'Trazá una calle (3) arrastrando desde la ruta provincial. Tiene que salir de la ruta: por ahí llegan los vecinos nuevos.',
+    text: 'Trazá una calle arrastrando desde la ruta provincial. Tiene que salir de la ruta: por ahí llegan los vecinos nuevos.',
     image: 'calle.webp',
     alt: 'Una calle que se traza arrastrando desde el borde de la ruta provincial, con su costo.',
   },
   {
     title: '2. Después, la luz',
-    text: 'Sin luz no se construye nada. La usina (9) alumbra unos 3 lotes a su alrededor (el halo amarillo), así que ponela cerca de donde vas a construir. Un lote lejos queda sin luz (en rojo): llevásela con el tendido eléctrico (4). Los edificios con luz también alumbran a sus vecinos.',
+    text: 'Sin luz no se construye nada. La usina alumbra unos 3 lotes a su alrededor (el halo amarillo), así que ponela cerca de donde vas a construir. Un lote lejos queda sin luz (en rojo): llevásela con el tendido eléctrico. Los edificios con luz también alumbran a sus vecinos.',
     image: 'usina.webp',
     alt: 'Una usina con su halo de luz amarillo, un lote cercano con luz y un edificio lejano marcado en rojo porque no tiene.',
   },
   {
     title: '3. Zonificá',
-    text: 'Marcá zonas pegadas a la calle: residencial (5) para las casas, comercial (6) para los negocios e industrial (7) para las fábricas. Los edificios aparecen solos, empiezan humildes y mejoran con los años.',
+    text: 'Marcá zonas pegadas a la calle: residencial para las casas, comercial para los negocios e industrial para las fábricas. Los edificios aparecen solos, empiezan humildes y mejoran con los años. Con la herramienta Consulta tocá cualquier edificio y ves sus detalles y qué le pasa: por qué no crece, o qué significa el globito que tiene arriba.',
     image: 'zonas.webp',
     alt: 'Tres zonas junto a una calle, marcadas R, C e I, con casas, comercios y tinglados que ya aparecieron.',
   },
   {
     title: '4. Cuidá la caja',
-    text: 'En el Presupuesto (P) ves cuánto entra y cuánto sale cada mes, y podés subir o bajar los impuestos y lo que se gasta en servicios. Tratá de no cerrar el mes en rojo.',
+    text: 'En el Presupuesto ves cuánto entra y cuánto sale cada mes, y podés subir o bajar los impuestos y lo que se gasta en servicios. Tratá de no cerrar el mes en rojo.',
     image: 'presupuesto.webp',
     alt: 'El panel de Presupuesto municipal, con los ingresos y gastos del mes y los controles de impuestos.',
   },
