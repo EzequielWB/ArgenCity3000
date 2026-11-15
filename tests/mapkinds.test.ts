@@ -196,3 +196,43 @@ describe('the built-in generators keep their own ceilings', () => {
     }
   });
 });
+
+/** Water cells in the outer 12 % band of each edge (east, south, west, north): where a sea would show. */
+function waterByEdge(t: Terrain): number[] {
+  const n = t.n;
+  const band = Math.floor(n * 0.12);
+  const edges = [0, 0, 0, 0];
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      if (!isWaterCell(t, x, y)) continue;
+      if (n - 1 - x < band) edges[0]++;
+      if (n - 1 - y < band) edges[1]++;
+      if (x < band) edges[2]++;
+      if (y < band) edges[3]++;
+    }
+  }
+  return edges;
+}
+
+describe('the way to the sea of every invented map', () => {
+  for (const kind of ['plain', 'relief', 'sierras'] as const) {
+    for (const n of SIZES) {
+      it(`${kind} has a bay of sea on one side, at ${n}`, () => {
+        for (const seed of [1, 2, 3, 4, 5, 6]) {
+          // A stretch of the edge with water on it: far more than the creek that crosses a plain.
+          expect(Math.max(...waterByEdge(generateMap(seed, n, kind)))).toBeGreaterThanOrEqual(0.015 * n * n);
+        }
+      });
+    }
+  }
+
+  it('is smaller than the sea of the coastal map, which keeps a whole side of water', () => {
+    const coast = Math.max(...waterByEdge(generateMap(1, 128, 'coast')));
+    for (const kind of ['plain', 'relief', 'sierras'] as const) expect(Math.max(...waterByEdge(generateMap(1, 128, kind)))).toBeLessThan(coast);
+  });
+
+  it('opens it on different sides depending on the seed', () => {
+    const sides = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((seed) => waterByEdge(generateMap(seed, 128, 'sierras')).indexOf(Math.max(...waterByEdge(generateMap(seed, 128, 'sierras'))))));
+    expect(sides.size).toBeGreaterThan(1);
+  });
+});

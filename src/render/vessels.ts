@@ -8,7 +8,8 @@ import { HUBS } from '../config';
 import { project, rotateDir, toView, type Rotation } from '../core/iso';
 import { Rng } from '../core/rng';
 import { hubFacilities, hubFootprint, type HubFacility } from '../world/hubs';
-import type { World } from '../world/world';
+import { TILE, type World } from '../world/world';
+import { coastWorks } from '../sim/coast';
 import type { Pt } from './geometry';
 import type { MapRenderer } from './mapRenderer';
 import { heightAt } from './traffic';
@@ -51,7 +52,7 @@ export interface Boat {
   t: number;
   speed: number;
   home: [number, number];
-  kind: 'tour' | 'cruise';
+  kind: 'tour' | 'cruise' | 'fishing';
 }
 
 export class Vessels {
@@ -96,6 +97,20 @@ export class Vessels {
           this.boats.set(key, boat);
         }
       }
+    }
+    // A fishing boat for every working dock, sailing close to it.
+    for (let i = 0; i < this.world.tiles.length; i++) {
+      if (this.world.tiles[i] !== TILE.FISHING || !coastWorks(this.world, i)) continue;
+      const key = `fish:${i}`;
+      boats.add(key);
+      if (this.boats.has(key)) continue;
+      const x = i % this.world.n;
+      const y = (i - x) / this.world.n;
+      const start = DIRS.map(([dx, dy]): [number, number] => [x + dx, y + dy]).find(([wx, wy]) => this.isWater(wx, wy));
+      if (!start) continue;
+      const boat: Boat = { x: start[0], y: start[1], dx: 1, dy: 0, t: this.rng.next(), speed: 0.45, home: start, kind: 'fishing' };
+      this.turn(boat);
+      this.boats.set(key, boat);
     }
     for (const k of [...this.planes.keys()]) if (!planes.has(k)) this.planes.delete(k);
     for (const k of [...this.boats.keys()]) if (!boats.has(k)) this.boats.delete(k);
@@ -212,7 +227,8 @@ export function drawBoats(g: CanvasRenderingContext2D, v: Vessels, map: MapRende
     const ux = rdx - rdy;
     const uy = (rdx + rdy) / 2;
     const cruise = b.kind === 'cruise';
-    const len = cruise ? 8.5 : 4.5;
+    const fishing = b.kind === 'fishing';
+    const len = cruise ? 8.5 : fishing ? 3.8 : 4.5;
     const dx = ux * len;
     const dy = uy * len;
     // The wake behind it.
@@ -235,9 +251,18 @@ export function drawBoats(g: CanvasRenderingContext2D, v: Vessels, map: MapRende
       g.closePath();
       g.fill();
     };
-    hull(0, 1.2, '#3c3b42');
-    hull(1.2, cruise ? 3 : 2.4, '#f4f0e6');
-    if (cruise) {
+    hull(0, 1.2, fishing ? '#24405f' : '#3c3b42');
+    hull(1.2, cruise ? 3 : 2.4, fishing ? '#2f63a6' : '#f4f0e6');
+    if (fishing) {
+      // A little white wheelhouse at the back, a mast with a yellow flag and a red band along the hull.
+      hull(1.8, 2, '#c8392f');
+      g.fillStyle = '#f4f0e6';
+      g.fillRect(sx - ux * 2.2 - 1.2, sy - uy * 2.2 - 4.4, 2.4, 2.4);
+      g.fillStyle = '#4a4440';
+      g.fillRect(sx + ux * 0.6 - 0.4, sy + uy * 0.6 - 7, 0.8, 5);
+      g.fillStyle = '#f2c230';
+      g.fillRect(sx + ux * 0.6 + 0.4, sy + uy * 0.6 - 7, 1.8, 1.2);
+    } else if (cruise) {
       hull(3, 5, '#f4f0e6', 0.7);
       hull(3.6, 4, '#2f63a6', 0.7);
       g.fillStyle = '#c8392f';

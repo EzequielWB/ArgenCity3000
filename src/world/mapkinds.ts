@@ -25,9 +25,9 @@ export interface MapKindInfo {
 
 export const MAP_KINDS: readonly MapKindInfo[] = [
   { id: 'coast', label: 'Con salida al mar', blurb: 'Lomas suaves, el mar o un río ancho al este y un arroyo.' },
-  { id: 'plain', label: 'Llanura', blurb: 'Terreno casi llano, con un arroyo y una laguna.' },
-  { id: 'relief', label: 'Con gran relieve', blurb: 'Cerros y valles por todo el mapa.' },
-  { id: 'sierras', label: 'Sierras', blurb: 'Cordones de montañas con valles anchos donde construir.' },
+  { id: 'plain', label: 'Llanura', blurb: 'Terreno casi llano, con un arroyo, una laguna y una bahía de mar a un costado.' },
+  { id: 'relief', label: 'Con gran relieve', blurb: 'Cerros y valles por todo el mapa, con una bahía de mar a un costado.' },
+  { id: 'sierras', label: 'Sierras', blurb: 'Cordones de montañas con valles anchos donde construir y una bahía de mar a un costado.' },
 ];
 
 /**
@@ -44,6 +44,8 @@ export function generateMap(seed: number, n: number, kind: MapKind = 'coast'): T
   if (kind === 'plain') fillPlain(raw, n, seed, scale);
   else if (kind === 'relief') fillRelief(raw, n, seed, scale);
   else fillSierras(raw, n, seed, scale);
+  // Every invented map has a way to the sea, big or small: the maritime half of the game has to be usable.
+  carveSea(raw, n, seed);
 
   const corners = new Uint8Array(s * s);
   for (let i = 0; i < raw.length; i++) {
@@ -76,6 +78,39 @@ function carveWater(raw: Float32Array, n: number, seed: number, scale: number): 
       const wobble = 1 + (fbm(x / 6, y / 6, seed + 21, 2) - 0.5) * 0.8;
       const d = Math.hypot(x - lakeAt, (y - cy) * 1.3);
       if (d < lakeR * wobble) raw[y * s + x] = SEA_LEVEL - 2;
+    }
+  }
+}
+
+/**
+ * Opens a bay of sea on one side of the map, chosen by the seed: a stretch of the edge that digs into the land
+ * and gets shallower towards its ends, with a plain around it that rises into the hills of the kind, so the shore
+ * is somewhere to build (a port, a promenade, a resort) even in a map of mountains. It is smaller than the sea of
+ * the coastal map, which is the one with a whole side of water.
+ */
+function carveSea(raw: Float32Array, n: number, seed: number): void {
+  const s = n + 1;
+  const side = Math.floor(hash2(41, 43, seed) * 4);
+  const centre = n * (0.3 + 0.4 * hash2(47, 53, seed));
+  const half = n * (0.16 + 0.1 * hash2(59, 61, seed));
+  const depth = n * (0.055 + 0.04 * hash2(67, 71, seed));
+  /** The plain behind the water, in cells: the land goes from the beach to the kind's own relief over this width. */
+  const apron = n * 0.07;
+  for (let y = 0; y < s; y++) {
+    for (let x = 0; x < s; x++) {
+      // `across` is the distance to the edge the sea opens on, `along` the position on it.
+      const [across, along] = side === 0 ? [s - 1 - x, y] : side === 1 ? [s - 1 - y, x] : side === 2 ? [x, y] : [y, x];
+      const t = Math.abs(along - centre) / (half * 1.5);
+      if (t >= 1) continue;
+      const wobble = (fbm(along / 9, across / 9, seed + 81, 2) - 0.5) * n * 0.035;
+      const reach = depth * (1 - t * t) + wobble;
+      if (across < reach) {
+        raw[y * s + x] = SEA_LEVEL - 2;
+      } else {
+        // Land: flat and low next to the water, the original relief further in.
+        const k = Math.min(1, (across - reach) / apron);
+        raw[y * s + x] = (SEA_LEVEL + 1.4) * (1 - k * k) + raw[y * s + x] * k * k;
+      }
     }
   }
 }

@@ -132,3 +132,42 @@ describe('the boats of a harbour', () => {
     expect([v.boats.size, v.planes.size]).toEqual([0, 0]);
   });
 });
+
+describe('the fishing boats of a dock', () => {
+  const dockWorld = (): World => {
+    const w = city();
+    w.roadAccess.fill(1);
+    put(w, 'fishing', 18, 12);
+    return w;
+  };
+
+  it('are one for each working dock, and none for a dock that does not work', () => {
+    const w = dockWorld();
+    const v = new Vessels(w, 1);
+    v.refresh();
+    expect([...v.boats.values()].map((b) => b.kind)).toEqual(['fishing']);
+    w.powered.fill(0); // no light: the dock stops and so does its boat
+    v.refresh();
+    expect(v.boats.size).toBe(0);
+    w.powered.fill(1);
+    w.roadAccess.fill(0); // no street
+    v.refresh();
+    expect(v.boats.size).toBe(0);
+  });
+
+  it('sail on the water close to their dock, and go when it is demolished', () => {
+    const w = dockWorld();
+    const v = new Vessels(w, 3);
+    v.refresh();
+    for (let step = 0; step < 1500; step++) {
+      v.update(0.1);
+      for (const b of v.boats.values()) {
+        expect(w.isWater(b.x, b.y)).toBe(true);
+        expect(Math.abs(b.x - b.home[0]) + Math.abs(b.y - b.home[1])).toBeLessThanOrEqual(10);
+      }
+    }
+    applyPlan(w, planTool(w, 'bulldoze', [[18, 12]]));
+    v.refresh();
+    expect(v.boats.size).toBe(0);
+  });
+});
