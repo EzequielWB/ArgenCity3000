@@ -102,7 +102,7 @@ export function stitchRings<T>(ways: readonly (readonly T[])[], key: (p: T) => s
  * Heights are measured from the shore (the low end of the land touching the water), so a
  * lake in the hills sits at sea level in the game and the hills rise around it.
  */
-export function cornersFromElevation(elev: Float32Array, water: Uint8Array, n: number, metersPerLevel: number): Uint8Array {
+export function cornersFromElevation(elev: Float32Array, water: Uint8Array, n: number, metersPerLevel: number, landLiftM = 0): Uint8Array {
   const s = n + 1;
   const wetCorner = new Uint8Array(s * s);
   for (let y = 0; y < s; y++) {
@@ -151,7 +151,7 @@ export function cornersFromElevation(elev: Float32Array, water: Uint8Array, n: n
   const corners = new Uint8Array(s * s);
   for (let i = 0; i < s * s; i++) {
     if (wetCorner[i]) corners[i] = SEA_LEVEL - 1;
-    else corners[i] = Math.min(MAX_HEIGHT, SEA_LEVEL + Math.max(0, Math.round((elev[i] - base) / metersPerLevel)));
+    else corners[i] = Math.min(MAX_HEIGHT, SEA_LEVEL + Math.max(0, Math.round((elev[i] - base + landLiftM) / metersPerLevel)));
   }
   constrainSlopes(corners, s);
   // The data has a few metres of noise: drop the lone one-level bumps it leaves.

@@ -24,6 +24,7 @@ export const PRESETS: readonly PresetInfo[] = [
   { id: 'mendoza', name: 'Mendoza', blurb: 'La ciudad al pie de la precordillera, en pendiente.' },
   { id: 'bariloche', name: 'Bariloche', blurb: 'La costa del Nahuel Huapi, con la montaña detrás.' },
   { id: 'ushuaia', name: 'Ushuaia', blurb: 'La bahía sobre el canal Beagle, con los cerros atrás.' },
+  { id: 'tandil', name: 'Tandil', blurb: 'El centro con sus cuatro avenidas, el dique del Fuerte y las sierras.' },
 ];
 
 export interface MapPreset {

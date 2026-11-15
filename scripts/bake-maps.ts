@@ -34,6 +34,11 @@ interface City {
    * on a piedmont has ditches running down from the hills that would cut a trench into them.
    */
   waterwayMaxM?: number;
+  /**
+   * Metres added to all the land, for a city on a plain no higher than its lake: without it the
+   * whole plain sits at the level of the shore and is drawn as beach.
+   */
+  landLiftM?: number;
 }
 
 const CITIES: City[] = [
@@ -44,6 +49,8 @@ const CITIES: City[] = [
   { id: 'mendoza', name: 'Mendoza', center: [-32.8895, -68.874], cellMeters: 25, metersPerLevel: 25, size: 256, waterwayMaxM: 800 },
   { id: 'bariloche', name: 'Bariloche', center: [-41.138, -71.31], cellMeters: 25, metersPerLevel: 30, size: 192, waterLevelM: 772 },
   { id: 'ushuaia', name: 'Ushuaia', center: [-54.805, -68.31], cellMeters: 20, metersPerLevel: 20, size: 192 },
+  // Midway between the centre (Plaza Independencia) and the Lago del Fuerte, 2.6 km to the south of it.
+  { id: 'tandil', name: 'Tandil', center: [-37.332, -59.133], cellMeters: 20, metersPerLevel: 8, size: 256, landLiftM: 20 },
 ];
 
 const env = (globalThis as unknown as { process: { argv: string[]; env: Record<string, string | undefined> } }).process;
@@ -393,7 +400,7 @@ async function bake(city: City): Promise<void> {
       }
     }
   }
-  const corners = cornersFromElevation(elev, water, n, city.metersPerLevel);
+  const corners = cornersFromElevation(elev, water, n, city.metersPerLevel, city.landLiftM);
 
   // Trees: woods are dense, parks have some, and a few stand anywhere.
   const green = new Uint8Array(n * n); // 2 = wood, 1 = park

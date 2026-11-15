@@ -106,6 +106,20 @@ describe('cornersFromElevation', () => {
     expect(corners[0]).toBe(SEA_LEVEL + 4);
   });
 
+  it('lifts all the land by the given metres and leaves the water where it is', () => {
+    // A plain as high as its lake: with no lift it all sits at the shore level, which is drawn as beach.
+    const n = 12;
+    const s = n + 1;
+    const elev = new Float32Array(s * s).fill(50);
+    const water = new Uint8Array(n * n);
+    for (let y = 0; y < n; y++) for (let x = 10; x < n; x++) water[y * n + x] = 1;
+    const plain = cornersFromElevation(elev, water, n, 10);
+    const lifted = cornersFromElevation(elev, water, n, 10, 20);
+    check(lifted, n, water);
+    expect(plain[0]).toBe(SEA_LEVEL);
+    expect(lifted[0]).toBe(SEA_LEVEL + 2);
+  });
+
   it('measures heights from the water surface, so a lake in the hills is not a cliff', () => {
     const { n, elev, water } = coast(800, 802);
     const corners = cornersFromElevation(elev, water, n, 10);
@@ -208,9 +222,9 @@ describe('map presets', () => {
   });
 
   const files = import.meta.glob('../public/maps/*.json', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-  const cities = ['mar-del-plata', 'buenos-aires', 'rosario', 'cordoba', 'mendoza', 'bariloche', 'ushuaia'];
+  const cities = ['mar-del-plata', 'buenos-aires', 'rosario', 'cordoba', 'mendoza', 'bariloche', 'ushuaia', 'tandil'];
 
-  it('list the seven cities, each with a name and a line for the start screen', () => {
+  it('list the cities, each with a name and a line for the start screen', () => {
     expect(PRESETS.map((p) => p.id)).toEqual(cities);
     for (const info of PRESETS) {
       expect(info.name.length).toBeGreaterThan(0);
@@ -234,7 +248,8 @@ describe('map presets', () => {
       }
     }
     const cells = p.n * p.n;
-    expect(wet).toBeGreaterThan(cells * 0.01);
+    // Tandil is inland: its water is the dique and a stream, under 1 %.
+    expect(wet).toBeGreaterThan(cells * 0.005);
     // Mar del Plata has 43 % of flat land; a mountain town may have half of that.
     expect(flat).toBeGreaterThan(cells * 0.2);
     for (const c of p.corners) {
