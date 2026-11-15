@@ -88,6 +88,11 @@ export function hubFacilities(w: World): HubFacility[] {
   });
 }
 
+/** Asks for every lot of every piece to be drawn again: a piece that joins or leaves changes the level, and so the drawing, of its neighbours. */
+export function markHubsDirty(w: World): void {
+  for (const h of w.hubs) for (const [x, y] of hubFootprint(h.kind, w.n, h.x, h.y)) w.markDirty(w.idx(x, y));
+}
+
 /** The facility that has a piece on the lot, or undefined. */
 export function facilityAt(w: World, x: number, y: number): HubFacility | undefined {
   const piece = w.hubAt(x, y);

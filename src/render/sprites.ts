@@ -1,5 +1,5 @@
 import { PAL, shade } from './color';
-import { BUS_COLORS, type CoastKind, type PlantKind, type ServiceKind } from '../config';
+import { BUS_COLORS, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
 import type { ZoneKind } from '../world/world';
 
 /**
@@ -1044,6 +1044,176 @@ function abandonedOf(base: Sprite): Sprite {
     g.stroke();
   }
   return { canvas: c, ax: base.ax, ay: base.ay, smoke: [] };
+}
+
+// ---------------------------------------------------------------- airports and harbours
+
+/** A painter for a footprint of `vw`×`vh` cells in view space and `height` px above the ground. */
+function rectPainter(vw: number, vh: number, height: number): Painter {
+  const w = 16 * (vw + vh) + 4;
+  const h = 8 * (vw + vh) + height + 4;
+  return new Painter(makeCanvas(w, h), 16 * vh + 2, height + 2);
+}
+
+/** A piece of a drawing and where it goes in the back-to-front order. */
+interface Op {
+  key: number;
+  run: () => void;
+}
+
+const inOrder = (ops: Op[]): void => {
+  ops.sort((a, b) => a.key - b.key);
+  for (const o of ops) o.run();
+};
+
+/**
+ * An airport piece (3×2 lots) in the colours of the rest of the city. The drawing is made along the
+ * runway, so it holds for a map seen from any side: `vw`×`vh` is the footprint in view space and the
+ * long side is the runway. Level 1 is a hangar with a little plane, 2 an aerodrome with a terminal and a
+ * tower, 3 an international airport with a long glass terminal, jet bridges and an airliner.
+ */
+function airportArt(level: number, vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, level === 1 ? 24 : level === 2 ? 36 : 48);
+  const alongU = vw >= vh;
+  const L = Math.max(vw, vh);
+  const W = Math.min(vw, vh);
+  const uv = (a: number, c: number): [number, number] => (alongU ? [a, c] : [c, a]);
+  const ops: Op[] = [];
+  const box = (a0: number, c0: number, a1: number, c1: number, z0: number, h: number, color: string, outline = true, key?: number) => {
+    const [u0, v0] = uv(a0, c0);
+    const [u1, v1] = uv(a1, c1);
+    ops.push({ key: key ?? (u0 + u1 + v0 + v1) / 2 + z0 * 0.01, run: () => p.box(Math.min(u0, u1), Math.min(v0, v1), Math.max(u0, u1), Math.max(v0, v1), z0, h, color, outline) });
+  };
+  const flat = (pts: [number, number][], z: number, fill: string) =>
+    ops.push({
+      key: -1 + z * 0.001,
+      run: () =>
+        p.poly(
+          pts.map(([a, c]) => {
+            const [u, v] = uv(a, c);
+            return p.P(u, v, z);
+          }),
+          fill,
+        ),
+    });
+  /** A plane parked with its nose along the runway: a body, its wings and a tail fin. */
+  const plane = (a: number, c: number, s: number, body: string, wing: string) => {
+    box(a - 0.32 * s, c - 0.055 * s, a + 0.32 * s, c + 0.055 * s, 1.2, 3.4 * s, body);
+    box(a - 0.05 * s, c - 0.34 * s, a + 0.1 * s, c + 0.34 * s, 1.2 + 1.2 * s, 0.9 * s, wing, false);
+    box(a - 0.34 * s, c - 0.02 * s, a - 0.22 * s, c + 0.02 * s, 1.2 + 2.2 * s, 3 * s, shade(body, 0.8), false);
+  };
+
+  // The apron, the runway and its dashes.
+  box(0, 0, L, W, 0, 1.2, '#a9a8ae', false, -2);
+  flat([[0, 0.08], [L, 0.08], [L, 0.72], [0, 0.72]], 1.2, '#44444c');
+  for (let a = 0.2; a < L - 0.3; a += 0.55) flat([[a, 0.37], [a + 0.28, 0.37], [a + 0.28, 0.43], [a, 0.43]], 1.25, '#f4f0e6');
+
+  if (level === 1) {
+    // A hangar with its door open to the apron, and a little plane in front of it.
+    box(0.2, 1.1, 1.5, 1.9, 1.2, 9, '#c9ccd1');
+    box(0.15, 1.05, 1.55, 1.95, 10.2, 1.6, '#e3e5e8');
+    box(1.49, 1.3, 1.54, 1.7, 1.2, 6.5, '#2a2c30', false);
+    plane(2.3, 1.45, 1.5, '#f4f0e6', '#c9ccd1');
+  } else if (level === 2) {
+    // A terminal with a blue stripe, a control tower and two little planes.
+    box(0.1, 1.0, 1.9, 1.9, 1.2, 10, '#d7d2c8');
+    box(0.1, 1.0, 1.9, 1.9, 11.2, 1.4, '#2f63a6', false);
+    box(0.5, 0.99, 1.5, 1.01, 5, 3, PAL.glassDark, false);
+    box(2.2, 1.3, 2.55, 1.65, 1.2, 20, '#d9d4cc');
+    box(2.1, 1.2, 2.65, 1.75, 21.2, 5, '#6fb7e0');
+    box(2.05, 1.15, 2.7, 1.8, 26.2, 1, '#5a5560', false);
+    plane(0.8, 0.4, 1.4, '#f4f0e6', '#c9ccd1');
+    plane(2.4, 0.4, 1.2, '#e0a526', '#d9d4cc');
+  } else {
+    // A long glass terminal with jet bridges, a tall tower and an airliner at the gate.
+    box(0.05, 0.95, 2.35, 1.95, 1.2, 12, '#8fb8cc');
+    box(0.05, 0.95, 2.35, 1.95, 13.2, 1.8, '#e8e4dc', false);
+    for (const a of [0.45, 1.1, 1.75]) box(a, 0.78, a + 0.12, 0.95, 4, 3.5, '#c9ccd1', false);
+    box(2.45, 1.3, 2.9, 1.75, 1.2, 30, '#d9d4cc');
+    box(2.35, 1.2, 3, 1.85, 31.2, 6, '#6fb7e0');
+    box(2.3, 1.15, 3.05, 1.9, 37.2, 1.2, '#5a5560', false);
+    plane(1.3, 0.42, 2.3, '#f4f0e6', '#aeb4ba');
+    plane(2.6, 0.4, 1.2, '#6fb7e0', '#d9d4cc');
+  }
+  inOrder(ops);
+  return done(p);
+}
+
+/** The sides of a harbour piece, as the direction of the water in view space: +u, +v, -u, -v. */
+const SIDES: readonly [number, number][] = [
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+  [0, -1],
+];
+
+/**
+ * A harbour piece (2×2 lots): a quay with a wooden pier towards the water (`side`, see `SIDES`) and,
+ * on the other side, a ticket booth (level 1), a terminal with a tourist office (2) or a cruise terminal
+ * with a flag (3). The boats are not in the drawing: they sail (see `Boats`).
+ */
+function harborArt(level: number, side: number): Sprite {
+  const p = rectPainter(2, 2, level === 1 ? 22 : level === 2 ? 30 : 42);
+  const [sx, sy] = SIDES[side % 4];
+  const ops: Op[] = [];
+  const box = (u0: number, v0: number, u1: number, v1: number, z0: number, h: number, color: string, outline = true, key?: number) =>
+    ops.push({ key: key ?? (u0 + u1 + v0 + v1) / 2 + z0 * 0.01, run: () => p.box(u0, v0, u1, v1, z0, h, color, outline) });
+
+  box(0.04, 0.04, 1.96, 1.96, 0, 1.5, PAL.concrete, false, -2);
+  // The pier: planks from the middle of the piece out to the water, with a bollard at the end.
+  const pu0 = sx === 0 ? 0.8 : sx > 0 ? 1 : 0;
+  const pu1 = sx === 0 ? 1.2 : sx > 0 ? 2 : 1;
+  const pv0 = sy === 0 ? 0.8 : sy > 0 ? 1 : 0;
+  const pv1 = sy === 0 ? 1.2 : sy > 0 ? 2 : 1;
+  box(pu0, pv0, pu1, pv1, 1.5, 0.9, '#a9763f', false);
+  const bu = sx > 0 ? 1.9 : sx < 0 ? 0.1 : 1;
+  const bv = sy > 0 ? 1.9 : sy < 0 ? 0.1 : 1;
+  box(bu - 0.06, bv - 0.06, bu + 0.06, bv + 0.06, 2.4, 2.2, '#2a2c30', false);
+
+  // The building goes to the side away from the water.
+  const cu = 1 - 0.5 * sx;
+  const cv = 1 - 0.5 * sy;
+  const half = level === 1 ? 0.28 : level === 2 ? 0.42 : 0.5;
+  const top = level === 1 ? 7 : level === 2 ? 11 : 16;
+  const wall = level === 3 ? '#e8e4dc' : '#f1e3c6';
+  const roof = level === 1 ? '#c8392f' : level === 2 ? '#2f63a6' : '#c8392f';
+  box(cu - half, cv - half, cu + half, cv + half, 1.5, top, wall);
+  box(cu - half - 0.04, cv - half - 0.04, cu + half + 0.04, cv + half + 0.04, 1.5 + top, 1.6, roof, false);
+  box(cu - half * 0.5, cv + half - 0.01, cu + half * 0.5, cv + half + 0.01, 3, top * 0.5, PAL.glassDark, false);
+  if (level >= 2) {
+    // A tourist office next to the terminal, with a striped awning.
+    const ou = cu + (sx === 0 ? 0.62 : 0);
+    const ov = cv + (sx === 0 ? 0 : 0.62);
+    box(ou - 0.16, ov - 0.16, ou + 0.16, ov + 0.16, 1.5, 5, '#f4f0e6');
+    box(ou - 0.2, ov - 0.2, ou + 0.2, ov + 0.2, 6.5, 1.2, '#2f7f4f', false);
+  }
+  if (level === 3) {
+    // A flagpole on the terminal, with the national flag.
+    ops.push({
+      key: cu + cv + 5,
+      run: () => {
+        const [x, y] = p.P(cu, cv, 1.5 + top + 1.6);
+        p.g.fillStyle = '#4a4440';
+        p.g.fillRect(Math.round(x), y - 14, 1, 14);
+        p.g.fillStyle = '#74acdf';
+        p.g.fillRect(Math.round(x) + 1, y - 14, 6, 2);
+        p.g.fillStyle = '#f6f2e8';
+        p.g.fillRect(Math.round(x) + 1, y - 12, 6, 2);
+        p.g.fillStyle = '#74acdf';
+        p.g.fillRect(Math.round(x) + 1, y - 10, 6, 2);
+      },
+    });
+  }
+  inOrder(ops);
+  return done(p);
+}
+
+/**
+ * The sprite of an airport or harbour piece. `vw`×`vh` is its footprint seen from the camera (the
+ * airport turns 90° with the view, the harbour is square), `side` the direction of the water for a harbour.
+ */
+export function hubSprite(kind: HubKind, level: number, vw: number, vh: number, side = 0): Sprite {
+  return cached(`hub:${kind}${level}:${vw}x${vh}:${side}`, () => (kind === 'airport' ? airportArt(level, vw, vh) : harborArt(level, side)));
 }
 
 const cache = new Map<string, Sprite>();

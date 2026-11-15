@@ -3,7 +3,7 @@ import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
 import { busRefusal, freeBusNumber, packBusLine } from './transport';
-import { hubFootprint, hubRefusal } from './hubs';
+import { hubFootprint, hubRefusal, markHubsDirty } from './hubs';
 import { TILE, World, coastTile, hubOf, hubTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
 export type ToolId = 'query' | 'bulldoze' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
@@ -429,6 +429,7 @@ export function applyPlan(w: World, plan: Plan): void {
     w.hubs.push({ x, y, kind: hubKind });
   }
   // Zoning or placing a service levels the block it belongs to (see `levelBlocks`).
-  if (zone || isServiceTool(plan.tool)) levelBlocks(w, plan.cells);
+  if (zone || isServiceTool(plan.tool) || hubKind) levelBlocks(w, plan.cells);
+  if (hubKind || plan.tool === 'bulldoze') markHubsDirty(w);
   w.bumpNetwork();
 }

@@ -1,7 +1,7 @@
 import { PLANT_SIZE } from '../config';
 import { fromView, project, unproject, type Rotation } from '../core/iso';
 import { MAX_HEIGHT, SEA_LEVEL, cornerAt } from '../world/terrain';
-import { TILE, World, serviceOf } from '../world/world';
+import { TILE, World, hubOf, serviceOf } from '../world/world';
 
 export type Pt = [number, number];
 
@@ -18,7 +18,7 @@ export function viewCornerHeights(w: World, vx: number, vy: number, rot: Rotatio
 /** True when the cell is drawn as a flat platform (buildings, plants) instead of following the terrain. */
 export function isPlatform(w: World, i: number): boolean {
   const t = w.tiles[i];
-  return t === TILE.PLANT || serviceOf(t) !== null || (w.level[i] > 0 && t >= TILE.R && t <= TILE.I);
+  return t === TILE.PLANT || serviceOf(t) !== null || hubOf(t) !== null || (w.level[i] > 0 && t >= TILE.R && t <= TILE.I);
 }
 
 /** Least a bridge deck rides above the sea, in levels, when its banks are lower than that. */
@@ -131,6 +131,13 @@ export function surfaceHeights(w: World, vx: number, vy: number, rot: Rotation):
 export function plantHeight(w: World, px: number, py: number): number {
   let m = 0;
   for (let y = py; y <= py + PLANT_SIZE; y++) for (let x = px; x <= px + PLANT_SIZE; x++) m = Math.max(m, cornerAt(w.terrain, x, y));
+  return m;
+}
+
+/** A piece of an airport or a harbour sits on a platform levelled at the highest corner of its whole footprint. */
+export function hubHeight(w: World, px: number, py: number, fw: number, fh: number): number {
+  let m = 0;
+  for (let y = py; y <= py + fh; y++) for (let x = px; x <= px + fw; x++) m = Math.max(m, cornerAt(w.terrain, x, y));
   return m;
 }
 

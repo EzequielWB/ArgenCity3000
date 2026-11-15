@@ -1,5 +1,6 @@
 import { TICKS_PER_MONTH } from '../config';
 import type { Plan, ToolId } from './tools';
+import { markHubsDirty } from './hubs';
 import { World, type Hub, type Plant } from './world';
 
 interface CellBefore {
@@ -111,6 +112,7 @@ export class UndoHistory {
     }
     w.plants = e.plants.map((p) => ({ ...p }));
     w.hubs = e.hubs.map((h) => ({ ...h }));
+    markHubsDirty(w);
     restoreCorners(w, e.corners);
     w.bumpNetwork();
     const age = now - e.tick;

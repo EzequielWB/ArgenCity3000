@@ -3,7 +3,9 @@ import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
 import { busColorOf } from '../world/transport';
-import { TILE, World, coastOf, serviceOf, zoneOf } from '../world/world';
+import { HUBS } from '../config';
+import { facilityAt, hubFootprint } from '../world/hubs';
+import { TILE, World, coastOf, hubOf, serviceOf, zoneOf } from '../world/world';
 import { DIRT, type RoadTier } from '../config';
 import { KIND, analyzeRoads, boulevardMedian, centreMark, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
 
@@ -27,13 +29,14 @@ import {
   type Rect,
 } from './chunks';
 import { PAL, mix, rgb, toRgb } from './color';
-import { isPlatform, surfaceHeights, viewCornerHeights, plantHeight, type Pt } from './geometry';
+import { hubHeight, isPlatform, surfaceHeights, viewCornerHeights, plantHeight, type Pt } from './geometry';
 import {
   abandonedBuildingSprite,
   buildingSprite,
   burningBuildingSprite,
   busDepotSprite,
   coastSprite,
+  hubSprite,
   parkSpriteFor,
   plantSprite,
   poleSpriteFor,
@@ -551,6 +554,19 @@ export class MapRenderer {
       const [ax, ay] = this.toCache(fx - (PLANT_SIZE - 1), fy - (PLANT_SIZE - 1), plantHeight(w, p.x, p.y));
       return { sprite: plantSprite(p.kind), ax, ay };
     }
+    if (hubOf(tile)) {
+      // A piece of an airport or a harbour is drawn once, at the cell in front of its footprint (as seen from the camera).
+      const piece = w.hubAt(x, y);
+      if (!piece) return null;
+      const foot = hubFootprint(piece.kind, n, piece.x, piece.y).map(([cx, cy]) => toView(cx, cy, rot, n));
+      const [minVx, minVy] = [Math.min(...foot.map((c) => c[0])), Math.min(...foot.map((c) => c[1]))];
+      const [maxVx, maxVy] = [Math.max(...foot.map((c) => c[0])), Math.max(...foot.map((c) => c[1]))];
+      if (vx !== maxVx || vy !== maxVy) return null;
+      const { w: fw, h: fh } = HUBS[piece.kind];
+      const [ax, ay] = this.toCache(minVx, minVy, hubHeight(w, piece.x, piece.y, fw, fh));
+      const level = facilityAt(w, x, y)?.level ?? 1;
+      return { sprite: hubSprite(piece.kind, level, maxVx - minVx + 1, maxVy - minVy + 1, this.hubWaterSide(foot)), ax, ay };
+    }
     const hs = surfaceHeights(w, vx, vy, rot);
     if (level > 0 && zoneOf(tile)) {
       const [ax, ay] = this.toCache(vx, vy, hs[0]);
@@ -738,6 +754,27 @@ export class MapRenderer {
    * face water (bits 1, 2, 4, 8 in the order of the sprite's edges, plus 16 on every other lot
    * for a lamp) for the promenade, and the side the jetty runs out to for the fishing pier.
    */
+  /** Which side of a footprint (view cells) has the water, as the index of the direction +u, +v, -u, -v; 0 when none does. */
+  private hubWaterSide(foot: readonly (readonly [number, number])[]): number {
+    const n = this.world.n;
+    const own = new Set(foot.map(([a, b]) => b * n + a));
+    const dirs = [
+      [1, 0],
+      [0, 1],
+      [-1, 0],
+      [0, -1],
+    ] as const;
+    for (let k = 0; k < dirs.length; k++) {
+      for (const [a, b] of foot) {
+        const [na, nb] = [a + dirs[k][0], b + dirs[k][1]];
+        if (na < 0 || nb < 0 || na >= n || nb >= n || own.has(nb * n + na)) continue;
+        const [wx, wy] = fromView(na, nb, this.rot, n);
+        if (this.world.isWater(wx, wy)) return k;
+      }
+    }
+    return 0;
+  }
+
   private coastVariant(kind: ReturnType<typeof coastOf>, vx: number, vy: number, x: number, y: number): number {
     if (kind !== 'promenade' && kind !== 'fishing') return 0;
     const n = this.world.n;
