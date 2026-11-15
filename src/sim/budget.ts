@@ -22,6 +22,8 @@ export interface BudgetReport {
   clinics: number;
   police: number;
   firefighters: number;
+  hospitals: number;
+  universities: number;
   /** This month's loan instalment; zero when the city owes nothing. */
   loan: number;
   /** Upkeep of the bus lines. */
@@ -96,7 +98,7 @@ export function monthlyBudget(
   let bridges = 0;
   let lines = 0;
   let parks = 0;
-  const upkeep = { school: 0, clinic: 0, police: 0, fire: 0 };
+  const upkeep = { school: 0, clinic: 0, police: 0, fire: 0, hospital: 0, university: 0 };
   const used = usedInheritedStreets(w);
   for (let y = 0; y < w.n; y++) {
     for (let x = 0; x < w.n; x++) {
@@ -136,6 +138,8 @@ export function monthlyBudget(
     clinics: funded('clinic'),
     police: funded('police'),
     firefighters: funded('fire'),
+    hospitals: funded('hospital'),
+    universities: funded('university'),
     loan: loanDue,
     transport: transitUpkeep(w, transport),
     hubs: hubUpkeep(w),
@@ -144,6 +148,6 @@ export function monthlyBudget(
     coastIncome: Math.round(coast.income * coastFactor * earnings),
   };
   const income = r.taxR + r.taxC + r.taxI + r.coastIncome + r.hubIncome;
-  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan + r.coast + r.transport + r.hubs;
+  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.hospitals + r.universities + r.loan + r.coast + r.transport + r.hubs;
   return { ...r, income, expenses, balance: income - expenses };
 }

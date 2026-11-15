@@ -44,6 +44,8 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'clinic', label: 'Salita', key: 'u', shape: 'point', help: 'Salud: sin salita las casas no pasan de chalet.' },
   { id: 'police', label: 'Comisaría', key: 'i', shape: 'point', help: 'Seguridad: baja el delito en los barrios densos.' },
   { id: 'fire', label: 'Bomberos', key: 'o', shape: 'point', help: 'Cuartel de bomberos voluntarios: apaga incendios.' },
+  { id: 'hospital', label: 'Hospital', key: ';', shape: 'point', help: 'Salud de segundo nivel, de radio grande: sin hospital las casas más altas no se levantan. También hace de salita. Caro de construir y de mantener.' },
+  { id: 'university', label: 'Universidad', key: '-', shape: 'point', help: 'Educación de segundo nivel, de radio grande: sin universidad los comercios y las fábricas más altos no se levantan. También hace de escuela. Caro de construir y de mantener.' },
   { id: 'fishing', label: COAST.fishing.label, key: 'z', shape: 'point', help: 'Sobre la costa. Con calle cerca y luz da 12 empleos industriales y vende pescado.' },
   { id: 'promenade', label: COAST.promenade.label, key: 'x', shape: 'rect', help: 'Paseo sobre la costa, se arrastra como la plaza. Con calle cerca y luz sube el valor del suelo y la aprobación.' },
   { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con calle cerca y luz da 40 empleos industriales y sube los impuestos de las fábricas; contamina.' },
@@ -55,7 +57,7 @@ export const TOOLS: readonly ToolInfo[] = [
 ];
 
 export function isServiceTool(tool: ToolId): tool is ServiceKind {
-  return tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire';
+  return tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire' || tool === 'hospital' || tool === 'university';
 }
 
 export function isCoastTool(tool: ToolId): tool is CoastKind {
@@ -89,7 +91,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'query', label: 'Consulta', tools: ['query', 'bulldoze'] },
   { id: 'network', label: 'Calles y luz', tools: ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line'] },
   { id: 'zones', label: 'Zonas', tools: ['zoneR', 'zoneC', 'zoneI', 'park'] },
-  { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire'] },
+  { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire', 'hospital', 'university'] },
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
   { id: 'coast', label: 'Costa', tools: ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] },
   { id: 'transport', label: 'Transportes', tools: ['bus', 'harbor', 'airport'] },

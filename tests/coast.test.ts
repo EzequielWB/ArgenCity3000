@@ -115,7 +115,8 @@ describe('the coast tools', () => {
     expect([TILE.FISHING, TILE.PROMENADE, TILE.PORT, TILE.RESORT, TILE.LIGHTHOUSE]).toEqual([12, 13, 14, 15, 16]);
     expect(TILE.BUS).toBe(TILE.LIGHTHOUSE + 1);
     expect(TILE.AIRPORT).toBe(TILE.BUS + 1);
-    expect(MAX_TILE).toBe(TILE.HARBOR);
+    expect(TILE.HARBOR).toBe(TILE.AIRPORT + 1);
+    expect(MAX_TILE).toBe(TILE.UNIVERSITY);
     for (const k of COAST_TOOLS) expect(coastOf(coastTile(k))).toBe(k);
     expect(coastOf(TILE.FIREHOUSE)).toBeNull();
     expect(coastOf(TILE.EMPTY)).toBeNull();
@@ -780,7 +781,7 @@ describe('the newspaper of the coast', () => {
     shortage: false,
     crisis: false,
     taxes: { R: 7, C: 7, I: 7 },
-    funding: { school: 100, clinic: 100, police: 100, fire: 100 },
+    funding: { school: 100, clinic: 100, police: 100, fire: 100, hospital: 100, university: 100 },
     green: 100,
     grief: 0,
     month: 5,

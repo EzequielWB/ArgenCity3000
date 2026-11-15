@@ -240,6 +240,8 @@ function parseSim(raw: unknown): SimState {
     const f = (s.funding ?? {}) as Record<string, unknown>;
     for (const k of SERVICE_KINDS) {
       const v = f[k];
+      // The hospital and the university came later: an older save funds them in full.
+      if (v === undefined && (k === 'hospital' || k === 'university')) continue;
       need(isInt(v) && v >= 0 && v <= MAX_FUNDING, 'El presupuesto de los servicios es inválido');
       funding[k] = v as number;
     }
@@ -282,9 +284,9 @@ function parseSim(raw: unknown): SimState {
   let lastBudget: BudgetReport | null = null;
   if (s.lastBudget !== null && s.lastBudget !== undefined) {
     const b = s.lastBudget as Record<string, unknown>;
-    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'income', 'expenses', 'balance'];
+    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'income', 'expenses', 'balance'];
     // Older budgets had no lines for services, the loan instalment or the coast; they count as zero.
-    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome']) if (b[k] === undefined) b[k] = 0;
+    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome']) if (b[k] === undefined) b[k] = 0;
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }

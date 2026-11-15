@@ -23,8 +23,10 @@ export const TILE = {
   BUS: 17,
   AIRPORT: 18,
   HARBOR: 19,
+  HOSPITAL: 20,
+  UNIVERSITY: 21,
 } as const;
-export const MAX_TILE = TILE.HARBOR;
+export const MAX_TILE = TILE.UNIVERSITY;
 export type TileId = (typeof TILE)[keyof typeof TILE];
 
 export type ZoneKind = 'R' | 'C' | 'I';
@@ -36,7 +38,7 @@ export function zoneOf(tile: number): ZoneKind | null {
   return null;
 }
 
-const SERVICE_TILES: Record<ServiceKind, TileId> = { school: TILE.SCHOOL, clinic: TILE.CLINIC, police: TILE.POLICE, fire: TILE.FIREHOUSE };
+const SERVICE_TILES: Record<ServiceKind, TileId> = { school: TILE.SCHOOL, clinic: TILE.CLINIC, police: TILE.POLICE, fire: TILE.FIREHOUSE, hospital: TILE.HOSPITAL, university: TILE.UNIVERSITY };
 
 export function serviceTile(k: ServiceKind): TileId {
   return SERVICE_TILES[k];
@@ -47,6 +49,8 @@ export function serviceOf(tile: number): ServiceKind | null {
   if (tile === TILE.CLINIC) return 'clinic';
   if (tile === TILE.POLICE) return 'police';
   if (tile === TILE.FIREHOUSE) return 'fire';
+  if (tile === TILE.HOSPITAL) return 'hospital';
+  if (tile === TILE.UNIVERSITY) return 'university';
   return null;
 }
 
@@ -142,6 +146,9 @@ export class World {
   readonly health: Uint8Array;
   readonly safety: Uint8Array;
   readonly fireCover: Uint8Array;
+  /** 0–100 coverage of the second-level services: what the tallest homes (hospital) and shops and factories (university) ask for. */
+  readonly hospital: Uint8Array;
+  readonly university: Uint8Array;
   /** Load of each street cell in percent of its capacity (over 100 = saturated; capped at 255). */
   readonly traffic: Uint8Array;
   /** For every lot near a street, the traffic of the street it opens onto. */
@@ -173,6 +180,8 @@ export class World {
     this.health = new Uint8Array(size);
     this.safety = new Uint8Array(size);
     this.fireCover = new Uint8Array(size);
+    this.hospital = new Uint8Array(size);
+    this.university = new Uint8Array(size);
     this.traffic = new Uint8Array(size);
     this.jam = new Uint8Array(size);
     this.parkArea = new Uint16Array(size);

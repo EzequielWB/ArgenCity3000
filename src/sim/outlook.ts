@@ -53,7 +53,7 @@ export function describeOutlook(b: BudgetReport, cash: number): Outlook {
   }
 
   const money = (v: number) => `${v < 0 ? '-' : ''}$${formatNumber(Math.abs(v))}`;
-  const publicServices = b.schools + b.clinics + b.police + b.firefighters;
+  const publicServices = b.schools + b.clinics + b.police + b.firefighters + b.hospitals + b.universities;
   const lines = [
     'Estimación de un mes con la ciudad como está hoy',
     `Ingresos: ${money(b.income)} (viviendas ${money(b.taxR)}, comercios ${money(b.taxC)}, fábricas ${money(b.taxI)}${b.coastIncome ? `, pesca y turismo ${money(b.coastIncome)}` : ''})`,
@@ -86,7 +86,7 @@ export function placementUpkeep(tool: string): string | null {
   if (tier !== undefined) return `mantenimiento ${formatMoney(ROAD_TIERS[tier].upkeep)}/mes`;
   if (tool === 'bus') return `mantenimiento ${formatMoney(BUS.upkeep)}/mes`;
   if (tool === 'airport' || tool === 'harbor') return `mantenimiento ${formatMoney(HUBS[tool].upkeep)}/mes`;
-  if (tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire') {
+  if (tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire' || tool === 'hospital' || tool === 'university') {
     return `mantenimiento desde ${formatMoney(serviceUpkeepRange(tool).min)}/mes`;
   }
   const coast = COAST_KINDS.find((k) => k === tool);
@@ -117,13 +117,13 @@ export function runwayHeadline(b: BudgetReport, cash: number): string | null {
  * more than the taxes bring in; the newspaper waits for two such months in a row.
  */
 export function servicesOutweighIncome(b: BudgetReport): boolean {
-  const services = b.schools + b.clinics + b.police + b.firefighters;
+  const services = b.schools + b.clinics + b.police + b.firefighters + b.hospitals + b.universities;
   return services * 3 > b.expenses && b.income < services;
 }
 
 /** The headline that explains it. Call only when `servicesOutweighIncome` holds. */
 export function servicesCostHeadline(b: BudgetReport): string | null {
   if (!servicesOutweighIncome(b)) return null;
-  const services = b.schools + b.clinics + b.police + b.firefighters;
+  const services = b.schools + b.clinics + b.police + b.firefighters + b.hospitals + b.universities;
   return `Los servicios públicos cuestan ${formatMoney(services)} por mes y los vecinos aportan ${formatMoney(b.income)}`;
 }

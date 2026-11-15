@@ -166,14 +166,14 @@ describe('budget with services', () => {
 
   it('puts the funding share on top of the use-based cost', () => {
     const { budget: full } = servicesAmongHomes(5);
-    const { budget: cut } = servicesAmongHomes(5, { school: 50, clinic: 0, police: 120, fire: 100 });
+    const { budget: cut } = servicesAmongHomes(5, { school: 50, clinic: 0, police: 120, fire: 100, hospital: 100, university: 100 });
     expect(cut.schools).toBe(Math.round(full.schools * 0.5));
     expect(cut.clinics).toBe(0);
     expect(cut.police).toBe(Math.round(full.police * 1.2));
     expect(cut.firefighters).toBe(full.firefighters);
     // a partly used service funded at 50 % costs half of its partly used cost
     const half = servicesAmongHomes(2);
-    const halfCut = servicesAmongHomes(2, { school: 50, clinic: 100, police: 100, fire: 100 });
+    const halfCut = servicesAmongHomes(2, { school: 50, clinic: 100, police: 100, fire: 100, hospital: 100, university: 100 });
     expect(halfCut.budget.schools).toBe(Math.round(half.budget.schools / 2));
   });
 
@@ -228,14 +228,14 @@ describe('residentsServed', () => {
 
 describe('fires', () => {
   /** News are capped at 50 entries, so `fireHeadlines` remembers whether any month ever carried one. */
-  function run(cover: boolean): Simulation & { fireHeadlines: boolean } {
+  function run(cover: boolean, seed = 1): Simulation & { fireHeadlines: boolean } {
     const w = denseCity(4);
     if (cover) for (const x of [8, 20, 32]) for (const y of [12, 22, 32]) place(w, 'fire', x, y);
     // The newspaper only starts writing with two built lots of each basic zone.
     build(w, 'zoneC', 3, 5, 4, 5);
     build(w, 'zoneI', 3, 7, 4, 7);
     for (const y of [5, 7]) for (const x of [3, 4]) w.level[w.idx(x, y)] = 2;
-    const sim = new Simulation(w, newSimState(1), 'X');
+    const sim = new Simulation(w, newSimState(seed), 'X');
     sim.state.cash = 10_000_000;
     let fireHeadlines = false;
     for (let i = 0; i < TICKS_PER_MONTH * 60; i++) {
@@ -253,10 +253,11 @@ describe('fires', () => {
   });
 
   it('are mostly put out when fire stations cover the city', () => {
-    const uncovered = run(false);
-    const covered = run(true);
-    expect(covered.stats.firesSaved).toBeGreaterThan(0);
-    expect(covered.stats.buildingsBurned).toBeLessThan(uncovered.stats.buildingsBurned / 3);
+    // Fires are rolled with dice: the sum of a few cities tells apart a city with stations from one without.
+    const seeds = [1, 2, 3, 4];
+    const sum = (cover: boolean, key: 'firesSaved' | 'buildingsBurned') => seeds.reduce((total, seed) => total + run(cover, seed).stats[key], 0);
+    expect(sum(true, 'firesSaved')).toBeGreaterThan(0);
+    expect(sum(true, 'buildingsBurned')).toBeLessThan(sum(false, 'buildingsBurned') / 3);
   });
 });
 

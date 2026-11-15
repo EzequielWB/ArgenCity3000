@@ -694,7 +694,7 @@ export class Simulation {
         }
       }
       if (!served || this.state.crisis || d <= 0) continue;
-      const cap = levelCap(zone, w.landValue[i], t.pop, { edu: w.edu[i], health: w.health[i] });
+      const cap = levelCap(zone, w.landValue[i], t.pop, { edu: w.edu[i], health: w.health[i], hospital: w.hospital[i], university: w.university[i] });
       if (level >= cap) {
         if (level > cap && rng.chance(0.002)) this.changeLevel(i, level - 1);
         continue;

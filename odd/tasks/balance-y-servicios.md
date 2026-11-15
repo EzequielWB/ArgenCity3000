@@ -21,3 +21,4 @@ Objective: fix the balance findings of the audit, add second-level services, shi
 ## Log
 
 - L1 (2026-11-15) "Dale acomodá 1,2 y 3, y tocá un poco el 5 para que no sea tan asi, agregá servicios de segundo nivel, subí Tandil para que no esté en local (no se que hace ahi). Eliminá el globo de cuando faltan bomberos, normalmente el jugador se deberia dar cuenta solo o cuando ve que se quema algo (especie de dificultad)"
+- 2026-11-15 T1-T5 done: 1c364ab (fire bubble out), 9a4d602 (Tandil), 3d8746a/3355744 (balance), second-level services in this commit. Full suite green; checked the sprites, the tool menu and the budget on screen. Loading the dev city found that older saves failed on the new budget lines: fixed and pinned by a test.

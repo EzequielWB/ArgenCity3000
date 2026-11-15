@@ -294,8 +294,9 @@ export const EVENT = {
 /** Power units consumed per building level. */
 export const POWER_USE = { R: 2, C: 3, I: 5 } as const;
 
-export type ServiceKind = 'school' | 'clinic' | 'police' | 'fire';
-export const SERVICE_KINDS: readonly ServiceKind[] = ['school', 'clinic', 'police', 'fire'];
+/** The first four are the services of a village; the hospital and the university are the second level, for the tallest buildings. */
+export type ServiceKind = 'school' | 'clinic' | 'police' | 'fire' | 'hospital' | 'university';
+export const SERVICE_KINDS: readonly ServiceKind[] = ['school', 'clinic', 'police', 'fire', 'hospital', 'university'];
 
 /**
  * Plazas. A patch of plaza only pays off from `minArea` cells up, so a 2×2 or a 1×3 does something
@@ -325,6 +326,9 @@ export const SERVICES: Record<ServiceKind, { cost: number; upkeep: number; radiu
   clinic: { cost: 1200, upkeep: 220, radius: 11, capacity: 6000, power: 8 },
   police: { cost: 1000, upkeep: 180, radius: 10, capacity: 8000, power: 6 },
   fire: { cost: 1000, upkeep: 160, radius: 11, capacity: 10000, power: 6 },
+  // Second level: dear to build and to keep, with a wider reach. Without them the tallest buildings do not go up (see `levelCap`).
+  hospital: { cost: 5000, upkeep: 700, radius: 15, capacity: 20000, power: 25 },
+  university: { cost: 6000, upkeep: 800, radius: 16, capacity: 25000, power: 30 },
 };
 
 /**
@@ -357,7 +361,7 @@ export interface ZoneTaxes {
  * X % of its upkeep and gives X % of its coverage.
  */
 export type ServiceFunding = Record<ServiceKind, number>;
-export const DEFAULT_FUNDING: Readonly<ServiceFunding> = { school: 100, clinic: 100, police: 100, fire: 100 };
+export const DEFAULT_FUNDING: Readonly<ServiceFunding> = { school: 100, clinic: 100, police: 100, fire: 100, hospital: 100, university: 100 };
 export const MAX_FUNDING = 120;
 
 /** Fire coverage at which firefighters put a fire out before the building is lost. */

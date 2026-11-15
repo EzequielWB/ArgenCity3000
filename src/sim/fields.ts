@@ -145,7 +145,12 @@ export function waterDistance(w: World): Uint8Array {
 }
 
 function coverageField(w: World, kind: ServiceKind): Uint8Array {
-  return kind === 'school' ? w.edu : kind === 'clinic' ? w.health : kind === 'police' ? w.safety : w.fireCover;
+  if (kind === 'school') return w.edu;
+  if (kind === 'clinic') return w.health;
+  if (kind === 'police') return w.safety;
+  if (kind === 'hospital') return w.hospital;
+  if (kind === 'university') return w.university;
+  return w.fireCover;
 }
 
 /**
@@ -187,6 +192,8 @@ export function computeServices(w: World, funding: Readonly<ServiceFunding> = DE
   w.health.fill(0);
   w.safety.fill(0);
   w.fireCover.fill(0);
+  w.hospital.fill(0);
+  w.university.fill(0);
   for (let i = 0; i < n * n; i++) {
     const kind = serviceOf(w.tiles[i]);
     if (!kind || !w.powered[i] || funding[kind] <= 0) continue;
@@ -197,6 +204,8 @@ export function computeServices(w: World, funding: Readonly<ServiceFunding> = DE
     const residents = residentsServed(w, i, kind);
     const efficiency = Math.min(1, capacity / Math.max(1, residents)) * (funding[kind] / 100);
     const field = coverageField(w, kind);
+    // A hospital also does what a clinic does, and a university what a school does, on top of its own field.
+    const alsoField = kind === 'hospital' ? w.health : kind === 'university' ? w.edu : null;
     for (let y = Math.max(0, cy - radius); y <= Math.min(n - 1, cy + radius); y++) {
       for (let x = Math.max(0, cx - radius); x <= Math.min(n - 1, cx + radius); x++) {
         const d2 = (x - cx) ** 2 + (y - cy) ** 2;
@@ -204,6 +213,7 @@ export function computeServices(w: World, funding: Readonly<ServiceFunding> = DE
         const v = Math.round(100 * efficiency * (1 - (0.35 * Math.sqrt(d2)) / radius));
         const j = y * n + x;
         field[j] = Math.min(100, field[j] + v);
+        if (alsoField) alsoField[j] = Math.min(100, alsoField[j] + v);
       }
     }
   }

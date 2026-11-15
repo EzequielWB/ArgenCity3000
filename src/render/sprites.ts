@@ -1342,7 +1342,42 @@ export function burningBuildingSprite(zone: ZoneKind, level: number, variant: nu
   return cached(`f${zone}${level}:${v}`, () => burningOf(buildingSprite(zone, level, variant)));
 }
 
-const SERVICE_SPRITES: Record<ServiceKind, () => Sprite> = { school, clinic, police, fire: firehouse };
+/** Hospital: a tall white block with bands of blue glass, a red cross on its front and a helipad on the roof. */
+function hospital(): Sprite {
+  const p = painter(1, 44);
+  p.box(0.08, 0.08, 0.92, 0.92, 0, 24, '#f4f0e6');
+  p.windows(0.08, 0.08, 0.92, 0.92, 4, 23, 5.5, PAL.glass, 4, 2.6);
+  p.box(0.08, 0.08, 0.92, 0.92, 24, 1.5, '#d8d2c4', false);
+  // The cross on the front wall, over the windows.
+  p.left(0.92, 0.45, 0.55, 9, 19, '#d23a32');
+  p.left(0.92, 0.36, 0.64, 12.5, 15.5, '#d23a32');
+  // The helipad: a dark square with a white H.
+  p.box(0.28, 0.28, 0.72, 0.72, 25.5, 0.8, '#4a4c52', false);
+  const [x, y] = p.P(0.5, 0.5, 26.3);
+  p.g.fillStyle = '#f4f0e6';
+  p.g.fillRect(Math.round(x) - 3, y - 4, 1, 6);
+  p.g.fillRect(Math.round(x) + 2, y - 4, 1, 6);
+  p.g.fillRect(Math.round(x) - 3, y - 1.5, 6, 1);
+  return done(p);
+}
+
+/** University: a long brick building with a white portico and a clock tower at the corner. */
+function university(): Sprite {
+  const p = painter(1, 42);
+  p.box(0.06, 0.18, 0.94, 0.94, 0, 13, '#b4532f');
+  p.windows(0.06, 0.18, 0.94, 0.94, 4, 12, 5, PAL.glass, 5, 3);
+  p.box(0.06, 0.18, 0.94, 0.94, 13, 1.5, '#8a8d90', false);
+  // The portico: white columns along the front wall.
+  for (const u of [0.22, 0.38, 0.54, 0.7]) p.post(u, 0.97, 9, '#f4f0e6');
+  p.left(0.94, 0.16, 0.76, 9.5, 11, '#f4f0e6');
+  // The clock tower on the corner, with its pointed roof and its clock.
+  p.box(0.68, 0.68, 0.92, 0.92, 14.5, 12, '#d9a27a');
+  p.left(0.92, 0.76, 0.84, 22, 25, '#f4f0e6');
+  p.hipRoof(0.66, 0.66, 0.94, 0.94, 26.5, 6, '#6b6f78');
+  return done(p);
+}
+
+const SERVICE_SPRITES: Record<ServiceKind, () => Sprite> = { school, clinic, police, fire: firehouse, hospital, university };
 
 export function serviceSprite(kind: ServiceKind): Sprite {
   return cached(`svc:${kind}`, SERVICE_SPRITES[kind]);

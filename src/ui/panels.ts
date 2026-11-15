@@ -80,6 +80,8 @@ const SERVICE_ROWS: [ServiceKind, string][] = [
   ['clinic', 'Salitas'],
   ['police', 'Comisarías'],
   ['fire', 'Bomberos'],
+  ['hospital', 'Hospitales'],
+  ['university', 'Universidades'],
 ];
 
 function money(v: number, sign = false): string {
@@ -102,6 +104,8 @@ function budgetTable(b: BudgetReport): string {
     ${row('Usinas', b.plants)}
     ${row('Escuelas', b.schools)}
     ${row('Salitas', b.clinics)}
+    ${row('Hospitales', b.hospitals)}
+    ${row('Universidades', b.universities)}
     ${row('Comisarías', b.police)}
     ${row('Bomberos voluntarios', b.firefighters)}
     ${row('Costa', b.coast)}

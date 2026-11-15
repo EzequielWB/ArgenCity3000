@@ -78,6 +78,9 @@ export function averageTax(taxes: ZoneTaxes): number {
 export interface ServiceLevels {
   edu: number;
   health: number;
+  /** Coverage of the second-level services; missing means all there is (a caller that does not ask for them). */
+  hospital?: number;
+  university?: number;
 }
 
 /** Coverage a lot needs to reach a level: health for the third, education for the fourth. */
@@ -98,7 +101,9 @@ export function levelCap(zone: ZoneKind, landValue: number, pop: number, service
   if (zone === 'R') {
     if (services.health < SERVICE_NEED) cap = Math.min(cap, 2);
     if (services.edu < SERVICE_NEED) cap = Math.min(cap, 3);
-  } else if (zone === 'C' && services.edu < SERVICE_NEED) cap = Math.min(cap, 3);
+    // The tallest homes ask for a hospital, the tallest shops and factories for a university.
+    if ((services.hospital ?? 100) < SERVICE_NEED) cap = Math.min(cap, 3);
+  } else if ((zone === 'C' && services.edu < SERVICE_NEED) || (services.university ?? 100) < SERVICE_NEED) cap = Math.min(cap, 3);
   return Math.min(MAX_LEVEL, Math.max(1, cap) + 1);
 }
 

@@ -15,7 +15,7 @@ describe('tool groups', () => {
       ['Consulta', ['query', 'bulldoze']],
       ['Calles y luz', ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line']],
       ['Zonas', ['zoneR', 'zoneC', 'zoneI', 'park']],
-      ['Servicios', ['school', 'clinic', 'police', 'fire']],
+      ['Servicios', ['school', 'clinic', 'police', 'fire', 'hospital', 'university']],
       ['Usinas', ['plant', 'plantGas', 'plantWind']],
       ['Costa', ['fishing', 'promenade', 'port', 'resort', 'lighthouse']],
       ['Transportes', ['bus', 'harbor', 'airport']],

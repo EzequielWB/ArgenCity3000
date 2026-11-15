@@ -67,6 +67,8 @@ const CUT_NEWS: Record<ServiceKind, (pct: number) => string> = {
   clinic: (p) => `Salitas sin insumos: el presupuesto de salud quedó al ${p} %`,
   police: (p) => `Patrulleros sin nafta: recortan el presupuesto de las comisarías al ${p} %`,
   fire: (p) => `Los bomberos voluntarios piden ayuda: les dejaron el presupuesto al ${p} %`,
+  hospital: (p) => `El hospital trabaja al límite: le dejaron el presupuesto al ${p} %`,
+  university: (p) => `La universidad no tiene fondos: el presupuesto quedó al ${p} %`,
 };
 
 /** Headlines caused by the change from `prev` to `next`. Pure: same input, same headlines. */

@@ -91,3 +91,5 @@ Algunas decisiones que conviene conocer:
 - Copy de la interfaz: español rioplatense. El jugador es **"Intendente"**, nunca "Alcalde".
 
 - Las obras de la costa (muelle de pescadores, costanera, puerto de carga, balneario y faro) funcionan solo con una calle a 3 lotes o menos **y con luz**; los muelles que funcionan tienen un pesquero que navega cerca. Un edificio al que no llega ninguna calle muestra un globito con un cono de tránsito.
+- Servicios de segundo nivel (desde "Ciudad pujante", 2.500 habitantes): el **hospital** (`;`) y la **universidad** (`-`), de radio grande y caros de construir y de mantener, con su propio slider en el Presupuesto. Hacen además de salita y de escuela. Sin hospital cerca las casas no pasan del nivel 4, y sin universidad tampoco los comercios ni las fábricas (`levelCap`, `src/sim/demand.ts`).
+- Balance: la migración de cada gobierno ahora es la velocidad con que se levantan casas (antes bajaba el apetito de la ciudad y la Dictadura y el Comunismo se estancaban en unos cientos de habitantes); los impuestos restan demanda de a poco (de 10 % a 16 % la ciudad atrae cada vez menos) y el favor divino llega a milagros a partir de 66.

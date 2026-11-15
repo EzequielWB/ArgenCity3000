@@ -57,6 +57,8 @@ export const SERVICE_NAMES: Record<ServiceKind, string> = {
   clinic: 'Salita',
   police: 'Comisaría',
   fire: 'Cuartel de bomberos voluntarios',
+  hospital: 'Hospital',
+  university: 'Universidad',
 };
 
 const SERVICE_ROLE: Record<ServiceKind, string> = {
@@ -64,6 +66,8 @@ const SERVICE_ROLE: Record<ServiceKind, string> = {
   clinic: 'Sin salita cerca las casas no pasan de chalet.',
   police: 'Baja el delito de los barrios que cubre.',
   fire: 'Los incendios dentro de su radio se apagan a tiempo.',
+  hospital: 'Sin hospital cerca las casas más altas no se levantan. También hace de salita.',
+  university: 'Sin universidad cerca los comercios y las fábricas más altos no se levantan. También hace de escuela.',
 };
 
 /** Coverage of every service on a cell, as report lines. */
@@ -345,10 +349,12 @@ function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level:
     }
     return zone === 'R' ? 'No hay demanda de viviendas: hacen falta trabajos (comercio o industria).' : 'No hay demanda: hace falta más población.';
   }
-  const cap = levelCap(zone, w.landValue[i], sim.totals.pop, { edu: w.edu[i], health: w.health[i] });
+  const cap = levelCap(zone, w.landValue[i], sim.totals.pop, { edu: w.edu[i], health: w.health[i], hospital: w.hospital[i], university: w.university[i] });
   if (level >= cap && level < MAX_LEVEL) {
     if (levelCap(zone, w.landValue[i], sim.totals.pop) > cap) {
       if (zone === 'R' && cap < 4 && w.health[i] < SERVICE_NEED) return 'Para pasar de chalet necesita una salita cerca (con luz).';
+      if (zone === 'R' && w.hospital[i] < SERVICE_NEED && w.edu[i] >= SERVICE_NEED) return 'Para llegar al máximo necesita un hospital cerca (con luz).';
+      if (zone !== 'R' && w.university[i] < SERVICE_NEED && (zone === 'I' || w.edu[i] >= SERVICE_NEED)) return 'Para llegar al máximo necesita una universidad cerca (con luz).';
       return 'Para crecer más necesita una escuela cerca (con luz).';
     }
     return zone === 'I' ? 'Para crecer más necesita una ciudad más grande.' : 'Para crecer más necesita más valor del suelo (plazas, agua, menos humo) o más población.';

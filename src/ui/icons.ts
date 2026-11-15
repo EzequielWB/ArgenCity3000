@@ -52,6 +52,12 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   clinic: svg(
     '<path d="M5 23v-8l11-5.5L27 15v8l-11 5.5z" fill="#f4f0e6" stroke="#5a3a22" stroke-width="1"/><path d="M5 21l11 5.5L27 21" stroke="#3a8f5c" stroke-width="2" fill="none"/><path d="M13.5 3h5v5h5v5h-5v5h-5v-5h-5V8h5z" fill="#2f9a55" stroke="#f4f0e6" stroke-width="1"/>',
   ),
+  hospital: svg(
+    '<path d="M4 24V9l12-6 12 6v15l-12 6z" fill="#f4f0e6" stroke="#5a3a22" stroke-width="1"/><path d="M4 20l12 6 12-6" stroke="#6fb7e0" stroke-width="2" fill="none"/><path d="M14 8h4v4h4v4h-4v4h-4v-4h-4v-4h4z" fill="#d23a32" stroke="#f4f0e6" stroke-width="1"/>',
+  ),
+  university: svg(
+    '<path d="M4 24V15l12-6 12 6v9l-12 6z" fill="#b4532f" stroke="#3a1f12" stroke-width="1"/><path d="M4 20l12 6 12-6" stroke="#f4f0e6" stroke-width="2" fill="none"/><path d="M16 2l11 5-11 5-11-5z" fill="#1f1611" stroke="#f4f0e6" stroke-width="1"/><path d="M27 7v6" stroke="#e0a526" stroke-width="1.6"/>',
+  ),
   police: svg(
     '<path d="M5 24V13l11-5.5L27 13v11l-11 5.5z" fill="#3f5f8a" stroke="#1f1611" stroke-width="1"/><path d="M5 18l11 5.5L27 18" stroke="#f4f0e6" stroke-width="2" fill="none"/><rect x="11" y="3" width="5" height="3" fill="#2f63e0"/><rect x="16" y="3" width="5" height="3" fill="#e03a2f"/>',
   ),
