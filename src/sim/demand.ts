@@ -2,6 +2,7 @@ import { CAPACITY, DEFAULT_TAX, MAX_LEVEL, type ZoneTaxes } from '../config';
 import { hash2 } from '../core/rng';
 import { World, zoneOf, type ZoneKind } from '../world/world';
 import { addCoastJobs } from './coast';
+import { hubJobs } from './hubs';
 
 export interface Totals {
   pop: number;
@@ -17,6 +18,8 @@ export function cityTotals(w: World): Totals {
     if (w.isOccupied(i)) addBuilding(t, w.tiles[i], w.level[i], 1);
     else addCoastJobs(t, w, i);
   }
+  // The airports and harbours that work are a place of work for the commerce.
+  t.cJobs += hubJobs(w);
   return t;
 }
 

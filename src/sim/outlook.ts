@@ -3,7 +3,7 @@
  * bar, how many months the cash lasts, the upkeep shown when choosing a building, and the
  * newspaper's cause headlines. No DOM and no simulation state in here.
  */
-import { BUS, COAST, COAST_KINDS, FIXED_SHARE, LINE_REACH, PLANTS, POWER_REACH, ROAD_TIERS, SERVICES, type PlantKind, type RoadTier, type ServiceKind } from '../config';
+import { BUS, COAST, COAST_KINDS, HUBS, FIXED_SHARE, LINE_REACH, PLANTS, POWER_REACH, ROAD_TIERS, SERVICES, type PlantKind, type RoadTier, type ServiceKind } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { BudgetReport } from './budget';
 
@@ -85,6 +85,7 @@ export function placementUpkeep(tool: string): string | null {
   const tier = ROAD_TIER_OF_TOOL[tool];
   if (tier !== undefined) return `mantenimiento ${formatMoney(ROAD_TIERS[tier].upkeep)}/mes`;
   if (tool === 'bus') return `mantenimiento ${formatMoney(BUS.upkeep)}/mes`;
+  if (tool === 'airport' || tool === 'harbor') return `mantenimiento ${formatMoney(HUBS[tool].upkeep)}/mes`;
   if (tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire') {
     return `mantenimiento desde ${formatMoney(serviceUpkeepRange(tool).min)}/mes`;
   }
@@ -98,6 +99,7 @@ export function placementNote(tool: string): string | null {
   if (PLANT_OF_TOOL[tool]) return `luz hasta ${POWER_REACH} lotes`;
   if (tool === 'line') return `el tendido alumbra hasta ${LINE_REACH} lotes a su alrededor`;
   if (tool === 'bus') return `alivia el tránsito hasta ${BUS.radius} lotes a la redonda`;
+  if (tool === 'airport' || tool === 'harbor') return 'pegala a otra pieza para que crezca';
   return null;
 }
 

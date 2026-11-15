@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { HUB_LEVELS, HUBS } from '../src/config';
 import { deserialize, serialize } from '../src/save/save';
 import { isUnlocked } from '../src/sim/milestones';
-import { newSimState } from '../src/sim/simulation';
+import { monthlyBudget } from '../src/sim/budget';
+import { cityTotals } from '../src/sim/demand';
+import { computeLandValue } from '../src/sim/fields';
+import { hubIncome, hubJobs, hubUpkeep } from '../src/sim/hubs';
+import { describeCell } from '../src/sim/report';
+import { Simulation, newSimState } from '../src/sim/simulation';
 import { toolPrice } from '../src/ui/toolbar';
 import { UndoHistory } from '../src/world/history';
 import { facilityAt, hubFacilities, hubFootprint, hubLevel, hubRefusal } from '../src/world/hubs';
@@ -160,6 +165,102 @@ describe('pieces side by side', () => {
     expect(hubFacilities(w)[0].works).toBe(true);
     for (let x = 0; x < 20; x++) w.setTile(x, 10, TILE.EMPTY);
     expect(hubFacilities(w)[0].works).toBe(false);
+  });
+});
+
+describe('what a facility gives the city', () => {
+  it('gives the jobs and the income of its level, and counts the jobs as commerce', () => {
+    const w = city();
+    put(w, 'airport', 2, 11);
+    expect(hubJobs(w)).toBe(HUBS.airport.jobs[0]);
+    expect(hubIncome(w)).toBe(HUBS.airport.income[0]);
+    expect(cityTotals(w).cJobs).toBe(HUBS.airport.jobs[0]);
+    put(w, 'airport', 5, 11); // two pieces: an aerodrome
+    expect(hubJobs(w)).toBe(HUBS.airport.jobs[1]);
+    expect(hubIncome(w)).toBe(HUBS.airport.income[1]);
+    put(w, 'airport', 8, 11);
+    put(w, 'airport', 11, 11); // four pieces: international
+    expect(hubJobs(w)).toBe(HUBS.airport.jobs[2]);
+    put(w, 'harbor', 17, 12);
+    expect(hubJobs(w)).toBe(HUBS.airport.jobs[2] + HUBS.harbor.jobs[0]);
+    expect(hubIncome(w)).toBe(HUBS.airport.income[2] + HUBS.harbor.income[0]);
+  });
+
+  it('gives nothing when no street is near, but still costs its upkeep', () => {
+    const w = city();
+    put(w, 'airport', 2, 11);
+    put(w, 'airport', 5, 11);
+    for (let x = 0; x < 20; x++) w.setTile(x, 10, TILE.EMPTY);
+    expect(hubJobs(w)).toBe(0);
+    expect(hubIncome(w)).toBe(0);
+    expect(hubUpkeep(w)).toBe(2 * HUBS.airport.upkeep);
+  });
+
+  it('shows in the budget: the upkeep of every piece and the income of the facility', () => {
+    const w = city();
+    put(w, 'airport', 2, 11);
+    put(w, 'airport', 5, 11);
+    put(w, 'harbor', 17, 12);
+    const b = monthlyBudget(w, 7);
+    expect(b.hubs).toBe(2 * HUBS.airport.upkeep + HUBS.harbor.upkeep);
+    expect(b.hubIncome).toBe(HUBS.airport.income[1] + HUBS.harbor.income[0]);
+    const without = monthlyBudget(new World(shore()), 7);
+    expect(b.balance - without.balance).toBe(b.hubIncome - b.hubs + (b.taxC - without.taxC) - (b.roads - without.roads));
+  });
+
+  it('makes noise only when it is an airport that works: the lots around lose value', () => {
+    const w = city();
+    for (let y = 18; y < 32; y++) for (let x = 0; x < 20; x++) w.setTile(x, y, TILE.EMPTY);
+    computeLandValue(w);
+    const quiet = w.landValue[w.idx(4, 13)];
+    const farQuiet = w.landValue[w.idx(4, 28)];
+    put(w, 'airport', 2, 11);
+    computeLandValue(w);
+    expect(w.landValue[w.idx(4, 13)]).toBeLessThan(quiet);
+    expect(w.landValue[w.idx(4, 28)]).toBe(farQuiet); // far away: not touched
+    for (let x = 0; x < 20; x++) w.setTile(x, 10, TILE.EMPTY); // no street: it does not work, it is not loud
+    computeLandValue(w);
+    expect(w.landValue[w.idx(4, 13)]).toBe(quiet);
+    const harbour = city();
+    computeLandValue(harbour);
+    const before = harbour.landValue[harbour.idx(16, 13)];
+    put(harbour, 'harbor', 17, 12);
+    computeLandValue(harbour);
+    expect(harbour.landValue[harbour.idx(16, 13)]).toBe(before);
+  });
+});
+
+describe('the card of a piece', () => {
+  it('names the level, says what it gives, and tells how many pieces more make the next one', () => {
+    const w = city();
+    put(w, 'airport', 2, 11);
+    const sim = new Simulation(w, newSimState(1), 'X');
+    sim.refresh();
+    const one = describeCell(w, sim, 3, 11);
+    expect(one.title).toBe('Hangar');
+    expect(one.lines.join(' ')).toMatch(/1 pieza pegada/);
+    expect(one.lines.join(' ')).toMatch(/Ruido/);
+    expect(one.hint).toMatch(/Pegá 1 pieza más.*Aeródromo/);
+
+    put(w, 'airport', 5, 11);
+    sim.refresh();
+    expect(describeCell(w, sim, 3, 11).title).toBe('Aeródromo');
+    expect(describeCell(w, sim, 3, 11).hint).toMatch(/Pegá 2 piezas más.*Aeropuerto internacional/);
+
+    put(w, 'harbor', 17, 12);
+    sim.refresh();
+    const dock = describeCell(w, sim, 17, 12);
+    expect(dock.title).toBe('Muelle de paseos');
+    expect(dock.lines.join(' ')).not.toMatch(/Ruido/);
+  });
+
+  it('warns when it does not work', () => {
+    const w = city();
+    put(w, 'harbor', 17, 12);
+    for (let x = 0; x < 20; x++) w.setTile(x, 10, TILE.EMPTY);
+    const sim = new Simulation(w, newSimState(1), 'X');
+    sim.refresh();
+    expect(describeCell(w, sim, 17, 12).lines.join(' ')).toMatch(/No funciona: sin calle/);
   });
 });
 

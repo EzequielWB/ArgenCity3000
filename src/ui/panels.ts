@@ -77,6 +77,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Impuestos comerciales', b.taxC)}
     ${row('Impuestos industriales', b.taxI)}
     ${row('Pesca y turismo', b.coastIncome)}
+    ${row('Aeropuertos y puertos', b.hubIncome)}
     ${row('Total ingresos', b.income, 'total')}
     ${row('Calles y puentes', b.roads)}
     ${row('Tendido eléctrico', b.lines)}
@@ -88,6 +89,7 @@ function budgetTable(b: BudgetReport): string {
     ${row('Bomberos voluntarios', b.firefighters)}
     ${row('Costa', b.coast)}
     ${row('Transporte', b.transport)}
+    ${row('Aeropuertos y puertos', b.hubs)}
     ${row('Cuota del crédito', b.loan)}
     ${row('Administración municipal', b.services)}
     ${row('Total gastos', b.expenses, 'total')}

@@ -4,6 +4,7 @@ import { coastBudget, portTaxBoost } from './coast';
 import { cityTotals, zoneTaxes } from './demand';
 import { utilization } from './fields';
 import { loanInstalment, loanPaidOff, type Loan } from './loans';
+import { hubIncome, hubUpkeep } from './hubs';
 import { plantsUpkeep } from './plants';
 import { transitUpkeep } from './transit';
 
@@ -25,6 +26,10 @@ export interface BudgetReport {
   loan: number;
   /** Upkeep of the bus lines. */
   transport: number;
+  /** Upkeep of the airports and harbours. */
+  hubs: number;
+  /** Tourism and trade of the airports and harbours that work. */
+  hubIncome: number;
   /** Upkeep of the buildings of the coast (docks, promenade, port, resort, lighthouse). */
   coast: number;
   /** Fish sold by the docks and tourism at the resorts. */
@@ -128,10 +133,12 @@ export function monthlyBudget(
     firefighters: funded('fire'),
     loan: loanDue,
     transport: transitUpkeep(w, transport),
+    hubs: hubUpkeep(w),
+    hubIncome: hubIncome(w),
     coast: coast.upkeep,
     coastIncome: Math.round(coast.income * coastFactor),
   };
-  const income = r.taxR + r.taxC + r.taxI + r.coastIncome;
-  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan + r.coast + r.transport;
+  const income = r.taxR + r.taxC + r.taxI + r.coastIncome + r.hubIncome;
+  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.loan + r.coast + r.transport + r.hubs;
   return { ...r, income, expenses, balance: income - expenses };
 }

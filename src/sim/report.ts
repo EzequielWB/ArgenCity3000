@@ -3,6 +3,8 @@ import {
   BUS,
   BUS_COLORS,
   CAPACITY,
+  HUBS,
+  HUB_LEVELS,
   COAST,
   COAST_APPROVAL,
   COAST_FIELDS,
@@ -24,8 +26,9 @@ import {
 } from '../config';
 import { formatNumber } from '../core/format';
 import { SEA_LEVEL } from '../world/terrain';
+import { facilityAt } from '../world/hubs';
 import { busColorOf, busNumberOf, streetNear } from '../world/transport';
-import { TILE, World, coastOf, serviceOf, zoneOf, type ZoneKind } from '../world/world';
+import { TILE, World, coastOf, hubOf, serviceOf, zoneOf, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
 import { dateOf } from './calendar';
 import { coastWorks, seasonOf, tourismFor, type Season } from './coast';
@@ -134,6 +137,28 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
         SERVICE_ROLE[service],
       ],
       hint: w.powered[i] ? undefined : noLightHint(sim, 'Necesita luz', 'la'),
+    };
+  }
+  const hubKind = hubOf(tile);
+  if (hubKind) {
+    const facility = facilityAt(w, x, y);
+    const info = HUBS[hubKind];
+    const level = facility?.level ?? 1;
+    const pieces = facility?.pieces.length ?? 1;
+    const needed = level < 3 ? HUB_LEVELS[hubKind][level] - pieces : 0;
+    const works = facility?.works ?? false;
+    const why = streetNear(w, x, y) ? 'ya no toca el agua' : `sin calle a ${ROAD_REACH} lotes o menos`;
+    const lines = [
+      height,
+      `${pieces} pieza${pieces === 1 ? '' : 's'} pegada${pieces === 1 ? '' : 's'}`,
+      works ? `Da ${info.jobs[level - 1]} empleos comerciales y entran $${formatNumber(info.income[level - 1])} por mes` : `No funciona: ${why}`,
+      `Mantenimiento: $${formatNumber(info.upkeep * pieces)} por mes`,
+    ];
+    if (info.noiseRadius > 0) lines.push(`Ruido: baja el valor del suelo hasta ${info.noiseRadius} lotes a la redonda`);
+    return {
+      title: info.names[level - 1],
+      lines,
+      hint: needed > 0 ? `Pegá ${needed} pieza${needed === 1 ? '' : 's'} más y pasa a ser ${info.names[level]}.` : undefined,
     };
   }
   if (tile === TILE.BUS) {

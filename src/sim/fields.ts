@@ -1,5 +1,6 @@
-import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, PARK, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
+import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, HUBS, PARK, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
+import { hubFacilities } from '../world/hubs';
 import { TILE, World, serviceOf } from '../world/world';
 import { coastWorks } from './coast';
 
@@ -295,6 +296,11 @@ export function computeLandValue(w: World, coast = 1): void {
     else if (t === TILE.PROMENADE) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.promenadeValue.radius, COAST_FIELDS.promenadeValue.strength);
     else if (t === TILE.LIGHTHOUSE) splat(amenities, n, i % n, Math.floor(i / n), COAST_FIELDS.lighthouseValue.radius, COAST_FIELDS.lighthouseValue.strength);
     if (w.abandoned[i] && w.level[i] > 0) splat(blight, n, i % n, Math.floor(i / n), 2, 8);
+  }
+  // An airport that works is loud: its pieces take value off the lots around them.
+  for (const f of hubFacilities(w)) {
+    if (f.kind !== 'airport' || !f.works) continue;
+    for (const p of f.pieces) splat(blight, n, p.x + Math.floor(HUBS.airport.w / 2), p.y + Math.floor(HUBS.airport.h / 2), HUBS.airport.noiseRadius, HUBS.airport.noise[f.level - 1]);
   }
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
