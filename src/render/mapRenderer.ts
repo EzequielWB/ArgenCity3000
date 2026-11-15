@@ -1235,12 +1235,19 @@ export class MapRenderer {
       const nh = avg(surfaceHeights(world, target.vx, target.vy, this.rot));
       const [bx, by] = this.toCache(target.vx, target.vy, nh);
       const other: Pt = [bx + s.attach![0], by + s.attach![1]];
-      // The two cables of the line, and a sag that grows with the span so a long run dips properly.
+      // The two cables of the line, one on each side of the running cable, and a sag that grows
+      // with the span so a long run dips properly. The offset is perpendicular, so a horizontal or
+      // a diagonal run shows two wires instead of one drawn twice.
       const sag = 3 + 2 * (target.distance - 1);
-      for (const off of [-4, 4]) {
+      const span = Math.hypot(other[0] - top[0], other[1] - top[1]) || 1;
+      const nx = (-(other[1] - top[1]) / span) * 4;
+      const ny = ((other[0] - top[0]) / span) * 4;
+      for (const side of [-1, 1]) {
+        const ox = nx * side;
+        const oy = ny * side;
         g.beginPath();
-        g.moveTo(top[0] + off, top[1]);
-        g.quadraticCurveTo((top[0] + other[0]) / 2 + off, (top[1] + other[1]) / 2 + sag, other[0] + off, other[1]);
+        g.moveTo(top[0] + ox, top[1] + oy);
+        g.quadraticCurveTo((top[0] + other[0]) / 2 + ox, (top[1] + other[1]) / 2 + sag + oy, other[0] + ox, other[1] + oy);
         g.stroke();
       }
     }

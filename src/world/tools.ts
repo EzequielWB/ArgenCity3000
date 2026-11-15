@@ -1,4 +1,4 @@
-import { ASPHALT, BUS, COAST, COSTS, DIRT, HUBS, type HubKind, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, roadRank, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
+import { ASPHALT, BUS, COAST, COSTS, DIRT, HUBS, type HubKind, LINE_REACH, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, roadRank, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
@@ -239,6 +239,9 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
   // With a route, a street is only accepted next to a street that comes from it, or to the cell accepted before it.
   const connected = tier !== null ? connectedToRoute(w) : null;
   let previous = -1;
+  // Last pole of a power line, so the run spends its reach instead of standing a pole on every cell.
+  let poleX = -1;
+  let poleY = -1;
 
   if (plantKind) {
     const [ax, ay] = cells[0] ?? [-1, -1];
@@ -285,9 +288,12 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     }
     switch (tool) {
       case 'line':
-        if (t === TILE.EMPTY) {
+        // One pole every LINE_REACH cells: it lights that far, so a long run costs that much less.
+        if (t === TILE.EMPTY && (poleX < 0 || (x - poleX) ** 2 + (y - poleY) ** 2 >= LINE_REACH ** 2)) {
           out.push([x, y]);
           cost += COSTS.line;
+          poleX = x;
+          poleY = y;
         }
         break;
       case 'park':

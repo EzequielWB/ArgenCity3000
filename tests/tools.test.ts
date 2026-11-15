@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { World, TILE } from '../src/world/world';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
-import { COSTS } from '../src/config';
+import { COSTS, LINE_REACH } from '../src/config';
 
 /** Flat land at height h with optional water columns (x >= waterFromX). */
 function flatTerrain(n: number, waterFromX = n): Terrain {
@@ -145,5 +145,45 @@ describe('planTool / applyPlan', () => {
     expect(w.networkVersion).toBeGreaterThan(v);
     expect(w.takeDirty().sort((a, b) => a - b)).toEqual([w.idx(0, 0), w.idx(1, 0)]);
     expect(w.takeDirty()).toEqual([]);
+  });
+});
+
+describe('the power line spends its reach', () => {
+  const run = (w: World, ax: number, ay: number, bx: number, by: number) => planTool(w, 'line', dragCells('line', ax, ay, bx, by, 1, 16));
+
+  it('puts one pole every LINE_REACH cells of a straight run', () => {
+    const plan = run(world(), 0, 2, 9, 2);
+    expect(plan.cells).toEqual([
+      [0, 2],
+      [3, 2],
+      [6, 2],
+      [9, 2],
+    ]);
+    expect(plan.cost).toBe(4 * COSTS.line);
+  });
+
+  it('is a single pole when the whole run fits in the reach', () => {
+    expect(run(world(), 0, 2, 2, 2).cells).toEqual([[0, 2]]);
+  });
+
+  it('never leaves two poles further apart than the reach', () => {
+    const plan = run(world(), 0, 5, 19, 5);
+    expect(plan.cells[0]).toEqual([0, 5]);
+    for (let i = 1; i < plan.cells.length; i++) {
+      const [ax, ay] = plan.cells[i - 1];
+      const [bx, by] = plan.cells[i];
+      expect(Math.hypot(bx - ax, by - ay)).toBeLessThanOrEqual(LINE_REACH);
+    }
+  });
+
+  it('keeps the spacing when a cell in the middle cannot hold a pole', () => {
+    // A zone at (1, 1) is not a pole, and it does not shift the next one.
+    const w = world();
+    applyPlan(w, planTool(w, 'zoneR', [[1, 1]]));
+    expect(planTool(w, 'line', dragCells('line', 0, 1, 6, 1, 1, 16)).cells).toEqual([
+      [0, 1],
+      [3, 1],
+      [6, 1],
+    ]);
   });
 });

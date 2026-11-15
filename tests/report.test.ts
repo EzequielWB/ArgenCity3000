@@ -63,7 +63,7 @@ describe('describeCell', () => {
     const { w, sim, b } = setup();
     b('plant', 0, 0);
     b('road', 2, 0, 12, 0);
-    b('line', 0, 3, 0, 5);
+    b('line', 0, 4, 0, 4);
     sim.refresh();
     const lit = describeCell(w, sim, 3, 0);
     expect(lit.lines.join(' ')).toMatch(/Con luz.*no lleva la luz/);

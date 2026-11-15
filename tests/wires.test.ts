@@ -96,6 +96,37 @@ describe('where the cables go', () => {
     expect(at(0, 0, board(['........LL']))).toEqual([]);
     expect(wireTargets(0, 0, 0, board(['L']))).toEqual([]);
   });
+
+  it('hangs a cable on the diagonals too', () => {
+    const cell = board([
+      'L..',
+      '...',
+      '..L',
+    ]);
+    // The pole in front hangs it, and the one behind does not: each pair once.
+    expect(at(2, 2, cell)).toEqual(['0,0:2']);
+    expect(at(0, 0, cell)).toEqual([]);
+  });
+
+  it('draws both diagonals that face the back of the picture', () => {
+    const cell = board([
+      '..L',
+      '...',
+      'L.L',
+    ]);
+    expect(at(2, 2, cell)).toEqual(['0,2:2', '2,0:2']);
+  });
+
+  it('leaves the diagonal in the air past the reach of the light', () => {
+    // Two poles on the diagonal of a 3×3 are 4,2 cells apart, more than the light reaches.
+    const far = board([
+      'L...',
+      '....',
+      '....',
+      '...L',
+    ]);
+    expect(at(3, 3, far)).toEqual([]);
+  });
 });
 
 describe('the cable follows the light', () => {
