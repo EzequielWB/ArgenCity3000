@@ -32,6 +32,7 @@ import { coastWorks, seasonOf, tourismFor, type Season } from './coast';
 import { HUMBLE, SERVICE_NEED, TAX_DEMAND_POINTS, isHoldout, levelCap } from './demand';
 import { residentsServed, utilization } from './fields';
 import { plantCapacity } from './plants';
+import { transitFactor } from './transit';
 import type { Simulation } from './simulation';
 
 const NAMES: Record<ZoneKind, string[]> = {
@@ -143,8 +144,9 @@ export function describeCell(w: World, sim: Simulation, x: number, y: number): C
       lines: [
         height,
         `Cubre ${BUS.radius} lotes a la redonda`,
-        `Alivia un ${Math.round(BUS.relief * 100)} % del tránsito de las calles de su área; varias líneas suman hasta ${Math.round(BUS.maxRelief * 100)} %`,
-        `Mantenimiento: $${formatNumber(BUS.upkeep)} por mes`,
+        `Alivia un ${Math.round(BUS.relief * transitFactor(sim.state.transport) * 100)} % del tránsito de las calles de su área; varias líneas suman hasta ${Math.round(BUS.maxRelief * 100)} %`,
+        `Presupuesto de transporte: ${sim.state.transport} %${sim.state.transport < 100 ? ' (pasan menos colectivos)' : sim.state.transport > 100 ? ' (pasan más colectivos)' : ''}`,
+        `Mantenimiento: $${formatNumber(Math.round(BUS.upkeep * transitFactor(sim.state.transport)))} por mes`,
         works ? 'Con calle cerca: los colectivos andan' : `Sin calle a ${ROAD_REACH} lotes o menos: no funciona`,
       ],
       hint: works ? undefined : 'Sin una calle cerca no sale ningún colectivo: trazá una calle al lado de la cochera.',

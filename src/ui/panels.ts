@@ -117,7 +117,8 @@ export function openBudget(game: Game): void {
             `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
         ).join('')}
         <div class="tax"><label for="fundgreen">Espacios verdes</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
-        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. Los espacios verdes son distintos: por debajo del ${PARK.care} % estos se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
+        <div class="tax"><label for="fundtransport">Transporte</label><input type="range" id="fundtransport" data-transport="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.transport}"><output>${sim.state.transport} %</output></div>
+        <p><small>Un servicio al 50 % cuesta la mitad y cubre la mitad. Por encima del 100 % atiende a más vecinos. El transporte es igual: al 50 % hay la mitad de colectivos y cada línea alivia la mitad del tránsito, y si lo recortás mucho los choferes pueden hacer paro. Los espacios verdes son distintos: por debajo del ${PARK.care} % estos se descuidan, bajan el valor del suelo alrededor y quitan aprobación.</small></p>
         <p class="locked-note hidden" id="lockNote"></p>
         <h3>Caja y energía</h3>
         <p>Caja: <strong>${money(sim.state.cash)}</strong><br>
@@ -212,6 +213,15 @@ export function openBudget(game: Game): void {
     lockNote.classList.remove('hidden');
     lockNote.textContent = `${tied.join('. ')}.`;
   }
+  const transport = body.querySelector<HTMLInputElement>('input[data-transport]');
+  transport?.addEventListener('input', () => {
+    sim.setTransport(Number(transport.value));
+    transport.nextElementSibling!.textContent = `${sim.state.transport} %`;
+    // Fewer or more buses on the street, and a different load on it.
+    game.refreshTraffic();
+    game.view.invalidateLayer();
+    refresh();
+  });
   const green = body.querySelector<HTMLInputElement>('input[data-green]');
   green?.addEventListener('input', () => {
     sim.setGreen(Number(green.value));

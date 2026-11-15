@@ -16,6 +16,7 @@ import { isUnlocked, nextMilestone, unlockNames } from './sim/milestones';
 import { describeOutlook, placementNote, placementUpkeep } from './sim/outlook';
 import { windOutput } from './sim/plants';
 import { reachCells } from './sim/power';
+import { transitBuses } from './sim/transit';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { APPROVAL, nextElectionYear } from './sim/politics';
@@ -232,9 +233,15 @@ export class Game implements PointerTarget {
     this.firesHeard = this.sim.stats.firesStarted;
   }
 
+  /** Recounts the traffic; the buses of the lines run as often as the budget for transport says. */
+  refreshTraffic(): void {
+    this.view.traffic.busesPerLine = transitBuses(this.sim.state.transport);
+    this.view.refreshTraffic();
+  }
+
   private onNewMonth(): void {
     this.view.invalidateLayer();
-    this.view.refreshTraffic();
+    this.refreshTraffic();
     // An event waits for an answer: the clock stops until the Intendente decides.
     if (this.sim.state.pendingEvent && !this.hooks.isModalOpen()) {
       this.setSpeed(0);
@@ -457,7 +464,7 @@ export class Game implements PointerTarget {
     this.outlookAt = 0;
     this.sim.refresh();
     this.view.invalidateLayer();
-    this.view.refreshTraffic();
+    this.refreshTraffic();
     this.minimapDirty = true;
     this.updateHud(false);
     if (this.mouse) this.hover(...this.mouse);

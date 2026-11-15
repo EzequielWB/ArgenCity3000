@@ -400,3 +400,38 @@ describe('the budget for transport', () => {
     expect(() => deserialize(JSON.stringify(old))).toThrow(/transporte/);
   });
 });
+
+describe('the frequency on the street and on the card', () => {
+  function lineCity(): World {
+    const w = new World(flat(48));
+    road(w, 0, 10, 40, 10);
+    depot(w, 20, 8, 3, 60);
+    return w;
+  }
+
+  it('is the number of buses of each line: fewer when the budget falls, more when it grows, none at zero', () => {
+    const w = lineCity();
+    const traffic = new Traffic(w, 7);
+    const buses = () => traffic.cars.filter((c) => c.kind === 'bus').length;
+    for (const funding of [100, 60, 0, 120, 100]) {
+      traffic.busesPerLine = transitBuses(funding);
+      traffic.refresh();
+      traffic.update(0.1);
+      expect(buses()).toBe(transitBuses(funding));
+    }
+  });
+
+  it('tells on the card what the line does at the budget it has', () => {
+    const w = new World(flat(16));
+    road(w, 0, 5, 15, 5);
+    depot(w, 4, 7, 1, 148);
+    const sim = new Simulation(w, newSimState(1), 'X');
+    sim.refresh();
+    expect(describeCell(w, sim, 4, 7).lines.join(' ')).toMatch(/Alivia un 35 %.*Presupuesto de transporte: 100 %.*\$90 por mes/);
+    sim.setTransport(50);
+    const half = describeCell(w, sim, 4, 7).lines.join(' ');
+    expect(half).toMatch(/Alivia un 18 %/);
+    expect(half).toMatch(/50 % \(pasan menos colectivos\)/);
+    expect(half).toMatch(/\$45 por mes/);
+  });
+});

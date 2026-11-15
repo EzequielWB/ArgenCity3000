@@ -71,6 +71,8 @@ export class Traffic {
 
   cars: Car[] = [];
   target = 0;
+  /** Buses each line keeps on the street: the budget for transport sets it (see `transitBuses`). */
+  busesPerLine: number = BUS.buses;
 
   /** The depots whose buses are on the street. */
   private depots: { i: number; x: number; y: number; color: number }[] = [];
@@ -124,7 +126,7 @@ export class Traffic {
       }
     }
     // The buses of the lines are not part of the traffic's budget of cars: they stay as long as their depot does.
-    if (this.cars.filter((c) => c.depot !== undefined).length !== this.depots.length * BUS.buses) this.syncBuses();
+    if (this.cars.filter((c) => c.depot !== undefined).length !== this.depots.length * this.busesPerLine) this.syncBuses();
     let regular = this.cars.filter((c) => c.depot === undefined);
     while (regular.length > this.target) {
       const gone = regular[this.rng.int(regular.length)];
@@ -141,10 +143,14 @@ export class Traffic {
   private syncBuses(): void {
     this.cars = this.cars.filter((c) => c.depot === undefined || this.depots.some((d) => d.i === c.depot && d.color === c.color));
     for (const d of this.depots) {
-      let have = this.cars.filter((c) => c.depot === d.i).length;
+      // A cut in the budget takes buses off the street: the extra ones of the line leave.
+      let own = this.cars.filter((c) => c.depot === d.i);
+      while (own.length > this.busesPerLine) this.cars.splice(this.cars.indexOf(own.pop()!), 1);
+      own = this.cars.filter((c) => c.depot === d.i);
+      let have = own.length;
       const start = this.nearestStreet(d.x, d.y);
       if (start === null) continue;
-      while (have < BUS.buses) {
+      while (have < this.busesPerLine) {
         const options = DIRS.filter(([dx, dy]) => this.isRoad(start[0] + dx, start[1] + dy));
         if (options.length === 0) break;
         const [dx, dy] = this.rng.pick(options);
