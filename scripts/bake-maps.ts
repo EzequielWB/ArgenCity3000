@@ -51,6 +51,8 @@ const CITIES: City[] = [
   { id: 'ushuaia', name: 'Ushuaia', center: [-54.805, -68.31], cellMeters: 20, metersPerLevel: 20, size: 192 },
   // Midway between the centre (Plaza Independencia) and the Lago del Fuerte, 2.6 km to the south of it.
   { id: 'tandil', name: 'Tandil', center: [-37.332, -59.133], cellMeters: 20, metersPerLevel: 8, size: 256, landLiftM: 20 },
+  // The town, not the Buenos Aires neighbourhood of Flores: its whole ejido fits in 256 cells of 25 m.
+  { id: 'las-flores', name: 'Las Flores', center: [-36.0143, -59.0999], cellMeters: 25, metersPerLevel: 5, size: 256 },
 ];
 
 const env = (globalThis as unknown as { process: { argv: string[]; env: Record<string, string | undefined> } }).process;

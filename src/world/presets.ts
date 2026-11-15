@@ -25,6 +25,7 @@ export const PRESETS: readonly PresetInfo[] = [
   { id: 'bariloche', name: 'Bariloche', blurb: 'La costa del Nahuel Huapi, con la montaña detrás.' },
   { id: 'ushuaia', name: 'Ushuaia', blurb: 'La bahía sobre el canal Beagle, con los cerros atrás.' },
   { id: 'tandil', name: 'Tandil', blurb: 'El centro con sus cuatro avenidas, el dique del Fuerte y las sierras.' },
+  { id: 'las-flores', name: 'Las Flores', blurb: 'El pueblo entero, con la laguna La Blanca y la del Difunto Manuel.' },
 ];
 
 export interface MapPreset {

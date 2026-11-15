@@ -17,6 +17,14 @@ Antecedente: los mapas reales (Mar del Plata) están descritos en `odd/tasks/arg
   - **Faro** (`lighthouse`, tecla F): $1.500, mantenimiento $60 por mes, uno solo por ciudad, se habilita en Gran ciudad (5.000). Suma 3 puntos a la aprobación (factor "Faro") y valor del suelo (radio 6, fuerza 12).
   - **Interfaz:** una categoría nueva "Costa" en la barra con las cinco herramientas, íconos y sprites propios, minimapa, ficha de consulta que dice qué hace, si funciona y por qué no, y la temporada en el balneario; líneas nuevas en el presupuesto ("Costa" en gastos, "Pesca y turismo" en ingresos); titulares: el primer puerto, el comienzo de la temporada (diciembre) y la temporada baja (marzo) cuando hay al menos un balneario; ayuda actualizada.
   - **Guardado:** formato 7 (los casilleros nuevos; las partidas 1 a 6 siguen abriendo).
+- **S4 — Las Flores como mapa jugable (verbatim):** "ahora te pido si podes agregar "Las Flores" (Pueblo de la
+  provincia de Buenos Aires, no te lo confundas con "Flores") como mapa jugable? es bastante chico el
+  pueblo yo creo que se puede agarrar todo". Se hornea con el mismo script que las otras ocho y se suma
+  al final de `PRESETS`, así que aparece en la pantalla de inicio y se juega con o sin las calles
+  reales. Decisiones: es el pueblo de la provincia (`-36.0143, -59.0999`, Partido de Las Flores), no el
+  barrio porteño; su ejido mide 4,9 por 6,2 km, así que se toma 256 lotes de 25 m (6,4 km de lado) para
+  que entre entero con margen; 5 metros por nivel de altura, que es una llanura. El horneado encontró
+  agua real: la laguna La Blanca y la del Difunto Manuel.
 - **S3 — Elegir una zona en un mapa (verbatim, pedido anterior):** "lo que queria implementar de mirar un mapa, elegir una zona y transformarlo para poder jugar". Queda para después de S2, por pedido del usuario.
 
 ## Tasks
@@ -26,6 +34,7 @@ Antecedente: los mapas reales (Mar del Plata) están descritos en `odd/tasks/arg
 | T1 Seis ciudades reales | S1 | delegado (Sonnet, relevado dos veces por cortes: límite de uso y reinicio) | hecho | commit `feat(maps): …`; RED observado (24 pasan y 3 fallan sin Ushuaia ni las entradas de la lista); 45 tests de mapas, terreno y guardado verdes; hash de Mar del Plata idéntico (mismo archivo y re-horneado en una carpeta aparte) |
 | T2 Edificios de costa | S2 | delegado (writer H, Sonnet; superficies separadas de T1) | hecho; verificación independiente PASS (L6) | commit `feat(coast): …`; RED observado (`sim/coast` inexistente, después herramientas y casilleros); 65 tests nuevos; verificación del padre: `tsc` limpio y 449 tests; sonda de 15 años idéntica antes y después; Chrome headless del agente: Costa con cinco filas, bloqueos, colocación y rechazos, fichas, presupuesto y deshacer, sin errores |
 | T3 Elegir una zona en un mapa | S3 | a definir | pendiente | — |
+| T4 Las Flores jugable | S4 | `scripts/bake-maps.ts`, `public/maps/las-flores.json`, `src/world/presets.ts` | hecho | `npm run bake-maps -- las-flores`: agua 4 %, 9.743 lotes de calle, 1.104 árboles, altura máxima nivel 6; `tests/realmap.test.ts` en 32 verdes con la ciudad en la lista |
 
 ## Log
 
@@ -39,3 +48,12 @@ Antecedente: los mapas reales (Mar del Plata) están descritos en `odd/tasks/arg
 - **L6 (2026-11-13), verificación independiente de `82ad5c2` (ítem 1, formato de guardado 7), contra la base `88ebd69`:** PASS, sin bloqueantes (Sonnet, copia exportada, 227 comprobaciones; la única falla fue una expectativa errónea de la propia sonda sobre el borde del faro, el código está bien). Cuatro ciudades guardadas como v6 por el código base cargan idénticas salvo las dos claves de presupuesto nuevas en 0; las versiones 1 a 5 también; ida y vuelta estable con los cinco casilleros; un casillero 17 y valores no enteros en `coast`/`coastIncome` se rechazan; presupuesto, red eléctrica, humo, valor del suelo, congestión, aprobación y 300 ticks de simulación idénticos a la base en ciudades sin costa; las cuatro cuotas semanales de cada mes suman el saldo del mes para los doce meses de inicio, incluso en los cambios nov→dic y feb→mar, y una partida guardada a mitad de mes y retomada termina con la misma caja. Advertencias, sin cambios: (1) el guardado solo valida el rango de los casilleros, no su ubicación, así que un archivo editado a mano con un balneario en el agua o dos faros abre; (2) un v7 sin las claves `coast` se carga con 0 en vez de rechazarse (por indulgencia heredada de v6); (3) el mensaje de rechazo del faro dice "Ya hay un faro" aunque el lote además esté lejos del agua.
 - **L7 (2026-11-13), T1 ciudades, reporte del writer verificado por el padre.** Seis mapas nuevos junto a Mar del Plata (sin cambios, mismo hash `3663b9d8…`), todos con su entrada en `PRESETS`, y cada uno carga con y sin calles (con calles, las heredadas no pagan mantenimiento hasta que se usan). Tabla (tamaño · metros por casillero · metros por nivel · agua · llano · calles · archivo): Buenos Aires 256 · 20 · 9 · 34 % · 52 % · 11.610 · 263 kB; Rosario 192 · 20 · 4 · 32 % · 47 % · 7.049 · 148 kB; Córdoba 192 · 20 · 8 · 2 % · 75 % · 13.351 · 148 kB; Mendoza 256 · 25 · 25 · 1,3 % · 90 % · 22.065 · 263 kB; Bariloche 192 · 25 · 30 · 35 % · 57 % · 8.115 · 148 kB; Ushuaia 192 · 20 · 20 · 19 % · 74 % · 6.364 · 148 kB. Opciones nuevas por ciudad en `scripts/bake-maps.ts` (`size`, `waterLevelM` para el lago de Bariloche, `waterwayMaxM` para Mendoza, caché de descargas y unión de contornos para lagos y ríos grandes). El writer miró una imagen aérea de cada una: el río y las dársenas de Buenos Aires, la barranca sobre el Paraná, el Suquía cruzando Córdoba, el piedemonte y el lago del Parque San Martín en Mendoza, el Nahuel Huapi y el cerro Otto en Bariloche, el canal Beagle y la bahía en Ushuaia.
   - Reservas: Mendoza tiene solo 1,3 % de agua (el piso del test es 1 %): el agua es el lago del parque y las acequias, no un río; no se probó en el navegador (solo por la carga de los datos y las imágenes); los mapas reales no reciben la ruta provincial y un test lo fija.
+- **L7 (2026-11-19), Las Flores.** Pedido (verbatim): "ahora te pido si podes agregar "Las Flores" (Pueblo
+  de la provincia de Buenos Aires, no te lo confundas con "Flores") como mapa jugable? es bastante chico
+  el pueblo yo creo que se puede agarrar todo". Se verificó primero cuál es: Nominatim devuelve el
+  pueblo como `Las Flores, Partido de Las Flores, Buenos Aires` en `-36.0143, -59.0999`, con un ejido de
+  4,9 por 6,2 km, muy lejos del barrio de Flores de la ciudad. Con 256 lotes de 25 m el pueblo entra
+  entero y sobran unos 100 m de cada lado. El horneado necesitó un reintento porque Overpass respondió
+  502 la primera vez. Resultado: agua 4 % (laguna La Blanca, 1.368 lotes, y laguna del Difunto Manuel,
+  1.053), 9.743 lotes de calle, 1.104 árboles y altura máxima nivel 6, o sea que el test de mapas reales
+  pasa sin tocarle ningún umbral.
