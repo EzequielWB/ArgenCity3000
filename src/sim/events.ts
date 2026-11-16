@@ -770,7 +770,7 @@ function holidayEvent(h: Holiday): CityEvent {
     options: [
       {
         label: 'Festejarlo a lo grande',
-        detail: (sim) => `Cuestan ${sum(sim, 2.5)} y un mes sin obra. La aprobación sube y el pueblo gasta dos meses.`,
+        detail: (sim) => `Cuestan ${sum(sim, 2.5)} y un mes sin obra. La aprobación sube y el pueblo gasta tres meses.`,
         apply: (sim) => {
           sim.state.cash -= weeksOfIncome(sim, FESTEJO.grande);
           sim.nudgeApproval(10);
@@ -780,7 +780,7 @@ function holidayEvent(h: Holiday): CityEvent {
       },
       {
         label: 'Un acto en la plaza',
-        detail: (sim) => `Cuestan ${sum(sim, 1)}. La aprobación sube un poco y el pueblo gasta un mes.`,
+        detail: (sim) => `Cuestan ${sum(sim, 1)}. La aprobación sube un poco y el pueblo gasta dos meses.`,
         apply: (sim) => {
           sim.state.cash -= weeksOfIncome(sim, FESTEJO.acto);
           sim.nudgeApproval(5);
