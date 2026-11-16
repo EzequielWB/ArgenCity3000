@@ -31,7 +31,7 @@ Runner de la suite: `npm test` (Vitest). Verificación de alcance: `npx vite-nod
   > "Tambien me gustaria que ni bien arrancas a jugar elijas un beneficio aleatorio."
 
 - Al cruzar una marca se abre una ventana con **3 mejoras distintas** y el tiempo se pausa.
-- Tres clases: `buena` (solo ayuda), `mixta` (da y saca ya), `semilla` (cuesta ahora, paga después
+- Tres clases: `leve` (da mucho y cobra poco), `mixta` (da y saca ya), `semilla` (cuesta ahora, paga después
   con una etapa a plazo).
 - Nunca se ofrecen 3 de la misma clase; nunca se ofrece una mejora ya tomada.
 
@@ -190,3 +190,16 @@ no se conoce hasta tomarlas. La solución mínima: el `Upgrade` declara `gamble`
 en `takeUpgrade`, que devuelve los factores de caja y aprobación y **escribe en el pick** el resultado
 (`mods` para la densidad y `outcome` en palabras). Así `runMods` sigue siendo una función pura del
 eestado guardado, no se sortea dos veces y el resumen puede contar qué pasó.
+
+- L12 (usuario, 2026-11-16): "las tarjetas del roguelike TODAS tienen que tener algo bueno y algo malo, osea las
+  que son solo bueno poneles algo malo tambien". Las siete `leve` pasaron a tener un costo chico y
+  pegado al regalo, no un impuesto arbitrario: torres cobra un 5 % más de servicios (la misma cuadra
+  con más gente pide más), polo saca 4 puntos de valor al predio de al lado, catastro trae 8 % menos
+  de gente nueva (el que empieza a pagar se queja), red cobra 5 % más de administración (mantener el
+  tendido), compras frena el crecimiento un 8 % (márgenes flacos), obra saca 2 puntos de suelo (más
+  oferta de lotes) y descentralización frena el crecimiento un 5 % (las comunas tardan en acordar).
+  La clase `buena` se llama `leve`: el nombre viejo prometía algo que ya no es cierto. La regla queda
+  como test: para cada carta con números fijos, alguna perilla mejora y alguna empeora.
+- La ventana del sorteo decía "la que dejes, se pierde": con el mazo en orden eso pasó a ser falso, y
+  ahora dice "la que dejes vuelve al mazo y puede salir más adelante". La copy tiene que moverse con la
+  regla o miente en la cara del jugador.

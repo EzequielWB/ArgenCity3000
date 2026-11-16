@@ -3,7 +3,7 @@ import { CAPACITY, DEFAULT_FUNDING, MAX_FUNDING, TICKS_PER_MONTH } from '../src/
 import { deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { addBuilding, cityTotals } from '../src/sim/demand';
-import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, RUN_PICKS, markOf, UPGRADES, dueMark, newRun, openOffer, runMods, runOver, takeUpgrade, upgradeById } from '../src/sim/roguelike';
+import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, RUN_PICKS, markOf, type RunMods, UPGRADES, dueMark, newRun, openOffer, runMods, runOver, takeUpgrade, upgradeById } from '../src/sim/roguelike';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { formatMoney } from '../src/core/format';
 import { upgradeCardsHtml } from '../src/ui/upgrades';
@@ -87,6 +87,36 @@ describe('roguelike', () => {
       expect(new Set(run.seen).size).toBe(run.seen.length); // el mazo no se repite a sí mismo
     }
     expect(nuncaVolvieron).toBe(0);
+  });
+
+  it('ninguna carta es gratis: todas dan algo y todas cobran algo', () => {
+    // La regla del jugador: "todas tienen que tener algo bueno y algo malo". Un `bien` por perilla es
+    // el sentido en el que el número mejora; lo que no es ni mejor ni peor es el valor neutro.
+    const bien: Record<keyof RunMods, (v: number) => boolean> = {
+      density: (v) => v > 1,
+      jobs: (v) => v > 1,
+      admin: (v) => v < 1,
+      adminCurve: (v) => v < 1,
+      land: (v) => v > 0,
+      power: (v) => v > 1,
+      growth: (v) => v > 1,
+      migration: (v) => v > 1,
+      income: (v) => v > 1,
+      serviceCost: (v) => v < 1,
+    };
+    for (const u of UPGRADES) {
+      // Las dos que se sortean no tienen números fijos: su mitad mala la decide la tirada.
+      if (u.gamble) continue;
+      let da = false;
+      let cobra = false;
+      for (const stage of u.stages) {
+        for (const [k, v] of Object.entries(stage.mods) as [keyof RunMods, number][]) {
+          if (bien[k](v)) da = true;
+          else if (v !== NO_MODS[k]) cobra = true;
+        }
+      }
+      expect({ id: u.id, da, cobra }).toEqual({ id: u.id, da: true, cobra: true });
+    }
   });
 
   it('arranca con una carta en la mano, y una mejora tomada no vuelve a salir', () => {
@@ -331,7 +361,7 @@ describe('roguelike', () => {
 
   it('el pool es coherente: ids únicos y toda clase tiene cartas', () => {
     expect(new Set(UPGRADES.map((u) => u.id)).size).toBe(UPGRADES.length);
-    for (const kind of ['buena', 'mixta', 'semilla'] as const) expect(UPGRADES.filter((u) => u.kind === kind).length).toBeGreaterThan(3);
+    for (const kind of ['leve', 'mixta', 'semilla'] as const) expect(UPGRADES.filter((u) => u.kind === kind).length).toBeGreaterThan(3);
     for (const u of UPGRADES) expect(u.stages.length > 0 || u.gamble !== undefined).toBe(true);
   });
 });

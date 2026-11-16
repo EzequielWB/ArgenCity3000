@@ -43,8 +43,8 @@ export function openUpgrades(game: Game): void {
     <h2>${mark > 0 ? `${formatNumber(mark)} habitantes` : 'Antes de fundar'}</h2>
     <p>${
       mark > 0
-        ? 'La ciudad cruzó la marca. Elegí una mejora: la que dejes, se pierde.'
-        : 'La ciudad arranca con una mejora a mano. Elegí una: la que dejes, se pierde.'
+        ? 'La ciudad cruzó la marca. Elegí una mejora: la que dejes vuelve al mazo y puede salir más adelante.'
+        : 'La ciudad arranca con una mejora a mano. Elegí una: la que dejes vuelve al mazo y puede salir más adelante.'
     }</p>
     <div class="event-options">${upgradeCardsHtml(run.offer, game.sim)}</div>
     <p><small>El tiempo está en pausa hasta que elijas.</small></p>`,

@@ -46,7 +46,12 @@ export interface RunMods {
 
 export const NO_MODS: RunMods = { density: 1, jobs: 1, admin: 1, adminCurve: 1, land: 0, power: 1, growth: 1, migration: 1, income: 1, serviceCost: 1 };
 
-export type UpgradeKind = 'buena' | 'mixta' | 'semilla';
+/**
+ * The three shapes a card can have, and the reason a draft deals one of each: a cheap trade that is
+ * mostly good, a heavy trade that gives a lot and takes a lot, and one that costs for years before
+ * it pays. None of them is free — a card that only helps would be a number, not a decision.
+ */
+export type UpgradeKind = 'leve' | 'mixta' | 'semilla';
 
 
 /** One turn of an upgrade: it starts `after` months from the pick and lasts to the end. */
@@ -74,14 +79,14 @@ export interface Upgrade {
  * engine you build, not about having every toy.
  */
 export const UPGRADES: readonly Upgrade[] = [
-  // ---- Only good
-  { id: 'torres', label: 'Torres de propiedad horizontal', kind: 'buena', blurb: 'Cada vivienda alberga un 30 % más de gente.', stages: [{ after: 0, mods: { density: 1.3 } }] },
-  { id: 'polo', label: 'Parque industrial planificado', kind: 'buena', blurb: 'Cada fábrica y cada comercio dan un 35 % más de puestos.', stages: [{ after: 0, mods: { jobs: 1.35 } }] },
-  { id: 'catastro', label: 'Catastro digital', kind: 'buena', blurb: 'Nadie deja de pagar: la ciudad recauda un 15 % más.', stages: [{ after: 0, mods: { income: 1.15 } }] },
-  { id: 'red', label: 'Red de alta tensión', kind: 'buena', blurb: 'Cada usina rinde un 60 % más.', stages: [{ after: 0, mods: { power: 1.6 } }] },
-  { id: 'compras', label: 'Compras públicas', kind: 'buena', blurb: 'Los servicios cuestan un 20 % menos de mantener.', stages: [{ after: 0, mods: { serviceCost: 0.8 } }] },
-  { id: 'obra', label: 'Plan de obra pública', kind: 'buena', blurb: 'La ciudad crece un 25 % más rápido.', stages: [{ after: 0, mods: { growth: 1.25 } }] },
-  { id: 'descentralizacion', label: 'Descentralización municipal', kind: 'buena', blurb: 'El recargo por tamaño de la ciudad se queda en un 55 %, y la administración entera, un 5 % más barata.', stages: [{ after: 0, mods: { adminCurve: 0.55, admin: 0.95 } }] },
+  // ---- Cheap and mostly good: the cost is a consequence of the gift, and always a small one.
+  { id: 'torres', label: 'Torres de propiedad horizontal', kind: 'leve', blurb: 'Cada vivienda alberga un 30 % más de gente, y esa misma cuadra pide un 5 % más de servicios.', stages: [{ after: 0, mods: { density: 1.3, serviceCost: 1.05 } }] },
+  { id: 'polo', label: 'Parque industrial planificado', kind: 'leve', blurb: 'Cada fábrica y cada comercio dan un 35 % más de puestos, y el predio de al lado pierde 4 puntos de valor.', stages: [{ after: 0, mods: { jobs: 1.35, land: -4 } }] },
+  { id: 'catastro', label: 'Catastro digital', kind: 'leve', blurb: 'Nadie deja de pagar: la ciudad recauda un 15 % más. Y el que empieza a pagar se queja: llega un 8 % menos de gente nueva.', stages: [{ after: 0, mods: { income: 1.15, migration: 0.92 } }] },
+  { id: 'red', label: 'Red de alta tensión', kind: 'leve', blurb: 'Cada usina rinde un 60 % más, y mantener la red cuesta un 5 % más de administración.', stages: [{ after: 0, mods: { power: 1.6, admin: 1.05 } }] },
+  { id: 'compras', label: 'Compras públicas', kind: 'leve', blurb: 'Los servicios cuestan un 20 % menos de mantener, y con márgenes flacos la ciudad crece un 8 % más lenta.', stages: [{ after: 0, mods: { serviceCost: 0.8, growth: 0.92 } }] },
+  { id: 'obra', label: 'Plan de obra pública', kind: 'leve', blurb: 'La ciudad crece un 25 % más rápido, y tanta obra junta baja 2 puntos el valor del suelo.', stages: [{ after: 0, mods: { growth: 1.25, land: -2 } }] },
+  { id: 'descentralizacion', label: 'Descentralización municipal', kind: 'leve', blurb: 'El recargo por tamaño de la ciudad se queda en un 55 %, y la administración entera, un 5 % más barata. Las comunas tardan en ponerse de acuerdo: la ciudad crece un 5 % más lenta.', stages: [{ after: 0, mods: { adminCurve: 0.55, admin: 0.95, growth: 0.95 } }] },
   // ---- Gives and takes
   { id: 'altura', label: 'Ley de altura libre', kind: 'mixta', blurb: 'Cada vivienda alberga un 45 % más de gente, pero el suelo pierde 6 puntos de valor.', stages: [{ after: 0, mods: { density: 1.45, land: -6 } }] },
   { id: 'tarifazo', label: 'Tarifazo', kind: 'mixta', blurb: 'La ciudad recauda un 30 % más, pero llega un 15 % menos de gente nueva.', stages: [{ after: 0, mods: { income: 1.3, migration: 0.85 } }] },
@@ -233,8 +238,9 @@ export function markOf(run: RunState): number {
 }
 
 /**
- * Draws the three cards: one of each class when the pool has them, so every draft has a free win, a
- * bargain and a bet. Already taken upgrades never come back and the three are always different.
+ * Draws the three cards: one of each class when the pool has them, so every draft offers a cheap
+ * trade, a heavy one and a bet that pays later. Already taken upgrades never come back and the three
+ * are always different.
  *
  * The deck is dealt in order: a card goes to the bottom when it leaves the table, so what was shown
  * once comes back before anything newer. A card that does nothing now can be the one the city needed
@@ -253,7 +259,7 @@ export function openOffer(run: RunState): void {
     return list.filter((u) => seen.indexOf(u.id) === first);
   };
   const offer: string[] = [];
-  for (const kind of ['buena', 'mixta', 'semilla'] as const) {
+  for (const kind of ['leve', 'mixta', 'semilla'] as const) {
     const of = pool.filter((u) => u.kind === kind && !offer.includes(u.id));
     if (of.length > 0) offer.push(rng.pick(oldest(of)).id);
   }
@@ -304,6 +310,6 @@ export function runOver(state: { run: RunState | null; lostElection: boolean }):
 export function pickedUpgrades(run: RunState): { label: string; kind: UpgradeKind; outcome: string | null }[] {
   return run.picks.map((p) => {
     const u = upgradeById(p.id);
-    return { label: u?.label ?? p.id, kind: u?.kind ?? 'buena', outcome: p.outcome ?? null };
+    return { label: u?.label ?? p.id, kind: u?.kind ?? 'leve', outcome: p.outcome ?? null };
   });
 }
