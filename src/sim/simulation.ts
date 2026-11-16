@@ -312,10 +312,12 @@ export class Simulation {
   private updateFields(): void {
     const w = this.world;
     computeServices(w, this.state.funding);
+    // The plazas are read before the smoke: a plaza eats the smoke that reaches it, so its patch and
+    // its care have to be the ones of this pass and not the ones of the pass before.
+    computeParks(w, this.state.green);
     computePollution(w);
     computeCrime(w, this.totals.pop);
     this.congestion = computeCongestion(w, this.state.transport, this.state.roads);
-    computeParks(w, this.state.green);
     computeLandValue(w, factorOf(this.state.effects, COAST_WORN), this.mods.land);
     this.computeBlightNear();
   }

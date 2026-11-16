@@ -1,4 +1,4 @@
-import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, HUBS, PARK, PLANTS, ROAD_REACH, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
+import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, HUBS, PARK, PLANTS, ROAD_REACH, TREE_CLEAN, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { hubFacilities } from '../world/hubs';
 import { TILE, World, serviceOf } from '../world/world';
@@ -67,6 +67,16 @@ function splat(acc: Float32Array, n: number, cx: number, cy: number, radius: num
  * budget for green spaces: at 100 % it gives all it can, at `PARK.care` it gives nothing, below that
  * it loses the neighbours' value as an abandoned building would.
  */
+/** How much more a plaza spreads the bigger it is, from its smallest size up. */
+function parkSize(area: number): number {
+  return Math.min(2.5, 0.4 + Math.log2(area + 1) / 2);
+}
+
+/** How far a plaza of `area` cells reaches. */
+function parkRadius(area: number): number {
+  return Math.min(8, PARK.radius + Math.floor(Math.log2(area)));
+}
+
 function splatPark(w: World, amenities: Float32Array, blight: Float32Array, i: number): void {
   const area = w.parkArea[i];
   if (area < PARK.minArea) return;
@@ -74,11 +84,29 @@ function splatPark(w: World, amenities: Float32Array, blight: Float32Array, i: n
   if (mood === 0) return;
   const x = i % w.n;
   const y = (i - x) / w.n;
-  const radius = Math.min(8, PARK.radius + Math.floor(Math.log2(area)));
+  const radius = parkRadius(area);
   if (mood > 0) {
-    const size = Math.min(2.5, 0.4 + Math.log2(area + 1) / 2);
-    splat(amenities, w.n, x, y, radius, PARK.value * size * mood);
+    splat(amenities, w.n, x, y, radius, PARK.value * parkSize(area) * mood);
   } else splat(blight, w.n, x, y, radius, PARK.neglect * -mood);
+}
+
+/**
+ * The smoke a plaza eats. It is the same plaza, the same size and the same care as the amenity:
+ * a patch that counts cleans the air around it, a bigger one reaches further, and one nobody looks
+ * after cleans nothing. Trees eat a little on their own, so a wooded hill breathes cleaner.
+ */
+function splatClean(w: World, clean: Float32Array, i: number): void {
+  const n = w.n;
+  const x = i % n;
+  const y = (i - x) / n;
+  if (w.tiles[i] === TILE.PARK) {
+    const area = w.parkArea[i];
+    if (area >= PARK.minArea) {
+      const mood = (w.parkCare[i] - PARK.care) / (100 - PARK.care);
+      if (mood > 0) splat(clean, n, x, y, parkRadius(area), PARK.clean * parkSize(area) * mood);
+    }
+  }
+  if (w.terrain.trees[i]) splat(clean, n, x, y, TREE_CLEAN.radius, TREE_CLEAN.strength);
 }
 
 /** Industry, working ports and power plants pollute their surroundings, each kind of plant in its own measure. */
@@ -96,7 +124,10 @@ export function computePollution(w: World): void {
     const { smoke, smokeRadius } = PLANTS[p.kind];
     if (smoke > 0) splat(acc, n, p.x, p.y, smokeRadius, smoke);
   }
-  for (let i = 0; i < n * n; i++) w.pollution[i] = clamp100(acc[i]);
+  // What the city plants takes smoke out of the air: the plaza cleans whatever reached it.
+  const clean = new Float32Array(n * n);
+  for (let i = 0; i < n * n; i++) splatClean(w, clean, i);
+  for (let i = 0; i < n * n; i++) w.pollution[i] = clamp100(acc[i] - clean[i]);
 }
 
 const waterDistCache = new WeakMap<Uint8Array, Uint8Array>();

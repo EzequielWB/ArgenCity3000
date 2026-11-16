@@ -30,6 +30,43 @@ function plaza(cw: number, ch: number, green = 100): { centre: number; bonus: nu
   return { centre, bonus: centre - base, covered, base, plain: w };
 }
 
+describe('a plaza cleans the smoke around it', () => {
+  /** A level-5 factory at (10, 10), with an optional plaza of `pw` cells two lots to its right. */
+  function smokeWith(pw: number, green = 100): number[] {
+    const w = new World(flat());
+    w.tiles[w.idx(10, 10)] = TILE.I;
+    w.level[w.idx(10, 10)] = 5;
+    for (let x = 0; x < pw; x++) w.tiles[w.idx(12 + x, 10)] = TILE.PARK;
+    computeParks(w, green);
+    computePollution(w);
+    return [w.pollution[w.idx(11, 10)], w.pollution[w.idx(12, 10)]];
+  }
+
+  it('and the same factory without it leaves twice as much', () => {
+    const [near, plazaCell] = smokeWith(3);
+    const [bare] = smokeWith(0);
+    expect(near).toBeLessThan(bare);
+    expect(plazaCell).toBeLessThan(near);
+  });
+
+  it('the bigger the plaza, the more it cleans', () => {
+    expect(smokeWith(6)[0]).toBeLessThan(smokeWith(3)[0]);
+  });
+
+  it('unless nobody looks after it: it cleans nothing below the care it needs', () => {
+    expect(smokeWith(3, PARK.care - 10)).toEqual(smokeWith(0));
+  });
+
+  it('and the trees of the map clean a little on their own', () => {
+    const wooded = new World({ ...flat(), trees: new Uint8Array(40 * 40).fill(1) });
+    wooded.tiles[wooded.idx(10, 10)] = TILE.I;
+    wooded.level[wooded.idx(10, 10)] = 5;
+    computeParks(wooded, 100);
+    computePollution(wooded);
+    expect(wooded.pollution[wooded.idx(11, 10)]).toBeLessThan(smokeWith(0)[0]);
+  });
+});
+
 describe('a plaza needs to be a plaza', () => {
   it('does nothing at one or two cells', () => {
     expect(plaza(1, 1).bonus).toBe(0);

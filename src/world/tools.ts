@@ -35,7 +35,7 @@ export const TOOLS: readonly ToolInfo[] = [
     key: '8',
     shape: 'rect',
     // Three cells is the smallest plaza that lifts the land value; the bigger the patch, the further it reaches.
-    help: 'Desde 3 celdas sube el valor del suelo alrededor, y cuanto más grande, más lejos llega. Si el presupuesto de espacios verdes baja del 50 %, la plaza se descuida y lo baja.',
+    help: 'Desde 3 celdas sube el valor del suelo alrededor y limpia el humo de las fábricas: cuanto más grande, más lejos llega. Si el presupuesto de espacios verdes baja del 50 %, la plaza se descuida y no hace ninguna de las dos cosas.',
   },
   { id: 'plant', label: 'Usina a carbón', key: '9', shape: 'anchor', help: 'Usina térmica de 2×2. Barata, pero contamina mucho.' },
   { id: 'plantGas', label: 'Usina a gas', key: 'j', shape: 'anchor', help: 'Usina de 2×2. Más cara de construir y de mantener, casi no contamina.' },

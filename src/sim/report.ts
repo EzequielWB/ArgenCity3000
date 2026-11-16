@@ -95,7 +95,7 @@ function issueText(w: World, i: number, issue: Issue): string {
   if (issue === 'dry') return `Plaza descuidada (cuidado ${w.parkCare[i]}/100): se ve seca y baja el valor del suelo. Subí el presupuesto de espacios verdes.`;
   if (issue === 'crime') return `Mucho delito (${w.crime[i]}/100): los vecinos se van y baja el valor del suelo. Una comisaría con luz cerca lo baja.`;
   if (issue === 'health') return `No llega la salud (${w.health[i]}/100): las casas no pasan de chalet. Hace falta una salita con luz cerca.`;
-  return `Mucho humo (${w.pollution[i]}/100): las casas pierden vecinos. Alejá las usinas y las fábricas de acá.`;
+  return `Mucho humo (${w.pollution[i]}/100): las casas pierden vecinos. Alejá las usinas y las fábricas de acá, o poné una plaza cerca para que lo limpie.`;
 }
 
 /** Everything the "Consulta" tool shows about a cell, and what the bubble over the building means when it has one. */
@@ -352,7 +352,7 @@ const VACANCY_ADVICE: Record<Cause, string> = {
   road: 'Sin una calle cerca no llega nadie, y los que están se van: trazá una calle hasta acá.',
   crisis: 'Con la caja en rojo la paciencia del barrio se gasta rápido: equilibrá el presupuesto o se van.',
   crime: 'El delito le está gastando la paciencia: sumá comisarías cerca.',
-  smoke: 'El humo de las fábricas les está gastando la paciencia: alejalas o plantá árboles alrededor.',
+  smoke: 'El humo de las fábricas les está gastando la paciencia: alejalas o poné una plaza al lado, que limpia el aire.',
   jam: 'La calle de acceso está saturada y los vecinos se cansan: ensanchala u abrí otro camino.',
   vacant: 'Los edificios vacíos de al lado se llevan puestos a los que están ocupados: demolé los que quedaron vacíos.',
 };

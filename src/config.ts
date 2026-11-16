@@ -334,7 +334,12 @@ export const PARK = {
   care: 50,
   /** Land value the neighbours lose around a plaza nobody looks after. */
   neglect: 8,
+  /** Smoke a kept cell of a plaza eats, with the budget in full: the same shape as its amenity. */
+  clean: 5,
 } as const;
+
+/** Smoke a single tree cell eats, and how far it reaches. A wooded hill breathes cleaner than a bald one. */
+export const TREE_CLEAN = { strength: 3, radius: 1 } as const;
 
 /**
  * Public services. Each covers the residents within `radius` cells; when more than
