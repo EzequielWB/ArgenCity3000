@@ -23,11 +23,10 @@ function city(): World {
 const put = (w: World, tool: ToolId, x: number, y: number) => applyPlan(w, planTool(w, tool, [[x, y]]));
 
 describe('a take-off', () => {
-  it('speeds up along the runway, climbs after it and fades out of sight', () => {
+  it('speeds up along the runway and climbs after it', () => {
     const start = takeoffAt(0);
-    expect(start).toEqual({ along: 0, altitude: 0, alpha: 1 });
+    expect(start).toEqual({ along: 0, altitude: 0 });
     const end = takeoffAt(4);
-    expect(end.alpha).toBeCloseTo(0, 5);
     expect(end.altitude).toBeGreaterThan(20);
     let last = -1;
     for (let t = 0; t <= 4; t += 0.25) {
@@ -41,7 +40,7 @@ describe('a take-off', () => {
   });
 
   it('is played backwards by a landing, and the runway is on the side the drawing puts it', () => {
-    const plane = (phase: 'takeoff' | 'landing', dir: 1 | -1): Plane => ({ x: 5, y: 12, level: 1, phase, t: 1, dir });
+    const plane = (phase: 'takeoff' | 'landing', dir: 1 | -1): Plane => ({ x: 5, y: 12, level: 1, phase, t: 1, dir, far: 30 });
     const up = planeAt(plane('takeoff', 1), 0)!;
     const down = planeAt(plane('landing', 1), 0)!;
     expect(up.x).toBeLessThan(down.x); // one second in, a landing is further along than a take-off
@@ -73,17 +72,32 @@ describe('the planes of an airport', () => {
     expect(v.planes.size).toBe(0);
   });
 
-  it('wait, take off or land, and wait again', () => {
+  it('wait, take off, fly out of the map, come back, land and wait again', () => {
     const w = city();
     put(w, 'airport', 2, 11);
     const v = new Vessels(w, 3);
     v.refresh();
     const seen = new Set<string>();
-    for (let step = 0; step < 600; step++) {
+    for (let step = 0; step < 900; step++) {
       v.update(0.1);
       for (const p of v.planes.values()) seen.add(p.phase);
     }
-    expect([...seen].sort()).toEqual(['landing', 'takeoff', 'wait']);
+    expect([...seen].sort()).toEqual(['in', 'landing', 'out', 'takeoff', 'wait']);
+  });
+
+  it('leaves the map and comes back in from beyond it, fading only at the edge', () => {
+    const board: Plane = { x: 2, y: 11, level: 1, phase: 'out', t: 0, dir: 1, far: 30 };
+    const start = planeAt(board, 0)!;
+    expect(start.alpha).toBe(1); // it flies away in plain sight, it does not evaporate
+    expect(start.altitude).toBeGreaterThan(20);
+    // Near the edge it fades out, and by `far` it is gone.
+    expect(planeAt({ ...board, t: (30 - 2 - 9) / 3 }, 0)!.alpha).toBeLessThan(0.5);
+    expect(planeAt({ ...board, t: (30 - 9) / 3 }, 0)!.alpha).toBe(0);
+    expect(planeAt({ ...board, t: (30 - 9) / 3 }, 0)!.x).toBeGreaterThanOrEqual(30);
+    // The way back is the same picture backwards: it comes in from the edge, still faded.
+    const back = { ...board, phase: 'in' as const, t: 0 };
+    expect(planeAt(back, 0)!.alpha).toBe(0);
+    expect(planeAt({ ...back, t: (30 - 9) / 3 }, 0)!.alpha).toBe(1);
   });
 });
 
@@ -100,7 +114,7 @@ describe('the boats of a harbour', () => {
     expect([...v.boats.values()].filter((b) => b.kind === 'cruise')).toHaveLength(1);
   });
 
-  it('stay on the water and close to their harbour, and keep sailing', () => {
+  it('stay on the water, each in its own patch around the harbour, and keep sailing', () => {
     const w = city();
     put(w, 'harbor', 17, 11);
     put(w, 'harbor', 17, 13);
@@ -111,9 +125,11 @@ describe('the boats of a harbour', () => {
       v.update(0.1);
       for (const b of v.boats.values()) {
         expect(w.isWater(b.x, b.y)).toBe(true);
-        expect(Math.abs(b.x - b.home[0]) + Math.abs(b.y - b.home[1])).toBeLessThanOrEqual(10);
+        expect(Math.abs(b.x - b.home[0]) + Math.abs(b.y - b.home[1])).toBeLessThanOrEqual(b.roam + 1);
       }
     }
+    // Not all of them on the same ring: each boat has its own patch of water.
+    expect(new Set([...v.boats.values()].map((b) => b.roam)).size).toBeGreaterThan(1);
     expect([...v.boats.values()].map(boatPosition)).not.toEqual(start);
   });
 
@@ -163,7 +179,7 @@ describe('the fishing boats of a dock', () => {
       v.update(0.1);
       for (const b of v.boats.values()) {
         expect(w.isWater(b.x, b.y)).toBe(true);
-        expect(Math.abs(b.x - b.home[0]) + Math.abs(b.y - b.home[1])).toBeLessThanOrEqual(10);
+        expect(Math.abs(b.x - b.home[0]) + Math.abs(b.y - b.home[1])).toBeLessThanOrEqual(b.roam + 1);
       }
     }
     applyPlan(w, planTool(w, 'bulldoze', [[18, 12]]));

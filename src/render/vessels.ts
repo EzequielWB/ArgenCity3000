@@ -22,8 +22,16 @@ const RUN = 3;
 const AIR_SPEED = 3;
 /** Pixels a plane climbs per second once it leaves the ground. */
 const CLIMB = 14;
-/** How far from its harbour a boat goes, in cells. */
-const WALK = 9;
+/** The stretch of runway it has already covered when it lifts off, in cells. */
+const AIRBORNE_FROM = RUN + AIR_SPEED * (FLIGHT - ON_GROUND);
+/**
+ * How far from the runway a plane goes before it leaves the map, in cells, and how many of those it
+ * takes to fade. A plane that went to the edge of a huge map would be gone for a minute; one that
+ * turned around a cell past the runway would never be seen leaving.
+ */
+const EDGE_NEAR = 18;
+const EDGE_FAR = 44;
+const FADE = 5;
 
 const DIRS: [number, number][] = [
   [1, 0],
@@ -37,10 +45,16 @@ export interface Plane {
   x: number;
   y: number;
   level: number;
-  phase: 'wait' | 'takeoff' | 'landing';
+  /**
+   * What it is doing: waiting off the map, rolling and climbing out of the runway, flying away to
+   * leave the map, coming back in from the edge, or landing.
+   */
+  phase: 'wait' | 'takeoff' | 'out' | 'in' | 'landing';
   /** Seconds into the phase (or left to wait). */
   t: number;
   dir: 1 | -1;
+  /** How far along its course it leaves the map and comes back, in cells from the start of the runway. */
+  far: number;
 }
 
 export interface Boat {
@@ -53,6 +67,8 @@ export interface Boat {
   speed: number;
   home: [number, number];
   kind: 'tour' | 'cruise' | 'fishing';
+  /** How far from home it sails before it turns back, in cells: each boat gets its own so the water fills up. */
+  roam: number;
 }
 
 export class Vessels {
@@ -79,9 +95,12 @@ export class Vessels {
           const piece = f.pieces[k % f.pieces.length];
           const key = `${piece.x},${piece.y}:${k}`;
           planes.add(key);
+          const dir: 1 | -1 = this.rng.chance(0.5) ? 1 : -1;
           const old = this.planes.get(key);
-          if (old) old.level = f.level;
-          else this.planes.set(key, { x: piece.x, y: piece.y, level: f.level, phase: 'wait', t: this.rng.next() * 6, dir: this.rng.chance(0.5) ? 1 : -1 });
+          if (old) {
+            old.level = f.level;
+            old.far = this.edgeOf(piece.x, dir);
+          } else this.planes.set(key, { x: piece.x, y: piece.y, level: f.level, phase: 'wait', t: this.rng.next() * 6, dir, far: this.edgeOf(piece.x, dir) });
         }
       } else {
         const start = this.waterNextTo(f);
@@ -92,7 +111,8 @@ export class Vessels {
           boats.add(key);
           if (this.boats.has(key)) continue;
           const kind = k < 2 ? 'tour' : 'cruise';
-          const boat: Boat = { x: start[0], y: start[1], dx: 1, dy: 0, t: this.rng.next(), speed: kind === 'cruise' ? 0.35 : 0.6, home: start, kind };
+          const roam = kind === 'cruise' ? 26 : 12 + this.rng.int(6);
+          const boat: Boat = { x: start[0], y: start[1], dx: 1, dy: 0, t: this.rng.next(), speed: kind === 'cruise' ? 0.35 : 0.6, home: start, kind, roam };
           this.turn(boat);
           this.boats.set(key, boat);
         }
@@ -108,12 +128,20 @@ export class Vessels {
       const y = (i - x) / this.world.n;
       const start = DIRS.map(([dx, dy]): [number, number] => [x + dx, y + dy]).find(([wx, wy]) => this.isWater(wx, wy));
       if (!start) continue;
-      const boat: Boat = { x: start[0], y: start[1], dx: 1, dy: 0, t: this.rng.next(), speed: 0.45, home: start, kind: 'fishing' };
+      const roam = 8 + this.rng.int(4);
+      const boat: Boat = { x: start[0], y: start[1], dx: 1, dy: 0, t: this.rng.next(), speed: 0.45, home: start, kind: 'fishing', roam };
       this.turn(boat);
       this.boats.set(key, boat);
     }
     for (const k of [...this.planes.keys()]) if (!planes.has(k)) this.planes.delete(k);
     for (const k of [...this.boats.keys()]) if (!boats.has(k)) this.boats.delete(k);
+  }
+
+  /** How far a plane taking off at `x` towards `dir` flies before it leaves the map, in cells from the runway's start. */
+  private edgeOf(x: number, dir: 1 | -1): number {
+    const n = this.world.n;
+    const edge = dir === 1 ? n + 2 - x : x + HUBS.airport.w + 2;
+    return Math.min(EDGE_FAR, Math.max(EDGE_NEAR, edge));
   }
 
   /** A water lot next to one of the pieces of the facility, or null. */
@@ -142,13 +170,27 @@ export class Vessels {
     if (dt <= 0) return;
     for (const p of this.planes.values()) {
       p.t += p.phase === 'wait' ? -dt : dt;
-      if (p.phase === 'wait' && p.t <= 0) {
-        p.phase = this.rng.chance(0.5) ? 'takeoff' : 'landing';
+      const cruise = (p.far - AIRBORNE_FROM) / AIR_SPEED;
+      if (p.phase === 'wait') {
+        if (p.t > 0) continue;
+        // Half the time it leaves, half the time it arrives from beyond the map.
+        const out = this.rng.chance(0.5);
+        p.phase = out ? 'takeoff' : 'in';
         p.dir = this.rng.chance(0.5) ? 1 : -1;
+        p.far = this.edgeOf(p.x, p.dir);
         p.t = 0;
-      } else if (p.phase !== 'wait' && p.t >= FLIGHT) {
+      } else if (p.phase === 'takeoff' && p.t >= FLIGHT) {
+        p.phase = 'out';
+        p.t = 0;
+      } else if (p.phase === 'out' && p.t >= cruise) {
         p.phase = 'wait';
-        p.t = 4 + this.rng.next() * 8;
+        p.t = 2 + this.rng.next() * 5;
+      } else if (p.phase === 'in' && p.t >= cruise) {
+        p.phase = 'landing';
+        p.t = 0;
+      } else if (p.phase === 'landing' && p.t >= FLIGHT) {
+        p.phase = 'wait';
+        p.t = 3 + this.rng.next() * 7;
       }
     }
     for (const b of this.boats.values()) {
@@ -162,9 +204,9 @@ export class Vessels {
     }
   }
 
-  /** The boat reached the middle of a water lot: pick where to go from there, keeping close to its harbour. */
+  /** The boat reached the middle of a water lot: pick where to go from there, inside its own patch of water. */
   private turn(b: Boat): void {
-    const near = (x: number, y: number) => this.isWater(x, y) && Math.abs(x - b.home[0]) + Math.abs(y - b.home[1]) <= WALK;
+    const near = (x: number, y: number) => this.isWater(x, y) && Math.abs(x - b.home[0]) + Math.abs(y - b.home[1]) <= b.roam;
     const options = DIRS.filter(([dx, dy]) => !(dx === -b.dx && dy === -b.dy) && near(b.x + dx, b.y + dy));
     if (options.length === 0) {
       const back = DIRS.find(([dx, dy]) => near(b.x + dx, b.y + dy));
@@ -176,29 +218,44 @@ export class Vessels {
   }
 }
 
-/** How far along the runway a plane is (in cells from the end it starts at), its height in pixels and its opacity, `t` seconds into a take-off. */
-export function takeoffAt(t: number): { along: number; altitude: number; alpha: number } {
+/** How far along the runway a plane is (in cells from the end it starts at) and its height, `t` seconds into a take-off. */
+export function takeoffAt(t: number): { along: number; altitude: number } {
   const ground = Math.min(t, ON_GROUND);
   const air = Math.max(0, t - ON_GROUND);
   return {
     along: (RUN / (ON_GROUND * ON_GROUND)) * ground * ground + AIR_SPEED * air,
     altitude: air * CLIMB,
-    alpha: 1 - air / (FLIGHT - ON_GROUND),
   };
 }
 
+/** The height a plane cruises at once it has left the runway: the ceiling of a take-off, held. */
+const CEILING = CLIMB * (FLIGHT - ON_GROUND);
+
 /**
  * Where a plane is, in cells of the world, and how high (px) and visible it is. A landing is a take-off
- * played backwards. The runway of a piece runs along the world's x axis, on the side the drawing puts it
- * for the view: nearer the top of the piece from two of the four ways of looking at the map, nearer the bottom from the other two.
+ * played backwards; between the two it flies away until it leaves the map and comes back in from there,
+ * so there is always something crossing the sky. The runway of a piece runs along the world's x axis,
+ * on the side the drawing puts it for the view: nearer the top of the piece from two of the four ways
+ * of looking at the map, nearer the bottom from the other two.
  */
 export function planeAt(p: Plane, rot: Rotation): { x: number; y: number; altitude: number; alpha: number } | null {
   if (p.phase === 'wait') return null;
-  const { along, altitude, alpha } = takeoffAt(p.phase === 'takeoff' ? p.t : FLIGHT - p.t);
   const length = HUBS.airport.w;
+  let along: number;
+  let altitude: number;
+  if (p.phase === 'takeoff' || p.phase === 'landing') {
+    const at = takeoffAt(p.phase === 'takeoff' ? p.t : FLIGHT - p.t);
+    along = at.along;
+    altitude = at.altitude;
+  } else {
+    along = p.phase === 'out' ? AIRBORNE_FROM + AIR_SPEED * p.t : p.far - AIR_SPEED * p.t;
+    altitude = CEILING;
+  }
+  // It fades out on its way to the edge of the map and back in when it returns from it.
+  const alpha = p.phase === 'takeoff' || p.phase === 'landing' ? 1 : Math.max(0, Math.min(1, (p.far - along) / FADE));
   const x = p.dir === 1 ? p.x + along : p.x + length - along;
   const y = p.y + (rot === 0 || rot === 3 ? 0.4 : HUBS.airport.h - 0.4);
-  return { x, y, altitude, alpha: Math.max(0, Math.min(1, alpha)) };
+  return { x, y, altitude, alpha };
 }
 
 /** Continuous world position of a boat: cell centres at +0.5. */

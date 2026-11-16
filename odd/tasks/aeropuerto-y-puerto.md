@@ -87,3 +87,13 @@ Runner: `npx vitest run`, `npx tsc --noEmit`.
   compromiso, no un surtidor. No se tocaron las líneas de colectivos (no dan plata) ni los edificios de
   la costa: pescadores +$50, balneario +$24 promedio contra $120 de upkeep, y el puerto de carga paga
   con el 5 % de impuestos industriales.
+- L7 (usuario, 2026-11-16): "me gustaria que si haces barcos y aviones, el sprite de estos se vea
+  constantemente por ahi ... los aviones que vayan y vengan, pueden ir a una punta del mapa y
+  desaparecer como que estan saliendo del mapa". Los aviones tenían dos fases (despegue y aterrizaje)
+  con el alfa bajando a cero al final del despegue: el avión nunca se veía irse, se desvanecía. Ahora
+  el ciclo es despegue → `out` (vuela a la altura de crucero y sale por el borde, con el alfa bajando
+  solo en las últimas cinco celdas) → espera → `in` (vuelve desde el borde, aparece de a poco) →
+  aterrizaje. La distancia al borde se guarda por avión (`Plane.far`, entre 18 y 44 celdas) para que un
+  mapa grande no se lo trague un minuto. Los barcos dejaron el radio único de 9 celdas: cada uno tiene
+  el suyo (`Boat.roam`, 12 a 17 un paseo, 26 un crucero, 8 a 11 un pesquero), así el agua se llena en
+  vez de que todos giren sobre el mismo aro.
