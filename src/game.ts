@@ -35,7 +35,7 @@ import { World } from './world/world';
 const PATCH_BUDGET_MS = 5;
 const PATCH_BATCH = 24;
 /** Ticks per second for each speed: pause, slow, normal, fast. */
-const SPEEDS = [0, 4, 10, 30];
+const SPEEDS = [0, 4, 10, 25];
 const SPEED_LABELS = ['❚❚', '▶', '▶▶', '▶▶▶'];
 const SPEED_NAMES = ['Pausa', 'Lento', 'Normal', 'Rápido'];
 const LAYERS: { id: Layer; label: string }[] = [
