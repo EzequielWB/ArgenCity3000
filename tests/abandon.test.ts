@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { World, TILE } from '../src/world/world';
 import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools';
-import { CAPACITY, TICKS_PER_MONTH } from '../src/config';
+import { ANGER, CAPACITY, TICKS_PER_MONTH } from '../src/config';
 import { cityTotals, computeDemand } from '../src/sim/demand';
 import { computePower } from '../src/sim/power';
 import { computeLandValue, computePollution } from '../src/sim/fields';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { deserialize, serialize } from '../src/save/save';
+import { describeCell } from '../src/sim/report';
 
 function flat(n = 32): Terrain {
   return { n, corners: new Uint8Array((n + 1) * (n + 1)).fill(SEA_LEVEL + 1), trees: new Uint8Array(n * n) };
@@ -78,14 +79,32 @@ describe('abandoned buildings', () => {
     expect(countAbandoned(w)).toBeLessThan(built / 3);
   });
 
-  it('appear when a grown city loses its power, and come back when power returns', () => {
+  it('an unanswered complaint costs about two years of patience, not a month', () => {
+    const w = starter();
+    const sim = new Simulation(w, newSimState(5), 'X');
+    for (let i = 0; i < TICKS_PER_MONTH * 24; i++) sim.tick();
+    const i = w.idx(4, 4);
+    expect(w.level[i]).toBeGreaterThan(0);
+    expect(sim.unrest(i, 'R')).toEqual({ rise: 0, worst: null });
+    // Lo único que falla es la luz de ese lote: el enojo sube de a un paso por mes.
+    const light = sim.unrest(i, 'R').rise;
+    w.powered[i] = 0;
+    const { rise, worst } = sim.unrest(i, 'R');
+    expect(light).toBe(0);
+    expect(worst).toBe('power');
+    // De 24 a 36 meses: el jugador tiene dos años largos para reaccionar.
+    expect(Math.ceil(100 / Math.min(10, rise))).toBeGreaterThanOrEqual(24);
+    expect(Math.ceil(100 / Math.min(10, rise))).toBeLessThanOrEqual(36);
+  });
+
+  it('two years without what they ask for empty the street, and the light brings the neighbours back', () => {
     const w = starter();
     const sim = new Simulation(w, newSimState(5), 'X');
     for (let i = 0; i < TICKS_PER_MONTH * 24; i++) sim.tick();
     const pop = cityTotals(w).pop;
     expect(pop).toBeGreaterThan(200);
     build(w, 'bulldoze', 0, 1);
-    for (let i = 0; i < TICKS_PER_MONTH * 12; i++) sim.tick();
+    for (let i = 0; i < TICKS_PER_MONTH * 26; i++) sim.tick();
     const abandoned = countAbandoned(w);
     expect(abandoned).toBeGreaterThan(10);
     expect(cityTotals(w).pop).toBeLessThan(pop);
@@ -94,6 +113,78 @@ describe('abandoned buildings', () => {
     build(w, 'plant', 0, 1);
     for (let i = 0; i < TICKS_PER_MONTH * 18; i++) sim.tick();
     expect(countAbandoned(w)).toBeLessThan(abandoned);
+  });
+});
+
+describe('the patience of the neighbours', () => {
+  /** A city that has grown for two years, with its light and its streets. */
+  function grown(): { w: World; sim: Simulation } {
+    const w = starter();
+    const sim = new Simulation(w, newSimState(5), 'X');
+    for (let i = 0; i < TICKS_PER_MONTH * 24; i++) sim.tick();
+    return { w, sim };
+  }
+
+  it('grows for every complaint that nobody answers, and only with them', () => {
+    const { w, sim } = grown();
+    const i = w.idx(4, 4);
+    expect(w.level[i]).toBeGreaterThan(0);
+    expect(sim.unrest(i, 'R')).toEqual({ rise: 0, worst: null });
+    // El humo en una vivienda gasta paciencia; en una fábrica no.
+    w.pollution[i] = 90;
+    expect(sim.unrest(i, 'R')).toEqual({ rise: ANGER.smoke, worst: 'smoke' });
+    expect(sim.unrest(i, 'I').rise).toBe(0);
+    w.pollution[i] = 0;
+    // La calle saturada también.
+    w.jam[i] = 255;
+    expect(sim.unrest(i, 'R')).toEqual({ rise: ANGER.jam, worst: 'jam' });
+  });
+
+  it('is worn down by the buildings that already emptied next door', () => {
+    const { w, sim } = grown();
+    const home = w.idx(4, 4);
+    const next = w.idx(5, 4);
+    expect(w.level[next]).toBeGreaterThan(0);
+    expect(sim.unrest(home, 'R')).toEqual({ rise: 0, worst: null });
+    sim.abandonBuilding(next);
+    sim.refresh();
+    expect(sim.unrest(home, 'R')).toEqual({ rise: ANGER.vacant, worst: 'vacant' });
+    // Mientras el enojo es bajo la ficha sigue hablando de crecer; cuando pasa el umbral, dice qué
+    // está vaciando el barrio: el vacío de al lado no se arregla con luz, se arregla demoliendo.
+    expect(describeCell(w, sim, 4, 4).hint).not.toContain('demolé');
+    w.anger[home] = 60;
+    expect(describeCell(w, sim, 4, 4).hint).toContain('demolé los que quedaron vacíos');
+  });
+
+  it('is forgiven once what was wrong is fixed, and nobody has to leave', () => {
+    const { w, sim } = grown();
+    const i = w.idx(4, 4);
+    w.anger[i] = 80;
+    // Un mes sin nada malo: se le resta lo que perdona por mes.
+    for (let k = 0; k < TICKS_PER_MONTH; k++) sim.tick();
+    expect(w.anger[i]).toBe(80 - ANGER.forgive);
+    for (let k = 0; k < TICKS_PER_MONTH * 10; k++) sim.tick();
+    expect(w.anger[i]).toBe(0);
+    expect(w.abandoned[i]).toBe(0);
+  });
+
+  it('says on the card how angry the block is and how long the building has', () => {
+    const { w, sim } = grown();
+    const i = w.idx(4, 4);
+    w.anger[i] = 48;
+    w.powered[i] = 0;
+    const card = describeCell(w, sim, 4, 4);
+    expect(card.lines.join(' | ')).toContain(`Enojo del barrio: 48 % · se vacía en ~${Math.ceil((100 - 48) / ANGER.served)} meses`);
+    // Arriba del umbral, la ficha deja de aconsejar cómo crecer y dice qué lo está vaciando.
+    w.anger[i] = 60;
+    expect(describeCell(w, sim, 4, 4).hint).toBe('Sin luz no hay casa que aguante: que la luz llegue acá antes de que se vacíe.');
+  });
+
+  it('travels with the save and comes back with the city', () => {
+    const { w, sim } = grown();
+    w.anger[w.idx(4, 4)] = 55;
+    const back = deserialize(serialize({ name: 'X', seed: 5, world: w, sim: sim.state }));
+    expect(back.world.anger[w.idx(4, 4)]).toBe(55);
   });
 });
 

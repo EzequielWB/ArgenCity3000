@@ -339,7 +339,7 @@ export class View {
       const [vx, vy] = toView(x, (i - x) / n, this.map.rot, n);
       const [cx, cy] = this.map.toCache(vx + 0.5, vy + 0.5, w.minMax(x, (i - x) / n)[1]);
       if (!visible(cx, cy)) continue;
-      drawBubble(g, issue, cx, cy - 18);
+      drawBubble(g, issue, cx, cy - 18, w.anger[i]);
     }
   }
 

@@ -33,7 +33,7 @@ import { MAX_HEIGHT } from '../world/terrain';
 import { busLineProblem, busStations } from '../world/transport';
 import { MAX_TILE, TILE, World, hubOf, hubTile, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 18;
+export const SAVE_VERSION = 19;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -46,7 +46,7 @@ export const SAVE_VERSION = 18;
  * government, so they are democracies with no party; versions 1 to 17 have no roguelike run, so
  * they open as classic games.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -99,6 +99,7 @@ export function serialize(d: SaveData): string {
     level: toBase64(w.level),
     variant: toBase64(w.variant),
     abandoned: toBase64(w.abandoned),
+    anger: toBase64(w.anger),
     inherited: toBase64(w.inherited),
     route: toBase64(w.route),
     roadTier: toBase64(w.roadTier),
@@ -141,6 +142,8 @@ export function deserialize(text: string): SaveData {
   world.variant.set(variant);
   if (data.version !== 1) {
     world.abandoned.set(fromBase64(data.abandoned, size, 1, 'Los edificios abandonados'));
+    // A city saved before the neighbours had patience opens with a clean slate, not with a pent-up one.
+    if (data.anger !== undefined) world.anger.set(fromBase64(data.anger, size, 100, 'El enojo de los vecinos'));
     world.fire.set(fromBase64(data.fire, size, 255, 'Los incendios'));
   }
   // Streets inherited from a real-place map exist from version 3 on.

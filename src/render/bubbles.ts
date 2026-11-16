@@ -113,10 +113,26 @@ export function bubbleIcon(issue: Issue): string {
   return spriteOf(issue).toDataURL();
 }
 
-/** Draws the bubble of `issue` with its middle on (cx, cy), in whole pixels so the edges stay sharp at any zoom. */
-export function drawBubble(g: CanvasRenderingContext2D, issue: Issue, cx: number, cy: number): void {
+/** The red the picture fills up with as the neighbours lose their patience. */
+const ANGER_RED = '#d23a32';
+
+/**
+ * Draws the bubble of `issue` with its middle on (cx, cy), in whole pixels so the edges stay sharp at
+ * any zoom. `anger` (0-100) puts a red layer over the picture, so a building that has been ignored for
+ * two years looks like one that is about to empty before it empties.
+ */
+export function drawBubble(g: CanvasRenderingContext2D, issue: Issue, cx: number, cy: number, anger = 0): void {
   const smoothing = g.imageSmoothingEnabled;
   g.imageSmoothingEnabled = false;
-  g.drawImage(spriteOf(issue), Math.round(cx) - 6, Math.round(cy) - 7);
+  const x = Math.round(cx) - 6;
+  const y = Math.round(cy) - 7;
+  g.drawImage(spriteOf(issue), x, y);
+  if (anger > 0) {
+    // Over the picture only: the paper and the edge stay as they are, so it still reads as a bubble.
+    g.globalAlpha = Math.min(0.85, anger / 100);
+    g.fillStyle = ANGER_RED;
+    g.fillRect(x + 2, y + 2, 9, 9);
+    g.globalAlpha = 1;
+  }
   g.imageSmoothingEnabled = smoothing;
 }

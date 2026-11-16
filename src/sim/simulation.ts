@@ -12,6 +12,9 @@ import {
   MAX_TAX,
   MIN_TAX,
   PROMISE,
+  ANGER,
+  CRIME_ABANDON,
+  JAM_CROWDED,
   TICKS_PER_MONTH,
   TICKS_PER_WEEK,
   WEEKS_PER_MONTH,
@@ -29,6 +32,7 @@ import { monthlyBudget, type BudgetReport } from './budget';
 import { cumulativeShare, dateLabel, dateOf } from './calendar';
 import { countCoast } from './coast';
 import { computeCongestion, jamGrowthFactor, type CongestionReport } from './congestion';
+import { SMOKE_BUBBLE } from './warnings';
 import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDemand, isHoldout, levelCap, spawnLevel, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
@@ -143,8 +147,6 @@ const APPETITE_TAX_FROM = 10;
 const APPETITE_TAX_TO = 16;
 /** Share of abandoned buildings that scares newcomers away. */
 const ABANDON_LIMIT = 0.05;
-/** Crime level above which people start leaving. */
-const CRIME_ABANDON = 60;
 const REOCCUPY_RATE = 0.003;
 /** Monthly chance of a fire per 10 points of risk in an uncovered building. */
 const FIRE_RATE = 0.00025;
@@ -177,6 +179,9 @@ const MAX_NEWS = 50;
 const MAX_HISTORY = 240;
 const HINT_COOLDOWN = TICKS_PER_MONTH * 6;
 
+/** Every complaint a lot can carry, in the order the card of the lot cares about them. */
+export type Cause = 'power' | 'road' | 'crisis' | 'crime' | 'smoke' | 'jam' | 'vacant';
+
 export class Simulation {
   readonly world: World;
   readonly state: SimState;
@@ -197,6 +202,11 @@ export class Simulation {
   /** Why the city attracts nobody new (the appetite is off), or null while it does. */
   stall: StallReason | null = null;
   abandonedCount = 0;
+  /**
+   * How many abandoned buildings stand within two lots of each cell: the vacuum that pulls the
+   * neighbours down. Derived, rebuilt with the other fields, so it costs nothing to keep.
+   */
+  private blightNear = new Uint8Array(0);
   /**
    * True when a building appeared or disappeared since the light was last computed: buildings
    * pass the light on, so the network changed. It is recomputed once, however many buildings
@@ -307,6 +317,82 @@ export class Simulation {
     this.congestion = computeCongestion(w, this.state.transport, this.state.roads);
     computeParks(w, this.state.green);
     computeLandValue(w, factorOf(this.state.effects, COAST_WORN), this.mods.land);
+    this.computeBlightNear();
+  }
+
+  /** Counts the abandoned buildings within two lots of each cell, once per fields pass. */
+  private computeBlightNear(): void {
+    const w = this.world;
+    const n = w.n;
+    if (this.blightNear.length !== n * n) this.blightNear = new Uint8Array(n * n);
+    else this.blightNear.fill(0);
+    for (let i = 0; i < w.abandoned.length; i++) {
+      if (!w.abandoned[i] || w.level[i] === 0) continue;
+      const x = i % n;
+      const y = (i - x) / n;
+      for (let dy = -2; dy <= 2; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= n) continue;
+        for (let dx = -2; dx <= 2; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= n) continue;
+          const j = ny * n + nx;
+          if (this.blightNear[j] < 255) this.blightNear[j]++;
+        }
+      }
+    }
+  }
+
+  /** The abandoned buildings within two lots of a cell: with them the block stops coming back. */
+  blightAround(i: number): number {
+    return this.blightNear[i] ?? 0;
+  }
+
+  /**
+   * What is wrong at a lot and how much it wears the neighbours' patience down each month, worst
+   * first. The monthly step and the card of the lot read this same function, so a number the player
+   * sees is the number the city acts on.
+   */
+  unrest(i: number, zone: ZoneKind): { rise: number; worst: Cause | null } {
+    const w = this.world;
+    const causes: { cause: Cause; rise: number }[] = [];
+    if (!w.powered[i]) causes.push({ cause: 'power', rise: ANGER.served });
+    if (!w.roadAccess[i]) causes.push({ cause: 'road', rise: ANGER.served });
+    if (this.state.crisis) causes.push({ cause: 'crisis', rise: ANGER.crisis });
+    if (w.crime[i] > CRIME_ABANDON) causes.push({ cause: 'crime', rise: ANGER.crime });
+    if (zone === 'R' && w.pollution[i] > SMOKE_BUBBLE) causes.push({ cause: 'smoke', rise: ANGER.smoke });
+    if (w.jam[i] > JAM_CROWDED) causes.push({ cause: 'jam', rise: ANGER.jam });
+    const vacant = Math.min(ANGER.vacantMax, this.blightNear[i]);
+    if (vacant > 0) causes.push({ cause: 'vacant', rise: ANGER.vacant * vacant });
+    causes.sort((a, b) => b.rise - a.rise);
+    if (causes.length === 0) return { rise: 0, worst: null };
+    return { rise: causes.reduce((sum, c) => sum + c.rise, 0), worst: causes[0].cause };
+  }
+
+  /**
+   * A month of patience. Every occupied lot gets angrier while something is wrong and calmer once it
+   * is fixed; at 100 the owner leaves, and the empty building starts wearing down the neighbours'
+   * patience, so what the city neglects empties a street instead of a single house.
+   */
+  private stepAnger(): void {
+    const w = this.world;
+    for (let i = 0; i < w.anger.length; i++) {
+      if (w.level[i] === 0) {
+        w.anger[i] = 0;
+        continue;
+      }
+      if (w.abandoned[i] || w.fire[i]) continue;
+      const zone = zoneOf(w.tiles[i]);
+      const rise = zone ? this.unrest(i, zone).rise : 0;
+      if (rise === 0) {
+        w.anger[i] = Math.max(0, w.anger[i] - ANGER.forgive);
+        continue;
+      }
+      w.anger[i] = Math.min(100, w.anger[i] + Math.min(ANGER.cap, rise));
+      if (w.anger[i] < 100) continue;
+      w.anger[i] = 0; // the next owner starts from scratch
+      this.setAbandoned(i, true);
+    }
   }
 
   /**
@@ -709,11 +795,6 @@ export class Simulation {
         continue;
       }
       if (level > 0) {
-        const risk = this.abandonRisk(i, zone, served);
-        if (risk > 0 && rng.chance(risk)) {
-          this.setAbandoned(i, true);
-          continue;
-        }
         if (d < -20 && rng.chance(0.002 * (-d / 100))) {
           this.changeLevel(i, level - 1);
           continue;
@@ -733,21 +814,6 @@ export class Simulation {
         w.terrain.trees[i] = 0;
       }
     }
-  }
-
-  /**
-   * Chance per tick that an occupied building empties out, from what is wrong around it. The city
-   * has to fall apart for months before a street empties: at these rates a blackout leaves most of
-   * the neighbours standing after two months, and the worst case still clears it in a year.
-   */
-  private abandonRisk(i: number, zone: ZoneKind, served: boolean): number {
-    const w = this.world;
-    let p = 0;
-    if (!served) p += 0.001;
-    if (this.state.crisis) p += 0.0006;
-    if (w.crime[i] > CRIME_ABANDON) p += (0.0008 * (w.crime[i] - CRIME_ABANDON)) / (100 - CRIME_ABANDON);
-    if (zone === 'R' && w.pollution[i] > 70) p += 0.0006;
-    return p;
   }
 
   private changeLevel(i: number, level: number): void {
@@ -931,6 +997,8 @@ export class Simulation {
     s.crisis = s.cash < 0;
     // Two years in the red sink a run; one month in the black starts the count again.
     if (s.run) s.run.dry = s.cash < 0 ? s.run.dry + 1 : 0;
+    // The patience of the neighbours is read with the month it just had: who loses their home over it.
+    this.stepAnger();
     this.advanceLoan();
     this.totals = cityTotals(w, this.mods);
     this.abandonedCount = countAbandoned(w);

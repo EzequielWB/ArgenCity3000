@@ -395,6 +395,34 @@ export const FIRE_SAFE_COVER = 50;
  */
 export const TRAFFIC = { laneCapacity: 1200, valueFrom: 60, valuePerPoint: 0.3, slowFrom: 90, slowest: 0.25 } as const;
 
+/** A street is "saturada" from this much load on: slow traffic and, with time, an empty building. */
+export const JAM_CROWDED = TRAFFIC.slowFrom + 30;
+
+/** Crime level at which a home starts losing its owner, and above which a vacant one is not taken again. */
+export const CRIME_ABANDON = 60;
+
+/**
+ * How long the neighbours put up with each complaint before they leave. Every occupied lot carries an
+ * anger from 0 to 100: it climbs each month while something is wrong and falls once it is fixed, and
+ * at 100 the owner leaves. One complaint takes about two years to empty a lot; the block that already
+ * lost its neighbours goes much faster, which is how neglect spreads.
+ */
+export const ANGER = {
+  /** Per month, for a lot without light or without a street. */
+  served: 4,
+  crisis: 3,
+  crime: 3,
+  smoke: 3,
+  jam: 2,
+  /** Per abandoned building within two lots, up to `vacantMax` of them. */
+  vacant: 2,
+  vacantMax: 4,
+  /** Most anger a lot can gain in one month, however many things are wrong at once. */
+  cap: 10,
+  /** What it forgives each month once nothing is wrong any more. */
+  forgive: 10,
+} as const;
+
 /** A zone needs a road within this many cells (Manhattan distance). */
 export const ROAD_REACH = 3;
 

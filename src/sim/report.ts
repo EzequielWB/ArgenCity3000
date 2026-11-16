@@ -7,6 +7,7 @@ import {
   HUB_LEVELS,
   COAST,
   COAST_APPROVAL,
+  ANGER,
   COAST_FIELDS,
   DEFAULT_TAX,
   FIRE_SAFE_COVER,
@@ -38,7 +39,7 @@ import { HUMBLE, SERVICE_NEED, TAX_DEMAND_POINTS, isHoldout, levelCap } from './
 import { residentsServed, utilization } from './fields';
 import { plantCapacity } from './plants';
 import { transitFactor } from './transit';
-import type { Simulation } from './simulation';
+import type { Cause, Simulation } from './simulation';
 
 const NAMES: Record<ZoneKind, string[]> = {
   R: ['Lote residencial vacío', 'Casa de chapa', 'Casita', 'Chalet', 'PH', 'Torre de departamentos'],
@@ -257,8 +258,16 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
     lines.push(`Contaminación: ${w.pollution[i]}/100`);
     lines.push(...coverageLines(w, i));
     lines.push(height);
+    // The neighbours' patience, in the same months the simulation runs: what the player needs to know
+    // is how long the building has left, not a hidden dice roll.
+    const { rise, worst } = sim.unrest(i, zone);
+    if (w.anger[i] > 0 || rise > 0) {
+      const months = rise > 0 ? Math.ceil((100 - w.anger[i]) / Math.min(ANGER.cap, rise)) : 0;
+      lines.push(`Enojo del barrio: ${w.anger[i]} %${rise > 0 ? ` · se vacía en ~${months} meses` : ' · bajando'}`);
+    }
     const holdout = level === HUMBLE && isHoldout(w.variant[i]) ? 'Su dueño no piensa mejorarla: solo cambia si la demolés.' : undefined;
-    return { title, lines, hint: holdout ?? growthHint(w, sim, i, zone, level) };
+    const advice = w.anger[i] >= ANGER_WARN && worst ? VACANCY_ADVICE[worst] : undefined;
+    return { title, lines, hint: holdout ?? advice ?? growthHint(w, sim, i, zone, level) };
   }
 
   lines.push(height, `Valor del suelo: ${w.landValue[i]}/100`, `Contaminación: ${w.pollution[i]}/100`);
@@ -333,6 +342,20 @@ function abandonHint(w: World, sim: Simulation, i: number, zone: ZoneKind): stri
   const cause = why.length ? `Se vació porque ${why.join(', ')}.` : 'Las condiciones ya mejoraron: de a poco puede volver a ocuparse.';
   return `${cause} Arreglalo para que vuelvan, o demolelo.`;
 }
+
+/** From this much anger the card stops giving growth advice and says what is emptying the lot. */
+const ANGER_WARN = 30;
+
+/** What to do about the complaint that is wearing the neighbours down the most. */
+const VACANCY_ADVICE: Record<Cause, string> = {
+  power: 'Sin luz no hay casa que aguante: que la luz llegue acá antes de que se vacíe.',
+  road: 'Sin una calle cerca no llega nadie, y los que están se van: trazá una calle hasta acá.',
+  crisis: 'Con la caja en rojo la paciencia del barrio se gasta rápido: equilibrá el presupuesto o se van.',
+  crime: 'El delito le está gastando la paciencia: sumá comisarías cerca.',
+  smoke: 'El humo de las fábricas les está gastando la paciencia: alejalas o plantá árboles alrededor.',
+  jam: 'La calle de acceso está saturada y los vecinos se cansan: ensanchala u abrí otro camino.',
+  vacant: 'Los edificios vacíos de al lado se llevan puestos a los que están ocupados: demolé los que quedaron vacíos.',
+};
 
 function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level: number): string | undefined {
   if (!w.powered[i]) return noLightHint(sim, 'Sin luz', 'lo');

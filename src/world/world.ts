@@ -107,6 +107,8 @@ export class World {
   readonly variant: Uint8Array;
   /** 1 when a building stands empty: nobody lives or works there. */
   readonly abandoned: Uint8Array;
+  /** 0–100: how tired the neighbours of this lot are of what is wrong and nobody fixes. At 100 they leave. */
+  readonly anger: Uint8Array;
   /**
    * 1 on streets that came with a real-place map: they are only charged once buildings use
    * them. Any change of tile on the cell clears it, so a street bulldozed and built again is
@@ -170,6 +172,7 @@ export class World {
     this.level = new Uint8Array(size);
     this.variant = new Uint8Array(size);
     this.abandoned = new Uint8Array(size);
+    this.anger = new Uint8Array(size);
     this.inherited = new Uint8Array(size);
     this.route = new Uint8Array(size);
     this.roadTier = new Uint8Array(size);
@@ -218,6 +221,7 @@ export class World {
     this.tiles[i] = tile;
     this.level[i] = level;
     this.abandoned[i] = 0;
+    this.anger[i] = 0;
     this.inherited[i] = 0;
     this.roadTier[i] = 0;
     this.busLine[i] = 0;
