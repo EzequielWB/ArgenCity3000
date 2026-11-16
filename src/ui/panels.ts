@@ -28,7 +28,7 @@ export function isModalOpen(): boolean {
 }
 
 /** Panels drawn as an object instead of the usual framed card: a ballot paper or a bronze plaque. */
-export type ModalShape = 'boleta' | 'plaqueta';
+export type ModalShape = 'boleta' | 'plaqueta' | 'feriado';
 
 export function openModal(html: string, onClose?: () => void, shape?: ModalShape): HTMLElement {
   const body = $('#modalBody');
@@ -717,8 +717,9 @@ export function openHelp(): void {
 export function openEvent(game: Game): void {
   const event = game.sim.openEvent();
   if (!event) return;
-  const body = openModal(`
-    <p class="event-kicker${event.kind === 'feriado' ? ' feriado' : ''}">${event.kind === 'feriado' ? 'Feriado' : 'Se cruza en la gestión'}</p>
+  const body = openModal(
+    `
+    <p class="event-kicker">${event.kind === 'feriado' ? 'Feriado' : 'Se cruza en la gestión'}</p>
     <h2>${escapeHtml(event.title)}</h2>
     <p>${escapeHtml(event.text)}</p>
     <div class="event-options">
@@ -730,7 +731,10 @@ export function openEvent(game: Game): void {
         .join('')}
     </div>
     <p><small>El tiempo está en pausa hasta que elijas, y sigue solo.</small></p>
-  `);
+  `,
+    undefined,
+    event.kind === 'feriado' ? 'feriado' : undefined,
+  );
   lockModal();
   body.querySelectorAll<HTMLButtonElement>('button[data-option]').forEach((btn) =>
     btn.addEventListener('click', () => {

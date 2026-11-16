@@ -466,10 +466,6 @@ button.chapa:focus-visible {
 }
 
 /* The event of the month: two ways out, each with its consequence written under the label. */
-.event-kicker.feriado {
-  color: #74acdf;
-}
-
 .event-kicker {
   margin: 0 0 2px;
   font-size: 11px;
@@ -1494,6 +1490,41 @@ ol.steps li {
 
 .boleta button {
   color: var(--cream);
+}
+
+/*
+ * A holiday: the card puts on the flag instead of the green of the panel. Celeste and white on the
+ * top edge, the same hard shadow as everything else, and the labels keep the gold of every action.
+ */
+.modal-card[data-shape='feriado'] {
+  background: var(--enamel-dark);
+  border-color: var(--celeste);
+  box-shadow:
+    inset 0 3px 0 var(--celeste),
+    inset 0 6px 0 #fff,
+    5px 5px 0 #000;
+}
+
+.modal-card[data-shape='feriado'] h2 {
+  color: #fff;
+  text-shadow:
+    0 -2px 0 var(--celeste),
+    2px 2px 0 #08182c,
+    4px 4px 0 #000;
+}
+
+.modal-card[data-shape='feriado'] .event-kicker {
+  color: var(--celeste);
+}
+
+.modal-card[data-shape='feriado'] .event-options button {
+  background: #163a63;
+  border-color: var(--celeste);
+}
+
+.modal-card[data-shape='feriado'] .event-options span,
+.modal-card[data-shape='feriado'] small {
+  color: #c2d9ef;
 }
 
 /* A reached milestone: a bronze plaque held by four screws. */
