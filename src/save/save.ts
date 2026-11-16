@@ -325,6 +325,12 @@ function parseRun(raw: unknown): RunState | null {
   need(r.wonAt === null || r.wonAt === undefined || (isInt(r.wonAt) && (r.wonAt as number) >= 0), 'La run de la partida es inválida');
   need(r.dry === undefined || (isInt(r.dry) && (r.dry as number) >= 0), 'La run de la partida es inválida');
   need(isInt(r.rng), 'La run de la partida es inválida');
+  // What the run has already put on the table: a game saved before it existed opens with an empty deck.
+  const rawSeen = r.seen;
+  need(
+    rawSeen === undefined || (Array.isArray(rawSeen) && rawSeen.length <= 40 && rawSeen.every((id) => typeof id === 'string' && upgradeById(id) !== null)),
+    'La run de la partida es inválida',
+  );
   return {
     picks,
     offer: (rawOffer as string[] | null | undefined) ?? null,
@@ -332,6 +338,7 @@ function parseRun(raw: unknown): RunState | null {
     wonAt: (r.wonAt as number | undefined) ?? null,
     dry: (r.dry as number | undefined) ?? 0,
     rng: (r.rng as number) >>> 0,
+    seen: (rawSeen as string[] | undefined) ?? [],
   };
 }
 

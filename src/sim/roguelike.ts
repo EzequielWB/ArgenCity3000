@@ -145,11 +145,17 @@ export interface RunState {
   dry: number;
   /** The draft's own random state: same seed, same decisions, same offers. */
   rng: number;
+  /**
+   * Every card the run has already put on the table, oldest first. A card that is offered and not
+   * taken is not lost: it goes back to the bottom of the deck, so nothing repeats until the deck has
+   * gone round.
+   */
+  seen: string[];
 }
 
 /** A run starts with a card in hand: the city is founded with one of three upgrades already. */
 export function newRun(seed: number): RunState {
-  const run: RunState = { picks: [], offer: null, next: -1, wonAt: null, dry: 0, rng: (seed ^ 0x9e3779b9) >>> 0 };
+  const run: RunState = { picks: [], offer: null, next: -1, wonAt: null, dry: 0, rng: (seed ^ 0x9e3779b9) >>> 0, seen: [] };
   openOffer(run);
   return run;
 }
@@ -229,21 +235,33 @@ export function markOf(run: RunState): number {
 /**
  * Draws the three cards: one of each class when the pool has them, so every draft has a free win, a
  * bargain and a bet. Already taken upgrades never come back and the three are always different.
+ *
+ * The deck is dealt in order: a card goes to the bottom when it leaves the table, so what was shown
+ * once comes back before anything newer. A card that does nothing now can be the one the city needed
+ * three marks later, and the run shows it again instead of burying it under the luck of a fresh draw.
  */
 export function openOffer(run: RunState): void {
   const rng = new Rng(run.rng);
   const taken = new Set(run.picks.map((p) => p.id));
   const pool = UPGRADES.filter((u) => !taken.has(u.id));
+  const seen = run.seen.filter((id) => !taken.has(id));
+  /** The cards that have gone longest without being on the table: the ones never shown, first. */
+  const oldest = (list: Upgrade[]): Upgrade[] => {
+    const fresh = list.filter((u) => !seen.includes(u.id));
+    if (fresh.length > 0) return fresh;
+    const first = Math.min(...list.map((u) => seen.indexOf(u.id)));
+    return list.filter((u) => seen.indexOf(u.id) === first);
+  };
   const offer: string[] = [];
   for (const kind of ['buena', 'mixta', 'semilla'] as const) {
     const of = pool.filter((u) => u.kind === kind && !offer.includes(u.id));
-    if (of.length > 0) offer.push(rng.pick(of).id);
+    if (of.length > 0) offer.push(rng.pick(oldest(of)).id);
   }
   // A class that ran out still leaves three cards on the table.
   while (offer.length < 3) {
     const left = pool.filter((u) => !offer.includes(u.id));
     if (left.length === 0) break;
-    offer.push(rng.pick(left).id);
+    offer.push(rng.pick(oldest(left)).id);
   }
   // The order is part of the roll: a good card in the first slot every time is a tell.
   for (let k = offer.length - 1; k > 0; k--) {
@@ -251,6 +269,8 @@ export function openOffer(run: RunState): void {
     [offer[k], offer[j]] = [offer[j], offer[k]];
   }
   run.offer = offer.length > 0 ? offer : null;
+  // The three of this draft go to the bottom of the deck, in the order they came out.
+  run.seen = [...seen.filter((id) => !offer.includes(id)), ...offer];
   run.rng = rng.state;
 }
 

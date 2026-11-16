@@ -34,6 +34,15 @@ Runner de la suite: `npm test` (Vitest). Verificación de alcance: `npx vite-nod
 - Tres clases: `buena` (solo ayuda), `mixta` (da y saca ya), `semilla` (cuesta ahora, paga después
   con una etapa a plazo).
 - Nunca se ofrecen 3 de la misma clase; nunca se ofrece una mejora ya tomada.
+
+  > "si yo elijo algo, no quiero que lo otro desaparezca, que siga en la pool, por que a veces una
+  > cosa no sirve ahora pero mas adelante si"
+
+- El mazo se reparte **en orden**: `RunState.seen` guarda las cartas que ya fueron a la mesa, de la
+  más vieja a la más nueva, y cada sorteo prefiere las que nunca salieron y después la más vieja. Lo
+  que se ofreció y no se tomó vuelve al fondo, no se pierde: no se repite nada hasta que el mazo dio
+  la vuelta. Antes de esto, de las cartas declinadas en los primeros cuatro sorteos (donde todavía hay
+  tiempo de recuperarlas), **44 de 320 no volvían a aparecer en toda la run**; ahora vuelven las 320.
 - La oferta se guarda en la partida: al cargar, la ventana se reabre igual (no se vuelve a sortear).
 - Criterio de aceptación: mismo seed + mismas decisiones = mismas ofertas.
 

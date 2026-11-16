@@ -67,6 +67,28 @@ describe('roguelike', () => {
     expect(new Set(a.offer!.map((id) => upgradeById(id)!.kind)).size).toBe(3);
   });
 
+  it('una carta que declinás vuelve a la mesa antes de que se repita cualquiera', () => {
+    // El reparto es un mazo: lo que se ofreció y no se tomó queda abajo, no se pierde. Sin esto, el
+    // 38 % de las cartas declinadas no volvía a aparecer en toda la run.
+    let nuncaVolvieron = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const run = newRun(seed);
+      const offers: string[][] = [];
+      for (let k = 0; k < RUN_PICKS; k++) {
+        offers.push([...run.offer!]);
+        takeUpgrade(run, run.offer![0], 0);
+        if (k < RUN_PICKS - 1) openOffer(run);
+      }
+      // Lo que declinó en los primeros sorteos vuelve antes de que el mazo dé la vuelta entera.
+      for (let k = 0; k <= 3; k++) {
+        for (const id of offers[k].slice(1)) if (!offers.slice(k + 1).some((o) => o.includes(id))) nuncaVolvieron++;
+      }
+      expect(run.seen.length).toBeLessThanOrEqual(UPGRADES.length);
+      expect(new Set(run.seen).size).toBe(run.seen.length); // el mazo no se repite a sí mismo
+    }
+    expect(nuncaVolvieron).toBe(0);
+  });
+
   it('arranca con una carta en la mano, y una mejora tomada no vuelve a salir', () => {
     const run = newRun(7);
     const taken = new Set<string>();
@@ -197,6 +219,11 @@ describe('roguelike', () => {
     const loaded = deserialize(freshText).sim.run!;
     expect(loaded.next).toBe(-1);
     expect(loaded.offer).toEqual(fresh.state.run!.offer);
+
+    // A run saved before the deck existed opens with an empty one, not with a broken game.
+    const noDeck = JSON.parse(text);
+    delete noDeck.sim.run.seen;
+    expect(deserialize(JSON.stringify(noDeck)).sim.run!.seen).toEqual([]);
 
     const old = JSON.parse(text);
     old.version = 17;
