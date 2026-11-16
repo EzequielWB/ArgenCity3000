@@ -15,7 +15,8 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   dos, una muy buena, un poco buena y la mala, es decir las buenas siempre van a tener una consecuencia
   en produccion/caja/etc.. pero traen agrado o traen turismo o beneficios". Las dos buenas cuestan caja
   y producción; la mala no cuesta nada y se paga en aprobación. La muy buena cuesta **2,5 veces** lo
-  que la buena (verbatim: "Yo diria que la buena sea 2,5 veces mas"), o sea $2.250 contra $900, y además
+  que la buena (verbatim: "Yo diria que la buena sea 2,5 veces mas"), o sea dos semanas y media de
+  recaudación contra una (ver `casos-en-semanas.md`: los importes fijos se fueron), y además
   frena la obra un mes.
 - **S3 — Tres por año, uno por mes (verbatim):** "por año SOLO se festejan 3 feriados y solo UN feriado
   por mes (Todos los feriados se anuncian en el diario, con festejar me refiero a tomar decisiones)".

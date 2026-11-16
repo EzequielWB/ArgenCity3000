@@ -3,7 +3,7 @@ import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, TICKS_PER_MONTH } from '../src/confi
 import { packBusLine } from '../src/world/transport';
 import { deserialize, serialize } from '../src/save/save';
 import { COAST_BOOST, COAST_WORN, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, coolOf, lockOf } from '../src/sim/effects';
-import { EVENTS, eventById, pickEvent } from '../src/sim/events';
+import { EVENTS, eventById, pickEvent, weeksOfIncome } from '../src/sim/events';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { Rng } from '../src/core/rng';
 import { TILE, World, type World as WorldType } from '../src/world/world';
@@ -113,7 +113,7 @@ describe('la Provincia pone la plata', () => {
     const { sim } = city();
     sim.state.cash = 1000;
     option('provincia', 0).apply(sim);
-    expect(sim.state.cash).toBe(21000);
+    expect(sim.state.cash).toBe(1000 + weeksOfIncome(sim, 7));
     expect(sim.state.funding.clinic).toBe(120);
     expect(sim.state.effects[lockOf('clinic')]).toBe(24);
     sim.setFunding('clinic', 40);
@@ -160,7 +160,7 @@ describe('la fábrica sin controles', () => {
     const cash = sim.state.cash;
     const jobs = sim.totals.iJobs;
     option('fabrica-sin-controles', 1).apply(sim);
-    expect(sim.state.cash).toBe(cash + 8000);
+    expect(sim.state.cash).toBe(cash + weeksOfIncome(sim, 3));
     expect(sim.totals.iJobs).toBe(jobs);
     expect(sim.abandonedCount).toBe(0);
   });
@@ -182,7 +182,7 @@ describe('la ola de calor', () => {
     const cash = a.state.cash;
     const approval = a.state.approval;
     option('ola-de-calor', 0).apply(a);
-    expect(a.state.cash).toBe(cash - 9000);
+    expect(a.state.cash).toBe(cash - weeksOfIncome(a, 3));
     expect(a.state.approval).toBeGreaterThan(approval);
 
     const b = city().sim;
@@ -220,7 +220,7 @@ describe('la plaza que piden los vecinos', () => {
     const { sim } = city();
     const cash = sim.state.cash;
     option('plaza-vecina', 1).apply(sim);
-    expect(sim.state.cash).toBe(cash + 6000);
+    expect(sim.state.cash).toBe(cash + weeksOfIncome(sim, 2));
     expect(sim.state.grief).toBe(150);
     expect(sim.state.commitment).toBeNull();
   });
@@ -247,7 +247,7 @@ describe('la ola de robos', () => {
     const cash = b.state.cash;
     const approval = b.state.approval;
     option('ola-de-robos', 1).apply(b);
-    expect(b.state.cash).toBe(cash - 4000);
+    expect(b.state.cash).toBe(cash - weeksOfIncome(b, 1.5));
     expect(b.state.approval).toBeGreaterThan(approval);
     expect(b.state.funding.police).toBe(100);
   });
@@ -269,7 +269,7 @@ describe('la curtiembre', () => {
     const a = city().sim;
     const cash = a.state.cash;
     option('curtiembre', 0).apply(a);
-    expect(a.state.cash).toBe(cash + 4000);
+    expect(a.state.cash).toBe(cash + weeksOfIncome(a, 1.5));
     expect(a.state.effects[INDUSTRY_BOOM]).toBe(12);
     expect(a.state.grief).toBe(150);
 
@@ -299,7 +299,7 @@ describe('la crecida', () => {
     const a = city().sim;
     const cash = a.state.cash;
     option('crecida', 0).apply(a);
-    expect(a.state.cash).toBe(cash - 15000);
+    expect(a.state.cash).toBe(cash - weeksOfIncome(a, 5));
     expect(a.state.effects[coolOf('crecida')]).toBe(36);
 
     const b = city().sim;
@@ -321,7 +321,7 @@ describe('la feria del pueblo', () => {
     const cash = a.state.cash;
     const approval = a.state.approval;
     option('feria', 0).apply(a);
-    expect(a.state.cash).toBe(cash - 2500);
+    expect(a.state.cash).toBe(cash - weeksOfIncome(a, 1));
     expect(a.state.approval).toBeGreaterThan(approval);
     expect(a.state.effects[FREEZE]).toBe(1);
 
@@ -346,7 +346,7 @@ describe('el corte en la usina', () => {
     const a = city().sim;
     const cash = a.state.cash;
     option('corte-de-usina', 0).apply(a);
-    expect(a.state.cash).toBe(cash - 18000);
+    expect(a.state.cash).toBe(cash - weeksOfIncome(a, 6));
     expect(a.state.effects[NO_BLACKOUT]).toBe(3);
 
     const b = city().sim;
@@ -388,7 +388,7 @@ describe('la coima en la obra', () => {
       if (sim.state.grief > 0) {
         reported = true;
         expect(sim.state.approval).toBeLessThan(before);
-        expect(sim.state.cash).toBe(cash + 5000);
+        expect(sim.state.cash).toBe(cash + weeksOfIncome(sim, 2));
       }
     }
     expect(reported).toBe(true); // three in ten, so thirty tries always find one
@@ -408,7 +408,7 @@ describe('la sequía', () => {
     const a = city().sim;
     const cash = a.state.cash;
     option('sequia', 0).apply(a);
-    expect(a.state.cash).toBe(cash - 12000);
+    expect(a.state.cash).toBe(cash - weeksOfIncome(a, 4));
     expect(a.state.effects[INDUSTRY_BOOM]).toBe(3);
 
     const b = city().sim;
@@ -463,7 +463,7 @@ describe('la temporada en la costanera', () => {
     const a = city().sim;
     const cash = a.state.cash;
     option('temporada', 0).apply(a);
-    expect(a.state.cash).toBe(cash - 5000);
+    expect(a.state.cash).toBe(cash - weeksOfIncome(a, 2));
     expect(a.state.effects[COAST_BOOST]).toBe(3);
 
     const b = city().sim;
@@ -589,27 +589,44 @@ describe('the newer cases', () => {
     expect(eventById('pantalla-gigante')!.when(sim)).toBe(false);
   });
 
-  // For each: what the first way out does to the cash and the approval, and the second.
+  // For each: how many weeks of what the city collects the first way out charges (negative: it pays
+  // in) and which way the approval moves, then the same for the second.
   const outcomes: [string, number, 1 | -1, number, 1 | -1][] = [
-    ['paro-docente', -7000, 1, 0, -1],
-    ['paro-de-colectivos', -5000, 1, 0, -1],
-    ['paro-de-salud', -9000, 1, 0, -1],
-    ['barro-en-las-calles', -3000, 1, 0, -1],
-    ['brote-de-gripe', -6000, 1, 0, -1],
-    ['granizada', -7000, 1, 0, -1],
-    ['shopping', 6000, -1, 0, 1],
-    ['acto-politico', -4000, 1, 0, -1],
-    ['pantalla-gigante', -3500, 1, 0, -1],
+    ['paro-docente', -2.5, 1, 0, -1],
+    ['paro-de-colectivos', -2, 1, 0, -1],
+    ['paro-de-salud', -3, 1, 0, -1],
+    ['barro-en-las-calles', -1, 1, 0, -1],
+    ['brote-de-gripe', -2, 1, 0, -1],
+    ['granizada', -2.5, 1, 0, -1],
+    ['shopping', 2, -1, 0, 1],
+    ['acto-politico', -1.5, 1, 0, -1],
+    ['pantalla-gigante', -1.5, 1, 0, -1],
   ];
 
-  it.each(outcomes)('%s: pays what it says and moves the approval the way it says', (id, cash0, sign0, cash1, sign1) => {
-    for (const [index, cash, sign] of [[0, cash0, sign0], [1, cash1, sign1]] as const) {
+  it.each(outcomes)('%s: pays what it says and moves the approval the way it says', (id, weeks0, sign0, weeks1, sign1) => {
+    for (const [index, weeks, sign] of [[0, weeks0, sign0], [1, weeks1, sign1]] as const) {
       const { sim } = city();
       const before = { cash: sim.state.cash, approval: sim.state.approval };
       option(id, index).apply(sim);
-      expect(sim.state.cash).toBe(before.cash + cash);
+      expect(sim.state.cash).toBe(before.cash + weeksOfIncome(sim, weeks));
       expect(Math.sign(sim.state.approval - before.approval)).toBe(sign);
     }
+  });
+
+  // The cases used to charge fixed pesos: measured, that was two years of income for a town of five
+  // thousand and half a day for a city of a hundred thousand. Now they charge weeks of what the city
+  // itself collects, so the weight of the decision does not depend on how big it got.
+  it('charges weeks of what the city collects, whatever the city is worth', () => {
+    const sim = city().sim;
+    for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
+    const real = sim.state.lastBudget!;
+    const week = (income: number) => {
+      sim.state.lastBudget = { ...real, income };
+      return weeksOfIncome(sim, 1);
+    };
+    expect(week(12000)).toBe(3000); // four weeks to the month
+    expect(week(120000)).toBe(30000); // ten times the city, ten times the bill
+    expect(week(0)).toBe(500); // a town that has not collected yet still pays something
   });
 
   it('paying the arrears brings the budget back to normal, and letting it run leaves it cut', () => {
@@ -633,7 +650,7 @@ describe('the newer cases', () => {
     const cash = u.state.cash;
     option('paro-docente', 0).apply(u);
     expect(u.state.funding.university).toBe(100);
-    expect(u.state.cash).toBe(cash - 13000);
+    expect(u.state.cash).toBe(cash - weeksOfIncome(u, 4.5));
 
     const c = city().sim;
     c.setTransport(30);

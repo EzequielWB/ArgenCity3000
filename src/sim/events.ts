@@ -1,15 +1,28 @@
-import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH } from '../config';
+import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH, WEEKS_PER_MONTH } from '../config';
 import type { Rng } from '../core/rng';
 import { busStations } from '../world/transport';
 import { TILE, type World, zoneOf } from '../world/world';
 import { HOLIDAYS, celebratedHolidayOf, dateOf, type Holiday } from './calendar';
-import { formatMoney } from '../core/format';
 import { countSchools } from './commitments';
 import { COAST_BOOST, COAST_WORN, FIESTA, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, coolOf, lockOf } from './effects';
 import { waterDistance } from './fields';
 import { isUnlocked } from './milestones';
 import { monthsToElection } from './politics';
 import type { Simulation } from './simulation';
+
+/**
+ * A case charges and pays in weeks of what the city collects, not in pesos. The fixed amounts these
+ * cases used to carry were measured to be two years of income for a town of five thousand and half
+ * a day for a city of a hundred thousand: the same decision was a catastrophe or a rounding error.
+ * Four weeks to the month, and a floor so a town that has not collected anything yet still pays.
+ */
+const WEEK_FLOOR = 500;
+
+/** What `weeks` weeks of this city's income are worth. */
+export function weeksOfIncome(sim: Simulation, weeks: number): number {
+  const income = sim.state.lastBudget?.income ?? 0;
+  return Math.max(WEEK_FLOOR, Math.round(income / WEEKS_PER_MONTH)) * weeks;
+}
 
 /** One of the ways out of an event: usually two, three on a holiday. */
 export interface EventOption {
@@ -165,9 +178,9 @@ const PROVINCIA: CityEvent = {
   options: [
     {
       label: 'Aceptar la plata',
-      detail: 'Entran $20.000 ahora. Salud queda clavada en 120 % por dos años: no la podés bajar aunque la caja reviente.',
+      detail: 'Entra lo que la ciudad recauda en siete semanas. Salud queda clavada en 120 % por dos años: no la podés bajar aunque la caja reviente.',
       apply: (sim) => {
-        sim.state.cash += 20000;
+        sim.state.cash += weeksOfIncome(sim, 7);
         sim.setFunding('clinic', 120);
         sim.effect(lockOf('clinic'), 24);
       },
@@ -197,9 +210,9 @@ const FABRICA: CityEvent = {
     },
     {
       label: 'Multarla y que siga',
-      detail: 'Entran $8.000. La fábrica sigue sin controles: trabaja igual y el humo no baja.',
+      detail: 'Entran tres semanas de recaudación. La fábrica sigue sin controles: trabaja igual y el humo no baja.',
       apply: (sim) => {
-        sim.state.cash += 8000;
+        sim.state.cash += weeksOfIncome(sim, 3);
         sim.nudgeApproval(-3);
       },
     },
@@ -217,9 +230,9 @@ const CALOR: CityEvent = {
   options: [
     {
       label: 'Abrir paradores con agua',
-      detail: 'Cuestan $9.000 el verano, pero hay agua y sombra: la aprobación sube.',
+      detail: 'Cuestan tres semanas de recaudación, pero hay agua y sombra: la aprobación sube.',
       apply: (sim) => {
-        sim.state.cash -= 9000;
+        sim.state.cash -= weeksOfIncome(sim, 3);
         sim.nudgeApproval(6);
       },
     },
@@ -247,9 +260,9 @@ const PLAZA: CityEvent = {
     },
     {
       label: 'Venderlo al inversor',
-      detail: 'Entran $6.000 y llegan empleos. El barrio se queda con el enojo de la asamblea.',
+      detail: 'Entran dos semanas de recaudación y llegan empleos. El barrio se queda con el enojo de la asamblea.',
       apply: (sim) => {
-        sim.state.cash += 6000;
+        sim.state.cash += weeksOfIncome(sim, 2);
         sim.state.grief += 150;
       },
     },
@@ -276,9 +289,9 @@ const ROBOS: CityEvent = {
     },
     {
       label: 'Campaña de prevención',
-      detail: 'Cuestan $4.000 en folletos y alarmas. Sube la aprobación; el delito sigue igual.',
+      detail: 'Cuestan una semana y media de recaudación, en folletos y alarmas. Sube la aprobación; el delito sigue igual.',
       apply: (sim) => {
-        sim.state.cash -= 4000;
+        sim.state.cash -= weeksOfIncome(sim, 1.5);
         sim.nudgeApproval(5);
       },
     },
@@ -293,9 +306,9 @@ const CURTIEMBRE: CityEvent = {
   options: [
     {
       label: 'Cederle el terreno',
-      detail: 'Paga $4.000 por el terreno. Llegan los empleos y el humo: un año de industria a full y vecinos quejándose.',
+      detail: 'Paga una semana y media de recaudación por el terreno. Llegan los empleos y el humo: un año de industria a full y vecinos quejándose.',
       apply: (sim) => {
-        sim.state.cash += 4000;
+        sim.state.cash += weeksOfIncome(sim, 1.5);
         sim.effect(INDUSTRY_BOOM, 12);
         sim.state.grief += 150;
         sim.nudgeApproval(-2);
@@ -323,9 +336,9 @@ const CRECIDA: CityEvent = {
   options: [
     {
       label: 'Hacer la obra de defensa',
-      detail: 'Cuestan $15.000. Se salva todo y la costa queda protegida tres años.',
+      detail: 'Cuestan cinco semanas de recaudación. Se salva todo y la costa queda protegida tres años.',
       apply: (sim) => {
-        sim.state.cash -= 15000;
+        sim.state.cash -= weeksOfIncome(sim, 5);
         sim.effect(coolOf('crecida'), 36);
       },
     },
@@ -348,9 +361,9 @@ const FERIA: CityEvent = {
   options: [
     {
       label: 'Pagar el operativo',
-      detail: 'Cuestan $2.500 de vallas y baños. Sube la aprobación, pero un mes de tránsito trabado.',
+      detail: 'Cuesta una semana de recaudación, en vallas y baños. Sube la aprobación, pero un mes de tránsito trabado.',
       apply: (sim) => {
-        sim.state.cash -= 2500;
+        sim.state.cash -= weeksOfIncome(sim, 1);
         sim.nudgeApproval(6);
         sim.effect(FREEZE, 1);
       },
@@ -371,9 +384,9 @@ const USINA: CityEvent = {
   options: [
     {
       label: 'Comprarle luz a la Provincia',
-      detail: 'Cuestan $18.000 tres meses de luz comprada: no hay cortes ni la ciudad se frena.',
+      detail: 'Cuestan seis semanas de recaudación: tres meses de luz comprada, no hay cortes ni la ciudad se frena.',
       apply: (sim) => {
-        sim.state.cash -= 18000;
+        sim.state.cash -= weeksOfIncome(sim, 6);
         sim.effect(NO_BLACKOUT, 3);
       },
     },
@@ -412,9 +425,9 @@ const COIMA: CityEvent = {
     },
     {
       label: 'Taparlo',
-      detail: 'Entran $5.000. Con tres de diez chances sale a la luz, y si sale la aprobación se hunde seis meses.',
+      detail: 'Entran dos semanas de recaudación. Con tres de diez chances sale a la luz, y si sale la aprobación se hunde seis meses.',
       apply: (sim) => {
-        sim.state.cash += 5000;
+        sim.state.cash += weeksOfIncome(sim, 2);
         if (!sim.chance(0.3)) return;
         sim.nudgeApproval(-12);
         sim.state.grief += 200;
@@ -432,9 +445,9 @@ const SEQUIA: CityEvent = {
   options: [
     {
       label: 'Subsidiar la producción',
-      detail: 'Cuestan $12.000 tres meses de subsidio: la industria aguanta.',
+      detail: 'Cuestan cuatro semanas de recaudación: tres meses de subsidio, la industria aguanta.',
       apply: (sim) => {
-        sim.state.cash -= 12000;
+        sim.state.cash -= weeksOfIncome(sim, 4);
         sim.effect(INDUSTRY_BOOM, 3);
       },
     },
@@ -480,9 +493,9 @@ const TEMPORADA: CityEvent = {
   options: [
     {
       label: 'Invertir en la temporada',
-      detail: 'Cuestan $5.000 de mantenimiento y guardavidas. La costa rinde la mitad más todo el verano y la aprobación sube.',
+      detail: 'Cuestan dos semanas de recaudación, en mantenimiento y guardavidas. La costa rinde la mitad más todo el verano y la aprobación sube.',
       apply: (sim) => {
-        sim.state.cash -= 5000;
+        sim.state.cash -= weeksOfIncome(sim, 2);
         sim.effect(COAST_BOOST, 3);
         sim.nudgeApproval(4);
       },
@@ -522,13 +535,13 @@ const PARO_DOCENTE: CityEvent = {
   options: [
     {
       label: 'Pagar lo adeudado',
-      detail: 'Cuestan $7.000 ($13.000 si la universidad también está recortada) y los presupuestos vuelven al 100 %. Vuelven las clases y los docentes lo reconocen: sube la aprobación.',
+      detail: 'Cuestan dos semanas y media de recaudación, el doble si la universidad también está recortada, y los presupuestos vuelven al 100 %. Vuelven las clases y los docentes lo reconocen: sube la aprobación.',
       apply: (sim) => {
-        sim.state.cash -= 7000;
+        sim.state.cash -= weeksOfIncome(sim, 2.5);
         sim.setFunding('school', 100);
         // The university is paid too when its budget was the one that was cut.
         if (sim.state.funding.university < EVENT.strikeBelow) {
-          sim.state.cash -= 6000;
+          sim.state.cash -= weeksOfIncome(sim, 2);
           sim.setFunding('university', 100);
         }
         sim.nudgeApproval(4);
@@ -551,9 +564,9 @@ const PARO_SALUD: CityEvent = {
   options: [
     {
       label: 'Pagar lo adeudado',
-      detail: 'Cuestan $9.000 y el presupuesto del hospital vuelve al 100 %. Se normaliza la atención y el personal lo reconoce: sube la aprobación.',
+      detail: 'Cuestan tres semanas de recaudación y el presupuesto del hospital vuelve al 100 %. Se normaliza la atención y el personal lo reconoce: sube la aprobación.',
       apply: (sim) => {
-        sim.state.cash -= 9000;
+        sim.state.cash -= weeksOfIncome(sim, 3);
         sim.setFunding('hospital', 100);
         sim.nudgeApproval(4);
       },
@@ -574,9 +587,9 @@ const PARO_COLECTIVOS: CityEvent = {
   options: [
     {
       label: 'Pagar el atraso',
-      detail: 'Cuestan $5.000 y el presupuesto de transporte vuelve al 100 %. Los colectivos vuelven a la calle y la gente lo agradece: sube la aprobación.',
+      detail: 'Cuestan dos semanas de recaudación y el presupuesto de transporte vuelve al 100 %. Los colectivos vuelven a la calle y la gente lo agradece: sube la aprobación.',
       apply: (sim) => {
-        sim.state.cash -= 5000;
+        sim.state.cash -= weeksOfIncome(sim, 2);
         sim.setTransport(100);
         sim.nudgeApproval(3);
       },
@@ -600,9 +613,9 @@ const BARRO: CityEvent = {
   options: [
     {
       label: 'Mandar la niveladora',
-      detail: 'Cuestan $3.000 de combustible y horas de máquina. Se arreglan las calles y los vecinos lo valoran: sube la aprobación.',
+      detail: 'Cuesta una semana de recaudación, en combustible y horas de máquina. Se arreglan las calles y los vecinos lo valoran: sube la aprobación.',
       apply: (sim) => {
-        sim.state.cash -= 3000;
+        sim.state.cash -= weeksOfIncome(sim, 1);
         sim.nudgeApproval(4);
       },
     },
@@ -622,9 +635,9 @@ const BROTE: CityEvent = {
   options: [
     {
       label: 'Campaña de vacunación',
-      detail: 'Cuestan $6.000 de vacunas y carpas sanitarias. Se contiene el brote y sube la aprobación.',
+      detail: 'Cuestan dos semanas de recaudación, en vacunas y carpas sanitarias. Se contiene el brote y sube la aprobación.',
       apply: (sim) => {
-        sim.state.cash -= 6000;
+        sim.state.cash -= weeksOfIncome(sim, 2);
         sim.nudgeApproval(5);
       },
     },
@@ -644,9 +657,9 @@ const GRANIZADA: CityEvent = {
   options: [
     {
       label: 'Ayudar a los afectados',
-      detail: 'Cuestan $7.000 de chapas y vidrios. Los barrios se levantan rápido y sube la aprobación.',
+      detail: 'Cuestan dos semanas y media de recaudación, en chapas y vidrios. Los barrios se levantan rápido y sube la aprobación.',
       apply: (sim) => {
-        sim.state.cash -= 7000;
+        sim.state.cash -= weeksOfIncome(sim, 2.5);
         sim.nudgeApproval(4);
       },
     },
@@ -666,9 +679,9 @@ const SHOPPING: CityEvent = {
   options: [
     {
       label: 'Aprobarlo',
-      detail: 'Entran $6.000 por el terreno y la ciudad suena a progreso, pero los comerciantes se enojan: baja un poco la aprobación.',
+      detail: 'Entran dos semanas de recaudación por el terreno y la ciudad suena a progreso, pero los comerciantes se enojan: baja un poco la aprobación.',
       apply: (sim) => {
-        sim.state.cash += 6000;
+        sim.state.cash += weeksOfIncome(sim, 2);
         sim.nudgeApproval(-3);
       },
     },
@@ -691,9 +704,9 @@ const ACTO: CityEvent = {
   options: [
     {
       label: 'Hacer el acto',
-      detail: 'Cuestan $4.000 de escenario y choripanes. Se llena la plaza y sube bastante la aprobación.',
+      detail: 'Cuestan una semana y media de recaudación, en escenario y choripanes. Se llena la plaza y sube bastante la aprobación.',
       apply: (sim) => {
-        sim.state.cash -= 4000;
+        sim.state.cash -= weeksOfIncome(sim, 1.5);
         sim.nudgeApproval(7);
       },
     },
@@ -713,9 +726,9 @@ const PANTALLA: CityEvent = {
   options: [
     {
       label: 'Instalar la pantalla',
-      detail: 'Cuestan $3.500 de alquiler y sonido. La plaza explota con cada gol y sube la aprobación.',
+      detail: 'Cuestan una semana y media de recaudación, en alquiler y sonido. La plaza explota con cada gol y sube la aprobación.',
       apply: (sim) => {
-        sim.state.cash -= 3500;
+        sim.state.cash -= weeksOfIncome(sim, 1.5);
         sim.nudgeApproval(6);
       },
     },
@@ -730,7 +743,7 @@ const PANTALLA: CityEvent = {
 /** The catalogue, in no particular order: `pickEvent` rolls among the ones the city deserves. */
 
 /** What a holiday costs and what it gives back. The big one is two and a half times the act. */
-const FESTEJO = { grande: 2250, acto: 900 } as const;
+const FESTEJO = { grande: 2.5, acto: 1 } as const;
 
 /**
  * A holiday as a case: three ways out, the two that pay and the one that only costs face. The big
@@ -746,9 +759,9 @@ function holidayEvent(h: Holiday): CityEvent {
     options: [
       {
         label: 'Festejarlo a lo grande',
-        detail: `Cuestan ${formatMoney(FESTEJO.grande)} y un mes sin obra. La aprobación sube y el pueblo gasta dos meses.`,
+        detail: 'Cuestan dos semanas y media de recaudación y un mes sin obra. La aprobación sube y el pueblo gasta dos meses.',
         apply: (sim) => {
-          sim.state.cash -= FESTEJO.grande;
+          sim.state.cash -= weeksOfIncome(sim, FESTEJO.grande);
           sim.nudgeApproval(6);
           sim.effect(FIESTA, 2);
           sim.effect(FREEZE, 1);
@@ -756,9 +769,9 @@ function holidayEvent(h: Holiday): CityEvent {
       },
       {
         label: 'Un acto en la plaza',
-        detail: `Cuestan ${formatMoney(FESTEJO.acto)}. La aprobación sube un poco y el pueblo gasta un mes.`,
+        detail: 'Cuesta una semana de recaudación. La aprobación sube un poco y el pueblo gasta un mes.',
         apply: (sim) => {
-          sim.state.cash -= FESTEJO.acto;
+          sim.state.cash -= weeksOfIncome(sim, FESTEJO.acto);
           sim.nudgeApproval(3);
           sim.effect(FIESTA, 1);
         },
