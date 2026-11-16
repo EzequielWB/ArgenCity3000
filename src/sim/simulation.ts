@@ -226,6 +226,11 @@ export class Simulation {
     this.cityName = cityName;
     this.mayor = mayor;
     this.rng = new Rng(state.rngState);
+    // A form of government that will not defund education says so also for a game loaded from before.
+    const floor = GOVERNMENTS[state.government].fundingFloor;
+    if (floor > 0) {
+      for (const kind of ['school', 'university'] as const) state.funding[kind] = Math.max(floor, state.funding[kind]);
+    }
     this.refresh();
     this.prevSnapshot = this.snapshot();
     this.monthPaid = this.paidSoFar();
@@ -650,7 +655,8 @@ export class Simulation {
   /** Sets a service's budget (percent of its standard upkeep); its coverage follows at once. */
   setFunding(kind: ServiceKind, percent: number): void {
     if (this.hasEffect(lockOf(kind))) return;
-    this.state.funding[kind] = Math.max(0, Math.min(MAX_FUNDING, Math.round(percent)));
+    const floor = kind === 'school' || kind === 'university' ? GOVERNMENTS[this.state.government].fundingFloor : 0;
+    this.state.funding[kind] = Math.max(floor, Math.min(MAX_FUNDING, Math.round(percent)));
     this.updateFields();
   }
 

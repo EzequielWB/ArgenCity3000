@@ -46,6 +46,8 @@ export interface Government {
   taxIncome: { R: number; C: number; I: number };
   /** What the four public services cost to keep, as a multiplier. */
   serviceCost: number;
+  /** Budget of schools and university below which this form of government will not go. */
+  fundingFloor: number;
 }
 
 export const GOVERNMENT_KINDS: readonly GovernmentKind[] = ['democracia', 'dictadura', 'tecnocracia', 'teocracia', 'comunismo'];
@@ -64,6 +66,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     approvalStep: 4,
     taxIncome: { R: 1, C: 1, I: 1 },
     serviceCost: 1,
+    fundingFloor: 0,
   },
   dictadura: {
     label: 'Dictadura',
@@ -78,20 +81,32 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     approvalStep: 4,
     taxIncome: { R: 1, C: 1, I: 1 },
     serviceCost: 1,
+    fundingFloor: 0,
   },
   tecnocracia: {
     label: 'Tecnocracia',
-    blurb: 'Gobierna el que sabe: mandatos largos y la mitad de la opinión en juego.',
-    pros: ['Elecciones cada 6 años', 'La Provincia gira los subsidios de cada hito'],
-    cons: ['La aprobación se mueve la mitad de rápido: si la ciudad se enoja, tardás en recuperarla', 'Llega un 5 % menos de gente nueva'],
+    blurb: 'Gobierna el que sabe: mandatos de seis años y una ciudad que cobra y gasta como una empresa.',
+    pros: [
+      'Sin evasión: los tres impuestos rinden un 10 % más',
+      'Administración técnica: los servicios cuestan un 10 % menos de mantener',
+      'La educación no se toca: escuelas y universidad nunca bajan del 80 %',
+      'La Provincia gira los subsidios de cada hito',
+    ],
+    cons: [
+      'Elecciones cada 6 años: hace falta el 50 % para seguir',
+      'La aprobación se mueve la mitad de rápido: si la ciudad se enoja, tardás en recuperarla',
+      'Llega un 5 % menos de gente nueva',
+      'El piso de educación se paga igual con la caja en rojo',
+    ],
     termYears: 6,
     toWin: 50,
     migration: 0.95,
     grants: 1,
     approvalCap: 100,
     approvalStep: 2,
-    taxIncome: { R: 1, C: 1, I: 1 },
-    serviceCost: 1,
+    taxIncome: { R: 1.1, C: 1.1, I: 1.1 },
+    serviceCost: 0.9,
+    fundingFloor: 80,
   },
   teocracia: {
     label: 'Teocracia',
@@ -106,6 +121,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     approvalStep: 4,
     taxIncome: { R: 1, C: 1, I: 1 },
     serviceCost: 1,
+    fundingFloor: 0,
   },
   comunismo: {
     label: 'Comunismo',
@@ -120,6 +136,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     approvalStep: 1,
     taxIncome: { R: 1, C: 0.5, I: 1.25 },
     serviceCost: 0.7,
+    fundingFloor: 0,
   },
 };
 

@@ -22,3 +22,11 @@ Objective: two new forms of government. Branch: feat/vertical-slice. Delivery: a
 
 - L1 (2026-11-15) "Hacelo dale los dos juntos, lo que si hacé que el marco de Aprobación divina tenga un aspecto "Divino" medio blanco y letritas doradas, con buen contraste y respetando la estetica, no super increible sinó cambiado."
 - 2026-11-15 T1-T3 done in 0598dfb (config, budget factors, favor.ts, plan.ts, save v17, 15 tests in tests/gobiernos.test.ts). T4: divine plaque (ivory, gold letters), approval panel sections, README; checked on screen at 1280x720 and 390x760. 828 tests pass.
+- L6 (usuario, 2026-11-16): "la tecnocracia actualmente no cambia casi nada, solo votaciones cada 6
+  meses, estaria bueno algun tipo de beneficio con la educacion ... la 1 y la 3 me gusta". La
+  tecnocracia era una democracia con mandato más largo y la aprobación a media velocidad: solo costos.
+  Ahora tiene identidad económica: `taxIncome` 1,1 en los tres rubros ("sin evasión") y `serviceCost`
+  0,9 ("administración técnica"), y un `fundingFloor` de 80 para escuelas y universidad que se aplica
+  en `setFunding`, en el mínimo del slider (`panels.ts`) y al cargar una partida anterior al cambio.
+  El piso es pro y contra a la vez, y la tarjeta lo dice en los dos lados: "la educación no se toca"
+  arriba, "el piso se paga igual con la caja en rojo" abajo. Cuatro pros y cuatro contras.

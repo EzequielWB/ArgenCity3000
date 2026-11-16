@@ -46,10 +46,31 @@ describe('the new forms of government', () => {
       expect(GOVERNMENTS[id].pros.length).toBeGreaterThan(0);
       expect(GOVERNMENTS[id].cons.length).toBeGreaterThan(0);
     }
-    for (const id of ['democracia', 'dictadura', 'tecnocracia'] as const) {
+    for (const id of ['democracia', 'dictadura'] as const) {
       expect(GOVERNMENTS[id].taxIncome).toEqual({ R: 1, C: 1, I: 1 });
       expect(GOVERNMENTS[id].serviceCost).toBe(1);
+      expect(GOVERNMENTS[id].fundingFloor).toBe(0);
     }
+  });
+
+  it('a technocracy collects and spends better, and will not defund education', () => {
+    expect(GOVERNMENTS.tecnocracia.taxIncome).toEqual({ R: 1.1, C: 1.1, I: 1.1 });
+    expect(GOVERNMENTS.tecnocracia.serviceCost).toBe(0.9);
+    expect(GOVERNMENTS.tecnocracia.fundingFloor).toBe(80);
+    // The floor holds the setter, and it is already on when an old game is loaded.
+    const sim = new Simulation(flat(), newSimState(1, 'tecnocracia'), 'Villa Técnica');
+    sim.setFunding('school', 20);
+    expect(sim.state.funding.school).toBe(80);
+    sim.setFunding('clinic', 20);
+    expect(sim.state.funding.clinic).toBe(20); // the floor is for education only
+    const old = newSimState(1, 'tecnocracia');
+    old.funding.university = 30;
+    expect(new Simulation(flat(), old, 'Villa Técnica').state.funding.university).toBe(80);
+    // The 10 % on taxes reaches a real budget; the 10 % off reaches the services.
+    const { world } = town('democracia');
+    const budget = (government: 'democracia' | 'tecnocracia') => monthlyBudget(world, 12, undefined, null, undefined, 100, 1, 100, government);
+    expect(budget('tecnocracia').taxR).toBeGreaterThan(budget('democracia').taxR);
+    expect(budget('tecnocracia').income).toBeGreaterThan(budget('democracia').income);
   });
 
   it('has a theocracy with no elections whose people never pass 80, and a communism with a congress every 5 years', () => {

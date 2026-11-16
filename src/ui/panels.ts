@@ -77,6 +77,10 @@ const ZONE_ROWS: [ZoneKind, string][] = [
   ['C', 'Comercial'],
   ['I', 'Industrial'],
 ];
+/** The lowest budget this form of government allows for a service: only education has a floor. */
+const fundingFloor = (sim: Simulation, kind: ServiceKind): number =>
+  kind === 'school' || kind === 'university' ? GOVERNMENTS[sim.state.government].fundingFloor : 0;
+
 const SERVICE_ROWS: [ServiceKind, string][] = [
   ['school', 'Escuelas'],
   ['clinic', 'Salitas'],
@@ -140,7 +144,7 @@ export function openBudget(game: Game): void {
         <div class="tax general"><label for="fundall">Todos a la vez</label><input type="range" id="fundall" data-all="1" min="0" max="${MAX_FUNDING}" step="10" value="${averageFunding(sim)}"><output>${averageFunding(sim)} %</output></div>
         ${SERVICE_ROWS.map(
           ([k, label]) =>
-            `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
+            `<div class="tax"><label for="fund${k}">${label}</label><input type="range" id="fund${k}" data-fund="${k}" min="${fundingFloor(sim, k)}" max="${MAX_FUNDING}" step="10" value="${sim.state.funding[k]}"><output>${sim.state.funding[k]} %</output></div>`,
         ).join('')}
         <div class="tax"><label for="fundplants">Usinas</label><input type="range" id="fundplants" data-plants="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.plants}"><output>${sim.state.plants} %</output></div>
         <div class="tax"><label for="fundgreen">Espacios verdes</label><input type="range" id="fundgreen" data-green="1" min="0" max="${MAX_FUNDING}" step="10" value="${sim.state.green}"><output>${sim.state.green} %</output></div>
