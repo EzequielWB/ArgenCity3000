@@ -10,6 +10,7 @@
   --muted: #c9b79a;
   --enamel: #1f4f8a;
   --enamel-dark: #0e2a4a;
+  --bordo: #7a2f3a;
   --base: #12382b;
   --deep: #0a241b;
   --raised: #1d5440;
@@ -496,27 +497,35 @@ button.chapa:focus-visible {
   color: var(--muted);
 }
 /* The class of an upgrade, so the three kinds read at a glance: free, with a cost, or a bet. */
-.event-options .up-kind,
-.run-picks .up-kind {
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.event-options .up-buena,
-.run-picks .up-buena {
-  color: #9fdc8a;
-}
-.event-options .up-mixta,
-.run-picks .up-mixta {
-  color: var(--gold-light);
-}
-.event-options .up-semilla,
-.run-picks .up-semilla {
-  color: #6fb7e0;
+/* The line in today's pesos: set apart by a hairline, not by fading it into the bordó. */
+.event-options .up-note {
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(224, 165, 38, 0.4);
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--paper);
 }
 .run-picks {
   margin: 6px 0 10px;
   padding-left: 18px;
+}
+/* The draft of a run: a bordó card with a gold frame, because the choice cannot be undone. */
+.modal-card[data-shape='mejora'] .event-options button {
+  background: var(--bordo);
+  border: 2px solid var(--gold);
+  color: var(--cream);
+}
+.modal-card[data-shape='mejora'] .event-options button:hover {
+  background: #8f3743;
+  border-color: var(--gold-light);
+}
+.modal-card[data-shape='mejora'] .event-options b {
+  color: var(--gold);
+  font-size: 15px;
+}
+.modal-card[data-shape='mejora'] .event-options span {
+  color: var(--paper);
 }
 
 /* A promise the neighbours are waiting on: red, on top of the map, with the time left. */

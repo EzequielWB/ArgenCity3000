@@ -49,6 +49,26 @@ Runner de la suite: `npm test` (Vitest). Verificación de alcance: `npx vite-nod
 - Criterio de aceptación: la ciudad cambia en el acto (caja, aprobación y habitantes), el aviso dice
   qué salió, y al cargar la partida el mismo pick da exactamente los mismos números.
 
+### S2c — Las cartas no se delatan
+
+> "que no diga 'buena, mala ...' sinó que te des cuenta solo leyendo, además que estaria bueno que
+> esten 'shuffled' cosa que la buena no esté siempre en el 1er lugar ni la mala en el 3ero"
+
+> "la card de la mejora del rogue like que sea bordó el color de fondo y el titulo en dorado con el
+> borde de la card en dorado"
+
+> "vi algo de 'administración' que seria eso? podrias explicarlo mas claro"
+
+- La clase de la carta (`buena`/`mixta`/`semilla`) es una regla del sorteo, no una etiqueta: no se
+  escribe en la pantalla ni en el resumen de la run. Se entiende leyendo la carta.
+- El orden de las tres se baraja con el rng de la run: ninguna clase tiene un lugar fijo.
+- La carta es bordó (`--bordo`), con el borde y el título en dorado (`--gold`), en su propia forma de
+  ventana (`data-shape="mejora"`) para no tocar los casos comunes.
+- Las cartas que mueven la administración llevan una raya y una línea que dice qué es esa cuenta y
+  cuánto costó el mes pasado, en pesos: sin eso, "el recargo por tamaño" no dice nada.
+- Criterio de aceptación: el HTML de la oferta no contiene ninguna de las tres etiquetas; en veinte
+  seeds las tres clases pasan por el primer lugar; la nota lleva el `services` del último presupuesto.
+
 ### S3 — La run se pierde y no se sigue
 
 > "si perdes no podes seguir, solo partida nueva (ir al menu o reiniciar el mismo mapa), 2 años de

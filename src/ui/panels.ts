@@ -28,8 +28,8 @@ export function isModalOpen(): boolean {
   return !$('#modal').classList.contains('hidden');
 }
 
-/** Panels drawn as an object instead of the usual framed card: a ballot paper or a bronze plaque. */
-export type ModalShape = 'boleta' | 'plaqueta' | 'feriado';
+/** Panels drawn as an object instead of the usual framed card: a ballot paper, a bronze plaque or a bordó card. */
+export type ModalShape = 'boleta' | 'plaqueta' | 'feriado' | 'mejora';
 
 export function openModal(html: string, onClose?: () => void, shape?: ModalShape): HTMLElement {
   const body = $('#modalBody');

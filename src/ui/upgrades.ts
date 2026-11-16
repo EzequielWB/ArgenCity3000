@@ -1,18 +1,34 @@
 /** The roguelike windows: the three cards on the table, and the end of the run. */
-import { formatNumber } from '../core/format';
+import { formatMoney, formatNumber } from '../core/format';
 import type { Game } from '../game';
 import { dateLabel } from '../sim/calendar';
-import { KIND_LABEL, RUN_GOAL, RUN_MARKS, pickedUpgrades, upgradeById, type RunState } from '../sim/roguelike';
+import { RUN_GOAL, RUN_MARKS, pickedUpgrades, upgradeById, type RunState, type Upgrade } from '../sim/roguelike';
+import type { Simulation } from '../sim/simulation';
 import { escapeHtml } from './dom';
 import { closeModal, lockModal, openModal } from './panels';
 
-/** The three cards of a draft, as markup: the class, the name and what it does. */
-export function upgradeCardsHtml(offer: readonly string[]): string {
+/** The knobs of the cost of running the city, whose name the player has no reason to know. */
+const ADMIN_KNOBS = new Set(['admin', 'adminCurve']);
+
+/**
+ * The line a card gets when it moves the administration: what that line is, and what it costs today.
+ * Without it, "la administración crece con la ciudad" is a number with no face.
+ */
+function noteFor(upgrade: Upgrade, sim: Simulation): string | null {
+  const admin = upgrade.stages.some((stage) => Object.keys(stage.mods).some((key) => ADMIN_KNOBS.has(key)));
+  const cost = sim.state.lastBudget?.services ?? 0;
+  if (!admin || cost <= 0) return null;
+  return `La administración (sueldos, oficinas y trámites) te cuesta hoy ${formatMoney(cost)} por mes, y cada habitante nuevo sale más caro que el anterior.`;
+}
+
+/** The three cards of a draft, as markup: the name, what it does, and the line in today's pesos. */
+export function upgradeCardsHtml(offer: readonly string[], sim: Simulation): string {
   return offer
     .map((id) => {
       const u = upgradeById(id);
       if (!u) return '';
-      return `<button type="button" data-upgrade="${u.id}"><b>${escapeHtml(u.label)}</b><span class="up-kind up-${u.kind}">${KIND_LABEL[u.kind]}</span><span>${escapeHtml(u.blurb)}</span></button>`;
+      const note = noteFor(u, sim);
+      return `<button type="button" data-upgrade="${u.id}"><b>${escapeHtml(u.label)}</b><span>${escapeHtml(u.blurb)}</span>${note ? `<span class="up-note">${escapeHtml(note)}</span>` : ''}</button>`;
     })
     .join('');
 }
@@ -26,8 +42,10 @@ export function openUpgrades(game: Game): void {
     `<p class="event-kicker">Mejora ${run.picks.length + 1} de ${RUN_MARKS.length}</p>
     <h2>${formatNumber(mark)} habitantes</h2>
     <p>La ciudad cruzó la marca. Elegí una mejora: la que dejes, se pierde.</p>
-    <div class="event-options">${upgradeCardsHtml(run.offer)}</div>
+    <div class="event-options">${upgradeCardsHtml(run.offer, game.sim)}</div>
     <p><small>El tiempo está en pausa hasta que elijas.</small></p>`,
+    undefined,
+    'mejora',
   );
   lockModal();
   body.querySelectorAll<HTMLButtonElement>('button[data-upgrade]').forEach((btn) =>
@@ -51,7 +69,7 @@ function summaryHtml(run: RunState, tick: number): string {
   return `<h3>Las mejoras de la run</h3>
     ${
       picks.length
-        ? `<ul class="run-picks">${picks.map((p) => `<li><span class="up-kind up-${p.kind}">${KIND_LABEL[p.kind]}</span> ${escapeHtml(p.label)}${p.outcome ? ` — ${escapeHtml(p.outcome)}` : ''}</li>`).join('')}</ul>`
+        ? `<ul class="run-picks">${picks.map((p) => `<li>${escapeHtml(p.label)}${p.outcome ? ` — ${escapeHtml(p.outcome)}` : ''}</li>`).join('')}</ul>`
         : '<p>No llegaste a elegir ninguna.</p>'
     }
     <p><small>${picks.length} de ${RUN_MARKS.length} mejoras · ${escapeHtml(dateLabel(tick))}</small></p>`;

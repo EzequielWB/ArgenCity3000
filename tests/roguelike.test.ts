@@ -5,6 +5,7 @@ import { monthlyBudget } from '../src/sim/budget';
 import { addBuilding, cityTotals } from '../src/sim/demand';
 import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, UPGRADES, dueMark, newRun, openOffer, runMods, runOver, takeUpgrade, upgradeById } from '../src/sim/roguelike';
 import { Simulation, newSimState } from '../src/sim/simulation';
+import { formatMoney } from '../src/core/format';
 import { upgradeCardsHtml } from '../src/ui/upgrades';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { TILE, World } from '../src/world/world';
@@ -254,12 +255,32 @@ describe('roguelike', () => {
     expect(sim.totals.pop).toBe(before / 2);
   });
 
-  it('cada carta dice su clase, su nombre y qué hace', () => {
-    const html = upgradeCardsHtml(['torres', 'altura', 'zona-franca', 'no-existe']);
+  it('baraja las cartas: la buena no sale siempre primera', () => {
+    const first = new Set<string>();
+    for (let seed = 1; seed <= 20; seed++) {
+      const run = newRun(seed);
+      openOffer(run);
+      first.add(upgradeById(run.offer![0])!.kind);
+    }
+    expect(first.size).toBe(3); // las tres clases pasaron por el primer lugar
+  });
+
+  it('cada carta dice su nombre y qué hace, sin contarte de qué clase es', () => {
+    const sim = new Simulation(cityOf(5000, 64), newSimState(1, 'democracia', '', newRun(1)), 'Villa Carta');
+    const html = upgradeCardsHtml(['torres', 'altura', 'zona-franca', 'no-existe'], sim);
     expect(html.match(/data-upgrade=/g)).toHaveLength(3);
-    for (const label of ['Solo buena', 'Con costo', 'A futuro']) expect(html).toContain(label);
-    expect(html).toContain('up-semilla');
+    expect(html).toContain('Torres de propiedad horizontal');
+    for (const label of ['Solo buena', 'Con costo', 'A futuro']) expect(html).not.toContain(label);
     expect(html).not.toContain('no-existe');
+  });
+
+  it('la administración se explica con el número de hoy', () => {
+    const sim = new Simulation(cityOf(5000, 64), newSimState(1, 'democracia', '', newRun(1)), 'Villa Carta');
+    sim.state.lastBudget = monthlyBudget(sim.world, 7, DEFAULT_FUNDING, null, 6);
+    const html = upgradeCardsHtml(['descentralizacion', 'torres'], sim);
+    expect(html).toContain('La administración (sueldos, oficinas y trámites)');
+    expect(html).toContain(formatMoney(sim.state.lastBudget.services));
+    expect(html.match(/up-note/g)).toHaveLength(1); // la que no toca la administración no la lleva
   });
 
   it('el pool es coherente: ids únicos y toda clase tiene cartas', () => {
