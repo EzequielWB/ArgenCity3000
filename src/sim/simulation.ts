@@ -42,6 +42,7 @@ import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElect
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, eventOfMonth, type CityEvent } from './events';
+import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type RunMods, type RunState } from './roguelike';
 import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
 
 export interface SimState {
@@ -96,9 +97,11 @@ export interface SimState {
   favor: number;
   /** The five-year plan the Party asked for, or null (see `sim/plan.ts`): it only exists under communism. */
   plan: FivePlan | null;
+  /** The roguelike run, or null in a classic game (see `sim/roguelike.ts`). */
+  run: RunState | null;
 }
 
-export function newSimState(seed: number, government: GovernmentKind = 'democracia', party = ''): SimState {
+export function newSimState(seed: number, government: GovernmentKind = 'democracia', party = '', run: RunState | null = null): SimState {
   return {
     tick: 0,
     government,
@@ -129,6 +132,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     loan: null,
     favor: FAVOR.start,
     plan: government === 'comunismo' ? newPlan(0, 0) : null,
+    run,
   };
 }
 
@@ -185,6 +189,11 @@ export class Simulation {
   approval: ApprovalReport = { target: 50, factors: [] };
   /** Above 1 the city attracts newcomers beyond what its jobs justify (see `updateAppetite`). */
   appetite = GROWTH_APPETITE;
+  /**
+   * The knobs the roguelike upgrades turned (see `sim/roguelike.ts`). All neutral without a run, and
+   * refreshed when a card is taken and at each month's end, because a stage can start with the month.
+   */
+  mods: RunMods = NO_MODS;
   /** Why the city attracts nobody new (the appetite is off), or null while it does. */
   stall: StallReason | null = null;
   abandonedCount = 0;
@@ -242,10 +251,11 @@ export class Simulation {
   /** Recomputes every derived layer. Call after loading or after big edits. */
   refresh(): void {
     const w = this.world;
+    this.updateRunMods();
     this.seenNetwork = w.networkVersion;
     computeRoadAccess(w);
     this.recomputePower();
-    this.totals = cityTotals(w);
+    this.totals = cityTotals(w, this.mods);
     this.updateFields();
     this.abandonedCount = countAbandoned(w);
     this.burning.clear();
@@ -276,7 +286,7 @@ export class Simulation {
   }
 
   private recomputePower(): void {
-    this.power = computePower(this.world, this.state.plants);
+    this.power = computePower(this.world, this.state.plants, this.mods);
     // Power bought from the Province covers the gap for as long as the deal lasts.
     if (this.hasEffect(NO_BLACKOUT)) this.power = { ...this.power, shortage: false };
     this.powerDirty = false;
@@ -291,7 +301,7 @@ export class Simulation {
     computeCrime(w, this.totals.pop);
     this.congestion = computeCongestion(w, this.state.transport, this.state.roads);
     computeParks(w, this.state.green);
-    computeLandValue(w, factorOf(this.state.effects, COAST_WORN));
+    computeLandValue(w, factorOf(this.state.effects, COAST_WORN), this.mods.land);
   }
 
   /**
@@ -662,6 +672,7 @@ export class Simulation {
     this.burn();
     this.grow();
     this.reachMilestones();
+    this.reachRunMarks();
     s.tick++;
     if (s.tick % TICKS_PER_MONTH === 0) this.endOfMonth();
     else if (s.tick % TICKS_PER_WEEK === 0) this.settleWeek();
@@ -710,7 +721,7 @@ export class Simulation {
       }
       // Some humble buildings are never improved by their owners: they stay until the player tears them down.
       if (level === HUMBLE && isHoldout(w.variant[i])) continue;
-      if (rng.chance(((GROWTH_RATE * d) / 100 / (1 + level * 0.5)) * jamGrowthFactor(w.jam[i]) * (zone === 'R' ? migration : 1))) {
+      if (rng.chance(((GROWTH_RATE * d) / 100 / (1 + level * 0.5)) * jamGrowthFactor(w.jam[i]) * (zone === 'R' ? migration * this.mods.migration : 1) * this.mods.growth)) {
         this.changeLevel(i, level === 0 ? spawnLevel(t.pop, cap) : level + 1);
         w.variant[i] = rng.int(256);
         w.terrain.trees[i] = 0;
@@ -737,15 +748,15 @@ export class Simulation {
     const w = this.world;
     const tile = w.tiles[i];
     if ((w.level[i] === 0) !== (level === 0)) this.powerDirty = true; // a building appears or goes: the light network changes
-    addBuilding(this.totals, tile, w.level[i], -1);
+    addBuilding(this.totals, tile, w.level[i], -1, this.mods);
     w.setLevel(i, level);
-    addBuilding(this.totals, tile, level, 1);
+    addBuilding(this.totals, tile, level, 1, this.mods);
     this.recomputeDemand();
   }
 
   private setAbandoned(i: number, abandoned: boolean): void {
     const w = this.world;
-    addBuilding(this.totals, w.tiles[i], w.level[i], abandoned ? -1 : 1);
+    addBuilding(this.totals, w.tiles[i], w.level[i], abandoned ? -1 : 1, this.mods);
     w.abandoned[i] = abandoned ? 1 : 0;
     this.abandonedCount += abandoned ? 1 : -1;
     w.markDirty(i);
@@ -769,7 +780,7 @@ export class Simulation {
       if (w.fire[i] > 0) continue;
       this.burning.delete(i);
       if (covered) {
-        addBuilding(this.totals, w.tiles[i], w.level[i], 1);
+        addBuilding(this.totals, w.tiles[i], w.level[i], 1, this.mods);
         this.stats.firesSaved++;
       } else {
         w.level[i] = 0;
@@ -784,7 +795,7 @@ export class Simulation {
   private ignite(i: number): void {
     const w = this.world;
     if (w.fire[i] || !w.isOccupied(i)) return;
-    addBuilding(this.totals, w.tiles[i], w.level[i], -1);
+    addBuilding(this.totals, w.tiles[i], w.level[i], -1, this.mods);
     const covered = w.fireCover[i] >= FIRE_SAFE_COVER;
     w.fire[i] = covered ? 20 : 90;
     w.markDirty(i);
@@ -820,7 +831,7 @@ export class Simulation {
   private settleWeek(): void {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
-    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants).balance, week);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods).balance, week);
     s.cash += due - this.monthPaid;
     this.monthPaid = due;
     s.crisis = s.cash < 0;
@@ -834,7 +845,7 @@ export class Simulation {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
     if (week === 0) return 0;
-    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods).balance, Math.min(week, WEEKS_PER_MONTH - 1));
   }
 
   /** Counts the instalment this month paid, and closes the loan once the term is done. */
@@ -849,6 +860,37 @@ export class Simulation {
    * Moves the city up as soon as its population reaches a milestone, not at the end of the month: the grant,
    * the tools it opens and the news arrive the moment the number is there.
    */
+  /**
+   * The run's own marks: a draft when the city reaches one, and the goal itself. Called the moment the
+   * population is there, like the milestones, so the window opens without waiting for the month.
+   */
+  private reachRunMarks(): void {
+    const run = this.state.run;
+    if (!run || run.wonAt !== null) return;
+    if (this.totals.pop >= RUN_GOAL) {
+      run.wonAt = this.state.tick;
+      return;
+    }
+    // One draft at a time: the card on the table is answered before the next mark deals.
+    if (run.offer || this.state.lostElection || run.dry >= RUN_DRY_MONTHS) return;
+    if (dueMark(run, this.totals.pop) === null) return;
+    openOffer(run);
+  }
+
+  /** Takes one of the three cards on the table. False when there is no draft open or the id is not offered. */
+  applyUpgrade(id: string): boolean {
+    if (!this.state.run || !takeUpgrade(this.state.run, id, this.state.tick)) return false;
+    // A card can change how many people a building holds, so every derived layer is recounted at once:
+    // taking a density upgrade fills the city on the spot, which is the point of the card.
+    this.refresh();
+    this.reachRunMarks();
+    return true;
+  }
+
+  private updateRunMods(): void {
+    this.mods = runMods(this.state.run, this.state.tick);
+  }
+
   private reachMilestones(): void {
     const s = this.state;
     const next = nextMilestone(s.milestone);
@@ -863,20 +905,25 @@ export class Simulation {
   private endOfMonth(): void {
     const s = this.state;
     const w = this.world;
+    // A stage of an upgrade can start with the month, so the knobs are read before the budget does.
+    this.updateRunMods();
     this.fireNews = 0;
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants);
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods);
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
     s.crisis = s.cash < 0;
+    // Two years in the red sink a run; one month in the black starts the count again.
+    if (s.run) s.run.dry = s.cash < 0 ? s.run.dry + 1 : 0;
     this.advanceLoan();
-    this.totals = cityTotals(w);
+    this.totals = cityTotals(w, this.mods);
     this.abandonedCount = countAbandoned(w);
     this.updateAppetite();
     this.reachMilestones();
+    this.reachRunMarks();
     this.approval = this.judge();
     s.approval = stepApproval(s.approval, this.approval.target, s.government);
     if (s.government === 'teocracia') this.judgement();

@@ -6,6 +6,7 @@ import { Game } from './game';
 import { paintTerrainPreview } from './render/minimap';
 import type { SaveData } from './save/save';
 import { pickMayorName } from './sim/mayor';
+import { newRun, type RunState } from './sim/roguelike';
 import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
 import { installOrnaments } from './ui/filete';
@@ -115,6 +116,15 @@ function showKindNote(): void {
   $('#kindNote').textContent = MAP_KINDS.find((k) => k.id === kind)?.blurb ?? '';
 }
 
+const MODE_NOTES: Record<string, string> = {
+  clasico: 'La ciudad de siempre: crecés sin apuro y la Provincia te paga cada hito.',
+  roguelike: 'Un millón de habitantes para ganar. Cada cierta marca elegís 1 de 3 mejoras, y la run se pierde si perdés la elección o pasás dos años con la caja en rojo.',
+};
+
+function showModeNote(): void {
+  $('#modeNote').textContent = MODE_NOTES[$<HTMLSelectElement>('#startMode').value] ?? '';
+}
+
 function showStart(): void {
   game?.destroy();
   game = null;
@@ -127,6 +137,7 @@ function showStart(): void {
   $<HTMLInputElement>('#startSeed').value = String(randomSeed());
   $<HTMLSelectElement>('#startMapKind').value = '';
   showKindNote(); // the kind and size picked last time stay selected
+  showModeNote();
   void pickMap('');
   name.focus();
   name.select();
@@ -136,7 +147,7 @@ function launch(data: SaveData): void {
   game?.destroy();
   $('#start').classList.add('hidden');
   $('#app').classList.remove('hidden');
-  game = new Game(data, { isModalOpen, sound, leave: showStart });
+  game = new Game(data, { isModalOpen, sound, leave: showStart, restart: startNew });
   if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
   if (data.sim.tick === 0) {
     // The city opens with the offer of a tutorial and then its founding window: who governs it, and under what name.
@@ -153,16 +164,22 @@ function launch(data: SaveData): void {
 function startNew(): void {
   const name = $<HTMLInputElement>('#startName').value.trim() || 'Villa Sin Nombre';
   const mayor = $<HTMLInputElement>('#startMayor').value.trim();
+  const mode = $<HTMLSelectElement>('#startMode').value;
   if ($<HTMLSelectElement>('#startMapKind').value !== '') {
     if (!preset) return; // still loading
     const seed = hashString(preset.id) % 1_000_000_000;
-    launch({ name, seed, mayor, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed) });
+    launch({ name, seed, mayor, world: worldFromPreset(preset, $<HTMLInputElement>('#startStreets').checked), sim: newSimState(seed, 'democracia', '', runOf(seed, mode)) });
     return;
   }
   const seed = parseSeed($<HTMLInputElement>('#startSeed').value);
   const world = new World(pickedTerrain(seed));
   addRoute(world, seed);
-  launch({ name, seed, mayor, world, sim: newSimState(seed) });
+  launch({ name, seed, mayor, world, sim: newSimState(seed, 'democracia', '', runOf(seed, mode)) });
+}
+
+/** A fresh run for the roguelike mode, or null for the classic game. */
+function runOf(seed: number, mode: string): RunState | null {
+  return mode === 'roguelike' ? newRun(seed) : null;
 }
 
 $('#startReroll').addEventListener('click', () => {
@@ -189,6 +206,8 @@ kindSelect.addEventListener('change', () => {
 });
 sizeSelect.addEventListener('change', refreshPreview);
 $('#startStreets').addEventListener('change', refreshPreview);
+const modeSelect = $<HTMLSelectElement>('#startMode');
+modeSelect.addEventListener('change', showModeNote);
 $('#startNew').addEventListener('click', startNew);
 $('#startLoad').addEventListener('click', () => openSaves(null, launch));
 $('#startName').addEventListener('keydown', (e) => {

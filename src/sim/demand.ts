@@ -3,6 +3,7 @@ import { hash2 } from '../core/rng';
 import { World, zoneOf, type ZoneKind } from '../world/world';
 import { addCoastJobs } from './coast';
 import { hubJobs } from './hubs';
+import { NO_MODS, type RunMods } from './roguelike';
 
 export interface Totals {
   pop: number;
@@ -12,10 +13,10 @@ export interface Totals {
 
 export type Demand = Record<ZoneKind, number>;
 
-export function cityTotals(w: World): Totals {
+export function cityTotals(w: World, mods: RunMods = NO_MODS): Totals {
   const t: Totals = { pop: 0, cJobs: 0, iJobs: 0 };
   for (let i = 0; i < w.tiles.length; i++) {
-    if (w.isOccupied(i)) addBuilding(t, w.tiles[i], w.level[i], 1);
+    if (w.isOccupied(i)) addBuilding(t, w.tiles[i], w.level[i], 1, mods);
     else addCoastJobs(t, w, i);
   }
   // The airports and harbours that work are a place of work for the commerce.
@@ -23,11 +24,12 @@ export function cityTotals(w: World): Totals {
   return t;
 }
 
-/** Adds (sign = 1) or removes (sign = -1) one building's residents or jobs. */
-export function addBuilding(t: Totals, tile: number, level: number, sign: 1 | -1): void {
+/** Adds (sign = 1) or removes (sign = -1) one building's residents or jobs, scaled by the run's upgrades. */
+export function addBuilding(t: Totals, tile: number, level: number, sign: 1 | -1, mods: RunMods = NO_MODS): void {
   const z = zoneOf(tile);
   if (!z || level === 0) return;
-  const v = CAPACITY[z][level] * sign;
+  // Rounded per building so that adding and removing the same one always cancels out.
+  const v = Math.round(CAPACITY[z][level] * (z === 'R' ? mods.density : mods.jobs)) * sign;
   if (z === 'R') t.pop += v;
   else if (z === 'C') t.cJobs += v;
   else t.iJobs += v;

@@ -293,9 +293,10 @@ export function computeParks(w: World, green: number): void {
 
 /**
  * Land value of every cell. `coast` scales the bonus for being close to the water: an event can
- * leave the seafront falling apart without touching anything else.
+ * leave the seafront falling apart without touching anything else. `bonus` is points added to every
+ * lot, which is how a roguelike upgrade lifts the ceiling off a congested city.
  */
-export function computeLandValue(w: World, coast = 1): void {
+export function computeLandValue(w: World, coast = 1, bonus = 0): void {
   const n = w.n;
   const water = waterDistance(w);
   const amenities = new Float32Array(n * n);
@@ -334,7 +335,7 @@ export function computeLandValue(w: World, coast = 1): void {
       v += (w.edu[i] + w.health[i]) * 0.08;
       v -= w.crime[i] * 0.35;
       v -= Math.max(0, w.jam[i] - TRAFFIC.valueFrom) * TRAFFIC.valuePerPoint;
-      w.landValue[i] = clamp100(v);
+      w.landValue[i] = clamp100(v + bonus);
     }
   }
 }

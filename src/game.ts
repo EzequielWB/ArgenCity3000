@@ -23,7 +23,9 @@ import { transitBuses } from './sim/transit';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { APPROVAL, nextElectionYear } from './sim/politics';
+import { RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, runOver } from './sim/roguelike';
 import { openApproval, openElectionLost, openElectionWon, openEvent, openMilestone } from './ui/panels';
+import { openRunOver, openUpgrades } from './ui/upgrades';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
 import { applyPlan, dragCells, footprintOfTool, isCoastTool, planTool, plantKindOfTool, routeRefusal, toolInfo, type Plan, type ToolId } from './world/tools';
@@ -86,6 +88,8 @@ export interface GameHooks {
   isModalOpen(): boolean;
   /** Leaves the city for the start screen. */
   leave(): void;
+  /** Starts a fresh city on the same map, for a new roguelike run. */
+  restart(): void;
   sound: Sound;
 }
 
@@ -133,6 +137,8 @@ export class Game implements PointerTarget {
   /** Elections already announced to the player: won ones, and whether the lost one was shown. */
   private shownTerms: number;
   private shownLost: boolean;
+  /** How the run ended, once it is shown: the window is not opened twice. */
+  private shownRunOver: 'ganada' | 'eleccion' | 'caja' | null = null;
   /** Fires already announced with the siren. */
   private firesHeard = 0;
 
@@ -632,6 +638,8 @@ export class Game implements PointerTarget {
     this.updateOutlook(force);
     $('#pop').textContent = formatNumber(this.sim.totals.pop);
     $('#cityType').textContent = ` · ${settlementType(this.sim.totals.pop)}`;
+    // The run goes first: its draft owns the moment, ahead of the milestone plaque and the ballot.
+    this.updateRun();
     this.updateMilestone();
     this.updateApproval();
     const bars = document.querySelectorAll<HTMLElement>('#rci .bar i');
@@ -708,10 +716,44 @@ ${stalled}` : ''}`;
       this.shownTerms = s.terms;
       this.hooks.sound.play('news');
       openElectionWon(this);
-    } else if (s.lostElection && !this.shownLost) {
+    } else if (s.lostElection && !this.shownLost && !s.run) {
+      // A run has its own closing window (see `updateRun`): it does not offer free mode.
       this.shownLost = true;
       openElectionLost(this, () => this.hooks.leave());
     }
+  }
+
+  /** The run's goal under the population: the draft, the countdown in the red, and the end of the run. */
+  private updateRun(): void {
+    const s = this.sim.state;
+    const run = s.run;
+    if (!run) return;
+    const goal = $('#goal');
+    goal.innerHTML = `→ <span class="goal-name">Un millón: </span>${formatNumber(RUN_GOAL)}${run.dry > 0 ? ` · <span class="tone-bad">rojo ${run.dry}/${RUN_DRY_MONTHS}</span>` : ''}`;
+    goal.title = `Modo roguelike: ganás con ${formatNumber(RUN_GOAL)} habitantes. Mejoras elegidas: ${run.picks.length} de ${RUN_MARKS.length}.`;
+    const over = runOver(s);
+    if (over) {
+      if (this.shownRunOver || this.hooks.isModalOpen()) return;
+      this.shownRunOver = over;
+      this.setSpeed(0);
+      this.hooks.sound.play('news');
+      openRunOver(this, over, () => this.hooks.leave(), () => this.hooks.restart());
+      return;
+    }
+    // The draft stops the clock like an event does, and the clock goes back where it was when it is answered.
+    if (run.offer && !this.hooks.isModalOpen()) {
+      if (this.speed > 0) this.speedBeforeEvent = this.speed;
+      this.setSpeed(0);
+      this.hooks.sound.play('news');
+      openUpgrades(this);
+    }
+  }
+
+  /** Takes one of the three cards of a draft: the city changes at once and the clock goes back to its speed. */
+  takeUpgrade(id: string): void {
+    if (!this.sim.applyUpgrade(id)) return;
+    this.setSpeed(this.speedBeforeEvent);
+    this.afterEdit();
   }
 
   /** The next goal under the population, the locked tools, and the plaque when a milestone is reached. */
@@ -728,7 +770,10 @@ ${stalled}` : ''}`;
     this.shownMilestone = reached;
     const next = nextMilestone(reached);
     const goal = $('#goal');
-    goal.innerHTML = next ? `→ <span class="goal-name">${escapeHtml(next.name)}: </span>${formatNumber(next.pop)}` : '';
+    // A run has its own goal line, and `updateRun` writes it.
+    if (!this.sim.state.run) {
+      goal.innerHTML = next ? `→ <span class="goal-name">${escapeHtml(next.name)}: </span>${formatNumber(next.pop)}` : '';
+    }
     if (next) {
       const opens = unlockNames(next, label);
       goal.title = `Próximo hito: ${next.name}, con ${formatNumber(next.pop)} habitantes. La Provincia gira ${formatMoney(next.grant)}${opens ? ` y se habilita ${opens}` : ''}.`;
@@ -742,7 +787,7 @@ ${stalled}` : ''}`;
     const s = this.sim.state;
     const now = performance.now();
     if (force || !this.outlookBudget || now - this.outlookAt > 400) {
-      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants);
+      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.sim.mods);
       this.outlookAt = now;
     }
     const o = describeOutlook(this.outlookBudget, s.cash);

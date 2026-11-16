@@ -6,6 +6,7 @@ import { utilization } from './fields';
 import { loanInstalment, loanPaidOff, type Loan } from './loans';
 import { hubIncome, hubUpkeep } from './hubs';
 import { plantsUpkeep } from './plants';
+import { NO_MODS, type RunMods } from './roguelike';
 import { transitUpkeep } from './transit';
 
 export interface BudgetReport {
@@ -91,10 +92,11 @@ export function monthlyBudget(
   earnings = 1,
   roadsFunding = 100,
   plantsFunding = 100,
+  mods: RunMods = NO_MODS,
 ): BudgetReport {
   const taxes = zoneTaxes(tax);
   const gov = GOVERNMENTS[government];
-  const t = cityTotals(w);
+  const t = cityTotals(w, mods);
   let roads = 0;
   let bridges = 0;
   let lines = 0;
@@ -120,11 +122,11 @@ export function monthlyBudget(
     }
   }
   // The form of government and the effects that move what the city earns (see `incomeFactor`).
-  const taxR = Math.round(t.pop * taxes.R * 0.055 * gov.taxIncome.R * earnings);
-  const taxC = Math.round(t.cJobs * taxes.C * 0.075 * gov.taxIncome.C * earnings);
+  const taxR = Math.round(t.pop * taxes.R * 0.055 * gov.taxIncome.R * earnings * mods.income);
+  const taxC = Math.round(t.cJobs * taxes.C * 0.075 * gov.taxIncome.C * earnings * mods.income);
   const coast = coastBudget(w, month);
-  const taxI = Math.round(t.iJobs * taxes.I * 0.075 * portTaxBoost(coast.ports) * gov.taxIncome.I * earnings);
-  const funded = (k: ServiceKind) => Math.round((upkeep[k] * funding[k] * gov.serviceCost) / 100);
+  const taxI = Math.round(t.iJobs * taxes.I * 0.075 * portTaxBoost(coast.ports) * gov.taxIncome.I * earnings * mods.income);
+  const funded = (k: ServiceKind) => Math.round((upkeep[k] * funding[k] * gov.serviceCost * mods.serviceCost) / 100);
   const loanDue = loan && !loanPaidOff(loan) ? loanInstalment(loan) : 0;
   const r = {
     taxR,
@@ -134,7 +136,8 @@ export function monthlyBudget(
     lines: Math.round(lines * UPKEEP.line),
     parks: Math.round(parks * UPKEEP.park * (Math.max(0, Math.min(MAX_FUNDING, green)) / 100)),
     plants: Math.round((plantsUpkeep(w) * Math.max(0, Math.min(MAX_FUNDING, plantsFunding))) / 100),
-    services: Math.round(t.pop * UPKEEP.servicesPerResident * (1 + t.pop / UPKEEP.servicesScale)),
+    // `adminCurve` is how much of the quadratic term survives a roguelike reform: 0 removes it.
+    services: Math.round(t.pop * UPKEEP.servicesPerResident * mods.admin * (1 + (t.pop * mods.adminCurve) / UPKEEP.servicesScale)),
     schools: funded('school'),
     clinics: funded('clinic'),
     police: funded('police'),

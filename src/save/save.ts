@@ -27,12 +27,13 @@ import { FAVOR } from '../sim/favor';
 import { MILESTONES, milestoneForPop } from '../sim/milestones';
 import type { FivePlan } from '../sim/plan';
 import { APPROVAL } from '../sim/politics';
+import { RUN_MARKS, upgradeById, type RunState } from '../sim/roguelike';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { busLineProblem, busStations } from '../world/transport';
 import { MAX_TILE, TILE, World, hubOf, hubTile, zoneOf } from '../world/world';
 
-export const SAVE_VERSION = 17;
+export const SAVE_VERSION = 18;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -42,9 +43,10 @@ export const SAVE_VERSION = 17;
  * from 12 on) nor the two coast lines of the budget, which count as zero; versions 1 to 7 had no
  * provincial route, so they have none and their streets are free to start anywhere; versions 1 to
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
- * government, so they are democracies with no party.
+ * government, so they are democracies with no party; versions 1 to 17 have no roguelike run, so
+ * they open as classic games.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -291,6 +293,35 @@ function parseSim(raw: unknown): SimState {
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }
+/** The roguelike run, or null in a classic game. Checked so a hand-edited save cannot pick a card that does not exist. */
+function parseRun(raw: unknown): RunState | null {
+  if (raw === null || raw === undefined) return null;
+  const r = raw as Record<string, unknown>;
+  need(Array.isArray(r.picks), 'La run de la partida es inválida');
+  const picks = (r.picks as unknown[]).map((item) => {
+    const { id, at } = (item ?? {}) as { id?: unknown; at?: unknown };
+    need(typeof id === 'string' && upgradeById(id) !== null && isInt(at) && (at as number) >= 0, 'La run de la partida es inválida');
+    return { id: id as string, at: at as number };
+  });
+  const rawOffer = r.offer;
+  need(
+    rawOffer === null || rawOffer === undefined || (Array.isArray(rawOffer) && rawOffer.length <= 3 && rawOffer.every((id) => typeof id === 'string' && upgradeById(id) !== null)),
+    'La run de la partida es inválida',
+  );
+  need(isInt(r.next) && (r.next as number) >= 0 && (r.next as number) <= RUN_MARKS.length, 'La run de la partida es inválida');
+  need(r.wonAt === null || r.wonAt === undefined || (isInt(r.wonAt) && (r.wonAt as number) >= 0), 'La run de la partida es inválida');
+  need(r.dry === undefined || (isInt(r.dry) && (r.dry as number) >= 0), 'La run de la partida es inválida');
+  need(isInt(r.rng), 'La run de la partida es inválida');
+  return {
+    picks,
+    offer: (rawOffer as string[] | null | undefined) ?? null,
+    next: r.next as number,
+    wonAt: (r.wonAt as number | undefined) ?? null,
+    dry: (r.dry as number | undefined) ?? 0,
+    rng: (r.rng as number) >>> 0,
+  };
+}
+
 /** The effects running, in months. A city saved before them opens with none. */
 function parseEffects(raw: unknown): Effects {
   const effects: Effects = {};
@@ -332,6 +363,8 @@ function parseCommitment(raw: unknown): Commitment | null {
   // The favor of God and the five-year plan exist from version 17 on: older cities have neither.
   need(s.favor === undefined || (typeof s.favor === 'number' && s.favor >= 0 && s.favor <= 100), 'El favor divino de la partida es inválido');
   const plan = parsePlan(s.plan);
+  // The roguelike run exists from version 18 on.
+  const run = parseRun(s.run);
   return {
     tick: s.tick as number,
     cash: s.cash as number,
@@ -362,6 +395,7 @@ function parseCommitment(raw: unknown): Commitment | null {
     party: (s.party as string | undefined) ?? '',
     favor: (s.favor as number | undefined) ?? FAVOR.start,
     plan,
+    run,
   };
 }
 

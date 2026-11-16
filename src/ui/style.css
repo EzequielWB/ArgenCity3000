@@ -495,6 +495,29 @@ button.chapa:focus-visible {
   line-height: 1.35;
   color: var(--muted);
 }
+/* The class of an upgrade, so the three kinds read at a glance: free, with a cost, or a bet. */
+.event-options .up-kind,
+.run-picks .up-kind {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.event-options .up-buena,
+.run-picks .up-buena {
+  color: #9fdc8a;
+}
+.event-options .up-mixta,
+.run-picks .up-mixta {
+  color: var(--gold-light);
+}
+.event-options .up-semilla,
+.run-picks .up-semilla {
+  color: #6fb7e0;
+}
+.run-picks {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+}
 
 /* A promise the neighbours are waiting on: red, on top of the map, with the time left. */
 #promise {
