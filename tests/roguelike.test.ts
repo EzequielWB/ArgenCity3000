@@ -3,7 +3,7 @@ import { CAPACITY, DEFAULT_FUNDING, MAX_FUNDING, TICKS_PER_MONTH } from '../src/
 import { deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { addBuilding, cityTotals } from '../src/sim/demand';
-import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, UPGRADES, dueMark, newRun, openOffer, runMods, runOver, takeUpgrade, upgradeById } from '../src/sim/roguelike';
+import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, RUN_PICKS, markOf, UPGRADES, dueMark, newRun, openOffer, runMods, runOver, takeUpgrade, upgradeById } from '../src/sim/roguelike';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { formatMoney } from '../src/core/format';
 import { upgradeCardsHtml } from '../src/ui/upgrades';
@@ -67,20 +67,23 @@ describe('roguelike', () => {
     expect(new Set(a.offer!.map((id) => upgradeById(id)!.kind)).size).toBe(3);
   });
 
-  it('una mejora tomada no vuelve a salir, y cada toma avanza la marca', () => {
+  it('arranca con una carta en la mano, y una mejora tomada no vuelve a salir', () => {
     const run = newRun(7);
     const taken = new Set<string>();
-    for (let k = 0; k < RUN_MARKS.length; k++) {
-      expect(dueMark(run, RUN_MARKS[run.next])).toBe(run.next);
-      openOffer(run);
+    expect(run.next).toBe(-1);
+    expect(markOf(run)).toBe(0);
+    expect(dueMark(run, 0)).toBeNull(); // la carta de apertura no es una marca
+    for (let k = 0; k < RUN_PICKS; k++) {
+      expect(run.offer).toHaveLength(3);
       for (const id of run.offer!) expect(taken.has(id)).toBe(false);
       const pick = run.offer![0];
       expect(takeUpgrade(run, pick, 0)).not.toBeNull();
       expect(takeUpgrade(run, pick, 0)).toBeNull(); // the table is empty now
       taken.add(pick);
-      expect(run.next).toBe(k + 1);
+      expect(run.next).toBe(k);
+      openOffer(run);
     }
-    expect(taken.size).toBe(RUN_MARKS.length);
+    expect(taken.size).toBe(RUN_PICKS);
     expect(dueMark(run, RUN_GOAL)).toBeNull();
     expect(RUN_MARKS[RUN_MARKS.length - 1]).toBeLessThan(RUN_GOAL);
   });
@@ -150,13 +153,22 @@ describe('roguelike', () => {
     expect(sim.state.run!.wonAt).not.toBeNull();
   });
 
-  it('la marca abre el sorteo sola', () => {
+  it('la primera carta se juega antes de fundar, y no tapa la marca', () => {
     const w = cityOf(RUN_MARKS[0], 64);
-    const sim = new Simulation(w, newSimState(1, 'democracia', '', newRun(1)), 'Villa Pueblo');
+    const run = newRun(1);
+    const sim = new Simulation(w, newSimState(1, 'democracia', '', run), 'Villa Pueblo');
     expect(sim.totals.pop).toBeGreaterThanOrEqual(RUN_MARKS[0]);
-    expect(sim.state.run!.offer).toBeNull();
+    // La carta de apertura ya está en la mesa; hasta que se responde, la marca 500 no se reparte.
+    expect(run.offer).toHaveLength(3);
+    const opening = [...run.offer!];
     sim.tick();
-    expect(sim.state.run!.offer).toHaveLength(3);
+    expect(run.offer).toEqual(opening);
+    // Tomada la carta, la misma marca entra en el acto.
+    expect(sim.applyUpgrade(opening[0])).not.toBeNull();
+    expect(run.picks).toHaveLength(1);
+    expect(run.next).toBe(0);
+    expect(run.offer).toHaveLength(3);
+    expect(run.offer).not.toEqual(opening);
   });
 
   it('el millón cierra la cuenta con el stack de mejoras', () => {
@@ -178,6 +190,13 @@ describe('roguelike', () => {
     expect(sim.applyUpgrade('torres')).not.toBeNull();
     const text = serialize({ name: 'Villa Run', seed: 1, world: w, sim: sim.state });
     expect(deserialize(text).sim.run).toEqual(sim.state.run);
+
+    // Una run que todavía no respondió su carta de apertura la guarda también.
+    const fresh = new Simulation(w, newSimState(1, 'democracia', '', newRun(4)), 'Villa Nueva');
+    const freshText = serialize({ name: 'Villa Nueva', seed: 4, world: w, sim: fresh.state });
+    const loaded = deserialize(freshText).sim.run!;
+    expect(loaded.next).toBe(-1);
+    expect(loaded.offer).toEqual(fresh.state.run!.offer);
 
     const old = JSON.parse(text);
     old.version = 17;

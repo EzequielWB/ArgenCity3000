@@ -510,9 +510,21 @@ button.chapa:focus-visible {
   margin: 6px 0 10px;
   padding-left: 18px;
 }
-/* The draft of a run: a bordó card with a gold frame, because the choice cannot be undone. */
-.modal-card[data-shape='mejora'] .event-options button {
+/* The draft of a run: the whole window is a bordó card with a gold frame, so it is its own thing
+   before a word of it is read. The cards sit a shade darker so they still read as buttons. */
+.modal-card[data-shape='mejora'] {
   background: var(--bordo);
+  border-color: var(--gold);
+}
+.modal-card[data-shape='mejora'] .event-kicker {
+  color: var(--gold-light);
+}
+.modal-card[data-shape='mejora'] p,
+.modal-card[data-shape='mejora'] small {
+  color: var(--paper);
+}
+.modal-card[data-shape='mejora'] .event-options button {
+  background: #5f1f28;
   border: 2px solid var(--gold);
   color: var(--cream);
 }

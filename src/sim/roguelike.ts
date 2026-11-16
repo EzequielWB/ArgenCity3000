@@ -13,6 +13,9 @@ export const RUN_GOAL = 1_000_000;
 /** Population marks where the player drafts. The goal itself is the win, not a pick. */
 export const RUN_MARKS: readonly number[] = [500, 2000, 5000, 10000, 25000, 50000, 100000, 200000, 350000, 500000, 700000];
 
+/** Drafts a run gets: one before founding the city, and one at each mark. */
+export const RUN_PICKS = RUN_MARKS.length + 1;
+
 /**
  * The knobs the upgrades move. Everything is a multiplier except `land`, which is points added to
  * the land value of every lot: 1 (and 0 for `land`) is the normal game, so a run without upgrades
@@ -134,7 +137,7 @@ export interface RunState {
   picks: RunPick[];
   /** The three upgrades offered while the window is open, or null. Saved, so a loaded game reopens it. */
   offer: string[] | null;
-  /** Index in `RUN_MARKS` of the next draft. */
+  /** Index in `RUN_MARKS` of the next draft. Negative while the opening card is on the table. */
   next: number;
   /** Tick at which the city reached the goal, or null. */
   wonAt: number | null;
@@ -144,8 +147,11 @@ export interface RunState {
   rng: number;
 }
 
+/** A run starts with a card in hand: the city is founded with one of three upgrades already. */
 export function newRun(seed: number): RunState {
-  return { picks: [], offer: null, next: 0, wonAt: null, dry: 0, rng: (seed ^ 0x9e3779b9) >>> 0 };
+  const run: RunState = { picks: [], offer: null, next: -1, wonAt: null, dry: 0, rng: (seed ^ 0x9e3779b9) >>> 0 };
+  openOffer(run);
+  return run;
 }
 
 /** The three things a gamble card can hit. Population moves as density: the homes take more people. */
@@ -209,9 +215,15 @@ export function runMods(run: RunState | null, tick: number): RunMods {
   return mods;
 }
 
-/** The mark the city has passed and not drafted for yet, or null. */
+/** The mark the city has passed and not drafted for yet, or null. The opening card is not a mark. */
 export function dueMark(run: RunState, pop: number): number | null {
+  if (run.next < 0) return null;
   return run.next < RUN_MARKS.length && pop >= RUN_MARKS[run.next] ? run.next : null;
+}
+
+/** The inhabitants of the draft the run is on: zero for the one that opens the run. */
+export function markOf(run: RunState): number {
+  return run.next < 0 ? 0 : (RUN_MARKS[run.next] ?? RUN_GOAL);
 }
 
 /**

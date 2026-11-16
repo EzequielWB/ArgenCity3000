@@ -25,6 +25,11 @@ Runner de la suite: `npm test` (Vitest). Verificación de alcance: `npx vite-nod
 > algunas malas pero a futuro buenas y asi)"
 
 - Marcas de la run: `RUN_MARKS` (11 marcas, de 500 a 700.000). La marca 12 no es pick: es la victoria.
+- **Doce picks**: uno antes de fundar la ciudad y uno en cada marca (`RUN_PICKS`). El de apertura se
+  sortea al crear la run (`next: -1`) y la ventana aparece apenas se cierra la de gobierno.
+
+  > "Tambien me gustaria que ni bien arrancas a jugar elijas un beneficio aleatorio."
+
 - Al cruzar una marca se abre una ventana con **3 mejoras distintas** y el tiempo se pausa.
 - Tres clases: `buena` (solo ayuda), `mixta` (da y saca ya), `semilla` (cuesta ahora, paga después
   con una etapa a plazo).
@@ -62,12 +67,20 @@ Runner de la suite: `npm test` (Vitest). Verificación de alcance: `npx vite-nod
 - La clase de la carta (`buena`/`mixta`/`semilla`) es una regla del sorteo, no una etiqueta: no se
   escribe en la pantalla ni en el resumen de la run. Se entiende leyendo la carta.
 - El orden de las tres se baraja con el rng de la run: ninguna clase tiene un lugar fijo.
-- La carta es bordó (`--bordo`), con el borde y el título en dorado (`--gold`), en su propia forma de
-  ventana (`data-shape="mejora"`) para no tocar los casos comunes.
+- La ventana **entera** es bordó (`--bordo`) con el marco en dorado, no solo las tarjetas: tiene que
+  distinguirse de un caso común antes de leer una palabra. Las tarjetas van un tono más oscuro para
+  seguir leyéndose como botones.
+
+  > "El fondo bordó para la card entera, no solo los seleccionables, para que sea distinguible
+  > respecto a lo demas"
+
+- El marco y el título de cada tarjeta también en dorado (`--gold`), en su propia forma de ventana
+  (`data-shape="mejora"`) para no tocar los casos comunes.
 - Las cartas que mueven la administración llevan una raya y una línea que dice qué es esa cuenta y
   cuánto costó el mes pasado, en pesos: sin eso, "el recargo por tamaño" no dice nada.
 - Criterio de aceptación: el HTML de la oferta no contiene ninguna de las tres etiquetas; en veinte
-  seeds las tres clases pasan por el primer lugar; la nota lleva el `services` del último presupuesto.
+  seeds las tres clases pasan por el primer lugar; la nota lleva el `services` del último presupuesto;
+  al fundar la ciudad hay tres cartas en la mesa con `next == -1` y ninguna marca repartida.
 
 ### S3 — La run se pierde y no se sigue
 

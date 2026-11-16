@@ -321,7 +321,7 @@ function parseRun(raw: unknown): RunState | null {
     rawOffer === null || rawOffer === undefined || (Array.isArray(rawOffer) && rawOffer.length <= 3 && rawOffer.every((id) => typeof id === 'string' && upgradeById(id) !== null)),
     'La run de la partida es inválida',
   );
-  need(isInt(r.next) && (r.next as number) >= 0 && (r.next as number) <= RUN_MARKS.length, 'La run de la partida es inválida');
+  need(isInt(r.next) && (r.next as number) >= -1 && (r.next as number) <= RUN_MARKS.length, 'La run de la partida es inválida');
   need(r.wonAt === null || r.wonAt === undefined || (isInt(r.wonAt) && (r.wonAt as number) >= 0), 'La run de la partida es inválida');
   need(r.dry === undefined || (isInt(r.dry) && (r.dry as number) >= 0), 'La run de la partida es inválida');
   need(isInt(r.rng), 'La run de la partida es inválida');

@@ -23,7 +23,7 @@ import { transitBuses } from './sim/transit';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { APPROVAL, nextElectionYear } from './sim/politics';
-import { RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, runOver } from './sim/roguelike';
+import { RUN_DRY_MONTHS, RUN_GOAL, RUN_PICKS, runOver } from './sim/roguelike';
 import { openApproval, openElectionLost, openElectionWon, openEvent, openMilestone } from './ui/panels';
 import { openRunOver, openUpgrades } from './ui/upgrades';
 import { $, escapeHtml, toast } from './ui/dom';
@@ -730,7 +730,7 @@ ${stalled}` : ''}`;
     if (!run) return;
     const goal = $('#goal');
     goal.innerHTML = `→ <span class="goal-name">Un millón: </span>${formatNumber(RUN_GOAL)}${run.dry > 0 ? ` · <span class="tone-bad">rojo ${run.dry}/${RUN_DRY_MONTHS}</span>` : ''}`;
-    goal.title = `Modo roguelike: ganás con ${formatNumber(RUN_GOAL)} habitantes. Mejoras elegidas: ${run.picks.length} de ${RUN_MARKS.length}.`;
+    goal.title = `Modo roguelike: ganás con ${formatNumber(RUN_GOAL)} habitantes. Mejoras elegidas: ${run.picks.length} de ${RUN_PICKS}.`;
     const over = runOver(s);
     if (over) {
       if (this.shownRunOver || this.hooks.isModalOpen()) return;

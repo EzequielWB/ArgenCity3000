@@ -2,7 +2,7 @@
 import { formatMoney, formatNumber } from '../core/format';
 import type { Game } from '../game';
 import { dateLabel } from '../sim/calendar';
-import { RUN_GOAL, RUN_MARKS, pickedUpgrades, upgradeById, type RunState, type Upgrade } from '../sim/roguelike';
+import { RUN_PICKS, markOf, pickedUpgrades, upgradeById, type RunState, type Upgrade } from '../sim/roguelike';
 import type { Simulation } from '../sim/simulation';
 import { escapeHtml } from './dom';
 import { closeModal, lockModal, openModal } from './panels';
@@ -37,11 +37,15 @@ export function upgradeCardsHtml(offer: readonly string[], sim: Simulation): str
 export function openUpgrades(game: Game): void {
   const run = game.sim.state.run;
   if (!run || !run.offer) return;
-  const mark = RUN_MARKS[run.next] ?? RUN_GOAL;
+  const mark = markOf(run);
   const body = openModal(
-    `<p class="event-kicker">Mejora ${run.picks.length + 1} de ${RUN_MARKS.length}</p>
-    <h2>${formatNumber(mark)} habitantes</h2>
-    <p>La ciudad cruzó la marca. Elegí una mejora: la que dejes, se pierde.</p>
+    `<p class="event-kicker">Mejora ${run.picks.length + 1} de ${RUN_PICKS}</p>
+    <h2>${mark > 0 ? `${formatNumber(mark)} habitantes` : 'Antes de fundar'}</h2>
+    <p>${
+      mark > 0
+        ? 'La ciudad cruzó la marca. Elegí una mejora: la que dejes, se pierde.'
+        : 'La ciudad arranca con una mejora a mano. Elegí una: la que dejes, se pierde.'
+    }</p>
     <div class="event-options">${upgradeCardsHtml(run.offer, game.sim)}</div>
     <p><small>El tiempo está en pausa hasta que elijas.</small></p>`,
     undefined,
@@ -72,7 +76,7 @@ function summaryHtml(run: RunState, tick: number): string {
         ? `<ul class="run-picks">${picks.map((p) => `<li>${escapeHtml(p.label)}${p.outcome ? ` — ${escapeHtml(p.outcome)}` : ''}</li>`).join('')}</ul>`
         : '<p>No llegaste a elegir ninguna.</p>'
     }
-    <p><small>${picks.length} de ${RUN_MARKS.length} mejoras · ${escapeHtml(dateLabel(tick))}</small></p>`;
+    <p><small>${picks.length} de ${RUN_PICKS} mejoras · ${escapeHtml(dateLabel(tick))}</small></p>`;
 }
 
 /**
