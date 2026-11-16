@@ -16,7 +16,7 @@ export interface FivePlan {
 export const PLAN = {
   years: 5,
   /** The goal is the jobs of today times this, plus `extra`, never under `min`. */
-  growth: 1.4,
+  growth: 1.55,
   extra: 20,
   min: 40,
   /** Premium per job of the goal when it is met. */
