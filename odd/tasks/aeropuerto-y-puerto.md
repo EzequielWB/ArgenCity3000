@@ -76,3 +76,14 @@ Runner: `npx vitest run`, `npx tsc --noEmit`.
 - L3: Exploración: las usinas (2×2) son el modelo de una obra de varias celdas: lista `World.plants` con el ancla, tile compartido, demolición de la obra entera, guardado y deshacer propios, y un sprite que se dibuja una sola vez en la celda de adelante. Las plazas son el modelo de "manchas": un efecto que depende del tamaño de las celdas pegadas.
 - L4: T1 a T3 hechos y commiteados. Las piezas se guardan como lista (`World.hubs`, formato 16) y el nivel sale de las piezas que se tocan, sin estado extra por instalación. El dibujo del aeropuerto se hace a lo largo de la pista, así que vale con la vista girada; el del puerto lleva el muelle hacia el agua.
 - L5: T4 y T5 hechos: aviones que despegan y aterrizan sobre la pista de cada pieza (uno por nivel) y barcos que pasean por el agua cerca del puerto, con un crucero en el nivel 3 (`src/render/vessels.ts`). Verificado en el juego sobre Mar del Plata: puerto de 2 piezas con barcos navegando y aeródromo de 2 piezas con aviones despegando. `tsc` y los tests pasan. No se vio el puerto de 3 piezas (el mapa no tenía un tramo de costa recto con calle cerca) ni el aeropuerto con el mapa girado.
+- L6 (usuario, 2026-11-16): "hay que reducir un poco lo que transporte, la ganancia de dinero del
+  aeropuerto y la cosa esa del mar ... actualmente es casi dinero gratis". Medido con las piezas
+  puestas de verdad (4 del aeropuerto, 3 del puerto, nivel 3, cJobs desde el propio hub): el
+  aeropuerto dejaba **+$1.270 por mes** sobre $24.000 de obra, **19 meses de repago**, y el puerto
+  **+$1.140** sobre $10.500, **9 meses**. Nuevo: aeropuerto con ingreso `[200, 720, 2300]` y upkeep
+  $470 por pieza → +$690 y **35 meses**; puerto con ingreso `[120, 480, 1350]` y upkeep $400 por pieza
+  → +$330 y **32 meses**. La obra no se tocó: lo que cambió es el margen. Con el upkeep por pieza, un
+  hub a medio construir pierde plata (−$270 el hangar suelto) y solo paga entero: la herramienta es un
+  compromiso, no un surtidor. No se tocaron las líneas de colectivos (no dan plata) ni los edificios de
+  la costa: pescadores +$50, balneario +$24 promedio contra $120 de upkeep, y el puerto de carga paga
+  con el 5 % de impuestos industriales.

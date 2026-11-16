@@ -393,7 +393,11 @@ export const BUS = { label: 'Línea de colectivos', cost: 900, upkeep: 90, radiu
  * piece takes `w`×`h` lots, always the same way round, and pieces that share an edge are one
  * facility whose level is how many pieces it has (`HUB_LEVELS`: the pieces each level asks for).
  * Per level (1 to 3) a working facility gives `jobs` commercial jobs and `income` pesos a month; each
- * piece costs `cost` and `upkeep` a month. The airport is loud: it takes `noise` points of land value
+ * piece costs `cost` and `upkeep` a month. Measured, the old numbers paid for the whole facility in
+ * nineteen months and then printed money: the airport took 1.270 pesos a month over its own upkeep and
+ * the harbour 1.140 over nine months of payback. The income is now a notch lower and the upkeep a
+ * notch higher, so a full facility takes about three years to pay for itself and a half-built one
+ * loses money, which is what makes the tool a commitment instead of a printer. The airport is loud: it takes `noise` points of land value
  * off the lots within `noiseRadius`. The harbour has to touch the water; both need a street near.
  */
 export type HubKind = 'airport' | 'harbor';
@@ -407,9 +411,9 @@ export const HUBS: Record<
     w: 3,
     h: 2,
     cost: 6000,
-    upkeep: 450,
+    upkeep: 470,
     jobs: [20, 80, 300],
-    income: [250, 900, 2800],
+    income: [200, 720, 2300],
     power: [40, 120, 300],
     names: ['Hangar', 'Aeródromo', 'Aeropuerto internacional'],
     noise: [6, 12, 22],
@@ -420,9 +424,9 @@ export const HUBS: Record<
     w: 2,
     h: 2,
     cost: 3500,
-    upkeep: 280,
+    upkeep: 400,
     jobs: [15, 60, 200],
-    income: [150, 600, 1800],
+    income: [120, 480, 1350],
     power: [25, 70, 160],
     names: ['Muelle de paseos', 'Puerto', 'Puerto con cruceros'],
     noise: [0, 0, 0],
