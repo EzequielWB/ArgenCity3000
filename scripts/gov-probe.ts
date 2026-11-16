@@ -142,8 +142,10 @@ function play(government: GovernmentKind, years: number, diag: boolean, seed: nu
 
   /** Another plant as soon as the light is close to running out, or already has. */
   const needPower = (): void => {
-    const { shortage, capacity } = sim.power;
-    if (!shortage && capacity > 0) return;
+    const { shortage, use, capacity } = sim.power;
+    // The same headroom the band gate asks for: a plant built only on shortage leaves the city at
+    // ninety-something percent of the light, with the money to grow and nowhere to put it.
+    if (!shortage && capacity > 0 && use < capacity * 0.75) return;
     const slot = plantSlots[nextPlant];
     if (!slot) return;
     bucket = 'plant';
