@@ -76,3 +76,11 @@ inversión. Un puerto necesita escala, que es lo razonable.
 
 El aeropuerto y el puerto de paseos quedaron como estaban: medidos, rinden $42 y $80 netos por celda
 contra $66 de una zona nivel 5, o sea que no están fuera de escala.
+- L7 (usuario, 2026-11-16): "hay que reducir ... la cosa esa del mar ... actualmente es casi dinero
+  gratis" y, al confirmar: "sí, porque ocupaban mucho". Medido: el muelle de pescadores costaba $400,
+  dejaba 80 de venta más ~11 de impuestos industriales menos 30 de upkeep = **+$61 por mes**, o sea
+  **seis meses de repago**, y se podía encadenar a lo largo de toda la costa: era la mejor inversión
+  del juego siendo el edificio más barato. Ahora vende 55 y cuesta 45 de upkeep → +$21 y dieciocho
+  meses. El balneario pasó de 120 a 145 de upkeep (turismo intacto: su gracia es la temporada). La
+  costanera, el puerto de carga y el faro no se tocaron: el puerto ya paga con el 5 % de impuestos
+  industriales, no con plata directa.

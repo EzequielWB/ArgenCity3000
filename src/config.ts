@@ -461,15 +461,19 @@ export const BUS_COLORS = [
 export type CoastKind = 'fishing' | 'promenade' | 'port' | 'resort' | 'lighthouse';
 export const COAST_KINDS: readonly CoastKind[] = ['fishing', 'promenade', 'port', 'resort', 'lighthouse'];
 export const COAST: Record<CoastKind, { label: string; cost: number; upkeep: number; jobs: number }> = {
-  fishing: { label: 'Muelle de pescadores', cost: 400, upkeep: 30, jobs: 12 },
+  fishing: { label: 'Muelle de pescadores', cost: 400, upkeep: 45, jobs: 12 },
   promenade: { label: 'Costanera', cost: 25, upkeep: 2, jobs: 0 },
   port: { label: 'Puerto de carga', cost: 2500, upkeep: 200, jobs: 40 },
-  resort: { label: 'Balneario', cost: 1800, upkeep: 120, jobs: 30 },
+  resort: { label: 'Balneario', cost: 1800, upkeep: 145, jobs: 30 },
   lighthouse: { label: 'Faro', cost: 1500, upkeep: 60, jobs: 0 },
 };
 
-/** Fish sold by a working dock each month. */
-export const FISHING_SALES = 80;
+/**
+ * Fish sold by a working dock each month. Measured, a dock paid for itself in six months and could be
+ * strung along the whole coast, which made the cheapest building in the game the best investment in it:
+ * fifty-five a month against a dearer upkeep leaves about twenty and a year and a half to pay back.
+ */
+export const FISHING_SALES = 55;
 
 /**
  * Monthly tourism of a working resort. The southern summer (December to February) is the peak,

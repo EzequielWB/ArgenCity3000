@@ -79,13 +79,13 @@ describe('the coast tools', () => {
     ]);
     expect(COAST_KINDS).toEqual(COAST_TOOLS);
     expect(COAST_TOOLS.map((k) => [COAST[k].cost, COAST[k].upkeep, COAST[k].jobs])).toEqual([
-      [400, 30, 12],
+      [400, 45, 12],
       [25, 2, 0],
       [2500, 200, 40],
-      [1800, 120, 30],
+      [1800, 145, 30],
       [1500, 60, 0],
     ]);
-    expect(FISHING_SALES).toBe(80);
+    expect(FISHING_SALES).toBe(55);
     expect(COAST_TOOLS.map((k) => COAST[k].label)).toEqual(['Muelle de pescadores', 'Costanera', 'Puerto de carga', 'Balneario', 'Faro']);
   });
 
@@ -381,7 +381,7 @@ describe('the budget of the coast', () => {
     computeRoadAccess(w);
     const b = monthlyBudget(w, 7);
     const upkeep = COAST.fishing.upkeep + COAST.port.upkeep + 2 * COAST.promenade.upkeep + COAST.lighthouse.upkeep;
-    expect(upkeep).toBe(30 + 200 + 4 + 60);
+    expect(upkeep).toBe(45 + 200 + 4 + 60);
     expect(b.coast).toBe(upkeep);
     expect(b.expenses).toBe(b.roads + b.lines + b.parks + b.plants + b.services + b.schools + b.clinics + b.police + b.firefighters + b.loan + b.coast);
     expect(b.balance).toBe(b.income - b.expenses);
@@ -849,7 +849,7 @@ describe('the info card of the coast', () => {
 
   it('says what each building is, what it does and that it works', () => {
     const sim = city();
-    expect(card(sim, 8, 3)).toMatch(/Muelle de pescadores.*12 puestos.*\$80/);
+    expect(card(sim, 8, 3)).toMatch(/Muelle de pescadores.*12 puestos.*\$55/);
     expect(card(sim, 8, 5)).toMatch(/Costanera.*valor del suelo/i);
     expect(card(sim, 8, 7)).toMatch(/Puerto de carga.*40 puestos.*15 %/);
     expect(card(sim, 8, 9)).toMatch(/Balneario.*30 puestos/);
