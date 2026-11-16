@@ -95,3 +95,16 @@ contrario del pedido. El techo deja el peor caso en 10 meses y una sola queja en
 `isRelay` no contaba las piezas de aeropuerto, puerto ni los edificios de la costa: cada pieza tenía que
 estar, ella sola, dentro del alcance de un relé. Por eso había que rodear el aeropuerto de cables. Ahora
 un edificio es un relé sea del tipo que sea, y una línea que toca una pieza ilumina las seis.
+### L6 — las plazas y el humo
+
+> "Las plazas bajan el humo? si no lo hacen implementalo, ya que el tooltip dice eso"
+
+No lo bajaban: `computePollution` solo sumaba fábricas, puertos y usinas, y nunca leía plazas ni árboles. El
+tooltip prometía valor del suelo y nada más, pero el consejo del humo que había escrito yo en el turno
+anterior decía "plantá árboles alrededor", que no era algo que el jugador pudiera hacer. Ahora la plaza
+come humo con la misma forma con la que da valor (tamaño, alcance y cuidado son los mismos números), los
+árboles del mapa comen un poco por su cuenta, y las dos promesas de texto dicen plaza y no árboles.
+
+Medido sobre una fábrica de nivel 5: al lado del lote 40 de humo sin plaza, 27 con una plaza de 3 celdas
+al 100 %, 17 con una de 6, y 40 otra vez si la plaza está al 40 % de presupuesto. A dos lotes: 30 → 13 → 0.
+
