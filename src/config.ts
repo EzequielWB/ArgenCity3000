@@ -193,7 +193,7 @@ export const UPKEEP = {
    */
   servicesPerResident: 0.1,
   /** Population at which the cost per resident of municipal services doubles. */
-  servicesScale: 9000,
+  servicesScale: 14000,
 } as const;
 
 /** Power plant footprint, and the output of the coal plant. */
