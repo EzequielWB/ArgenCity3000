@@ -718,14 +718,18 @@ export class Simulation {
     }
   }
 
-  /** Chance per tick that an occupied building empties out, from what is wrong around it. */
+  /**
+   * Chance per tick that an occupied building empties out, from what is wrong around it. The city
+   * has to fall apart for months before a street empties: at these rates a blackout leaves most of
+   * the neighbours standing after two months, and the worst case still clears it in a year.
+   */
   private abandonRisk(i: number, zone: ZoneKind, served: boolean): number {
     const w = this.world;
     let p = 0;
-    if (!served) p += 0.004;
-    if (this.state.crisis) p += 0.0015;
-    if (w.crime[i] > CRIME_ABANDON) p += (0.002 * (w.crime[i] - CRIME_ABANDON)) / (100 - CRIME_ABANDON);
-    if (zone === 'R' && w.pollution[i] > 70) p += 0.0015;
+    if (!served) p += 0.001;
+    if (this.state.crisis) p += 0.0006;
+    if (w.crime[i] > CRIME_ABANDON) p += (0.0008 * (w.crime[i] - CRIME_ABANDON)) / (100 - CRIME_ABANDON);
+    if (zone === 'R' && w.pollution[i] > 70) p += 0.0006;
     return p;
   }
 

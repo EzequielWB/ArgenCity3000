@@ -67,6 +67,17 @@ describe('abandoned buildings', () => {
     expect(w.abandoned[w.idx(4, 4)]).toBe(0);
   });
 
+  it('take months to empty a street after the power goes out, not days', () => {
+    const w = starter();
+    const sim = new Simulation(w, newSimState(5), 'X');
+    for (let i = 0; i < TICKS_PER_MONTH * 24; i++) sim.tick();
+    let built = 0;
+    for (let i = 0; i < w.tiles.length; i++) if (w.level[i] > 0 && !w.abandoned[i]) built++;
+    build(w, 'bulldoze', 0, 1);
+    for (let i = 0; i < TICKS_PER_MONTH * 2; i++) sim.tick();
+    expect(countAbandoned(w)).toBeLessThan(built / 3);
+  });
+
   it('appear when a grown city loses its power, and come back when power returns', () => {
     const w = starter();
     const sim = new Simulation(w, newSimState(5), 'X');
