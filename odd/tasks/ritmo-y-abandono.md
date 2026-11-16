@@ -54,8 +54,9 @@ consecuencia. Bajar las tasas deja el mismo comportamiento con otro ritmo.
   −135.017 contra −186.167, abandonados en el primer mes 26 contra 81.
 - Techo solvente: de ~23.000 a ~49.000 habitantes. 150k sigue fuera de alcance: para eso
   `servicesScale` tendría que valer ~58.000 (ver `balance-de-gobiernos.md`, L6).
-- Los cinco gobiernos, 40 años: comunismo 13.346 (8 mandatos, +1,9 M), los otros cuatro siguen
-  cayendo a ~1.200–1.900 con ~−900.000. El abandono más lento no los salva porque no mueren de
+- Los cinco gobiernos, 40 años: comunismo 54.650 (8 mandatos), los otros cuatro siguen cayendo a
+  ~1.200–2.000 con ~−1.000.000. El 13.346 que decía acá era un bug del instrumento: ver L9 de
+  `balance-de-gobiernos.md`. El abandono más lento no los salva porque no mueren de
   abandono: mueren del acantilado del apetito (L8 del otro documento) — con 16 % de aprobación el
   apetito queda por debajo de 1 y los edificios BAJAN de nivel por demanda negativa, no se abandonan.
 - Velocidad rápida: 30 → 25 ticks por segundo; una semana pasa de 0,5 s a 0,6 s. Lento y Normal

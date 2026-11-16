@@ -123,3 +123,48 @@ aprobación y ahí el apetito de crecimiento queda por debajo de 1 y la ciudad s
 aprobación. No es una pendiente, es un acantilado, y los cuatro gobiernos que no son el comunismo
 lo pasan y no vuelven: la deuda fuerza impuestos altos, los impuestos bajan la aprobación, la
 aprobación baja corta el crecimiento y sin crecimiento no hay ingresos.
+
+**L9 — la tabla de L7 estaba mal, y era mi instrumento.** `needPower` construía una usina sólo
+cuando había apagón, mientras el portón de bandas pedía 25 % de luz libre: con el 94 % de uso la
+ciudad quedaba clavada en **3 bandas de 21** y 553.939 pesos en el banco. Con la misma condición en
+los dos lados (`use < capacity × 0,75`), el comunismo pasa de 13.346 a **54.650**. Tabla corregida,
+40 años, seed 7:
+
+| gobierno | pico | perdió | mandatos | aprob | caja |
+|---|---|---|---|---|---|
+| comunismo | 54.650 | no | 8 | 45 % | +15.440 |
+| democracia | 1.966 | SÍ | 0 | 16 % | −1.113.858 |
+| tecnocracia | 1.846 | SÍ | 0 | 16 % | −1.117.337 |
+| teocracia | 1.393 | no | 0 | 16 % | −1.011.584 |
+| dictadura | 1.212 | no | 0 | 16 % | −893.047 |
+
+**L10 — el plan quinquenal es el motor, y es el único.** Medido sobre el comunismo con el jugador
+arreglado:
+
+| cambio | pico | aprob |
+|---|---|---|
+| plan apagado (premio y aplauso en 0) | 1.055 | 16 % |
+| el plan paga plata pero no aplauso (`kept 0`) | 2.542 | 16 % |
+| servicios sin descuento (`0,7 → 1,0`) | 54.764 | 45 % |
+| `approvalStep 1 → 4` | 58.643 | 43 % |
+| premio 60.000 → 40.000 y aplauso 8 → 5 | 58.031 | 44 % |
+| el Congreso pide 45 % | 54.650 | 45 % |
+
+El `nudgeApproval(+8)` de cada plan es el único feedback positivo del juego que mantiene una ciudad
+arriba del precipicio de 31,8 de aprobación (L8). El descuento de servicios —lo que la ficha
+publicita como pro— no mueve el pico. Los otros cuatro gobiernos no tienen nada equivalente: no
+están peor balanceados, les falta motor.
+
+**L11 — el nerf elegido: la exigencia de la meta.** `PLAN.growth` es lo único que baja el techo:
+
+| `growth` | pico | aprob | Congresos |
+|---|---|---|---|
+| 1,40 | 54.650 | 45 % | 8/8 |
+| **1,55 (aplicado)** | **51.359** | **45 %** | 8/8 |
+| 1,60 | 56.375 | 43 % | 8/8 |
+| 1,70 | 56.662 | 33 % | 8/8 |
+| 1,80 | 26.750 | 16 % | 7/8 (pierde uno) |
+
+Advertencia para quien lea la columna de población: **no es monótona** (54.650 → 56.375 → 56.662), es
+caótica a estos cambios. La de aprobación sí es monótona y es la que decide: es un acantilado.
+Con 1,55 el margen sigue intacto; para quitarle la red al jugador hace falta 1,70.
