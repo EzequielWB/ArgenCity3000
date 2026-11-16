@@ -20,6 +20,15 @@ import type { Simulation } from './simulation';
 const WEEK_FLOOR = 500;
 
 /**
+ * A city is worth two things: what it collects and what it has saved. With only the first, a town with
+ * a full till and a small tax base paid nothing; with only the second, a city that had just built a
+ * hospital would pay a case out of money it no longer had. The till is read as if the city had been
+ * saving it over this many weeks, and no case ever takes more than half of what there is plus what
+ * the month is about to bring: a decision can hurt, it cannot sink the city.
+ */
+const TILL_WEEKS = 100;
+
+/**
  * What a case charges on top of the weeks it asks for. Calibrated at one and left there for a while,
  * the cases turned out cheap for a city that is doing well: this is the one knob that moves every
  * case and every holiday together, so the ladder between them stays the same.
@@ -32,8 +41,10 @@ const sum = (sim: Simulation, weeks: number): string => formatMoney(weeksOfIncom
 
 export function weeksOfIncome(sim: Simulation, weeks: number): number {
   const income = sim.state.lastBudget?.income ?? 0;
-  const week = Math.max(WEEK_FLOOR, Math.round(income / WEEKS_PER_MONTH));
-  return Math.round(week * weeks * CASE_PRICE);
+  const cash = sim.state.cash;
+  const week = Math.max(WEEK_FLOOR, Math.round(income / WEEKS_PER_MONTH), Math.round(cash / TILL_WEEKS));
+  const cost = Math.min(Math.round(week * Math.abs(weeks) * CASE_PRICE), Math.round((Math.max(0, cash) + Math.max(0, income)) / 2));
+  return weeks < 0 ? -cost : cost;
 }
 
 /** One of the ways out of an event: usually two, three on a holiday. */

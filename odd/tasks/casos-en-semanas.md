@@ -48,6 +48,23 @@ multiplicador". `CASE_PRICE = 1.3` en `weeksOfIncome`: una sola perilla que muev
 los feriados juntos, así la escalera entre ellos no cambia. Un caso de dos semanas pasó de $6.000 a
 $7.800 en una ciudad que recauda $12.000 por mes.
 
+**Corregido otra vez**, verbatim: "que use tanto el dinero en caja como la población, por que ahora
+que tengo mucho dinero pero no tanta población siento que no pago nada, y de igual forma si una
+partida mas adelante con mucha población pero por lo que sea tuvo mala caja o justo invirtió mucho en
+este caso quedaria fundida".
+
+La semana de la ciudad pasó a ser el **mayor** de tres cosas, y el precio tiene un techo:
+
+```
+semana  = max($500, recaudación del mes ÷ 4, caja ÷ 100)
+precio  = min(semana × semanas × 1,3, (caja + recaudación) ÷ 2)
+```
+
+- La población entra por la recaudación: es lo que la ciudad cobra por su gente.
+- La caja entra por `caja ÷ 100`: se lee como si la hubiera estado ahorrando durante cien semanas.
+- El techo es el que evita la fundida: un caso nunca se lleva más de la mitad de lo que hay más lo que
+  el mes va a traer.
+
 ## Tasks
 
 - T1 — `weeksOfIncome` y el piso, en `src/sim/events.ts`.
@@ -68,3 +85,7 @@ $7.800 en una ciudad que recauda $12.000 por mes.
   la fórmula, no de la pantalla.
 - L6 — `CASE_PRICE = 1.3`, un 30 % más caro todo junto. Se eligió una constante y no tocar 23 números,
   para que la próxima vez que haga falta sea una línea.
+- L7 — Dos referencias y un techo. Medido en cuatro ciudades: la chica con medio millón en caja pasó
+  de pagar $1.950 a $19.500 por un caso de tres semanas; la ciudad de 786.000 habitantes con la caja
+  en $2.000 toca el techo y paga $436.000 en vez de $848.000; la que arranca con $24.000 no cambió
+  nada. Ese último punto fue el criterio para elegir el techo: no abaratar el principio de la partida.
