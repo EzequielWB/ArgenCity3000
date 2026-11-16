@@ -54,3 +54,8 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   dispara cuando el mes del reloj coincide, así que no hubo que tocar el formato de guardado. Un
   feriado que cae mientras hay otro caso pendiente o una promesa en curso se pierde hasta el año
   siguiente: es preferible a encadenar dos ventanas.
+- **L4, la card se viste.** Un caso común abre la ventana verde con el borde dorado de siempre; el
+  feriado abre una bordó (`data-shape='feriado'`, `--bordo` `#5e1725`) con el mismo borde y el mismo
+  título dorados, para que se reconozca sin leer. Verbatim del pedido: "Habia pensado mas en un
+  bordó, con las letra del titulo en dorado y el borde tambien". Antes de eso había ido a celeste y
+  blanco de bandera y no le gustó.
