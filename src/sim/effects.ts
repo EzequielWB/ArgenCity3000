@@ -23,7 +23,7 @@ export const MIRACLE = 'milagro';
 export const COAST_WORN = 'coastWorn';
 /** The city bought power from the Province: no blackouts while it lasts. */
 export const NO_BLACKOUT = 'noBlackout';
-/** The town is celebrating: everything it earns is a fifth more while it lasts (see `incomeFactor`). */
+/** The town is celebrating: everything it earns is a quarter more while it lasts (see `incomeFactor`). */
 export const FIESTA = 'fiesta';
 
 /** A budget slider that cannot be moved: the Province put a condition, or the money came tied. */
@@ -40,7 +40,7 @@ export const EFFECT_FACTOR: Record<string, number> = {
   [COAST_WORN]: 0.4,
   [DROUGHT]: 0.7,
   [MIRACLE]: 1.2,
-  [FIESTA]: 1.2,
+  [FIESTA]: 1.25,
 };
 
 /** What the city earns, as a multiplier: the drought, the miracles of a theocracy and the holidays. */

@@ -19,13 +19,21 @@ import type { Simulation } from './simulation';
  */
 const WEEK_FLOOR = 500;
 
+/**
+ * What a case charges on top of the weeks it asks for. Calibrated at one and left there for a while,
+ * the cases turned out cheap for a city that is doing well: this is the one knob that moves every
+ * case and every holiday together, so the ladder between them stays the same.
+ */
+const CASE_PRICE = 1.3;
+
 /** What `weeks` weeks of this city's income are worth. */
 const sum = (sim: Simulation, weeks: number): string => formatMoney(weeksOfIncome(sim, weeks));
 
 
 export function weeksOfIncome(sim: Simulation, weeks: number): number {
   const income = sim.state.lastBudget?.income ?? 0;
-  return Math.max(WEEK_FLOOR, Math.round(income / WEEKS_PER_MONTH)) * weeks;
+  const week = Math.max(WEEK_FLOOR, Math.round(income / WEEKS_PER_MONTH));
+  return Math.round(week * weeks * CASE_PRICE);
 }
 
 /** One of the ways out of an event: usually two, three on a holiday. */

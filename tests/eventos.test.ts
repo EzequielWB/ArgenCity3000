@@ -625,21 +625,22 @@ describe('the newer cases', () => {
       sim.state.lastBudget = { ...real, income };
       return weeksOfIncome(sim, 1);
     };
-    expect(week(12000)).toBe(3000); // four weeks to the month
-    expect(week(120000)).toBe(30000); // ten times the city, ten times the bill
-    expect(week(0)).toBe(500); // a town that has not collected yet still pays something
+    expect(week(12000)).toBe(3900); // four weeks to the month, and the cases charge a third more
+    expect(week(120000)).toBe(39000); // ten times the city, ten times the bill
+    expect(week(0)).toBe(650); // a town that has not collected yet still pays something
   });
 
   it('writes the pesos it is going to charge, not the weeks behind them', () => {
     const { sim } = city();
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
-    // A month of 12.000 puts a week at 3.000, so the two weeks of the vaccine campaign are 6.000.
+    // A month of 12.000 puts a week at 3.900 once the price of the cases is on, so the two weeks of
+    // the vaccine campaign are 7.800, and that is what the option says and what it takes.
     sim.state.lastBudget = { ...sim.state.lastBudget!, income: 12000 };
     const shot = option('brote-de-gripe', 0);
-    expect(detailOf(shot, sim)).toContain('$ 6.000');
+    expect(detailOf(shot, sim)).toContain('$ 7.800');
     const before = sim.state.cash;
     shot.apply(sim);
-    expect(sim.state.cash).toBe(before - 6000);
+    expect(sim.state.cash).toBe(before - 7800);
   });
 
   it('paying the arrears brings the budget back to normal, and letting it run leaves it cut', () => {

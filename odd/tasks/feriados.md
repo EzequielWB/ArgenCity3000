@@ -32,7 +32,7 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   realidad se mueve con la Pascua (verbatim: "Carnaval dejalo en febrero no pasa nada"). Las fechas de
   memoria quedan afuera: el 24 de Marzo y el 2 de Abril no dan aprobación ni plata.
 - **S5 — Qué devuelven.** Las dos buenas dejan al pueblo gastando: un `fiesta` de tres meses en la muy
-  buena y de dos en la buena, que multiplica lo que la ciudad recauda un quinto más (`incomeFactor`,
+  buena y de dos en la buena, que multiplica lo que la ciudad recauda un cuarto más (`incomeFactor`,
   el mismo lugar donde entra la sequía). La muy buena suma 10 de aprobación y la buena 5; la mala
   resta 3.
   **Corregido después:** "hace mas determinantes las dos opciones buenas y no tanto la mala... la idea
@@ -78,3 +78,7 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   un trámite: lo que devuelve subió (un quinto más de recaudación por tres meses, 10 de aprobación) y
   lo que quita la salida gratis bajó a 3. La aprobación a 100 % no puede subir, y ahí lo que se cobra
   es la recaudación: por eso la `fiesta` ahora es 1,2 y no 1,12.
+- **L7, más caro y paga un poco más.** El mismo pedido que en `casos-en-semanas.md` (L6) subió el
+  precio de los festejos un 30 % junto con el de los casos. La `fiesta` pasó además de 1,2 a 1,25: si
+  costaba más, la inversión tenía que devolver más. La relación 2,5 entre la muy buena y la buena se
+  mantiene sola, porque las dos pasan por la misma perilla.

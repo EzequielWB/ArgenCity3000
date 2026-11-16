@@ -43,6 +43,11 @@ Cada importe viejo se convirtió a semanas redondeando **hacia arriba** (tendien
 hacia abajo, y con un piso de $500 por semana para que un pueblo que todavía no recaudó nada igual
 pague algo.
 
+**Corregido después**, verbatim: "Que sean mas caros los festejos y lo eventos, aumentá un poco su
+multiplicador". `CASE_PRICE = 1.3` en `weeksOfIncome`: una sola perilla que mueve todos los casos y
+los feriados juntos, así la escalera entre ellos no cambia. Un caso de dos semanas pasó de $6.000 a
+$7.800 en una ciudad que recauda $12.000 por mes.
+
 ## Tasks
 
 - T1 — `weeksOfIncome` y el piso, en `src/sim/events.ts`.
@@ -61,3 +66,5 @@ pague algo.
   la semana da impar. Solo se ve en la caja, nunca en un texto.
 - L5 — El detalle volvió a los pesos, calculados en el momento. Las semanas quedan como la unidad de
   la fórmula, no de la pantalla.
+- L6 — `CASE_PRICE = 1.3`, un 30 % más caro todo junto. Se eligió una constante y no tocar 23 números,
+  para que la próxima vez que haga falta sea una línea.
