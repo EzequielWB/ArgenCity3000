@@ -51,7 +51,7 @@ function summaryHtml(run: RunState, tick: number): string {
   return `<h3>Las mejoras de la run</h3>
     ${
       picks.length
-        ? `<ul class="run-picks">${picks.map((p) => `<li><span class="up-kind up-${p.kind}">${KIND_LABEL[p.kind]}</span> ${escapeHtml(p.label)}</li>`).join('')}</ul>`
+        ? `<ul class="run-picks">${picks.map((p) => `<li><span class="up-kind up-${p.kind}">${KIND_LABEL[p.kind]}</span> ${escapeHtml(p.label)}${p.outcome ? ` — ${escapeHtml(p.outcome)}` : ''}</li>`).join('')}</ul>`
         : '<p>No llegaste a elegir ninguna.</p>'
     }
     <p><small>${picks.length} de ${RUN_MARKS.length} mejoras · ${escapeHtml(dateLabel(tick))}</small></p>`;

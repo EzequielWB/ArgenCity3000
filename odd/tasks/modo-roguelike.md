@@ -32,6 +32,23 @@ Runner de la suite: `npm test` (Vitest). Verificación de alcance: `npx vite-nod
 - La oferta se guarda en la partida: al cargar, la ventana se reabre igual (no se vuelve a sortear).
 - Criterio de aceptación: mismo seed + mismas decisiones = mismas ofertas.
 
+### S2b — Las dos cartas que se sortean al tomarlas
+
+> "una que se llame 50/50 que te duplica algo aleatoriamente y te reduce algo la mitad
+> aleatoriamente (Entre dinero, población y aprobación) y una que sea TODO O NADA, te puede
+> triplicar alguna de esas tres O te divide a la mitad una de esas tres"
+
+- `50/50` (mixta): duplica **una** de las tres cosas (`dinero`, `poblacion`, `aprobacion`) y reduce
+  **otra** a la mitad; nunca la misma. Las dos se sortean con el rng de la run.
+- `todo-o-nada` (mixta): sortea **una** de las tres y una moneda: ×3 o ÷2.
+- El sorteo se resuelve **al tomarlas** y queda escrito en el pick (`mods` y `outcome`): no se vuelve
+  a tirar al cargar y el resumen de la run dice qué salió.
+- La población se mueve como **densidad** (la gente por vivienda): ×2, ×3 o ÷2 de lo que cada edificio
+  alberga, que es la única forma de que la población se mueva en este motor.
+- La plata y la aprobación son efectos de una sola vez; la aprobación se recorta a 0..100.
+- Criterio de aceptación: la ciudad cambia en el acto (caja, aprobación y habitantes), el aviso dice
+  qué salió, y al cargar la partida el mismo pick da exactamente los mismos números.
+
 ### S3 — La run se pierde y no se sigue
 
 > "si perdes no podes seguir, solo partida nueva (ir al menu o reiniciar el mismo mapa), 2 años de
@@ -119,3 +136,15 @@ o reiniciar el mismo mapa. En `clasico` no cambia nada.
 **L4 — decisión de arquitectura.** Un objeto `RunMods` con multiplicadores (y un bonus de valor del
 suelo aditivo) en vez de una bandera por mejora: 20 mejoras se expresan como datos y cada sistema
 existente lee la perilla una sola vez. Prohibido ramificar `if (modoRoguelike)` dentro de la simulación.
+
+**L5 — las cartas de azar.** Pedido del usuario sobre el pool:
+
+> "una que se llame 50/50 que te duplica algo aleatoriamente y te reduce algo la mitad aleatoriamente
+> (Entre dinero, población y aprobación) y una que sea TODO O NADA, te puede triplicar alguna de esas
+> tres O te divide a la mitad una de esas tres"
+
+No encajan en el modelo de perillas porque tocan estado vivo (caja, aprobación) y porque el resultado
+no se conoce hasta tomarlas. La solución mínima: el `Upgrade` declara `gamble` y el sorteo se resuelve
+en `takeUpgrade`, que devuelve los factores de caja y aprobación y **escribe en el pick** el resultado
+(`mods` para la densidad y `outcome` en palabras). Así `runMods` sigue siendo una función pura del
+eestado guardado, no se sortea dos veces y el resumen puede contar qué pasó.

@@ -74,8 +74,8 @@ describe('roguelike', () => {
       openOffer(run);
       for (const id of run.offer!) expect(taken.has(id)).toBe(false);
       const pick = run.offer![0];
-      expect(takeUpgrade(run, pick, 0)).toBe(true);
-      expect(takeUpgrade(run, pick, 0)).toBe(false); // the table is empty now
+      expect(takeUpgrade(run, pick, 0)).not.toBeNull();
+      expect(takeUpgrade(run, pick, 0)).toBeNull(); // the table is empty now
       taken.add(pick);
       expect(run.next).toBe(k + 1);
     }
@@ -88,7 +88,7 @@ describe('roguelike', () => {
     const run = newRun(3);
     openOffer(run);
     run.offer = ['zona-franca'];
-    expect(takeUpgrade(run, 'zona-franca', 0)).toBe(true);
+    expect(takeUpgrade(run, 'zona-franca', 0)).not.toBeNull();
     expect(runMods(run, 0).income).toBeCloseTo(0.75);
     expect(runMods(run, 47 * TICKS_PER_MONTH).income).toBeCloseTo(0.75);
     expect(runMods(run, 48 * TICKS_PER_MONTH).income).toBeCloseTo(0.75 * 1.7);
@@ -113,7 +113,7 @@ describe('roguelike', () => {
     const sim = new Simulation(w, newSimState(1, 'democracia', '', newRun(1)), 'Villa Run');
     expect(sim.totals.pop).toBe(4 * CAPACITY.R[5]);
     sim.state.run!.offer = ['torres'];
-    expect(sim.applyUpgrade('torres')).toBe(true);
+    expect(sim.applyUpgrade('torres')).not.toBeNull();
     expect(sim.totals.pop).toBe(4 * Math.round(CAPACITY.R[5] * 1.3));
   });
 
@@ -145,7 +145,7 @@ describe('roguelike', () => {
     expect(sim.totals.pop).toBe(RUN_GOAL);
     // Taking a card re-reads the city and checks the goal, which is the same door the month uses.
     sim.state.run!.offer = ['catastro'];
-    expect(sim.applyUpgrade('catastro')).toBe(true);
+    expect(sim.applyUpgrade('catastro')).not.toBeNull();
     expect(sim.state.run!.wonAt).not.toBeNull();
   });
 
@@ -174,7 +174,7 @@ describe('roguelike', () => {
     const w = cityOf(1000, 64);
     const sim = new Simulation(w, newSimState(1, 'democracia', '', newRun(1)), 'Villa Run');
     sim.state.run!.offer = ['torres'];
-    expect(sim.applyUpgrade('torres')).toBe(true);
+    expect(sim.applyUpgrade('torres')).not.toBeNull();
     const text = serialize({ name: 'Villa Run', seed: 1, world: w, sim: sim.state });
     expect(deserialize(text).sim.run).toEqual(sim.state.run);
 
@@ -182,6 +182,76 @@ describe('roguelike', () => {
     old.version = 17;
     delete old.sim.run;
     expect(deserialize(JSON.stringify(old)).sim.run).toBeNull();
+  });
+
+  it('el 50/50 duplica una cosa y reduce otra, nunca la misma', () => {
+    const outcomes = new Set<string>();
+    for (let seed = 1; seed <= 30; seed++) {
+      const run = newRun(seed);
+      run.offer = ['cincuenta-cincuenta'];
+      const r = takeUpgrade(run, 'cincuenta-cincuenta', 0)!;
+      expect(r.outcome).toMatch(/^50\/50: /);
+      expect(r.outcome).toContain('×2');
+      expect(r.outcome).toContain('÷2');
+      // Dos de las tres cosas se mueven, y la población va por la densidad.
+      const moved = [r.cash, r.approval, run.picks[0].mods?.density].filter((v) => v !== undefined && v !== 1);
+      expect(moved).toHaveLength(2);
+      for (const v of moved) expect([0.5, 2]).toContain(v);
+      outcomes.add(r.outcome!);
+    }
+    expect(outcomes.size).toBeGreaterThan(3); // el sorteo cambia con el seed
+  });
+
+  it('todo o nada triplica o parte a la mitad, y nunca las dos', () => {
+    const outcomes = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const run = newRun(seed);
+      run.offer = ['todo-o-nada'];
+      const r = takeUpgrade(run, 'todo-o-nada', 0)!;
+      expect(r.outcome).toMatch(/^Todo o nada: /);
+      const tripled = r.outcome!.includes('×3');
+      expect(tripled !== r.outcome!.includes('÷2')).toBe(true);
+      for (const v of [r.cash, r.approval, run.picks[0].mods?.density ?? 1]) expect([0.5, 1, 3]).toContain(v);
+      outcomes.add(r.outcome!);
+    }
+    expect(outcomes.size).toBeGreaterThan(3);
+  });
+
+  it('una carta de azar mueve la plata, la aprobación y la población de verdad', () => {
+    const w = new World(flat(32));
+    for (let i = 0; i < 4; i++) {
+      w.tiles[i] = TILE.R;
+      w.setLevel(i, 5);
+    }
+    // The same fresh run rolls the same thing here and in the simulation below.
+    const probe = newRun(5);
+    probe.offer = ['todo-o-nada'];
+    const rolled = takeUpgrade(probe, 'todo-o-nada', 0)!;
+
+    const sim = new Simulation(w, newSimState(1, 'democracia', '', newRun(5)), 'Villa Azar');
+    const cash = sim.state.cash;
+    const approval = sim.state.approval;
+    expect(sim.totals.pop).toBe(4 * CAPACITY.R[5]);
+    sim.state.run!.offer = ['todo-o-nada'];
+    const result = sim.applyUpgrade('todo-o-nada')!;
+    expect(result.outcome).toBe(rolled.outcome);
+    expect(sim.state.cash).toBe(Math.round(cash * rolled.cash));
+    expect(sim.state.approval).toBe(Math.max(0, Math.min(100, Math.round(approval * rolled.approval))));
+    const density = rolled.outcome!.includes('Población') ? (rolled.outcome!.includes('÷2') ? 0.5 : 3) : 1;
+    expect(sim.totals.pop).toBe(4 * Math.round(CAPACITY.R[5] * density));
+  });
+
+  it('una población partida a la mitad vale la mitad de habitantes al cargar', () => {
+    const w = new World(flat(32));
+    for (let i = 0; i < 4; i++) {
+      w.tiles[i] = TILE.R;
+      w.setLevel(i, 5);
+    }
+    const sim = new Simulation(w, newSimState(1, 'democracia', '', newRun(1)), 'Villa Mitad');
+    const before = sim.totals.pop;
+    sim.state.run!.picks.push({ id: 'cincuenta-cincuenta', at: 0, mods: { density: 0.5 }, outcome: '50/50: Plata ×2 · Población ÷2' });
+    sim.refresh();
+    expect(sim.totals.pop).toBe(before / 2);
   });
 
   it('cada carta dice su clase, su nombre y qué hace', () => {
@@ -195,6 +265,6 @@ describe('roguelike', () => {
   it('el pool es coherente: ids únicos y toda clase tiene cartas', () => {
     expect(new Set(UPGRADES.map((u) => u.id)).size).toBe(UPGRADES.length);
     for (const kind of ['buena', 'mixta', 'semilla'] as const) expect(UPGRADES.filter((u) => u.kind === kind).length).toBeGreaterThan(3);
-    for (const u of UPGRADES) expect(u.stages.length).toBeGreaterThan(0);
+    for (const u of UPGRADES) expect(u.stages.length > 0 || u.gamble !== undefined).toBe(true);
   });
 });

@@ -27,7 +27,7 @@ import { FAVOR } from '../sim/favor';
 import { MILESTONES, milestoneForPop } from '../sim/milestones';
 import type { FivePlan } from '../sim/plan';
 import { APPROVAL } from '../sim/politics';
-import { RUN_MARKS, upgradeById, type RunState } from '../sim/roguelike';
+import { NO_MODS, RUN_MARKS, upgradeById, type RunPick, type RunState } from '../sim/roguelike';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { busLineProblem, busStations } from '../world/transport';
@@ -293,15 +293,28 @@ function parseSim(raw: unknown): SimState {
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }
+/** The keys a rolled pick may carry: the same knobs as `RunMods`. */
+const MOD_KEYS = new Set(Object.keys(NO_MODS));
+
 /** The roguelike run, or null in a classic game. Checked so a hand-edited save cannot pick a card that does not exist. */
 function parseRun(raw: unknown): RunState | null {
   if (raw === null || raw === undefined) return null;
   const r = raw as Record<string, unknown>;
   need(Array.isArray(r.picks), 'La run de la partida es inválida');
   const picks = (r.picks as unknown[]).map((item) => {
-    const { id, at } = (item ?? {}) as { id?: unknown; at?: unknown };
+    const { id, at, mods, outcome } = (item ?? {}) as { id?: unknown; at?: unknown; mods?: unknown; outcome?: unknown };
     need(typeof id === 'string' && upgradeById(id) !== null && isInt(at) && (at as number) >= 0, 'La run de la partida es inválida');
-    return { id: id as string, at: at as number };
+    // A card that rolled carries what it rolled: every knob has to be a real one and a real number.
+    need(
+      mods === undefined ||
+        (typeof mods === 'object' && mods !== null && Object.entries(mods as Record<string, unknown>).every(([k, v]) => MOD_KEYS.has(k) && typeof v === 'number' && Number.isFinite(v))),
+      'La run de la partida es inválida',
+    );
+    need(outcome === undefined || (typeof outcome === 'string' && outcome.length <= 120), 'La run de la partida es inválida');
+    const pick: RunPick = { id: id as string, at: at as number };
+    if (mods !== undefined) pick.mods = mods as RunPick['mods'];
+    if (outcome !== undefined) pick.outcome = outcome as string;
+    return pick;
   });
   const rawOffer = r.offer;
   need(

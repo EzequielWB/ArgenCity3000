@@ -42,7 +42,7 @@ import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElect
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, eventOfMonth, type CityEvent } from './events';
-import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type RunMods, type RunState } from './roguelike';
+import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type PickResult, type RunMods, type RunState } from './roguelike';
 import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
 
 export interface SimState {
@@ -877,14 +877,21 @@ export class Simulation {
     openOffer(run);
   }
 
-  /** Takes one of the three cards on the table. False when there is no draft open or the id is not offered. */
-  applyUpgrade(id: string): boolean {
-    if (!this.state.run || !takeUpgrade(this.state.run, id, this.state.tick)) return false;
+  /** Takes one of the three cards on the table. Null when there is no draft open or the id is not offered. */
+  applyUpgrade(id: string): PickResult | null {
+    const s = this.state;
+    if (!s.run) return null;
+    const result = takeUpgrade(s.run, id, s.tick);
+    if (!result) return null;
+    // A gamble card hits the till and the neighbours' mood at once; the recount below is what moves
+    // the population, because it doubles or halves the people each home holds.
+    s.cash = Math.round(s.cash * result.cash);
+    s.approval = Math.max(0, Math.min(100, Math.round(s.approval * result.approval)));
     // A card can change how many people a building holds, so every derived layer is recounted at once:
     // taking a density upgrade fills the city on the spot, which is the point of the card.
     this.refresh();
     this.reachRunMarks();
-    return true;
+    return result;
   }
 
   private updateRunMods(): void {

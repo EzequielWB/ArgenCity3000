@@ -751,9 +751,12 @@ ${stalled}` : ''}`;
 
   /** Takes one of the three cards of a draft: the city changes at once and the clock goes back to its speed. */
   takeUpgrade(id: string): void {
-    if (!this.sim.applyUpgrade(id)) return;
+    const result = this.sim.applyUpgrade(id);
+    if (!result) return;
     this.setSpeed(this.speedBeforeEvent);
     this.afterEdit();
+    // A card that rolled has to say what it did, or the player never finds out.
+    if (result.outcome) toast(result.outcome);
   }
 
   /** The next goal under the population, the locked tools, and the plaque when a milestone is reached. */

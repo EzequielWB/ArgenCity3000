@@ -60,6 +60,11 @@ export interface Upgrade {
   blurb: string;
   kind: UpgradeKind;
   stages: readonly UpgradeStage[];
+  /**
+   * A card that rolls at the table instead of moving fixed knobs: it hits cash, population or
+   * approval (see `rollGamble`). Its `stages` are empty and the result is written into the pick.
+   */
+  gamble?: 'split' | 'allin';
 }
 
 /**
@@ -90,6 +95,23 @@ export const UPGRADES: readonly Upgrade[] = [
   { id: 'conurbano', label: 'Ley del conurbano', kind: 'semilla', blurb: 'Cuatro años creciendo un 15 % más lento. Después, cada vivienda alberga un 50 % más de gente.', stages: [{ after: 0, mods: { growth: 0.85 } }, { after: 48, mods: { density: 1.5 } }] },
   { id: 'universidad', label: 'Ciudad universitaria', kind: 'semilla', blurb: 'Tres años con los servicios un 20 % más caros. Después, un 35 % más de ingresos y un 15 % más de puestos.', stages: [{ after: 0, mods: { serviceCost: 1.2 } }, { after: 36, mods: { income: 1.35, jobs: 1.15 } }] },
   { id: 'digital', label: 'Gobierno digital', kind: 'semilla', blurb: 'Tres años de papelerío: un 15 % más de administración. Después, la administración crece la mitad con la ciudad.', stages: [{ after: 0, mods: { admin: 1.15 } }, { after: 36, mods: { adminCurve: 0.5 } }] },
+  // ---- The two that roll on the spot: they hit cash, population or approval, and the table decides which.
+  {
+    id: 'cincuenta-cincuenta',
+    label: '50/50',
+    kind: 'mixta',
+    blurb: 'Se sortea al tomarla: duplica una de tres cosas —plata, población o aprobación— y reduce otra a la mitad. No sabés cuáles hasta que la tomás.',
+    stages: [],
+    gamble: 'split',
+  },
+  {
+    id: 'todo-o-nada',
+    label: 'Todo o nada',
+    kind: 'mixta',
+    blurb: 'Se sortea al tomarla: triplica una de tres cosas —plata, población o aprobación— o te la deja a la mitad.',
+    stages: [],
+    gamble: 'allin',
+  },
 ];
 
 export function upgradeById(id: string): Upgrade | null {
@@ -100,6 +122,10 @@ export function upgradeById(id: string): Upgrade | null {
 export interface RunPick {
   id: string;
   at: number;
+  /** For a card that rolls: the knobs the roll left behind, already resolved. */
+  mods?: Partial<RunMods>;
+  /** For a card that rolls: what the table did, in words, for the summary. */
+  outcome?: string;
 }
 
 /** Months in a row with the cash in the red that sink a run. */
@@ -123,19 +149,62 @@ export function newRun(seed: number): RunState {
   return { picks: [], offer: null, next: 0, wonAt: null, dry: 0, rng: (seed ^ 0x9e3779b9) >>> 0 };
 }
 
-/** Every stage that has already started, folded into one set of knobs. */
+/** The three things a gamble card can hit. Population moves as density: the homes take more people. */
+export const GAMBLE_TARGETS = ['dinero', 'poblacion', 'aprobacion'] as const;
+export type GambleTarget = (typeof GAMBLE_TARGETS)[number];
+
+const TARGET_NAME: Record<GambleTarget, string> = { dinero: 'Plata', poblacion: 'Población', aprobacion: 'Aprobación' };
+
+/** What a card did to the city the moment it was taken: multipliers on cash and approval, and a line for the diary. */
+export interface PickResult {
+  cash: number;
+  approval: number;
+  outcome: string | null;
+}
+
+/**
+ * Rolls a gamble card with the draft's own generator: one target doubled and another halved, or one
+ * target tripled or halved. The result is written into the pick so nothing is rolled twice.
+ */
+function rollGamble(run: RunState, mode: 'split' | 'allin'): { cash: number; approval: number; outcome: string; mods: Partial<RunMods> } {
+  const rng = new Rng(run.rng);
+  const result: { cash: number; approval: number; outcome: string; mods: Partial<RunMods> } = { cash: 1, approval: 1, outcome: '', mods: {} };
+  const hit = (target: GambleTarget, factor: number): string => {
+    if (target === 'dinero') result.cash = factor;
+    else if (target === 'aprobacion') result.approval = factor;
+    else result.mods = { density: factor };
+    return `${TARGET_NAME[target]} ${factor >= 2 ? `×${factor}` : '÷2'}`;
+  };
+  if (mode === 'split') {
+    const up = rng.int(3);
+    const down = (up + 1 + rng.int(2)) % 3; // any of the other two
+    result.outcome = `50/50: ${hit(GAMBLE_TARGETS[up], 2)} · ${hit(GAMBLE_TARGETS[down], 0.5)}`;
+  } else {
+    result.outcome = `Todo o nada: ${hit(GAMBLE_TARGETS[rng.int(3)], rng.chance(0.5) ? 3 : 0.5)}`;
+  }
+  run.rng = rng.state;
+  return result;
+}
+
+/** Folds one set of knobs into another: everything multiplies except `land`, which adds. */
+function merge(into: RunMods, partial: Partial<RunMods>): void {
+  for (const [key, value] of Object.entries(partial) as [keyof RunMods, number][]) {
+    if (key === 'land') into.land += value;
+    else into[key] *= value;
+  }
+}
+
+/** Every stage that has already started, plus every roll, folded into one set of knobs. */
 export function runMods(run: RunState | null, tick: number): RunMods {
   const mods: RunMods = { ...NO_MODS };
   if (!run) return mods;
   for (const pick of run.picks) {
+    if (pick.mods) merge(mods, pick.mods);
     const upgrade = upgradeById(pick.id);
     if (!upgrade) continue;
     for (const stage of upgrade.stages) {
       if (tick - pick.at < stage.after * TICKS_PER_MONTH) continue;
-      for (const [key, value] of Object.entries(stage.mods) as [keyof RunMods, number][]) {
-        if (key === 'land') mods.land += value;
-        else mods[key] *= value;
-      }
+      merge(mods, stage.mods);
     }
   }
   return mods;
@@ -169,13 +238,22 @@ export function openOffer(run: RunState): void {
   run.rng = rng.state;
 }
 
-/** Takes one of the offered cards. False when there is no draft open or the id is not on the table. */
-export function takeUpgrade(run: RunState, id: string, tick: number): boolean {
-  if (!run.offer || !run.offer.includes(id)) return false;
-  run.picks.push({ id, at: tick });
+/** Takes one of the offered cards, rolling it when it is a gamble. Null when there is no draft open or the id is not on the table. */
+export function takeUpgrade(run: RunState, id: string, tick: number): PickResult | null {
+  if (!run.offer || !run.offer.includes(id)) return null;
+  const upgrade = upgradeById(id);
+  const pick: RunPick = { id, at: tick };
+  let result: PickResult = { cash: 1, approval: 1, outcome: null };
+  if (upgrade?.gamble) {
+    const rolled = rollGamble(run, upgrade.gamble);
+    pick.mods = rolled.mods;
+    pick.outcome = rolled.outcome;
+    result = { cash: rolled.cash, approval: rolled.approval, outcome: rolled.outcome };
+  }
+  run.picks.push(pick);
   run.offer = null;
   run.next++;
-  return true;
+  return result;
 }
 
 /** Whether the run is won, lost (by the mandate or by the till), or still going. */
@@ -186,10 +264,10 @@ export function runOver(state: { run: RunState | null; lostElection: boolean }):
   return state.run.dry >= RUN_DRY_MONTHS ? 'caja' : null;
 }
 
-/** The upgrades taken, oldest first, with the label the summary prints. */
-export function pickedUpgrades(run: RunState): { label: string; kind: UpgradeKind }[] {
+/** The upgrades taken, oldest first, with the label the summary prints and what a roll did. */
+export function pickedUpgrades(run: RunState): { label: string; kind: UpgradeKind; outcome: string | null }[] {
   return run.picks.map((p) => {
     const u = upgradeById(p.id);
-    return { label: u?.label ?? p.id, kind: u?.kind ?? 'buena' };
+    return { label: u?.label ?? p.id, kind: u?.kind ?? 'buena', outcome: p.outcome ?? null };
   });
 }
