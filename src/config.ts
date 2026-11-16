@@ -282,9 +282,12 @@ export const EVENT = {
   /** Months the city has to live before the first one: the founding is not interrupted. */
   firstAt: 12,
   /** Months between two events. */
-  gap: 8,
-  /** Chance per month of one showing up, once the gap has passed. */
-  chance: 0.3,
+  gap: 16,
+  /**
+   * Chance per month of one showing up, once the gap has passed. The wait is `gap + 1 / chance`
+   * months, so the two moved together to halve it: 8 + 3.3 with the old numbers, 16 + 6.7 now.
+   */
+  chance: 0.15,
   /** An event that showed up cannot show up again until this many other events have. */
   cooldown: 3,
   /** A strike (teachers, bus drivers) only comes when its budget has been cut below this percent. */
@@ -476,8 +479,13 @@ export const TOURISM: { peak: number; shoulder: number; low: number; peakMonths:
   shoulderMonths: [11, 3],
 };
 
-/** Each working port adds `perPort` to the industrial taxes, up to `max` in all. */
-export const PORT_TAX_BOOST = { perPort: 0.15, max: 0.45 } as const;
+/**
+ * Each working port adds `perPort` to the industrial taxes, up to `max` in all. It was 0.15 and 0.45,
+ * which measured as a fifth of the whole income of a mature city for three cells of coast and a
+ * building that paid for itself in one month: the boost is a share of a base that grows, the price
+ * does not.
+ */
+export const PORT_TAX_BOOST = { perPort: 0.05, max: 0.15 } as const;
 
 /** A lighthouse may stand on land this close (in lots, any direction) to the water. */
 export const LIGHTHOUSE_REACH = 2;

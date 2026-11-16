@@ -59,17 +59,12 @@ describe('la tabla de feriados', () => {
     expect(HOLIDAYS.map((h) => h.name)).not.toContain('2 de Abril');
   });
 
-  it('is an opportunity every two or three years, not a chore every year', () => {
+  it('is an opportunity every four years, not a chore every year', () => {
     const years: number[] = [];
     for (let year = 1990; year < 2060; year++) if (isCelebrationYear(year)) years.push(year);
-    expect(years.length).toBeGreaterThan(15);
-    expect(years.length).toBeLessThan(36); // a third of the years, more or less
-    // Never two years running, never more than three years in between.
-    for (let k = 1; k < years.length; k++) {
-      const gap = years[k] - years[k - 1];
-      expect(gap).toBeGreaterThanOrEqual(2);
-      expect(gap).toBeLessThanOrEqual(3);
-    }
+    expect(years.length).toBe(18); // four years apart, from the second year of the game
+    expect(years[0]).toBe(START_YEAR + 1); // the first year is over before any case shows up
+    for (let k = 1; k < years.length; k++) expect(years[k] - years[k - 1]).toBe(4);
   });
 
   it('asks for a decision on one holiday, and only in a year that celebrates', () => {

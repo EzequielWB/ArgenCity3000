@@ -68,23 +68,20 @@ export const holidayOf = (month: number): Holiday | null => HOLIDAYS.find((h) =>
 /** How many holidays a year are celebrated with a decision. The rest are only announced. */
 export const CELEBRATED_PER_YEAR = 1;
 
-/** How many years pass between one celebration and the next: two or three, never one. */
-const gapAfter = (year: number): number => (hash2(year, 1, 11) < 0.5 ? 2 : 3);
+/** How many years pass between one celebration and the next. */
+const CELEBRATION_EVERY = 4;
 
 /**
- * Whether `year` puts a holiday in front of the Intendente. Walked from the founding year with steps of
- * two or three, all of it a pure function of the year: a saved game replays the same celebrations and
- * nothing has to be kept in the save file.
+ * Whether `year` puts a holiday in front of the Intendente: every four years, counted from the second
+ * year of the game. The first year is skipped because no case shows up before it is over. All of it a
+ * pure function of the year, so a saved game replays the same celebrations and nothing lives in the
+ * save file.
  */
-export function isCelebrationYear(year: number): boolean {
-  let y = START_YEAR;
-  while (y < year) y += gapAfter(y);
-  return y === year;
-}
+export const isCelebrationYear = (year: number): boolean => (year - START_YEAR - 1) % CELEBRATION_EVERY === 0;
 
 /**
  * The holidays of `year` that ask the Intendente for a decision. A celebration is an opportunity, not
- * a monthly chore: one every two or three years, picked from the year itself. The rest are announced.
+ * a monthly chore: one every four years, picked from the year itself. The rest are announced.
  */
 export function celebratedHolidays(year: number): readonly Holiday[] {
   if (!isCelebrationYear(year)) return [];

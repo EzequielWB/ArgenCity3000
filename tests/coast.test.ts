@@ -400,7 +400,7 @@ describe('the budget of the coast', () => {
     expect(b.balance).toBe(b.income - b.expenses);
   });
 
-  it('boosts the industrial taxes 15 % per working port, up to 45 %', () => {
+  it('boosts the industrial taxes 5 % per working port, up to 15 %', () => {
     const industrial = (ports: number, withRoad = true): number => {
       const w = lit(new World(shore()));
       for (let k = 0; k < 6; k++) w.setTile(20 + k, 5, TILE.I, 5);
@@ -410,13 +410,13 @@ describe('the budget of the coast', () => {
       return monthlyBudget(w, 10).taxI;
     };
     const jobs = (ports: number) => 6 * 120 + ports * COAST.port.jobs;
-    const expected = (ports: number) => Math.round(jobs(ports) * 10 * 0.075 * (1 + Math.min(0.45, 0.15 * ports)));
+    const expected = (ports: number) => Math.round(jobs(ports) * 10 * 0.075 * (1 + Math.min(0.15, 0.05 * ports)));
     expect(industrial(0)).toBe(Math.round(jobs(0) * 10 * 0.075));
     expect(industrial(1)).toBe(expected(1));
     expect(industrial(2)).toBe(expected(2));
     expect(industrial(3)).toBe(expected(3));
     // The fourth port brings its jobs but no more boost.
-    expect(industrial(4)).toBe(Math.round(jobs(4) * 10 * 0.075 * 1.45));
+    expect(industrial(4)).toBe(Math.round(jobs(4) * 10 * 0.075 * 1.15));
     expect(industrial(1)).toBeGreaterThan(industrial(0));
     // A port with no street does nothing: no jobs and no boost.
     expect(industrial(2, false)).toBe(industrial(0));

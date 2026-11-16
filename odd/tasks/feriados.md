@@ -22,9 +22,10 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   por mes (Todos los feriados se anuncian en el diario, con festejar me refiero a tomar decisiones)".
   **Corregido después, dos veces:** "Tambien que los festejos por año se bajen a 1, 3 son demasiados",
   y después "que los feriados sean cada 2-3 años nada mas (lo de elegir festejar)".
-  `CELEBRATED_PER_YEAR = 1` y `isCelebrationYear(year)`: se camina desde el año de fundación con pasos
-  de dos o tres años, todo función pura del año, así que una partida guardada repite las mismas
-  celebraciones. En 31 años de partida hay 12 decisiones. Cuál de los seis feriados sale también se
+  `CELEBRATED_PER_YEAR = 1` y `isCelebrationYear(year)`. **Tercera corrección:** "los feriados cada 4
+  años". Ahora es un ciclo fijo de cuatro años que arranca en el segundo año de la partida (el primero
+  no tiene casos: `EVENT.firstAt`); antes eran pasos de dos o tres. Todo función pura del año, así que
+  una partida guardada repite las mismas celebraciones. En 70 años hay 18 decisiones. Cuál de los seis feriados sale también se
   decide con la semilla del año. Los demás se anuncian igual, sin ventana. La tabla tiene un feriado
   por mes como máximo, así que no hay dos el mismo mes.
 - **S4 — Las seis fechas.** Año Nuevo (enero), Carnaval (febrero), 25 de Mayo (mayo), 20 de Junio

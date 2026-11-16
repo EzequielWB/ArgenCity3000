@@ -57,3 +57,22 @@ Antecedente: los mapas reales (Mar del Plata) están descritos en `odd/tasks/arg
   502 la primera vez. Resultado: agua 4 % (laguna La Blanca, 1.368 lotes, y laguna del Difunto Manuel,
   1.053), 9.743 lotes de calle, 1.104 árboles y altura máxima nivel 6, o sea que el test de mapas reales
   pasa sin tocarle ningún umbral.
+
+## Corrección: el puerto de carga dejaba de pagarse solo
+
+> "Hay que nerfear los puertos y seguramente el aeropuerto, que propones?"
+
+Medido en una ciudad madura (recaudación $870.509, impuestos industriales $309.645, el 36 % del
+ingreso): tres puertos de carga daban **+$139.340 por mes, el 16 % de todo lo que entraba**, por tres
+celdas de costa y $7.500 de obra. Se pagaban solos en 0,05 meses.
+
+El problema es estructural: el bono es un porcentaje de una base que crece con la ciudad, y el puerto
+cuesta siempre lo mismo. `PORT_TAX_BOOST` pasó de `{ perPort: 0.15, max: 0.45 }` a
+`{ perPort: 0.05, max: 0.15 }`: los mismos tres puertos ahora aportan $46.447, el 5,3 % del ingreso.
+
+Consecuencia buscada: con $600 de mantenimiento, tres puertos necesitan unos $12.000 de impuestos
+industriales para cubrirse. En una ciudad chica trabajan a pérdida; en una grande son una buena
+inversión. Un puerto necesita escala, que es lo razonable.
+
+El aeropuerto y el puerto de paseos quedaron como estaban: medidos, rinden $42 y $80 netos por celda
+contra $66 de una zona nivel 5, o sea que no están fuera de escala.
