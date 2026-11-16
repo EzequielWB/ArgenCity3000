@@ -2026,7 +2026,6 @@ ol.steps li {
   }
 
   #status,
-  #topbar .rci,
   #topbar .stall,
   #toolbar .group-label,
   #frame .cor,
@@ -2069,13 +2068,38 @@ ol.steps li {
     text-overflow: ellipsis;
   }
 
+  /* The clock keeps its own row: its basis leaves room for the demand box, so the two share the
+     second line instead of squeezing the plaques of the first one. */
   .clock {
     order: 5;
-    flex: 1 0 100%;
+    flex: 1 1 calc(100% - 50px);
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 6px;
     font-size: 13px;
+  }
+
+  /* The demand bars of the desktop, shrunk to a small box at the right end of the clock row: above
+     the map and always in sight, because they are what tells the player what to zone next. */
+  #topbar .rci {
+    order: 6;
+    flex: none;
+    margin-left: auto;
+    height: 40px;
+    gap: 3px;
+    padding: 2px 4px 11px;
+    border-width: 2px;
+  }
+
+  #topbar .rci .bar {
+    width: 7px;
+  }
+
+  #topbar .rci .bar span {
+    font-size: 8px;
+    margin-top: 0;
   }
 
 .speed button {
