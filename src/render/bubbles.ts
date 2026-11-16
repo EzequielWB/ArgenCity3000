@@ -115,6 +115,11 @@ export function bubbleIcon(issue: Issue): string {
 
 /** The red the picture fills up with as the neighbours lose their patience. */
 const ANGER_RED = '#d23a32';
+/**
+ * Most of the picture the red covers at full anger. It has to be a tint and not a filter: the icon is
+ * what tells the player *what* is wrong, so at the top of the scale it has to still be readable.
+ */
+const ANGER_TINT = 0.45;
 
 /**
  * Draws the bubble of `issue` with its middle on (cx, cy), in whole pixels so the edges stay sharp at
@@ -129,7 +134,7 @@ export function drawBubble(g: CanvasRenderingContext2D, issue: Issue, cx: number
   g.drawImage(spriteOf(issue), x, y);
   if (anger > 0) {
     // Over the picture only: the paper and the edge stay as they are, so it still reads as a bubble.
-    g.globalAlpha = Math.min(0.85, anger / 100);
+    g.globalAlpha = (Math.min(100, anger) / 100) * ANGER_TINT;
     g.fillStyle = ANGER_RED;
     g.fillRect(x + 2, y + 2, 9, 9);
     g.globalAlpha = 1;
