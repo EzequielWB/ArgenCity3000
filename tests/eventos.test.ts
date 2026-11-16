@@ -3,9 +3,10 @@ import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, TICKS_PER_MONTH } from '../src/confi
 import { packBusLine } from '../src/world/transport';
 import { deserialize, serialize } from '../src/save/save';
 import { COAST_BOOST, COAST_WORN, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, coolOf, lockOf } from '../src/sim/effects';
-import { EVENTS, detailOf, eventById, pickEvent, weeksOfIncome } from '../src/sim/events';
+import { EVENTS, caseMoney, detailOf, eventById, pickEvent } from '../src/sim/events';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { Rng } from '../src/core/rng';
+import { formatMoney } from '../src/core/format';
 import { TILE, World, type World as WorldType } from '../src/world/world';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
 
@@ -113,7 +114,7 @@ describe('la Provincia pone la plata', () => {
   it('takes the money and ties the health slider for two years', () => {
     const { sim } = city();
     sim.state.cash = 1000;
-    const price = weeksOfIncome(sim, 7);
+    const price = caseMoney(sim, 7, 'gain');
     option('provincia', 0).apply(sim);
     expect(sim.state.cash).toBe(1000 + price);
     expect(sim.state.funding.clinic).toBe(120);
@@ -161,7 +162,7 @@ describe('la fábrica sin controles', () => {
     const { sim } = smoky();
     const cash = sim.state.cash;
     const jobs = sim.totals.iJobs;
-    const price = weeksOfIncome(sim, 3);
+    const price = caseMoney(sim, 3, 'gain');
     option('fabrica-sin-controles', 1).apply(sim);
     expect(sim.state.cash).toBe(cash + price);
     expect(sim.totals.iJobs).toBe(jobs);
@@ -184,7 +185,7 @@ describe('la ola de calor', () => {
     const a = city().sim;
     const cash = a.state.cash;
     const approval = a.state.approval;
-    const price = weeksOfIncome(a, 3);
+    const price = caseMoney(a, 3, 'cost');
     option('ola-de-calor', 0).apply(a);
     expect(a.state.cash).toBe(cash - price);
     expect(a.state.approval).toBeGreaterThan(approval);
@@ -223,7 +224,7 @@ describe('la plaza que piden los vecinos', () => {
   it('sells the lot for six thousand and leaves a grudge', () => {
     const { sim } = city();
     const cash = sim.state.cash;
-    const price = weeksOfIncome(sim, 2);
+    const price = caseMoney(sim, 2, 'gain');
     option('plaza-vecina', 1).apply(sim);
     expect(sim.state.cash).toBe(cash + price);
     expect(sim.state.grief).toBe(150);
@@ -251,7 +252,7 @@ describe('la ola de robos', () => {
     const b = city().sim;
     const cash = b.state.cash;
     const approval = b.state.approval;
-    const price = weeksOfIncome(b, 1.5);
+    const price = caseMoney(b, 1.5, 'cost');
     option('ola-de-robos', 1).apply(b);
     expect(b.state.cash).toBe(cash - price);
     expect(b.state.approval).toBeGreaterThan(approval);
@@ -274,7 +275,7 @@ describe('la curtiembre', () => {
   it('takes the land and the smoke, or sends it away with the neighbours happy', () => {
     const a = city().sim;
     const cash = a.state.cash;
-    const price = weeksOfIncome(a, 1.5);
+    const price = caseMoney(a, 1.5, 'gain');
     option('curtiembre', 0).apply(a);
     expect(a.state.cash).toBe(cash + price);
     expect(a.state.effects[INDUSTRY_BOOM]).toBe(12);
@@ -305,7 +306,7 @@ describe('la crecida', () => {
   it('pays for the defence or lets the first row drown', () => {
     const a = city().sim;
     const cash = a.state.cash;
-    const price = weeksOfIncome(a, 5);
+    const price = caseMoney(a, 5, 'cost');
     option('crecida', 0).apply(a);
     expect(a.state.cash).toBe(cash - price);
     expect(a.state.effects[coolOf('crecida')]).toBe(36);
@@ -328,7 +329,7 @@ describe('la feria del pueblo', () => {
     const a = city().sim;
     const cash = a.state.cash;
     const approval = a.state.approval;
-    const price = weeksOfIncome(a, 1);
+    const price = caseMoney(a, 1, 'cost');
     option('feria', 0).apply(a);
     expect(a.state.cash).toBe(cash - price);
     expect(a.state.approval).toBeGreaterThan(approval);
@@ -354,7 +355,7 @@ describe('el corte en la usina', () => {
   it('buys power or rations it', () => {
     const a = city().sim;
     const cash = a.state.cash;
-    const price = weeksOfIncome(a, 6);
+    const price = caseMoney(a, 6, 'cost');
     option('corte-de-usina', 0).apply(a);
     expect(a.state.cash).toBe(cash - price);
     expect(a.state.effects[NO_BLACKOUT]).toBe(3);
@@ -387,19 +388,19 @@ describe('la coima en la obra', () => {
     expect(a.state.news[0].text).toMatch(/coima/i);
   });
 
-  it('covers it up: the money comes in, and the odds decide the rest', () => {
+  it('covers it up: the money goes out, and the odds decide the rest', () => {
     const caught = city(1).sim;
     const cash = caught.state.cash;
     let reported = false;
     for (let k = 0; k < 30 && !reported; k++) {
       const sim = city(k + 1).sim;
       const before = sim.state.approval;
-      const price = weeksOfIncome(sim, 2);
+      const price = caseMoney(sim, 2, 'cost');
       option('coima', 1).apply(sim);
       if (sim.state.grief > 0) {
         reported = true;
         expect(sim.state.approval).toBeLessThan(before);
-        expect(sim.state.cash).toBe(cash + price);
+        expect(sim.state.cash).toBe(cash - price);
       }
     }
     expect(reported).toBe(true); // three in ten, so thirty tries always find one
@@ -418,7 +419,7 @@ describe('la sequía', () => {
   it('subsidises the factory or lets the market decide', () => {
     const a = city().sim;
     const cash = a.state.cash;
-    const price = weeksOfIncome(a, 4);
+    const price = caseMoney(a, 4, 'cost');
     option('sequia', 0).apply(a);
     expect(a.state.cash).toBe(cash - price);
     expect(a.state.effects[INDUSTRY_BOOM]).toBe(3);
@@ -474,7 +475,7 @@ describe('la temporada en la costanera', () => {
   it('invests in the season or lets the seafront wear out', () => {
     const a = city().sim;
     const cash = a.state.cash;
-    const price = weeksOfIncome(a, 2);
+    const price = caseMoney(a, 2, 'cost');
     option('temporada', 0).apply(a);
     expect(a.state.cash).toBe(cash - price);
     expect(a.state.effects[COAST_BOOST]).toBe(3);
@@ -620,7 +621,8 @@ describe('the newer cases', () => {
     for (const [index, weeks, sign] of [[0, weeks0, sign0], [1, weeks1, sign1]] as const) {
       const { sim } = city();
       const before = { cash: sim.state.cash, approval: sim.state.approval };
-      const price = weeksOfIncome(sim, weeks); // read before: the price depends on the till
+      // Read before: the price depends on the till. The sign says which side of the ledger it is.
+      const price = caseMoney(sim, weeks, weeks < 0 ? 'cost' : 'gain');
       option(id, index).apply(sim);
       expect(sim.state.cash).toBe(before.cash + price);
       expect(Math.sign(sim.state.approval - before.approval)).toBe(sign);
@@ -628,19 +630,23 @@ describe('the newer cases', () => {
   });
 
   // The cases used to charge fixed pesos: measured, that was two years of income for a town of five
-  // thousand and half a day for a city of a hundred thousand. Now they charge weeks of what the city
-  // itself collects, so the weight of the decision does not depend on how big it got.
-  it('charges weeks of what the city collects, whatever the city is worth', () => {
+  // thousand and half a day for a city of a hundred thousand. Now they move in weeks of the city, and
+  // a charge reads both what it collects and what it has in the till.
+  it('charges weeks of what the city collects, and a windfall only reads the collection', () => {
     const sim = city().sim;
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
     const real = sim.state.lastBudget!;
-    const week = (income: number) => {
+    const week = (income: number, cash: number, side: 'cost' | 'gain') => {
       sim.state.lastBudget = { ...real, income };
-      return weeksOfIncome(sim, 1);
+      sim.state.cash = cash;
+      return caseMoney(sim, 1, side);
     };
-    expect(week(12000)).toBe(3900); // four weeks to the month, and the cases charge a third more
-    expect(week(120000)).toBe(39000); // ten times the city, ten times the bill
-    expect(week(0)).toBe(650); // a town that has not collected yet still pays something
+    expect(week(12000, 90000, 'gain')).toBe(3900); // four weeks to the month, and a third more
+    expect(week(120000, 90000, 'gain')).toBe(39000); // ten times the city, ten times the bill
+    expect(week(0, 90000, 'gain')).toBe(650); // a town that has not collected yet still pays something
+    // A charge also reads the till: a city sitting on ninety thousand does not pay pocket change.
+    expect(week(12000, 0, 'cost')).toBe(3900); // without a till it is the same week of collection
+    expect(week(12000, 90000, 'cost')).toBe(14625); // 90.000 / 8, and the cases charge a third more
   });
 
   // Two references, because a city is worth two things: a town with a full till and a thin tax base
@@ -651,27 +657,38 @@ describe('the newer cases', () => {
     const budget = sim.state.lastBudget!;
     sim.state.lastBudget = { ...budget, income: 1200 };
     sim.state.cash = 0;
-    const empty = weeksOfIncome(sim, 3);
+    const empty = caseMoney(sim, 3, 'cost');
     sim.state.cash = 300000;
-    const full = weeksOfIncome(sim, 3);
+    const full = caseMoney(sim, 3, 'cost');
     expect(full).toBeGreaterThan(empty * 5); // the same case, a city with a till behind it
 
     sim.state.lastBudget = { ...budget, income: 0 };
     sim.state.cash = 1000;
-    expect(weeksOfIncome(sim, 20)).toBeLessThanOrEqual(500); // half the till and nothing coming
+    expect(caseMoney(sim, 20, 'cost')).toBeLessThanOrEqual(500); // half the till and nothing coming
+  });
+
+  it('a town with ninety thousand saved pays tens of thousands to cover up a bribe', () => {
+    const { sim } = city();
+    for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
+    // Six thousand neighbours, ninety thousand in the till and a month of 5.820.
+    sim.state.lastBudget = { ...sim.state.lastBudget!, income: 5820 };
+    sim.state.cash = 90000;
+    expect(caseMoney(sim, 2, 'cost')).toBe(29250); // two weeks of 90.000 / 8, a third more
+    const before = sim.state.cash;
+    option('coima', 1).apply(sim);
+    expect(sim.state.cash).toBe(before - 29250);
   });
 
   it('writes the pesos it is going to charge, not the weeks behind them', () => {
     const { sim } = city();
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
-    // A month of 12.000 puts a week at 3.900 once the price of the cases is on, so the two weeks of
-    // the vaccine campaign are 7.800, and that is what the option says and what it takes.
     sim.state.lastBudget = { ...sim.state.lastBudget!, income: 12000 };
     const shot = option('brote-de-gripe', 0);
-    expect(detailOf(shot, sim)).toContain('$ 7.800');
+    const price = caseMoney(sim, 2, 'cost');
+    expect(detailOf(shot, sim)).toContain(formatMoney(price));
     const before = sim.state.cash;
     shot.apply(sim);
-    expect(sim.state.cash).toBe(before - 7800);
+    expect(sim.state.cash).toBe(before - price);
   });
 
   it('paying the arrears brings the budget back to normal, and letting it run leaves it cut', () => {
@@ -693,10 +710,14 @@ describe('the newer cases', () => {
     u.state.funding.school = 40;
     u.state.funding.university = 40;
     const cash = u.state.cash;
-    const price = weeksOfIncome(u, 4.5);
+    // Two charges, and each one re-reads the till the previous one left behind.
+    const first = caseMoney(u, 2.5, 'cost');
+    u.state.cash -= first;
+    const second = caseMoney(u, 2, 'cost');
+    u.state.cash = cash;
     option('paro-docente', 0).apply(u);
     expect(u.state.funding.university).toBe(100);
-    expect(u.state.cash).toBe(cash - price);
+    expect(u.state.cash).toBe(cash - first - second);
 
     const c = city().sim;
     c.setTransport(30);

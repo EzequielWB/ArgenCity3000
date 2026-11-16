@@ -53,17 +53,27 @@ que tengo mucho dinero pero no tanta población siento que no pago nada, y de ig
 partida mas adelante con mucha población pero por lo que sea tuvo mala caja o justo invirtió mucho en
 este caso quedaria fundida".
 
-La semana de la ciudad pasó a ser el **mayor** de tres cosas, y el precio tiene un techo:
+La semana de la ciudad es el **mayor** de dos cosas y el precio tiene un techo, pero **un cobro y un
+premio no leen lo mismo**:
 
 ```
-semana  = max($500, recaudación del mes ÷ 4, caja ÷ 100)
-precio  = min(semana × semanas × 1,3, (caja + recaudación) ÷ 2)
+semana     = max($500, recaudación del mes ÷ 4)
+cobro      = min(max(semana, caja ÷ 8) × semanas × 1,3, (caja + recaudación) ÷ 2)
+premio     = semana × semanas × 1,3
 ```
 
 - La población entra por la recaudación: es lo que la ciudad cobra por su gente.
-- La caja entra por `caja ÷ 100`: se lee como si la hubiera estado ahorrando durante cien semanas.
-- El techo es el que evita la fundida: un caso nunca se lleva más de la mitad de lo que hay más lo que
-  el mes va a traer.
+- La caja entra por `caja ÷ 8`: dos meses de recaudación. Se probó con `÷100` y un pueblo de 6.000
+  habitantes con $90.000 pagaba $3.783 por tapar una coima; con `÷8` paga **$29.250**. El mismo caso
+  en una ciudad que no tiene nada en caja sigue saliendo lo mismo que antes.
+- Un premio lee solo la recaudación: un buen mes no puede imprimir plata de los ahorros.
+- El techo es solo para los cobros: nunca se llevan más de la mitad de lo que hay más lo que el mes
+  va a traer.
+
+**Corregido cuarto**: la opción "Taparlo" de la coima *sumaba* la coima a la caja en vez de cobrarla,
+que es la razón por la que ese caso era el más barato de todos. Ahora la resta. Y las cuatro opciones
+que efectivamente **entraban** plata decían "Cuestan": ahora dicen "Entran" (fábrica sin controles,
+venta del lote del club, y las dos de plaza vecina).
 
 ## Tasks
 
@@ -89,3 +99,8 @@ precio  = min(semana × semanas × 1,3, (caja + recaudación) ÷ 2)
   de pagar $1.950 a $19.500 por un caso de tres semanas; la ciudad de 786.000 habitantes con la caja
   en $2.000 toca el techo y paga $436.000 en vez de $848.000; la que arranca con $24.000 no cambió
   nada. Ese último punto fue el criterio para elegir el techo: no abaratar el principio de la partida.
+- L8 — `TILL_WEEKS` de 100 a 8, y el lado (cobro o premio) explícito en `caseMoney`. Verificado con
+  los tests: el pueblo de 6.000 con $90.000 paga $29.250 en vez de $3.783. **Contra L7**: el principio
+  de la partida quedó más caro, no más barato; es a propósito. Una ciudad recién fundada con $30.000
+  y un caso de cuatro semanas paga los $15.000 del techo (la mitad de su caja), no $2.600. El techo es
+  lo único que sigue evitando la fundida, y es la palanca si resulta demasiado duro.
