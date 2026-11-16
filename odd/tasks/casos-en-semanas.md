@@ -75,11 +75,57 @@ que es la razón por la que ese caso era el más barato de todos. Ahora la resta
 que efectivamente **entraban** plata decían "Cuestan": ahora dicen "Entran" (fábrica sin controles,
 venta del lote del club, y las dos de plaza vecina).
 
+### S4 — La unidad es un mes de recaudación, y la caja no puede multiplicar el precio
+
+> "No te parece que subiste muy poco los valores de los eventos? y fijate la discrepancia entre la
+> coima de 3k a 30k respecto a los dos ejemplos, revisá bien los eventos aleatorios y los feriados,
+> revisá como funcionan en codigo y si es razonable, por que si jugando todo es asequible y de la
+> nada es re caro uno solo, no tiene sentido"
+
+La discrepancia era real y tenía una sola causa: el precio era `max(semana de recaudación, caja ÷ 8)`,
+así que la caja no era una referencia más, era la que mandaba en cuanto el jugador ahorraba. Medido
+con la misma coima (dos semanas) y una ciudad que recauda $12.000:
+
+| Caja | Cobro | En meses de recaudación |
+|---|---|---|
+| $0 | $6.000 | 0,5 |
+| $24.000 | $9.000 | 0,75 |
+| $60.000 | $22.500 | 1,9 |
+| $300.000 | $112.500 | 9,4 |
+
+El mismo caso costaba **dieciocho veces más** por haber ahorrado, y ese es el "de la nada es re caro
+uno solo". Y del otro lado de la tabla, con la caja vacía *todo* el catálogo caía en medio mes: por
+eso "todo es asequible".
+
+El modelo pasa a ser uno solo, y con una unidad que se puede leer en voz alta:
+
+```
+mes   = max($2.000, recaudación del mes × factor de caja)
+factor = 1 si la ciudad guardó menos de 10 meses de recaudación; hasta 2 si guardó más
+cobro = min(mes × meses, (caja + recaudación) ÷ 2)
+premio = mes × meses
+```
+
+- La recaudación es la referencia; la caja **solo suma** y **nunca más del doble**, y solo cuando la
+  ciudad guardó diez meses o más de lo que recauda. Un ahorrista paga más, nunca dieciocho veces más.
+- Un premio no lee la caja: un buen mes no imprime plata de los ahorros.
+- El techo de la mitad sigue siendo la única red: un caso duele, no funde.
+- La escalera (`caseMoney` recibe **meses**, no semanas) va de 1 a 7: `barro` y `feria` 1, `coima` y
+  `brote-de-gripe` 2, `crecida` 5, `corte-de-usina` 6, y los 7 de aceptar la plata de la Provincia.
+- El detalle de cada opción dice el importe **y su tamaño**: "$ 18.000 (2,0 meses de recaudación)".
+  Sin eso, el jugador mide el precio contra su caja y le parece caro o gratis según el día.
+
+Criterio de aceptación: la misma opción no se mueve más del doble por tener caja, y ninguna opción del
+catálogo queda por debajo de un mes ni por encima de siete (test sobre las 24 opciones y los feriados).
+
 ## Tasks
 
 - T1 — `weeksOfIncome` y el piso, en `src/sim/events.ts`.
 - T2 — Las 24 opciones de los casos y las tres de los feriados, en semanas.
 - T3 — Los tests de `tests/eventos.test.ts` pasan a asertar semanas.
+- T4 — `caseMoney` recibe meses, el factor de caja acotado a 2 y el piso de `$2.000`, en
+  `src/sim/events.ts`.
+- T5 — El test de la escalera completa: las 24 opciones medidas en meses de recaudación.
 
 ## Log
 
@@ -109,3 +155,9 @@ venta del lote del club, y las dos de plaza vecina).
   así que los 48 importes y los dos topes de los feriados se movieron juntos y la escalera entre casos
   quedó igual. Medido con los tests: el pueblo de 6.000 con $90.000 paga $33.750 por tapar la coima
   (era $3.783 al empezar); una semana de una ciudad que recauda $12.000 cuesta $4.500 (era $3.900).
+- L10 — Reescrito el modelo por la discrepancia que marcó el usuario. Antes: `caja ÷ 8` como
+  referencia con `max`, lo que hacía que la caja mandara (18× entre una ciudad con la caja vacía y una
+  con $300.000) mientras un caso con la caja vacía pagaba medio mes. Ahora: recaudación como
+  referencia, caja como factor acotado a 2 y solo arriba de diez meses guardados, y la escalera
+  escrita en meses (1 a 7). El detalle de cada opción pasa a decir el importe y cuántos meses de
+  recaudación son. Verificado con el test de la escalera completa: ninguna opción queda fuera de 1..7.

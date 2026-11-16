@@ -1,4 +1,4 @@
-import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH, WEEKS_PER_MONTH } from '../config';
+import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, SERVICES, TICKS_PER_MONTH } from '../config';
 import type { Rng } from '../core/rng';
 import { busStations } from '../world/transport';
 import { TILE, type World, zoneOf } from '../world/world';
@@ -12,49 +12,53 @@ import { monthsToElection } from './politics';
 import type { Simulation } from './simulation';
 
 /**
- * A case charges and pays in weeks of what the city collects, not in pesos. The fixed amounts these
- * cases used to carry were measured to be two years of income for a town of five thousand and half
- * a day for a city of a hundred thousand: the same decision was a catastrophe or a rounding error.
- * Four weeks to the month, and a floor so a town that has not collected anything yet still pays.
+ * A case charges and pays in months of what the city collects, not in pesos. The fixed amounts these
+ * cases used to carry were measured to be two years of income for a town of five thousand and half a
+ * day for a city of a hundred thousand: the same decision was a catastrophe or a rounding error. The
+ * month is also the unit the ladder is written in: one month for the small cases, six for a flood.
  */
-const WEEK_FLOOR = 500;
+const MONTH_FLOOR = 2000;
 
 /**
- * A city is worth two things: what it collects and what it has saved, and a charge has to read both.
- * Measured only against the collection, a case was pocket change for a city with a full till: a town
- * of six thousand with ninety thousand saved paid three thousand to cover up a bribe. A charge reads
- * the till as if it were this many weeks of collection (eight: two months of income), so what it asks
- * for is a real share of what the city has. A windfall reads only the collection, so a good month
- * cannot print money out of the savings. And no case ever takes more than half of what there is plus
- * what the month is about to bring: a decision can hurt, it cannot sink the city.
+ * What the till may add. Measured against the collection alone, a town of six thousand with ninety
+ * thousand saved paid pocket change to cover up a bribe. Measured against the till alone it was worse
+ * the other way: the same town with three million saved paid eight years of collection for a pothole,
+ * and the same case moved by twenty-six times depending on how much the player had put aside. So
+ * savings only ever add, never more than double, and only once the city holds `TILL_MONTHS` of what
+ * it collects. A windfall never reads the till: a good month cannot print money out of the savings.
  */
-const TILL_WEEKS = 8;
+const TILL_MONTHS = 10;
+const TILL_TOP = 2;
 
-/**
- * What a case charges on top of the weeks it asks for. Calibrated at one and left there for a while,
- * the cases turned out cheap for a city that is doing well: this is the one knob that moves every
- * case and every holiday together, so the ladder between them stays the same. At 1,5 a case of a
- * week costs a week and a half of what the city collects.
- */
-const CASE_PRICE = 1.5;
-
-/** Which side of the ledger a case hits: a charge reads the till too, a windfall only the collection. */
+/** Which side of the ledger a case hits: a charge reads the till, a windfall only the collection. */
 export type CaseSide = 'cost' | 'gain';
 
-/** What `weeks` weeks of the city are worth on `side`, in pesos of the day. */
-export function caseMoney(sim: Simulation, weeks: number, side: CaseSide): number {
-  const income = sim.state.lastBudget?.income ?? 0;
-  const cash = sim.state.cash;
-  const collected = Math.max(WEEK_FLOOR, Math.round(income / WEEKS_PER_MONTH));
-  const week = side === 'gain' ? collected : Math.max(collected, Math.round(cash / TILL_WEEKS));
-  const money = Math.round(week * Math.abs(weeks) * CASE_PRICE);
-  // A charge can hurt the city; it cannot sink it.
-  const capped = side === 'gain' ? money : Math.min(money, Math.round((Math.max(0, cash) + Math.max(0, income)) / 2));
-  return weeks < 0 ? -capped : capped;
+/** A month of collection, which is what the ladder is counted in. */
+function monthOf(sim: Simulation): number {
+  return Math.max(MONTH_FLOOR, Math.round(sim.state.lastBudget?.income ?? 0));
 }
 
-/** The same amount, written for the player. */
-const sum = (sim: Simulation, weeks: number, side: CaseSide): string => formatMoney(caseMoney(sim, weeks, side));
+/** What `months` months of the city's collection are worth on `side`, in pesos of the day. */
+export function caseMoney(sim: Simulation, months: number, side: CaseSide): number {
+  const income = sim.state.lastBudget?.income ?? 0;
+  const cash = sim.state.cash;
+  const hoard = side === 'gain' || income <= 0 ? 1 : Math.min(TILL_TOP, Math.max(1, cash / (income * TILL_MONTHS)));
+  const money = Math.round(monthOf(sim) * hoard * Math.abs(months));
+  // A charge can hurt the city; it cannot sink it.
+  const capped = side === 'gain' ? money : Math.min(money, Math.round((Math.max(0, cash) + Math.max(0, income)) / 2));
+  return months < 0 ? -capped : capped;
+}
+
+/**
+ * The amount written for the player, with its size in months of collection next to it. Next to a
+ * till of ninety thousand, nine thousand looks free; next to "two months of what the city collects",
+ * it does not.
+ */
+const sum = (sim: Simulation, months: number, side: CaseSide): string => {
+  const pesos = caseMoney(sim, months, side);
+  const share = (Math.abs(pesos) / monthOf(sim)).toFixed(1);
+  return `${formatMoney(pesos)} (${share.replace('.', ',')} ${share === '1.0' ? 'mes' : 'meses'} de recaudación)`;
+};
 
 /** One of the ways out of an event: usually two, three on a holiday. */
 export interface EventOption {

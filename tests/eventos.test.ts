@@ -630,53 +630,78 @@ describe('the newer cases', () => {
   });
 
   // The cases used to charge fixed pesos: measured, that was two years of income for a town of five
-  // thousand and half a day for a city of a hundred thousand. Now they move in weeks of the city, and
-  // a charge reads both what it collects and what it has in the till.
-  it('charges weeks of what the city collects, and a windfall only reads the collection', () => {
+  // thousand and half a day for a city of a hundred thousand. The ladder is written in months of
+  // collection, and savings only ever add to the price, never more than double.
+  it('charges months of what the city collects, and a windfall never reads the till', () => {
     const sim = city().sim;
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
     const real = sim.state.lastBudget!;
-    const week = (income: number, cash: number, side: 'cost' | 'gain') => {
+    const at = (income: number, cash: number, side: 'cost' | 'gain') => {
       sim.state.lastBudget = { ...real, income };
       sim.state.cash = cash;
       return caseMoney(sim, 1, side);
     };
-    expect(week(12000, 90000, 'gain')).toBe(4500); // four weeks to the month, and half as much again
-    expect(week(120000, 90000, 'gain')).toBe(45000); // ten times the city, ten times the bill
-    expect(week(0, 90000, 'gain')).toBe(750); // a town that has not collected yet still pays something
-    // A charge also reads the till: a city sitting on ninety thousand does not pay pocket change.
-    expect(week(12000, 0, 'cost')).toBe(4500); // without a till it is the same week of collection
-    expect(week(12000, 90000, 'cost')).toBe(16875); // 90.000 / 8, and the cases charge half again
+    expect(at(12000, 0, 'gain')).toBe(12000); // one month of collection
+    expect(at(120000, 0, 'gain')).toBe(120000); // ten times the city, ten times the bill
+    expect(at(0, 90000, 'gain')).toBe(2000); // a town that has not collected yet still pays something
+    expect(at(12000, 0, 'cost')).toBe(6000); // and half of what there is holds it down
+    // The till lifts a charge, and it stops lifting at the double.
+    expect(at(12000, 60000, 'cost')).toBe(12000); // five months saved change nothing
+    expect(at(12000, 120000, 'cost')).toBe(12000); // ten months is the threshold
+    expect(at(12000, 180000, 'cost')).toBe(18000); // fifteen months, half as much again
+    expect(at(12000, 1200000, 'cost')).toBe(24000); // a hundred months, and there it stops
+    expect(at(12000, 1200000, 'gain')).toBe(12000); // a windfall still reads only the collection
   });
 
-  // Two references, because a city is worth two things: a town with a full till and a thin tax base
-  // used to pay nothing, and a city that had just built a hospital could not pay at all.
-  it('reads the till as well as the collection, and never takes the city under', () => {
+  it('never takes more than half of what is there plus what the month brings', () => {
     const sim = city().sim;
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
     const budget = sim.state.lastBudget!;
-    sim.state.lastBudget = { ...budget, income: 1200 };
-    sim.state.cash = 0;
-    const empty = caseMoney(sim, 3, 'cost');
-    sim.state.cash = 300000;
-    const full = caseMoney(sim, 3, 'cost');
-    expect(full).toBeGreaterThan(empty * 5); // the same case, a city with a till behind it
-
-    sim.state.lastBudget = { ...budget, income: 0 };
+    sim.state.lastBudget = { ...budget, income: 12000 };
+    sim.state.cash = 20000;
+    // Twenty months of collection would be 240.000, and the city has 20.000 plus the month.
+    expect(caseMoney(sim, 20, 'cost')).toBe(16000);
     sim.state.cash = 1000;
+    sim.state.lastBudget = { ...budget, income: 0 };
     expect(caseMoney(sim, 20, 'cost')).toBeLessThanOrEqual(500); // half the till and nothing coming
   });
 
-  it('a town with ninety thousand saved pays tens of thousands to cover up a bribe', () => {
+  it('a town with ninety thousand saved pays months of what it collects to cover up a bribe', () => {
     const { sim } = city();
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
-    // Six thousand neighbours, ninety thousand in the till and a month of 5.820.
+    // Six thousand neighbours, ninety thousand in the till and a month of 5.820: fifteen months saved.
     sim.state.lastBudget = { ...sim.state.lastBudget!, income: 5820 };
     sim.state.cash = 90000;
-    expect(caseMoney(sim, 2, 'cost')).toBe(33750); // two weeks of 90.000 / 8, half again
+    expect(caseMoney(sim, 1, 'cost')).toBe(9000); // the till lifts it half as much again
+    expect(caseMoney(sim, 2, 'cost')).toBe(18000); // two months of collection
     const before = sim.state.cash;
     option('coima', 1).apply(sim);
-    expect(sim.state.cash).toBe(before - 33750);
+    expect(sim.state.cash).toBe(before - 18000);
+  });
+
+  // The whole catalogue, measured the way the player feels it: what each option takes or leaves in
+  // months of what the city collects. A case that costs a tenth of a month feels free; one that costs
+  // a year ends the run. Everything has to sit inside the same ladder.
+  it('every option in the catalogue sits between one and seven months of collection', () => {
+    const shares: { id: string; share: number }[] = [];
+    for (const e of EVENTS) {
+      e.options.forEach((o, i) => {
+        const sim = city().sim;
+        // A city with ten months of collection saved: the moment the till starts to count.
+        sim.state.lastBudget = { ...(sim.state.lastBudget ?? ({} as never)), income: 12000 } as never;
+        sim.state.cash = 120000;
+        const before = sim.state.cash;
+        o.apply(sim);
+        const moved = Math.abs(sim.state.cash - before);
+        if (moved === 0) return; // the ones that cost approval or time, not money
+        shares.push({ id: `${e.id}#${i}`, share: moved / 12000 });
+      });
+    }
+    expect(shares.length).toBeGreaterThan(15);
+    const cheap = shares.filter((s) => s.share < 1);
+    const heavy = shares.filter((s) => s.share > 7);
+    expect(cheap.map((s) => s.id)).toEqual([]);
+    expect(heavy.map((s) => s.id)).toEqual([]);
   });
 
   it('writes the pesos it is going to charge, not the weeks behind them', () => {
