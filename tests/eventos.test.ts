@@ -644,7 +644,7 @@ describe('the newer cases', () => {
     expect(at(12000, 0, 'gain')).toBe(12000); // one month of collection
     expect(at(120000, 0, 'gain')).toBe(120000); // ten times the city, ten times the bill
     expect(at(0, 90000, 'gain')).toBe(2000); // a town that has not collected yet still pays something
-    expect(at(12000, 0, 'cost')).toBe(6000); // and half of what there is holds it down
+    expect(at(12000, 0, 'cost')).toBe(3000); // with the till empty the brake leaves a quarter month
     // The till lifts a charge, and it stops lifting at the double.
     expect(at(12000, 60000, 'cost')).toBe(12000); // five months saved change nothing
     expect(at(12000, 120000, 'cost')).toBe(12000); // ten months is the threshold
@@ -653,17 +653,18 @@ describe('the newer cases', () => {
     expect(at(12000, 1200000, 'gain')).toBe(12000); // a windfall still reads only the collection
   });
 
-  it('never takes more than half of what is there plus what the month brings', () => {
+  it('never takes more than half the till plus a quarter of the month that is coming', () => {
     const sim = city().sim;
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
     const budget = sim.state.lastBudget!;
     sim.state.lastBudget = { ...budget, income: 12000 };
     sim.state.cash = 20000;
-    // Twenty months of collection would be 240.000, and the city has 20.000 plus the month.
-    expect(caseMoney(sim, 20, 'cost')).toBe(16000);
-    sim.state.cash = 1000;
-    sim.state.lastBudget = { ...budget, income: 0 };
-    expect(caseMoney(sim, 20, 'cost')).toBeLessThanOrEqual(500); // half the till and nothing coming
+    // Twenty months of collection would be 240.000: the brake leaves half of the till and more.
+    expect(caseMoney(sim, 20, 'cost')).toBe(13000);
+    sim.state.cash = 0;
+    // An empty till does not make a case free: the month that is coming still pays.
+    expect(caseMoney(sim, 20, 'cost')).toBe(3000);
+    expect(caseMoney(sim, 1, 'cost')).toBe(3000); // and there the brake holds everything at once
   });
 
   it('a town with ninety thousand saved pays months of what it collects to cover up a bribe', () => {

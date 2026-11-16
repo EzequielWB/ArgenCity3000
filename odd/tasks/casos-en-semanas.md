@@ -102,14 +102,17 @@ El modelo pasa a ser uno solo, y con una unidad que se puede leer en voz alta:
 ```
 mes   = max($2.000, recaudación del mes × factor de caja)
 factor = 1 si la ciudad guardó menos de 10 meses de recaudación; hasta 2 si guardó más
-cobro = min(mes × meses, (caja + recaudación) ÷ 2)
+cobro = min(mes × meses, caja ÷ 2 + recaudación ÷ 4)
 premio = mes × meses
 ```
 
 - La recaudación es la referencia; la caja **solo suma** y **nunca más del doble**, y solo cuando la
   ciudad guardó diez meses o más de lo que recauda. Un ahorrista paga más, nunca dieciocho veces más.
 - Un premio no lee la caja: un buen mes no imprime plata de los ahorros.
-- El techo de la mitad sigue siendo la única red: un caso duele, no funde.
+- El techo es la única red y ya no deja pasar la caja entera: `caja ÷ 2 + recaudación ÷ 4`. Con
+  `(caja + recaudación) ÷ 2` una ciudad con un mes de recaudación en caja pagaba **todo** el fondo en
+  cada caso, y con la caja en cero pagaba cero. Ahora siempre queda medio tanque y siempre hay un
+  piso: una ciudad sin caja paga un cuarto de mes por cualquier caso.
 - La escalera (`caseMoney` recibe **meses**, no semanas) va de 1 a 7: `barro` y `feria` 1, `coima` y
   `brote-de-gripe` 2, `crecida` 5, `corte-de-usina` 6, y los 7 de aceptar la plata de la Provincia.
 - El detalle de cada opción dice el importe **y su tamaño**: "$ 18.000 (2,0 meses de recaudación)".
@@ -161,3 +164,11 @@ catálogo queda por debajo de un mes ni por encima de siete (test sobre las 24 o
   referencia, caja como factor acotado a 2 y solo arriba de diez meses guardados, y la escalera
   escrita en meses (1 a 7). El detalle de cada opción pasa a decir el importe y cuántos meses de
   recaudación son. Verificado con el test de la escalera completa: ninguna opción queda fuera de 1..7.
+- L11 — Medido el catálogo entero en tres ciudades reales (120.000 hab con 2 meses de caja, 20.000
+  con 10, 3.000 con 40). Resultado: de B a A el barro pasa de $ 12.992 a $ 77.700 con la recaudación
+  de $ 12.992 a $ 77.700, 6× las dos cosas; de C a A la recaudación crece 39× y el caso 19× porque C
+  paga el factor 2 por tener 40 meses guardados. La tabla destapó el techo viejo: con caja = un mes
+  todos los casos cobraban el 100 % del fondo y con la caja en cero cobraban cero. Cambiado a
+  `caja ÷ 2 + recaudación ÷ 4` por eso. En A (ciudad en déficit, pierde $ 55.577 por mes) el freno
+  muerde desde los dos meses y la escalera se ve como un solo escalón: es la consecuencia esperada de
+  que el freno sea medio tanque.

@@ -44,8 +44,10 @@ export function caseMoney(sim: Simulation, months: number, side: CaseSide): numb
   const cash = sim.state.cash;
   const hoard = side === 'gain' || income <= 0 ? 1 : Math.min(TILL_TOP, Math.max(1, cash / (income * TILL_MONTHS)));
   const money = Math.round(monthOf(sim) * hoard * Math.abs(months));
-  // A charge can hurt the city; it cannot sink it.
-  const capped = side === 'gain' ? money : Math.min(money, Math.round((Math.max(0, cash) + Math.max(0, income)) / 2));
+  // A charge can hurt the city; it cannot sink it. Half the till stays, and a quarter of the month
+  // that is coming is always on the table, so a city with an empty till does not play for free.
+  const budget = Math.round(Math.max(0, cash) / 2 + Math.max(0, income) / 4);
+  const capped = side === 'gain' ? money : Math.min(money, budget);
   return months < 0 ? -capped : capped;
 }
 
