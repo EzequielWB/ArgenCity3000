@@ -3,7 +3,7 @@ import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_WEEK } from '../src/config';
 import { Rng } from '../src/core/rng';
 import { CELEBRATED_PER_YEAR, HOLIDAYS, celebratedHolidayOf, celebratedHolidays, holidayOf } from '../src/sim/calendar';
 import { FIESTA } from '../src/sim/effects';
-import { HOLIDAY_EVENTS, eventById, eventOfMonth, holidayEventOf } from '../src/sim/events';
+import { HOLIDAY_EVENTS, detailOf, eventById, eventOfMonth, holidayEventOf } from '../src/sim/events';
 import { headlinesFor, type CitySnapshot } from '../src/sim/news';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { World } from '../src/world/world';
@@ -59,18 +59,18 @@ describe('la tabla de feriados', () => {
     expect(HOLIDAYS.map((h) => h.name)).not.toContain('2 de Abril');
   });
 
-  it('celebrates exactly three a year', () => {
+  it('celebrates exactly one a year', () => {
     for (const year of [1990, 1991, 1995, 2000, 2007, 2014]) {
-      const year3 = celebratedHolidays(year);
-      expect(year3.length).toBe(CELEBRATED_PER_YEAR);
-      expect(new Set(year3.map((h) => h.month)).size).toBe(CELEBRATED_PER_YEAR);
-      // The same year always celebrates the same three: a saved game replays them.
-      expect(celebratedHolidays(year).map((h) => h.month)).toEqual(year3.map((h) => h.month));
-      for (const h of year3) expect(celebratedHolidayOf(year, h.month)).toBe(h);
+      const chosen = celebratedHolidays(year);
+      expect(chosen.length).toBe(1);
+      expect(chosen.length).toBe(CELEBRATED_PER_YEAR);
+      // The same year always celebrates the same one: a saved game replays it.
+      expect(celebratedHolidays(year).map((h) => h.month)).toEqual(chosen.map((h) => h.month));
+      for (const h of chosen) expect(celebratedHolidayOf(year, h.month)).toBe(h);
     }
   });
 
-  it('changes the three from year to year', () => {
+  it('changes which one from year to year', () => {
     const sets = new Set<string>();
     for (let year = 1990; year < 2010; year++) sets.add(celebratedHolidays(year).map((h) => h.month).join(','));
     expect(sets.size).toBeGreaterThan(1);
@@ -80,12 +80,13 @@ describe('la tabla de feriados', () => {
 describe('el caso del feriado', () => {
   it('gives every holiday three ways out', () => {
     expect(HOLIDAY_EVENTS.length).toBe(HOLIDAYS.length);
+    const sim = simAt(START_YEAR, 1);
     for (const event of HOLIDAY_EVENTS) {
       expect(event.options.length).toBe(3);
       expect(event.text.length).toBeGreaterThan(40);
       expect(new Set(event.options.map((o) => o.label)).size).toBe(3);
-      expect(new Set(event.options.map((o) => o.detail)).size).toBe(3);
-      for (const o of event.options) expect(o.detail.length).toBeGreaterThan(30);
+      expect(new Set(event.options.map((o) => detailOf(o, sim))).size).toBe(3);
+      for (const o of event.options) expect(detailOf(o, sim).length).toBeGreaterThan(30);
     }
   });
 

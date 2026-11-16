@@ -10,6 +10,7 @@ import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } fr
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
 import { dateOf } from '../sim/calendar';
 import { COAST_BOOST, factorOf, incomeFactor, lockOf } from '../sim/effects';
+import { detailOf } from '../sim/events';
 import { FAVOR, moodOf } from '../sim/favor';
 import { PLAN, planMonthsLeft, planPremium } from '../sim/plan';
 import { loanEndLabel, loanInstalment, loanOwed, loanTotal } from '../sim/loans';
@@ -726,7 +727,7 @@ export function openEvent(game: Game): void {
       ${event.options
         .map(
           (o, k) =>
-            `<button type="button" data-option="${k}"><b>${escapeHtml(o.label)}</b><span>${escapeHtml(o.detail)}</span></button>`,
+            `<button type="button" data-option="${k}"><b>${escapeHtml(o.label)}</b><span>${escapeHtml(detailOf(o, game.sim))}</span></button>`,
         )
         .join('')}
     </div>

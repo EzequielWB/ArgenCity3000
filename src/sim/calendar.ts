@@ -66,7 +66,7 @@ export const HOLIDAYS: readonly Holiday[] = [
 export const holidayOf = (month: number): Holiday | null => HOLIDAYS.find((h) => h.month === month) ?? null;
 
 /** How many holidays a year are celebrated with a decision. The rest are only announced. */
-export const CELEBRATED_PER_YEAR = 3;
+export const CELEBRATED_PER_YEAR = 1;
 
 /**
  * The holidays of `year` that ask the Intendente for a decision: three of them, chosen from the year

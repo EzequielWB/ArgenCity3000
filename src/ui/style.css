@@ -4,7 +4,6 @@
   --gold-dark: #8f5f12;
   --red: #c9342c;
   --celeste: #74acdf;
-  --bordo: #5e1725;
   --paper: #f1e6cf;
   --ink: #1b1410;
   --cream: #f6f2e8;
@@ -1494,30 +1493,38 @@ ol.steps li {
 }
 
 /*
- * A holiday: the same gold frame as every panel, on bordó instead of the green of the map. The
- * kicker goes gold instead of grey, because "Feriado" is the one label that is not a problem.
+ * A holiday: the pale celeste of the flag behind it, with the gold frame of every panel and gold on
+ * the cards inside, so a celebration does not look like one more problem of the month. Body text goes
+ * to ink: cream on this background would be unreadable.
  */
 .modal-card[data-shape='feriado'] {
-  background: var(--bordo);
+  background: #e4eef8;
+  color: var(--ink);
 }
 
+/* Gold letters on a pale card only read with a filete around them: the stroke goes behind the fill. */
 .modal-card[data-shape='feriado'] h2 {
-  text-shadow:
-    0 -2px 0 var(--gold-light),
-    2px 2px 0 #2e0910,
-    4px 4px 0 #000;
+  -webkit-text-stroke: 2px #2a1a06;
+  paint-order: stroke fill;
+  text-shadow: 3px 3px 0 #000;
 }
 
 .modal-card[data-shape='feriado'] .event-kicker {
-  color: var(--gold-light);
+  color: var(--enamel);
 }
 
 .modal-card[data-shape='feriado'] .event-options button {
-  background: #7a2130;
+  background: #f2f7fd;
+  border-color: var(--gold);
 }
 
-.modal-card[data-shape='feriado'] .event-options span {
-  color: var(--paper);
+.modal-card[data-shape='feriado'] .event-options b {
+  color: var(--gold-dark);
+}
+
+.modal-card[data-shape='feriado'] .event-options span,
+.modal-card[data-shape='feriado'] #modalBody small {
+  color: #3a2c1e;
 }
 
 /* A reached milestone: a bronze plaque held by four screws. */

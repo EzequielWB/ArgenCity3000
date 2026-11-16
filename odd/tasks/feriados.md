@@ -18,11 +18,12 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   que la buena (verbatim: "Yo diria que la buena sea 2,5 veces mas"), o sea dos semanas y media de
   recaudación contra una (ver `casos-en-semanas.md`: los importes fijos se fueron), y además
   frena la obra un mes.
-- **S3 — Tres por año, uno por mes (verbatim):** "por año SOLO se festejan 3 feriados y solo UN feriado
+- **S3 — Uno por año, uno por mes (verbatim):** "por año SOLO se festejan 3 feriados y solo UN feriado
   por mes (Todos los feriados se anuncian en el diario, con festejar me refiero a tomar decisiones)".
-  Cuáles tres salen del año mismo (una cuenta con la semilla del año), así que una partida guardada
-  siempre juega los mismos tres. Los otros tres se anuncian igual, sin ventana. La tabla tiene un
-  feriado por mes como máximo, así que no hay dos el mismo mes.
+  **Corregido después:** "Tambien que los festejos por año se bajen a 1, 3 son demasiados". Ahora
+  `CELEBRATED_PER_YEAR = 1`. Cuál sale del año mismo (una cuenta con la semilla del año), así que una
+  partida guardada siempre juega el mismo. Los otros cinco se anuncian igual, sin ventana. La tabla
+  tiene un feriado por mes como máximo, así que no hay dos el mismo mes.
 - **S4 — Las seis fechas.** Año Nuevo (enero), Carnaval (febrero), 25 de Mayo (mayo), 20 de Junio
   (junio), 9 de Julio (julio) y Navidad (diciembre). El carnaval queda clavado en febrero aunque en la
   realidad se mueve con la Pascua (verbatim: "Carnaval dejalo en febrero no pasa nada"). Las fechas de
@@ -35,7 +36,7 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
 
 | ID | Specs | Ruta | Estado | Evidencia |
 |----|-------|------|--------|-----------|
-| T1 Tabla de feriados y los tres del año | S3, S4 | `src/sim/calendar.ts` | hecho | `tests/feriados.test.ts`: un feriado por mes, exactamente 3 por año, estables para un mismo año y distintos entre años |
+| T1 Tabla de feriados y el del año | S3, S4 | `src/sim/calendar.ts` | hecho | `tests/feriados.test.ts`: un feriado por mes, exactamente 1 por año, el mismo para un año dado y distinto entre años |
 | T2 Los seis casos con tres salidas | S1, S2, S5 | `src/sim/events.ts` | hecho | `tests/feriados.test.ts`: tres opciones por caso, etiquetas distintas, la muy buena 2,5 veces la buena |
 | T3 Tres opciones en el motor y en la ventana | S2 | `src/sim/simulation.ts`, `src/ui/panels.ts` | hecho | `answerEvent` acepta cualquier índice válido; el copete de la ventana dice "Feriado" |
 | T4 Fecha fija y anuncio en el diario | S1, S3 | `src/sim/events.ts`, `src/sim/news.ts` | hecho | `tests/feriados.test.ts`: el caso sale en el mes que toca sin importar la tirada, y no sale en un feriado no festejado; los seis se anuncian |
@@ -59,3 +60,9 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   título dorados, para que se reconozca sin leer. Verbatim del pedido: "Habia pensado mas en un
   bordó, con las letra del titulo en dorado y el borde tambien". Antes de eso había ido a celeste y
   blanco de bandera y no le gustó.
+- **L5, uno por año y los números a la vista.** Dos cambios pedidos juntos: los festejos bajan a uno
+  por año, y el detalle de cada opción vuelve a decir los pesos ("prefiero que el usuario sepa que le
+  va a salir X dinero que imaginar cuanto seria el impacto en caja"). `EventOption.detail` ahora puede
+  ser una función de la simulación: la ventana abre con el número que se va a cobrar, no con las
+  semanas. La card, además, pasó de bordó a celeste claro de bandera con el marco y las tarjetas en
+  dorado.

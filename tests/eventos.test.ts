@@ -3,7 +3,7 @@ import { DIRT, EVENT, MAX_FUNDING, MAX_TAX, TICKS_PER_MONTH } from '../src/confi
 import { packBusLine } from '../src/world/transport';
 import { deserialize, serialize } from '../src/save/save';
 import { COAST_BOOST, COAST_WORN, FREEZE, INDUSTRY_BOOM, INDUSTRY_FROZEN, NO_BLACKOUT, coolOf, lockOf } from '../src/sim/effects';
-import { EVENTS, eventById, pickEvent, weeksOfIncome } from '../src/sim/events';
+import { EVENTS, detailOf, eventById, pickEvent, weeksOfIncome } from '../src/sim/events';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { Rng } from '../src/core/rng';
 import { TILE, World, type World as WorldType } from '../src/world/world';
@@ -55,15 +55,16 @@ describe('the catalogue', () => {
   });
 
   it('gives every case two ways out, both with their consequence written', () => {
+    const { sim } = city();
     for (const event of EVENTS) {
       expect(event.options.length).toBe(2);
       expect(event.text.length).toBeGreaterThan(40);
       for (const o of event.options) {
         expect(o.label.length).toBeGreaterThan(4);
-        expect(o.detail.length).toBeGreaterThan(30);
+        expect(detailOf(o, sim).length).toBeGreaterThan(30);
       }
       expect(event.options[0].label).not.toBe(event.options[1].label);
-      expect(event.options[0].detail).not.toBe(event.options[1].detail);
+      expect(detailOf(event.options[0], sim)).not.toBe(detailOf(event.options[1], sim));
     }
   });
 
@@ -627,6 +628,18 @@ describe('the newer cases', () => {
     expect(week(12000)).toBe(3000); // four weeks to the month
     expect(week(120000)).toBe(30000); // ten times the city, ten times the bill
     expect(week(0)).toBe(500); // a town that has not collected yet still pays something
+  });
+
+  it('writes the pesos it is going to charge, not the weeks behind them', () => {
+    const { sim } = city();
+    for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
+    // A month of 12.000 puts a week at 3.000, so the two weeks of the vaccine campaign are 6.000.
+    sim.state.lastBudget = { ...sim.state.lastBudget!, income: 12000 };
+    const shot = option('brote-de-gripe', 0);
+    expect(detailOf(shot, sim)).toContain('$ 6.000');
+    const before = sim.state.cash;
+    shot.apply(sim);
+    expect(sim.state.cash).toBe(before - 6000);
   });
 
   it('paying the arrears brings the budget back to normal, and letting it run leaves it cut', () => {

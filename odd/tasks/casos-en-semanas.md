@@ -29,7 +29,11 @@ Criterio de aceptación: el mismo caso cuesta lo mismo **en semanas de lo que la
 > "Me gusta hacerlo por tiempo de recaudación"
 
 `weeksOfIncome(sim, semanas)` = lo que la ciudad recaudó el mes pasado ÷ 4 × las semanas.
-Los detalles de las opciones dicen las semanas, no los pesos.
+
+**Corregido después**, verbatim: "no se puede hacer con numeros? prefiero que el usuario sepa que le
+va a salir X dinero que imaginar cuanto seria el impacto en caja". El detalle de cada opción dice el
+peso exacto, calculado al abrir la ventana (`EventOption.detail` puede ser `(sim) => string`), y es el
+mismo número que se cobra: el tiempo está en pausa hasta que el jugador elige.
 
 ### S3 — Que joda, pero que no cague la partida
 
@@ -55,3 +59,5 @@ pague algo.
   frenan un caso que el jugador podría pagar.
 - L4 — `weeksOfIncome` no redondea el resultado final: un importe puede quedar en medio peso cuando
   la semana da impar. Solo se ve en la caja, nunca en un texto.
+- L5 — El detalle volvió a los pesos, calculados en el momento. Las semanas quedan como la unidad de
+  la fórmula, no de la pantalla.

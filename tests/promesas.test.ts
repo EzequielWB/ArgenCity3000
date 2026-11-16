@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PARK, PROMISE, SERVICES, TICKS_PER_MONTH } from '../src/config';
 import { monthsLeft, newCommitment, promiseDone, promiseGoal, promiseProgress } from '../src/sim/commitments';
-import { EVENTS, eventById, pickEvent } from '../src/sim/events';
+import { EVENTS, detailOf, eventById, pickEvent } from '../src/sim/events';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { deserialize, serialize } from '../src/save/save';
 import { Rng } from '../src/core/rng';
@@ -170,11 +170,12 @@ describe('the event that asks for a promise', () => {
   });
 
   it('has exactly two ways out, both with their consequence written', () => {
+    const { sim } = town();
     for (const event of EVENTS) {
       expect(event.options.length).toBe(2);
       for (const o of event.options) {
         expect(o.label.length).toBeGreaterThan(4);
-        expect(o.detail.length).toBeGreaterThan(20);
+        expect(detailOf(o, sim).length).toBeGreaterThan(20);
       }
     }
   });
