@@ -150,12 +150,14 @@ function launch(data: SaveData): void {
   game = new Game(data, { isModalOpen, sound, leave: showStart, restart: startNew });
   if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
   if (data.sim.tick === 0) {
+    // A real-city map is a section of a city: it comes with its streets and no provincial route.
+    const hasRoute = data.world.route.some((v) => v);
     // The city opens with the offer of a tutorial and then its founding window: who governs it, and under what name.
     if (!data.sim.party) {
       const founding = game;
-      openTutorialAsk(() => openGovernment(founding));
+      openTutorialAsk(hasRoute, () => openGovernment(founding));
     }
-    const streets = data.world.route.some((v) => v) ? 'una calle que salga de la ruta (3)' : 'unas calles (3)';
+    const streets = hasRoute ? 'una calle que salga de la ruta (3)' : 'unas calles (3)';
     toast(data.mayor ? `¡Arranca la gestión de ${data.mayor}! Empezá por una usina (9) y ${streets}.` : `¡Bienvenido, Intendente! Empezá por una usina (9) y ${streets}.`);
   }
   else toast(`Partida cargada: ${data.name}`);

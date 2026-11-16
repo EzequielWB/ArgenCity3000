@@ -46,10 +46,26 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
 ];
 
+/**
+ * The four steps, with the first one told for the map at hand. A real-city map is a section of a city
+ * that already has its streets and no provincial route, so there the street is drawn from any of them.
+ */
+export function tutorialSteps(hasRoute: boolean): readonly TutorialStep[] {
+  if (hasRoute) return TUTORIAL_STEPS;
+  return [
+    {
+      ...TUTORIAL_STEPS[0],
+      text: 'En un mapa de ciudad real no hay ruta provincial: la ciudad ya viene con sus calles, y por ellas también llegan los vecinos nuevos. Zonificá pegado a las que haya y, si te falta una, trazála desde cualquiera de ellas.',
+      alt: 'Una calle que se traza desde una calle que ya existe en el mapa real, con su costo.',
+    },
+    ...TUTORIAL_STEPS.slice(1),
+  ];
+}
+
 /** The tutorial itself: the goal on top, the four pictures below. */
-export function openTutorial(onDone?: () => void): void {
+export function openTutorial(hasRoute: boolean, onDone?: () => void): void {
   const base = import.meta.env.BASE_URL;
-  const steps = TUTORIAL_STEPS.map(
+  const steps = tutorialSteps(hasRoute).map(
     (s) => `<figure class="tuto-step"><img src="${base}tutorial/${s.image}" alt="${s.alt}" loading="lazy" /><figcaption><strong>${s.title}</strong><span>${s.text}</span></figcaption></figure>`,
   ).join('');
   const body = openModal(`
@@ -62,12 +78,12 @@ export function openTutorial(onDone?: () => void): void {
 }
 
 /** The question that opens first, ahead of the founding window. Closing it counts as "no". */
-export function openTutorialAsk(onDone?: () => void): void {
+export function openTutorialAsk(hasRoute: boolean, onDone?: () => void): void {
   const body = openModal(`
     <h2>¿Querés un tutorial?</h2>
     <p>Es una lectura rápida, de un minuto, con lo justo para arrancar la ciudad. Si ya jugaste, podés saltearlo.</p>
     <div class="row"><button id="tutoYes" class="primary" type="button">Sí, mostrame</button><button id="tutoNo" type="button">No, gracias</button></div>`, onDone);
-  body.querySelector('#tutoYes')!.addEventListener('click', () => openTutorial(onDone));
+  body.querySelector('#tutoYes')!.addEventListener('click', () => openTutorial(hasRoute, onDone));
   body.querySelector('#tutoNo')!.addEventListener('click', closeModal);
   body.querySelector<HTMLElement>('#tutoYes')!.focus();
 }
