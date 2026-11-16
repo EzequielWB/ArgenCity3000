@@ -58,8 +58,8 @@ premio no leen lo mismo**:
 
 ```
 semana     = max($500, recaudación del mes ÷ 4)
-cobro      = min(max(semana, caja ÷ 8) × semanas × 1,3, (caja + recaudación) ÷ 2)
-premio     = semana × semanas × 1,3
+cobro      = min(max(semana, caja ÷ 8) × semanas × 1,5, (caja + recaudación) ÷ 2)
+premio     = semana × semanas × 1,5
 ```
 
 - La población entra por la recaudación: es lo que la ciudad cobra por su gente.
@@ -104,3 +104,8 @@ venta del lote del club, y las dos de plaza vecina).
   de la partida quedó más caro, no más barato; es a propósito. Una ciudad recién fundada con $30.000
   y un caso de cuatro semanas paga los $15.000 del techo (la mitad de su caja), no $2.600. El techo es
   lo único que sigue evitando la fundida, y es la palanca si resulta demasiado duro.
+- L9 — `CASE_PRICE` de 1,3 a 1,5, otra vez por el mismo pedido pero con el alcance aclarado: "el caso
+  de la coima es un ejemplo que te di respecto a TODOS los eventos y feriados". Es una sola constante,
+  así que los 48 importes y los dos topes de los feriados se movieron juntos y la escalera entre casos
+  quedó igual. Medido con los tests: el pueblo de 6.000 con $90.000 paga $33.750 por tapar la coima
+  (era $3.783 al empezar); una semana de una ciudad que recauda $12.000 cuesta $4.500 (era $3.900).

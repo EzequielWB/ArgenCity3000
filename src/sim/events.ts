@@ -33,9 +33,10 @@ const TILL_WEEKS = 8;
 /**
  * What a case charges on top of the weeks it asks for. Calibrated at one and left there for a while,
  * the cases turned out cheap for a city that is doing well: this is the one knob that moves every
- * case and every holiday together, so the ladder between them stays the same.
+ * case and every holiday together, so the ladder between them stays the same. At 1,5 a case of a
+ * week costs a week and a half of what the city collects.
  */
-const CASE_PRICE = 1.3;
+const CASE_PRICE = 1.5;
 
 /** Which side of the ledger a case hits: a charge reads the till too, a windfall only the collection. */
 export type CaseSide = 'cost' | 'gain';

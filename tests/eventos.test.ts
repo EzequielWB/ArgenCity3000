@@ -641,12 +641,12 @@ describe('the newer cases', () => {
       sim.state.cash = cash;
       return caseMoney(sim, 1, side);
     };
-    expect(week(12000, 90000, 'gain')).toBe(3900); // four weeks to the month, and a third more
-    expect(week(120000, 90000, 'gain')).toBe(39000); // ten times the city, ten times the bill
-    expect(week(0, 90000, 'gain')).toBe(650); // a town that has not collected yet still pays something
+    expect(week(12000, 90000, 'gain')).toBe(4500); // four weeks to the month, and half as much again
+    expect(week(120000, 90000, 'gain')).toBe(45000); // ten times the city, ten times the bill
+    expect(week(0, 90000, 'gain')).toBe(750); // a town that has not collected yet still pays something
     // A charge also reads the till: a city sitting on ninety thousand does not pay pocket change.
-    expect(week(12000, 0, 'cost')).toBe(3900); // without a till it is the same week of collection
-    expect(week(12000, 90000, 'cost')).toBe(14625); // 90.000 / 8, and the cases charge a third more
+    expect(week(12000, 0, 'cost')).toBe(4500); // without a till it is the same week of collection
+    expect(week(12000, 90000, 'cost')).toBe(16875); // 90.000 / 8, and the cases charge half again
   });
 
   // Two references, because a city is worth two things: a town with a full till and a thin tax base
@@ -673,10 +673,10 @@ describe('the newer cases', () => {
     // Six thousand neighbours, ninety thousand in the till and a month of 5.820.
     sim.state.lastBudget = { ...sim.state.lastBudget!, income: 5820 };
     sim.state.cash = 90000;
-    expect(caseMoney(sim, 2, 'cost')).toBe(29250); // two weeks of 90.000 / 8, a third more
+    expect(caseMoney(sim, 2, 'cost')).toBe(33750); // two weeks of 90.000 / 8, half again
     const before = sim.state.cash;
     option('coima', 1).apply(sim);
-    expect(sim.state.cash).toBe(before - 29250);
+    expect(sim.state.cash).toBe(before - 33750);
   });
 
   it('writes the pesos it is going to charge, not the weeks behind them', () => {
