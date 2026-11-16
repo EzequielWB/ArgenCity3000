@@ -20,17 +20,25 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   frena la obra un mes.
 - **S3 — Uno por año, uno por mes (verbatim):** "por año SOLO se festejan 3 feriados y solo UN feriado
   por mes (Todos los feriados se anuncian en el diario, con festejar me refiero a tomar decisiones)".
-  **Corregido después:** "Tambien que los festejos por año se bajen a 1, 3 son demasiados". Ahora
-  `CELEBRATED_PER_YEAR = 1`. Cuál sale del año mismo (una cuenta con la semilla del año), así que una
-  partida guardada siempre juega el mismo. Los otros cinco se anuncian igual, sin ventana. La tabla
-  tiene un feriado por mes como máximo, así que no hay dos el mismo mes.
+  **Corregido después, dos veces:** "Tambien que los festejos por año se bajen a 1, 3 son demasiados",
+  y después "que los feriados sean cada 2-3 años nada mas (lo de elegir festejar)".
+  `CELEBRATED_PER_YEAR = 1` y `isCelebrationYear(year)`: se camina desde el año de fundación con pasos
+  de dos o tres años, todo función pura del año, así que una partida guardada repite las mismas
+  celebraciones. En 31 años de partida hay 12 decisiones. Cuál de los seis feriados sale también se
+  decide con la semilla del año. Los demás se anuncian igual, sin ventana. La tabla tiene un feriado
+  por mes como máximo, así que no hay dos el mismo mes.
 - **S4 — Las seis fechas.** Año Nuevo (enero), Carnaval (febrero), 25 de Mayo (mayo), 20 de Junio
   (junio), 9 de Julio (julio) y Navidad (diciembre). El carnaval queda clavado en febrero aunque en la
   realidad se mueve con la Pascua (verbatim: "Carnaval dejalo en febrero no pasa nada"). Las fechas de
   memoria quedan afuera: el 24 de Marzo y el 2 de Abril no dan aprobación ni plata.
-- **S5 — Qué devuelven.** Las dos buenas dejan al pueblo gastando: un `fiesta` de dos meses en la muy
-  buena y de uno en la buena, que multiplica lo que la ciudad recauda (via `incomeFactor`, el mismo
-  lugar donde entra la sequía). La muy buena suma 6 de aprobación y la buena 3; la mala resta 5.
+- **S5 — Qué devuelven.** Las dos buenas dejan al pueblo gastando: un `fiesta` de tres meses en la muy
+  buena y de dos en la buena, que multiplica lo que la ciudad recauda un quinto más (`incomeFactor`,
+  el mismo lugar donde entra la sequía). La muy buena suma 10 de aprobación y la buena 5; la mala
+  resta 3.
+  **Corregido después:** "hace mas determinantes las dos opciones buenas y no tanto la mala... la idea
+  seria que cada cierto tiempo tengas una Oportunidad que con una buena inversión puedas mejorar tu
+  ciudad (util si venis medio mal)". Antes eran 6 y 3 de aprobación, un `fiesta` de 1,12 y la mala
+  restaba 5. El motivo, textual del jugador: "estoy 100% de aprobación y casi no pierdo dinero".
 
 ## Tasks
 
@@ -66,3 +74,7 @@ Rama: `feat/vertical-slice` · Runner: `vitest` (`npm test`) · Tipos: `npx tsc 
   ser una función de la simulación: la ventana abre con el número que se va a cobrar, no con las
   semanas. La card, además, pasó de bordó a celeste claro de bandera con el marco y las tarjetas en
   dorado.
+- **L6, la celebración es una oportunidad.** Con una decisión cada dos o tres años el caso dejó de ser
+  un trámite: lo que devuelve subió (un quinto más de recaudación por tres meses, 10 de aprobación) y
+  lo que quita la salida gratis bajó a 3. La aprobación a 100 % no puede subir, y ahí lo que se cobra
+  es la recaudación: por eso la `fiesta` ahora es 1,2 y no 1,12.

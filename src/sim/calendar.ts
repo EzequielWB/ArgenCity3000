@@ -68,16 +68,28 @@ export const holidayOf = (month: number): Holiday | null => HOLIDAYS.find((h) =>
 /** How many holidays a year are celebrated with a decision. The rest are only announced. */
 export const CELEBRATED_PER_YEAR = 1;
 
+/** How many years pass between one celebration and the next: two or three, never one. */
+const gapAfter = (year: number): number => (hash2(year, 1, 11) < 0.5 ? 2 : 3);
+
 /**
- * The holidays of `year` that ask the Intendente for a decision: three of them, chosen from the year
- * itself, so a saved game always plays the same three and nothing has to be kept in the save file.
- * Returned in calendar order.
+ * Whether `year` puts a holiday in front of the Intendente. Walked from the founding year with steps of
+ * two or three, all of it a pure function of the year: a saved game replays the same celebrations and
+ * nothing has to be kept in the save file.
+ */
+export function isCelebrationYear(year: number): boolean {
+  let y = START_YEAR;
+  while (y < year) y += gapAfter(y);
+  return y === year;
+}
+
+/**
+ * The holidays of `year` that ask the Intendente for a decision. A celebration is an opportunity, not
+ * a monthly chore: one every two or three years, picked from the year itself. The rest are announced.
  */
 export function celebratedHolidays(year: number): readonly Holiday[] {
-  return [...HOLIDAYS]
-    .sort((a, b) => hash2(year, a.month, 7) - hash2(year, b.month, 7))
-    .slice(0, CELEBRATED_PER_YEAR)
-    .sort((a, b) => a.month - b.month);
+  if (!isCelebrationYear(year)) return [];
+  const chosen = [...HOLIDAYS].sort((a, b) => hash2(year, a.month, 7) - hash2(year, b.month, 7));
+  return chosen.slice(0, CELEBRATED_PER_YEAR);
 }
 
 /** The holiday of `month` that `year` celebrates, or null when that month's holiday is only announced. */

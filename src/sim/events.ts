@@ -382,7 +382,7 @@ const FERIA: CityEvent = {
     {
       label: 'Negarla',
       detail: 'No se gasta ni se traba nada, y los organizadores se lo toman a mal: la aprobación baja.',
-      apply: (sim) => sim.nudgeApproval(-5),
+      apply: (sim) => sim.nudgeApproval(-3),
     },
   ],
 };
@@ -633,7 +633,7 @@ const BARRO: CityEvent = {
     {
       label: 'Esperar a que seque',
       detail: 'No cuesta nada, pero los vecinos pasan una semana en el barro y se lo anotan: baja la aprobación.',
-      apply: (sim) => sim.nudgeApproval(-5),
+      apply: (sim) => sim.nudgeApproval(-3),
     },
   ],
 };
@@ -677,7 +677,7 @@ const GRANIZADA: CityEvent = {
     {
       label: 'Que cada uno se arregle',
       detail: 'No cuesta nada, pero muchos se sienten abandonados: baja la aprobación.',
-      apply: (sim) => sim.nudgeApproval(-5),
+      apply: (sim) => sim.nudgeApproval(-3),
     },
   ],
 };
@@ -773,8 +773,8 @@ function holidayEvent(h: Holiday): CityEvent {
         detail: (sim) => `Cuestan ${sum(sim, 2.5)} y un mes sin obra. La aprobación sube y el pueblo gasta dos meses.`,
         apply: (sim) => {
           sim.state.cash -= weeksOfIncome(sim, FESTEJO.grande);
-          sim.nudgeApproval(6);
-          sim.effect(FIESTA, 2);
+          sim.nudgeApproval(10);
+          sim.effect(FIESTA, 3);
           sim.effect(FREEZE, 1);
         },
       },
@@ -783,14 +783,14 @@ function holidayEvent(h: Holiday): CityEvent {
         detail: (sim) => `Cuestan ${sum(sim, 1)}. La aprobación sube un poco y el pueblo gasta un mes.`,
         apply: (sim) => {
           sim.state.cash -= weeksOfIncome(sim, FESTEJO.acto);
-          sim.nudgeApproval(3);
-          sim.effect(FIESTA, 1);
+          sim.nudgeApproval(5);
+          sim.effect(FIESTA, 2);
         },
       },
       {
         label: 'Que pase nomás',
         detail: 'No se gasta nada, y el barrio lo nota: la aprobación baja.',
-        apply: (sim) => sim.nudgeApproval(-5),
+        apply: (sim) => sim.nudgeApproval(-3),
       },
     ],
   };

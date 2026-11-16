@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_WEEK } from '../src/config';
 import { Rng } from '../src/core/rng';
-import { CELEBRATED_PER_YEAR, HOLIDAYS, celebratedHolidayOf, celebratedHolidays, holidayOf } from '../src/sim/calendar';
+import { CELEBRATED_PER_YEAR, HOLIDAYS, celebratedHolidayOf, celebratedHolidays, holidayOf, isCelebrationYear } from '../src/sim/calendar';
 import { FIESTA } from '../src/sim/effects';
 import { HOLIDAY_EVENTS, detailOf, eventById, eventOfMonth, holidayEventOf } from '../src/sim/events';
 import { headlinesFor, type CitySnapshot } from '../src/sim/news';
@@ -59,21 +59,33 @@ describe('la tabla de feriados', () => {
     expect(HOLIDAYS.map((h) => h.name)).not.toContain('2 de Abril');
   });
 
-  it('celebrates exactly one a year', () => {
-    for (const year of [1990, 1991, 1995, 2000, 2007, 2014]) {
+  it('is an opportunity every two or three years, not a chore every year', () => {
+    const years: number[] = [];
+    for (let year = 1990; year < 2060; year++) if (isCelebrationYear(year)) years.push(year);
+    expect(years.length).toBeGreaterThan(15);
+    expect(years.length).toBeLessThan(36); // a third of the years, more or less
+    // Never two years running, never more than three years in between.
+    for (let k = 1; k < years.length; k++) {
+      const gap = years[k] - years[k - 1];
+      expect(gap).toBeGreaterThanOrEqual(2);
+      expect(gap).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('asks for a decision on one holiday, and only in a year that celebrates', () => {
+    for (const year of [1990, 1991, 1995, 2000, 2007, 2014, 2025, 2040]) {
       const chosen = celebratedHolidays(year);
-      expect(chosen.length).toBe(1);
-      expect(chosen.length).toBe(CELEBRATED_PER_YEAR);
+      expect(chosen.length).toBe(isCelebrationYear(year) ? CELEBRATED_PER_YEAR : 0);
       // The same year always celebrates the same one: a saved game replays it.
       expect(celebratedHolidays(year).map((h) => h.month)).toEqual(chosen.map((h) => h.month));
       for (const h of chosen) expect(celebratedHolidayOf(year, h.month)).toBe(h);
     }
   });
 
-  it('changes which one from year to year', () => {
-    const sets = new Set<string>();
-    for (let year = 1990; year < 2010; year++) sets.add(celebratedHolidays(year).map((h) => h.month).join(','));
-    expect(sets.size).toBeGreaterThan(1);
+  it('does not always pick the same holiday', () => {
+    const months = new Set<number>();
+    for (let year = 1990; year < 2060; year++) for (const h of celebratedHolidays(year)) months.add(h.month);
+    expect(months.size).toBeGreaterThan(2);
   });
 });
 
@@ -125,26 +137,42 @@ describe('el caso del feriado', () => {
     expect(medium.hasEffect('freeze')).toBe(false);
   });
 
-  it('can be answered with the third option', () => {
+  it('can be answered with the third option, which is the cheap one and costs face', () => {
     const sim = simAt(1995, 5);
     sim.state.pendingEvent = holidayEventOf(5)!.id;
     const before = sim.state.approval;
     sim.answerEvent(2);
     expect(sim.state.pendingEvent).toBe(null);
-    expect(sim.state.approval).toBe(before - 5);
+    expect(sim.state.approval).toBe(before - 3);
+  });
+
+  it('pays the two that cost money with more than the one that costs nothing takes away', () => {
+    const before = simAt(1995, 5).state.approval;
+    const after = [0, 1].map((index) => {
+      const sim = simAt(1995, 5);
+      sim.state.cash = 100000;
+      holidayEventOf(5)!.options[index].apply(sim);
+      return sim.state.approval - before;
+    });
+    expect(after[0]).toBeGreaterThan(after[1]); // the big one moves more than the act
+    expect(after[1]).toBeGreaterThan(3); // and the act alone moves more than the free way out takes
   });
 });
 
 describe('la fecha fija', () => {
   it('shows up in the month it falls, whatever the dice say', () => {
-    // A year whose May is celebrated, and one whose May is not.
-    if (celebratedHolidayOf(1995, 5)) {
-      const sim = simAt(1995, 5);
-      for (let k = 0; k < 40; k++) expect(eventOfMonth(sim, new Rng(k + 1))?.kind).toBe('feriado');
-    }
-    const quiet = [1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999].find((y) => holidayOf(5) && !celebratedHolidayOf(y, 5))!;
-    const sim = simAt(quiet, 5);
-    for (let k = 0; k < 40; k++) expect(eventOfMonth(sim, new Rng(k + 1))?.kind).not.toBe('feriado');
+    // The first celebration the game runs into, wherever it falls.
+    // Not the founding year: no case shows up before the first year is over.
+    const years = Array.from({ length: 40 }, (_, k) => 1990 + 2 + k);
+    const year = years.find((y) => isCelebrationYear(y))!;
+    const holiday = celebratedHolidays(year)[0];
+    const sim = simAt(year, holiday.month);
+    for (let k = 0; k < 40; k++) expect(eventOfMonth(sim, new Rng(k + 1))?.id).toBe(holidayEventOf(holiday.month)!.id);
+
+    // Any other year with the same holiday is only the announcement.
+    const quiet = years.find((y) => !isCelebrationYear(y))!;
+    const calm = simAt(quiet, holiday.month);
+    for (let k = 0; k < 40; k++) expect(eventOfMonth(calm, new Rng(k + 1))?.kind).not.toBe('feriado');
   });
 
   it('waits while there is another case pending', () => {

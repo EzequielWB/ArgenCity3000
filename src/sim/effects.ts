@@ -40,7 +40,7 @@ export const EFFECT_FACTOR: Record<string, number> = {
   [COAST_WORN]: 0.4,
   [DROUGHT]: 0.7,
   [MIRACLE]: 1.2,
-  [FIESTA]: 1.12,
+  [FIESTA]: 1.2,
 };
 
 /** What the city earns, as a multiplier: the drought, the miracles of a theocracy and the holidays. */

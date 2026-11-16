@@ -1498,7 +1498,7 @@ ol.steps li {
  * to ink: cream on this background would be unreadable.
  */
 .modal-card[data-shape='feriado'] {
-  background: #e4eef8;
+  background: #d3e5f7;
   color: var(--ink);
 }
 
