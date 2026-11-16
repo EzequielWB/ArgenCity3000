@@ -1,6 +1,6 @@
 import { HUBS, LINE_REACH, POWER_REACH, POWER_USE, SERVICES } from '../config';
 import { hubFacilities } from '../world/hubs';
-import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import { TILE, World, coastOf, hubOf, serviceOf, zoneOf } from '../world/world';
 import { fundingCondition } from './condition';
 import { plantCapacity } from './plants';
 import { NO_MODS, type RunMods } from './roguelike';
@@ -80,15 +80,19 @@ export function reachCells(n: number, cells: readonly (readonly [number, number]
 }
 
 /**
- * True for the cells that pass the light on: plants, power-line cells, services and zone
- * buildings (abandoned and burning ones too, so that an abandonment or a fire does not switch
- * off a chain; they stop only when the building is gone). Roads, parks, empty land and zoned
- * lots without a building only receive light.
+ * True for the cells that pass the light on: plants, power-line cells, services, zone buildings and
+ * every kind of built facility — the pieces of an airport or a harbour, and the ones on the coast
+ * (abandoned and burning buildings too, so that an abandonment or a fire does not switch off a
+ * chain; they stop only when the building is gone). A facility is one building drawn over several
+ * lots, so its pieces pass the light between them: one line reaching one piece lights the whole
+ * thing instead of the player having to fence it in. Roads, parks, empty land and lots without a
+ * building only receive light.
  */
 export function isRelay(w: World, i: number): boolean {
   const tile = w.tiles[i];
   if (tile === TILE.PLANT || tile === TILE.LINE) return true;
   if (zoneOf(tile)) return w.level[i] > 0;
+  if (hubOf(tile) || coastOf(tile)) return true;
   return serviceOf(tile) !== null;
 }
 

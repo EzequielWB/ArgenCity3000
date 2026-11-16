@@ -334,6 +334,19 @@ describe('the light of airports and harbours', () => {
     expect(report.use).toBe(HUBS.airport.power[0]);
   });
 
+  it('passes the light between its own pieces, so one line lights the whole airport', () => {
+    // El pedido del jugador: un aeropuerto no debería tener que estar rodeado de cables. Alcanza con
+    // que la luz llegue a una de sus piezas y las demás la pasan, como cualquier edificio.
+    const w = dark();
+    put(w, 'plant', 0, 14);
+    put(w, 'airport', 2, 11); // 3×2: de (2,11) a (4,12)
+    // Una sola línea toca la esquina de la pieza de arriba, no las seis.
+    w.setTile(2, 13, TILE.LINE);
+    computePower(w);
+    for (let y = 11; y <= 12; y++) for (let x = 2; x <= 4; x++) expect(w.powered[w.idx(x, y)]).toBe(1);
+    expect(hubFacilities(w)[0].lit).toBe(true);
+  });
+
   it('asks for more the bigger it is, shared among its pieces', () => {
     const w = dark();
     put(w, 'plant', 3, 8);

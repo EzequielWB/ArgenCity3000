@@ -53,11 +53,11 @@ snowball sin mirar a nadie.
 
 | # | Qué | Dónde | Commit |
 |---|---|---|---|
-| T1 | `world.anger` + guardado v19; `unrest()` con las dos quejas nuevas; `stepAnger()` mensual que vacía a los 100 (S1, S2) | `src/world/world.ts`, `src/save/save.ts`, `src/sim/simulation.ts`, `src/config.ts` | `5f1e6a4` |
-| T2 | La capa roja del globo con el enojo (S3) | `src/render/bubbles.ts`, `src/render/view.ts` | `5f1e6a4` |
-| T3 | La ficha: enojo, meses que le quedan y el consejo de la queja más pesada (S4) | `src/sim/report.ts` | `5f1e6a4` |
+| T1 | `world.anger` + guardado v19; `unrest()` con las dos quejas nuevas; `stepAnger()` mensual que vacía a los 100 (S1, S2) | `src/world/world.ts`, `src/save/save.ts`, `src/sim/simulation.ts`, `src/config.ts` | `f90691a` |
+| T2 | La capa roja del globo con el enojo (S3) | `src/render/bubbles.ts`, `src/render/view.ts` | `f90691a` |
+| T3 | La ficha: enojo, meses que le quedan y el consejo de la queja más pesada (S4) | `src/sim/report.ts` | `f90691a` |
 | T4 | Piezas de aeropuerto y puerto como relés de luz (S6) | `src/sim/power.ts` | `e27c1a5` |
-| T5 | Tests: paciencia de 24-36 meses, vecindario vacío, perdón, ficha, guardado, y una sola línea que ilumina el aeropuerto entero | `tests/abandon.test.ts`, `tests/aeropuerto.test.ts` | `5f1e6a4`, `e27c1a5` |
+| T5 | Tests: paciencia de 24-36 meses, vecindario vacío, perdón, ficha, guardado, y una sola línea que ilumina el aeropuerto entero | `tests/abandon.test.ts`, `tests/aeropuerto.test.ts` | `f90691a`, `e27c1a5` |
 
 ## Log
 
