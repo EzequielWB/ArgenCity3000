@@ -2999,9 +2999,202 @@ export function paintLot(kind: LotKind, variant: number): { px: Pixels; ax: numb
   return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
 }
 
+/* ---------- The power line and the trees of the map ---------- */
+
+const POLE_CONCRETE: Ramp = ramp('#b8b4ab');
+const POLE_INSULATOR = hex('#7fa2b8');
+const TRANSFORMER: Ramp = ramp('#6f7a72');
+
+/** The four species of the map, each in its own tone ramp. */
+const CROWN_JACARANDA: Ramp = ramp('#a58fc9');
+const CROWN_PALO: Ramp = ramp('#d98fa4');
+const CROWN_OMBU: Ramp = ramp('#4e6b3a');
+const CROWN_EUCALYPTUS: Ramp = ramp('#8aa87e');
+const TRUNK_DARK = hex('#5a4632');
+
+/**
+ * The crossarm of the pole, with its two insulators. It is what the cable hangs from, so its middle is
+ * the attach point the renderer uses to join one pole to the next.
+ */
+function crossarm(p: Pen, u: number, v: number, z: number, wide: number, thick = 2): void {
+  const [x, y] = p.P(u, v, z);
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  p.px.rect(cx - wide, cy, wide * 2 + 1, 1, POLE_CONCRETE[0]);
+  p.px.rect(cx - wide, cy + 1, wide * 2 + 1, Math.max(1, thick - 1), POLE_CONCRETE[2]);
+  // A brace under the arm, on the side the load pulls from, so the arm is not a stick in the air.
+  p.px.line([cx + wide - 3, cy + 2], [cx + 1, cy + 5], POLE_CONCRETE[2]);
+  for (const side of [-1, 1]) {
+    const ix = cx + side * wide;
+    p.px.rect(ix, cy - 2, 1, 2, POLE_INSULATOR);
+    p.px.set(ix, cy - 2, shade(POLE_INSULATOR, 1.3));
+  }
+}
+
+/**
+ * A pole of the line on its lot: a concrete post on its pad, with the crossarm and the two insulators. The
+ * variant hangs a transformer on it or doubles the arm. The post stands in the middle of the cell and the
+ * cables leave from the middle of the arm.
+ */
+/** Paints a pole on its own canvas, without turning it into a sprite. */
+export function paintPole(variant: number): { px: Pixels; ax: number; ay: number; attach: [number, number] } {
+  const p = pen(30);
+  const u = 0.5;
+  const v = 0.5;
+  const h = 22;
+  const [bx, by] = p.P(u, v, 0);
+  const px = Math.round(bx);
+  const py = Math.round(by);
+  // The shadow on the ground, towards the lower right like every other shadow of the city.
+  p.px.shadow(
+    [
+      [px - 4, py],
+      [px, py - 2],
+      [px + 4, py],
+      [px, py + 2],
+    ],
+    0.3,
+  );
+  // The pad and the pad's edge: without a foot a post floats over the grass.
+  p.px.rect(px - 3, py - 1, 7, 2, POLE_CONCRETE[2]);
+  p.px.rect(px - 3, py - 2, 7, 1, POLE_CONCRETE[1]);
+  // The post: three pixels wide, lit on the left, in the shadow on the right, so it has volume.
+  p.px.rect(px - 1, py - h, 1, h - 1, POLE_CONCRETE[0]);
+  p.px.rect(px, py - h, 1, h - 1, POLE_CONCRETE[1]);
+  p.px.rect(px + 1, py - h, 1, h - 1, POLE_CONCRETE[2]);
+  // The joints of the concrete, and the plate with the number of the post.
+  for (let k = 5; k < h - 3; k += 5) {
+    p.px.set(px, py - k, shade(POLE_CONCRETE[2], 0.82));
+    p.px.set(px - 1, py - k, shade(POLE_CONCRETE[1], 0.9));
+  }
+  if (variant % 3 !== 2) p.px.rect(px - 1, py - 9, 2, 2, CHALK_WHITE);
+  crossarm(p, u, v, h, variant % 3 === 2 ? 5 : 4);
+  if (variant % 3 === 2) crossarm(p, u, v, h - 5, 4, 1);
+  // A transformer hanging on the post, on the variant that carries one: the tank, its lid and the
+  // bracket that holds it up.
+  if (variant % 3 === 1) {
+    p.px.line([px + 2, py - h + 3], [px + 5, py - h + 6], POLE_CONCRETE[2]);
+    p.px.rect(px + 2, py - h + 6, 6, 7, TRANSFORMER[1]);
+    p.px.rect(px + 2, py - h + 6, 2, 7, TRANSFORMER[0]);
+    p.px.rect(px + 7, py - h + 6, 1, 7, TRANSFORMER[2]);
+    p.px.rect(px + 3, py - h + 5, 4, 1, shade(TRANSFORMER[2], 0.7));
+    p.px.rect(px + 2, py - h + 12, 6, 1, TRANSFORMER[2]);
+  }
+  const [axTop, ayTop] = p.P(u, v, h);
+  return { px: p.px, ax: p.ax, ay: p.ay, attach: [Math.round(axTop) - p.ax, Math.round(ayTop) - 1 - p.ay] };
+}
+
+const poleCache = new Map<number, Sprite>();
+
+/** The sprite of a power pole, keyed by its variant. */
+export function polePixelSprite(variant: number): Sprite {
+  const v = ((variant % 3) + 3) % 3;
+  let sprite = poleCache.get(v);
+  if (!sprite) {
+    const painted = paintPole(v);
+    sprite = { ...spriteOf(painted), attach: painted.attach };
+    poleCache.set(v, sprite);
+  }
+  return sprite;
+}
+
+/**
+ * One tree of the map. The species is the terrain's own number: 1 jacarandá, 2 palo borracho, 3 ombú and
+ * 4 eucalipto, and each one is told apart by its silhouette and not by its colour, because at this size
+ * the colour is the last thing that arrives. The crown is five pixels over the trunk on the smallest side,
+ * which is what makes a tree read as a tree and not as a bush.
+ */
+function treeAt(p: Pen, u: number, v: number, kind: number, scale: number): void {
+  const [x, y] = p.P(u, v, 0);
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  const s = scale;
+  p.px.shadow(
+    [
+      [cx - Math.round(6 * s), cy],
+      [cx, cy - Math.round(3 * s)],
+      [cx + Math.round(6 * s), cy],
+      [cx, cy + Math.round(3 * s)],
+    ],
+    0.28,
+  );
+  if (kind === 4) {
+    // Eucalipto: tall and narrow, the crown hugging the trunk and starting low.
+    p.px.rect(cx, cy - Math.round(12 * s), 2, Math.round(12 * s), TRUNK_DARK);
+    p.px.set(cx, cy - Math.round(12 * s), shade(TRUNK_DARK, 1.5));
+    // The crown starts over the trunk and is a touch wider than the trunk on both sides: a eucalyptus is
+    // tall and narrow, but it is still a crown on a trunk and not a green post.
+    p.px.blob(cx, cy - Math.round(16 * s), 4 * s, 6.5 * s, [shade(CROWN_EUCALYPTUS[0], 1.2), CROWN_EUCALYPTUS[1], CROWN_EUCALYPTUS[2]], shade(CROWN_EUCALYPTUS[2], 0.85), false);
+    p.px.blob(cx - Math.round(1 * s), cy - Math.round(21 * s), 2.6 * s, 2.8 * s, [CROWN_EUCALYPTUS[0], CROWN_EUCALYPTUS[1], CROWN_EUCALYPTUS[2]], null, false);
+    return;
+  }
+  if (kind === 2) {
+    // Palo borracho: the swollen green trunk is the tree, and the flowers sit on top of it.
+    const trunk = Math.round(9 * s);
+    p.px.rect(cx - 1, cy - trunk, 3, trunk, CROWN_OMBU[1]);
+    p.px.rect(cx - 2, cy - Math.round(trunk * 0.65), 5, Math.round(trunk * 0.65), CROWN_OMBU[1]);
+    p.px.rect(cx - 2, cy - Math.round(trunk * 0.65), 1, Math.round(trunk * 0.65), CROWN_OMBU[0]);
+    p.px.set(cx + 2, cy - Math.round(trunk * 0.5), CROWN_OMBU[2]);
+    p.px.blob(cx, cy - trunk - Math.round(3 * s), 4 * s, 3 * s, [shade(CROWN_PALO[0], 1.18), CROWN_PALO[1], CROWN_PALO[2]], shade(CROWN_PALO[2], 0.85), false);
+    p.px.set(cx + 2, cy - trunk - Math.round(5 * s), CROWN_PALO[0]);
+    return;
+  }
+  const tall = Math.round(8 * s);
+  p.px.rect(cx, cy - tall, 2, tall, TRUNK_DARK);
+  p.px.set(cx, cy - tall, shade(TRUNK_DARK, 1.4));
+  if (kind === 3) {
+    // Ombú: wide and low, wider than tall, with the crown sitting right over the trunk.
+    p.px.rect(cx - 1, cy - Math.round(tall * 0.55), 4, Math.round(tall * 0.55), TRUNK_DARK);
+    p.px.blob(cx, cy - tall - Math.round(5 * s), 8 * s, 4.6 * s, [shade(CROWN_OMBU[0], 1.25), CROWN_OMBU[1], CROWN_OMBU[2]], shade(CROWN_OMBU[2], 0.8), false);
+    p.px.blob(cx - Math.round(4 * s), cy - tall - Math.round(7 * s), 3.5 * s, 2.4 * s, [CROWN_OMBU[0], CROWN_OMBU[1], CROWN_OMBU[2]], null, false);
+    return;
+  }
+  // Jacarandá: the round crown of lilac flowers, with some of them fallen on the ground.
+  p.px.blob(cx, cy - tall - Math.round(4 * s), 6 * s, 5.4 * s, [shade(CROWN_JACARANDA[0], 1.18), CROWN_JACARANDA[1], CROWN_JACARANDA[2]], shade(CROWN_JACARANDA[2], 0.82), false);
+  p.px.blob(cx - Math.round(3 * s), cy - tall - Math.round(7 * s), 3.4 * s, 2.6 * s, [shade(CROWN_JACARANDA[0], 1.1), CROWN_JACARANDA[1], CROWN_JACARANDA[2]], null, false);
+  p.px.set(cx - Math.round(5 * s), cy + 1, CROWN_JACARANDA[1]);
+  p.px.set(cx + Math.round(4 * s), cy + 2, CROWN_JACARANDA[2]);
+  p.px.set(cx - Math.round(2 * s), cy + 3, CROWN_JACARANDA[1]);
+}
+
+/** Where the trees of a cell stand: the same three spots the canvas art uses, kept inside the diamond. */
+const TREE_SPOTS: [number, number][] = [
+  [0.3, 0.36],
+  [0.62, 0.64],
+  [0.38, 0.74],
+];
+
+/** Paints the trees of one cell: one to three of them, as many as the variant asks for. */
+export function paintTree(kind: number, variant: number): { px: Pixels; ax: number; ay: number } {
+  const v = ((variant % 6) + 6) % 6;
+  const p = pen(28);
+  const count = 1 + (v % 3);
+  for (let k = 0; k < count; k++) {
+    const [u, w] = TREE_SPOTS[(k + v) % 3];
+    // A tree of the same cell may be a different species, as it was in the canvas art: a grove of one
+    // species everywhere reads as a stamp.
+    const species = k === 2 && kind !== 4 ? ((kind % 4) + 1) : kind;
+    treeAt(p, u, w, species, 0.85 + 0.1 * ((v + k) % 3));
+  }
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+const treePixelCache = new Map<string, Sprite>();
+
+/** The sprite of the trees of a cell, keyed by species and variant. */
+export function treePixelSprite(kind: number, variant: number): Sprite {
+  const key = `${kind}:${((variant % 6) + 6) % 6}`;
+  let sprite = treePixelCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintTree(((kind - 1) % 4) + 1, variant));
+    treePixelCache.set(key, sprite);
+  }
+  return sprite;
+}
+
 /** The same lot as a sprite the map can blit. Needs a DOM: call it from the game, not a test. */
-function spriteOf(painted: { px: Pixels; ax: number; ay: number; smoke?: [number, number][] }): Sprite {
-  return { canvas: painted.px.toCanvas(1), ax: painted.ax, ay: painted.ay, smoke: painted.smoke ?? [] };
+function spriteOf(painted: { px: Pixels; ax: number; ay: number; smoke?: [number, number][]; attach?: [number, number] }): Sprite {
+  return { canvas: painted.px.toCanvas(1), ax: painted.ax, ay: painted.ay, smoke: painted.smoke ?? [], attach: painted.attach };
 }
 
 export const residentialPixelSprite = (level: number, variant: number): Sprite => spriteOf(paintResidential(level, variant));

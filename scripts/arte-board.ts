@@ -16,7 +16,7 @@ declare const process: { cwd(): string };
 const entry = `
 import './scripts/board-city';
 import { buildingSprite } from './src/render/sprites';
-import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, servicePixelSprite } from './src/render/pixelArt';
+import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite } from './src/render/pixelArt';
 import type { HubKind, ServiceKind } from './src/config';
 
 const NEW = { R: residentialPixelSprite, C: commercialPixelSprite, I: industrialPixelSprite };
@@ -145,6 +145,32 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-service]'))) 
   const g = el.getContext('2d');
   g.clearRect(0, 0, el.width, el.height);
   // The ground line goes where the sprite's anchor is, so a 3x3 drawing is not clipped at the top.
+  place(g, sprite, el.width / 2, sprite.ay * k, k);
+}
+
+for (const el of Array.from(document.querySelectorAll('canvas[data-tree]'))) {
+  const [kind, variant] = String(el.dataset.tree).split(':').map(Number);
+  const k = Number(el.dataset.k || 3);
+  const sprite = treePixelSprite(kind, variant);
+  el.width = sprite.canvas.width * k;
+  el.height = sprite.canvas.height * k;
+  el.style.width = el.width + 'px';
+  el.style.height = el.height + 'px';
+  const g = el.getContext('2d');
+  g.clearRect(0, 0, el.width, el.height);
+  place(g, sprite, el.width / 2, sprite.ay * k, k);
+}
+
+for (const el of Array.from(document.querySelectorAll('canvas[data-pole]'))) {
+  const variant = Number(el.dataset.pole || 0);
+  const k = Number(el.dataset.k || 4);
+  const sprite = polePixelSprite(variant);
+  el.width = sprite.canvas.width * k;
+  el.height = sprite.canvas.height * k;
+  el.style.width = el.width + 'px';
+  el.style.height = el.height + 'px';
+  const g = el.getContext('2d');
+  g.clearRect(0, 0, el.width, el.height);
   place(g, sprite, el.width / 2, sprite.ay * k, k);
 }
 
@@ -488,6 +514,58 @@ const page = `<!doctype html>
           .join('')}
       </div>
     </section>
+    <section id="campo">
+      <h2>El tendido y los árboles</h2>
+      <p class="note">
+        Las dos últimas piezas que estaban en canvas. El <b>tendido</b> es la otra mitad de la
+        electricidad: el poste de hormigón con su cruceta y sus aisladores, y los cables, que ahora se
+        escriben con píxeles duros en vez del trazo suave de canvas pero conservan la misma curva, la
+        misma caída y el mismo punto de enganche. La variante del lote decide si el poste lleva un
+        transformador colgado o la cruceta doble.
+      </p>
+      <div class="row">
+        <figure>
+          <canvas data-pole="0" data-k="4"></canvas>
+          <figcaption>poste</figcaption>
+        </figure>
+        <figure>
+          <canvas data-pole="1" data-k="4"></canvas>
+          <figcaption>con transformador</figcaption>
+        </figure>
+        <figure>
+          <canvas data-pole="2" data-k="4"></canvas>
+          <figcaption>cruceta doble</figcaption>
+        </figure>
+      </div>
+      <p class="note">
+        Los <b>árboles</b> sueltos del mapa son los del terreno, no los de las plazas. Son las cuatro
+        especies de siempre y se distinguen por la silueta: el eucalipto alto y angosto, el ombú ancho y
+        bajo, el palo borracho por su tronco hinchado y el jacarandá por la copa redonda y las flores
+        caídas en el piso. La densidad también es la de siempre: de uno a tres por celda.
+      </p>
+      <div class="row">
+        ${(
+          [
+            [1, 'jacarandá'],
+            [2, 'palo borracho'],
+            [3, 'ombú'],
+            [4, 'eucalipto'],
+          ] as const
+        )
+          .map(
+            ([kind, name]) => `
+          <figure>
+            <canvas data-tree="${kind}:0" data-k="3"></canvas>
+            <figcaption>${name}</figcaption>
+          </figure>
+          <figure>
+            <canvas data-tree="${kind}:2" data-k="3"></canvas>
+            <figcaption>${name}, variante</figcaption>
+          </figure>`,
+          )
+          .join('')}
+      </div>
+    </section>
     <section id="transporte">
       <h2>Transporte</h2>
       <p class="note">
@@ -679,5 +757,7 @@ const bundled = await build({
 });
 
 const js = bundled.outputFiles[0].text;
-writeFileSync('arte.html', page.replace('/*BUNDLE*/', js));
+writeFileSync('arte.html', // The bundle goes in through a function: as a string, `$&` and friends inside it would be read as
+// replacement patterns and a stray `$&` would eat a slice of the page's own code.
+page.replace('/*BUNDLE*/', () => js));
 console.log(`arte.html escrito (${Math.round(js.length / 1024)} kB de sprites)`);

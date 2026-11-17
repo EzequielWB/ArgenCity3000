@@ -51,7 +51,7 @@ import {
 } from './sprites';
 import { parkTreeHere } from './park';
 import { pixelArt } from './artSwitch';
-import { busDepotPixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, servicePixelSprite, type HubView } from './pixelArt';
+import { busDepotPixelSprite, polePixelSprite, treePixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, servicePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
@@ -670,7 +670,10 @@ export class MapRenderer {
       }
       return { sprite: parkSpriteFor(w.variant[i], look), ax, ay };
     }
-    if (tile === TILE.LINE) return { sprite: poleSpriteFor(), ax, ay };
+    if (tile === TILE.LINE) {
+      if (pixelArt('energia')) return { sprite: polePixelSprite(w.variant[i]), ax, ay };
+      return { sprite: poleSpriteFor(), ax, ay };
+    }
     const sign = tile === TILE.ROAD && !w.isWater(x, y) ? this.signs.get(i) : undefined;
     if (sign) {
       // The sign stands on the cell's edge that faces the inside of the map, whatever the rotation.
@@ -678,7 +681,10 @@ export class MapRenderer {
       const [qx, qy] = toView(x + sign[0], y + sign[1], rot, n);
       return { sprite: routeSignSpriteFor(qx - px, qy - py), ax, ay };
     }
-    if (w.terrain.trees[i] && !w.isWater(x, y) && tile !== TILE.ROAD) return { sprite: treeSpriteFor(w.terrain.trees[i], w.variant[i]), ax, ay };
+    if (w.terrain.trees[i] && !w.isWater(x, y) && tile !== TILE.ROAD) {
+      if (pixelArt('arboles')) return { sprite: treePixelSprite(w.terrain.trees[i], w.variant[i]), ax, ay };
+      return { sprite: treeSpriteFor(w.terrain.trees[i], w.variant[i]), ax, ay };
+    }
     return null;
   }
 
@@ -1542,11 +1548,34 @@ export class MapRenderer {
       for (const side of [-1, 1]) {
         const ox = nx * side;
         const oy = ny * side;
+        if (pixelArt('energia')) {
+          this.wirePixels(top[0] + ox, top[1] + oy, other[0] + ox, other[1] + oy, sag);
+          continue;
+        }
         g.beginPath();
         g.moveTo(top[0] + ox, top[1] + oy);
         g.quadraticCurveTo((top[0] + other[0]) / 2 + ox, (top[1] + other[1]) / 2 + sag + oy, other[0] + ox, other[1] + oy);
         g.stroke();
       }
+    }
+  }
+
+  /**
+   * A cable as hard pixels: the same quadratic of the canvas pass, sampled every pixel and written with
+   * one-pixel rectangles, so the line does not fade into a soft grey against the ground.
+   */
+  private wirePixels(x0: number, y0: number, x1: number, y1: number, sag: number): void {
+    const g = this.g;
+    g.fillStyle = PAL.wire;
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2 + sag;
+    const steps = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0)));
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps;
+      const m = 1 - t;
+      const x = m * m * x0 + 2 * m * t * cx + t * t * x1;
+      const y = m * m * y0 + 2 * m * t * cy + t * t * y1;
+      g.fillRect(Math.round(x), Math.round(y), 1, 1);
     }
   }
 

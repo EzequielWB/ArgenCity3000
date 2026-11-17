@@ -38,6 +38,8 @@ function city(): { world: World; refused: string[] } {
   // An airport of two pieces: they are painted as one facility, so the seam has to disappear here.
   plan('airport', 2, 12);
   plan('airport', 5, 12);
+  // A run of the power line along the eastern block, to see the poles and the cables among the streets.
+  plan('line', 15, 2, 15, 9);
   // One of each service along the avenue, to see the six in the street they belong to. The hospital and
   // the university take 3x3 lots, so they go on the corners where a block fits.
   plan('school', 6, 2);

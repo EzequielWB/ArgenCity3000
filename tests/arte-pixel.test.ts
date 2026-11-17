@@ -10,7 +10,9 @@ import {
   paintIndustrial,
   paintLot,
   paintPlaza,
+  paintPole,
   paintService,
+  paintTree,
   paintPromenade,
   paintResidential,
   paintWindFarm,
@@ -51,6 +53,13 @@ function tones(a: Art): number {
     set.add((a.px.data[i] << 16) | (a.px.data[i + 1] << 8) | a.px.data[i + 2]);
   }
   return set.size;
+}
+
+/** Pixels painted at all: how much of the canvas a drawing uses. */
+function countOpaque(a: Art): number {
+  let n = 0;
+  for (let i = 3; i < a.px.data.length; i += 4) if (a.px.data[i]) n++;
+  return n;
 }
 
 /** Leftmost and rightmost painted column, shadow included. */
@@ -431,6 +440,75 @@ describe('service buildings pixel art', () => {
       expect(lo, `${kind} keeps to its lot`).toBeGreaterThanOrEqual(2);
       expect(hi, `${kind} keeps to its lot`).toBeLessThanOrEqual(art.px.w - 3);
     }
+  });
+});
+
+describe('the power line and the trees of the map', () => {
+  it('writes the pole and the cables as hard pixels', () => {
+    for (const v of [0, 1, 2]) {
+      const art = paintPole(v) as Art;
+      for (let i = 3; i < art.px.data.length; i += 4) {
+        const al = art.px.data[i];
+        if (al === 0 || al === 255) continue;
+        const at = `pole ${v}, pixel ${(i - 3) / 4}`;
+        expect([art.px.data[i - 3], art.px.data[i - 2], art.px.data[i - 1]], at).toEqual([0, 0, 0]);
+        expect(al, at).toBeLessThanOrEqual(SHADOW_ALPHA);
+      }
+    }
+  });
+
+  it('hangs the cable from the same point whatever the pole carries', () => {
+    const [plain, transformer, doubleArm] = [0, 1, 2].map((v) => paintPole(v));
+    // The attach point is what the renderer uses to join one pole to the next, so it cannot move with the
+    // ornament: a line of poles of different variants has to stay a straight cable.
+    expect(plain.attach).toEqual(transformer.attach);
+    expect(plain.attach).toEqual(doubleArm.attach);
+    // Above the anchor (the cables hang over the lot) and inside the canvas.
+    expect(plain.attach[1]).toBeLessThan(0);
+    expect(plain.ax + plain.attach[0]).toBeGreaterThan(0);
+    expect(plain.ax + plain.attach[0]).toBeLessThan(plain.px.w);
+    expect(plain.ay + plain.attach[1]).toBeGreaterThan(0);
+    // And the ornament is a drawing of its own.
+    expect([plain.px.w, plain.px.h, ...plain.px.data]).not.toEqual([transformer.px.w, transformer.px.h, ...transformer.px.data]);
+    expect([plain.px.w, plain.px.h, ...plain.px.data]).not.toEqual([doubleArm.px.w, doubleArm.px.h, ...doubleArm.px.data]);
+  });
+
+  it('paints the four species of the map, each with its own silhouette', () => {
+    const kinds = [1, 2, 3, 4].map((k) => paintTree(k, 0) as Art);
+    for (const art of kinds) {
+      for (let i = 3; i < art.px.data.length; i += 4) {
+        const al = art.px.data[i];
+        if (al === 0 || al === 255) continue;
+        expect([art.px.data[i - 3], art.px.data[i - 2], art.px.data[i - 1]]).toEqual([0, 0, 0]);
+        expect(al).toBeLessThanOrEqual(SHADOW_ALPHA);
+      }
+      // A tree rises over its lot and keeps inside it.
+      expect(topRow(art)).toBeLessThan(art.ay - 8);
+      const [lo, hi] = span(art);
+      expect(lo).toBeGreaterThan(0);
+      expect(hi).toBeLessThan(art.px.w);
+    }
+    for (let i = 0; i < kinds.length; i++) {
+      for (let j = i + 1; j < kinds.length; j++) {
+        expect([kinds[i].px.data], `species ${i + 1} vs ${j + 1}`).not.toEqual([kinds[j].px.data]);
+      }
+    }
+    // The eucalyptus is the tall one and the ombú the wide one, which is how they are told apart.
+    const rise = (kind: number) => rises(paintTree(kind, 0) as Art);
+    expect(rise(4)).toBeGreaterThan(rise(3));
+    const width = (kind: number) => {
+      const art = paintTree(kind, 0) as Art;
+      const [lo, hi] = span(art);
+      return hi - lo;
+    };
+    expect(width(3)).toBeGreaterThan(width(4));
+  });
+
+  it('keeps the density of the canvas art: one, two or three trees a cell', () => {
+    const painted = [0, 1, 2].map((v) => countOpaque(paintTree(1, v) as Art));
+    expect(painted[0]).toBeGreaterThan(0);
+    expect(painted[1]).toBeGreaterThan(painted[0]);
+    expect(painted[2]).toBeGreaterThan(painted[1]);
   });
 });
 

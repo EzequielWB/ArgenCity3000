@@ -183,5 +183,7 @@ const bundled = await build({
 });
 
 const js = bundled.outputFiles[0].text;
-writeFileSync('edificios-unicos.html', page.replace('/*BUNDLE*/', js));
+writeFileSync('edificios-unicos.html', // The bundle goes in through a function: as a string, `$&` and friends inside it would be read as
+// replacement patterns and a stray `$&` would eat a slice of the page's own code.
+page.replace('/*BUNDLE*/', () => js));
 console.log(`edificios-unicos.html escrito (${Math.round(js.length / 1024)} kB de sprites)`);

@@ -4,8 +4,8 @@
  * With no parameter every finished family is on, so the game looks the way the pass intends. The
  * switch stays a query parameter instead of a code edit, so both looks can be compared on the same
  * build: `?pixel=off` goes back to the art of always, and `?pixel=residencial`, `?pixel=comercial`,
- * `?pixel=industrial`, `?pixel=plazas`, `?pixel=calles`, `?pixel=tierra`, `?pixel=costa`, `?pixel=transporte`, `?pixel=energia`,
- * `?pixel=servicios` or
+ * `?pixel=industrial`, `?pixel=plazas`, `?pixel=calles`, `?pixel=tierra`, `?pixel=costa`, `?pixel=transporte`,
+ * `?pixel=energia`, `?pixel=servicios`, `?pixel=arboles` or
  * `?pixel=todo` draw only the families named, so one piece can be judged on its own. Families can be
  * combined with commas.
  *
@@ -21,7 +21,8 @@ export type ArtFamily =
   | 'costa'
   | 'transporte'
   | 'energia'
-  | 'servicios';
+  | 'servicios'
+  | 'arboles';
 
 const PARAM = 'pixel';
 
