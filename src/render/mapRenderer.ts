@@ -1,8 +1,9 @@
-import { PARK, PLANT_SIZE, UNIQUES } from '../config';
+import { BUS, PARK, PLANT_SIZE, UNIQUES } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
-import { busColorOf } from '../world/transport';
+import { busColorOf, depotAt } from '../world/transport';
+import { busFootprint } from '../world/tools';
 import { HUBS } from '../config';
 import { facilityAt, hubFootprint } from '../world/hubs';
 import { uniqueFootprint } from '../world/uniques';
@@ -48,6 +49,8 @@ import {
   type Sprite,
 } from './sprites';
 import { parkTreeHere } from './park';
+import { pixelArt } from './artSwitch';
+import { busDepotPixelSprite, fishingPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
@@ -554,6 +557,7 @@ export class MapRenderer {
       }
       if (vx !== fx || vy !== fy) return null;
       const [ax, ay] = this.toCache(fx - (PLANT_SIZE - 1), fy - (PLANT_SIZE - 1), plantHeight(w, p.x, p.y));
+      if (pixelArt('energia')) return { sprite: plantPixelSprite(p.kind), ax, ay };
       return { sprite: plantSprite(p.kind), ax, ay };
     }
     if (hubOf(tile)) {
@@ -594,14 +598,49 @@ export class MapRenderer {
     }
     const [ax, ay] = this.toCache(vx, vy, avg(hs));
     const coast = coastOf(tile);
-    if (coast) return { sprite: coastSprite(coast, this.coastVariant(coast, vx, vy, x, y)), ax, ay };
-    if (tile === TILE.BUS) return { sprite: busDepotSprite(busColorOf(w.busLine[i])), ax, ay };
+    if (coast) {
+      const variant = this.coastVariant(coast, vx, vy, x, y);
+      if (pixelArt('costa')) {
+        if (coast === 'promenade') return { sprite: promenadePixelSprite(variant), ax, ay };
+        if (coast === 'fishing') return { sprite: fishingPixelSprite(variant), ax, ay };
+      }
+      return { sprite: coastSprite(coast, variant), ax, ay };
+    }
+    if (tile === TILE.BUS) {
+      // A depot is a block drawn once, at the cell in front of its footprint, like a plant.
+      const depot = depotAt(w, x, y);
+      if (!depot) return null;
+      const foot = busFootprint(n, depot.x, depot.y).map(([cx, cy]) => toView(cx, cy, rot, n));
+      const [minVx, minVy] = [Math.min(...foot.map((c) => c[0])), Math.min(...foot.map((c) => c[1]))];
+      const [maxVx, maxVy] = [Math.max(...foot.map((c) => c[0])), Math.max(...foot.map((c) => c[1]))];
+      if (vx !== maxVx || vy !== maxVy) return null;
+      const [ax2, ay2] = this.toCache(minVx, minVy, hubHeight(w, depot.x, depot.y, BUS.size, BUS.size));
+      const color = busColorOf(depot.line);
+      if (pixelArt('transporte')) return { sprite: busDepotPixelSprite(color), ax: ax2, ay: ay2 };
+      return { sprite: busDepotSprite(color), ax: ax2, ay: ay2 };
+    }
     if (tile === TILE.PARK) {
       // A plaza nobody keeps loses its trees and shows dry ground, so the city tells you at a glance.
       const neglected = w.parkArea[i] >= PARK.minArea && w.parkCare[i] < PARK.care;
       const tree =
         !neglected && parkTreeHere(x, y, (cx, cy) => cx >= 0 && cy >= 0 && cx < n && cy < n && w.tiles[w.idx(cx, cy)] === TILE.PARK);
-      return { sprite: parkSpriteFor(w.variant[i], neglected ? 'neglected' : tree ? 'tree' : 'bare'), ax, ay };
+      const look = neglected ? 'neglected' : tree ? 'tree' : 'bare';
+      if (pixelArt('plazas')) {
+        // Which sides touch another plaza, in the order back-right, front-right, front-left, back-left:
+        // the pixel floor runs its walks out along those sides, so a block reads as one garden.
+        let mask = 0;
+        for (const [k, [nx, ny]] of (
+          [
+            [vx, vy - 1],
+            [vx + 1, vy],
+            [vx, vy + 1],
+            [vx - 1, vy],
+          ] as const
+        ).entries())
+          if (this.isParkView(nx, ny)) mask |= 1 << k;
+        return { sprite: plazaPixelSprite(w.variant[i], look, mask), ax, ay };
+      }
+      return { sprite: parkSpriteFor(w.variant[i], look), ax, ay };
     }
     if (tile === TILE.LINE) return { sprite: poleSpriteFor(), ax, ay };
     const sign = tile === TILE.ROAD && !w.isWater(x, y) ? this.signs.get(i) : undefined;
@@ -816,12 +855,25 @@ export class MapRenderer {
     return this.world.tileAt(x, y) === TILE.ROAD;
   }
 
+  private isParkView(vx: number, vy: number): boolean {
+    const n = this.world.n;
+    if (vx < 0 || vy < 0 || vx >= n || vy >= n) return false;
+    const [x, y] = fromView(vx, vy, this.rot, n);
+    return this.world.tileAt(x, y) === TILE.PARK;
+  }
+
   private drawRoad(vx: number, vy: number, pts: Pt[], i: number): void {
     // The route has no pavement strip: its asphalt runs to the edge of the cell.
     if (!this.routeBands || !this.world.route[i]) this.poly(pts, PAL.sidewalk);
     this.drawAsphalt(vx, vy, pts, i);
+    if (pixelArt('calles') && !(this.routeBands && this.world.route[i])) this.drawStreetDetail(vx, vy, pts, i);
   }
 
+  /**
+   * Detail of the street, drawn over the asphalt in whole cache pixels: the kerb between street and
+   * sidewalk, the joints of the slabs, the grain of the asphalt and a drain now and then. The shape
+   * of the road is still the one the bands decide; this only gives it a surface.
+   */
   private drawAsphalt(vx: number, vy: number, pts: Pt[], i: number): void {
     if (this.routeBands && this.world.route[i]) {
       this.drawRouteAsphalt(vx, vy, pts, i);
@@ -830,6 +882,7 @@ export class MapRenderer {
     const code = this.bands[i];
     if (tierOf(code) === DIRT) {
       this.drawDirt(vx, vy, pts);
+      if (pixelArt('tierra')) this.drawDirtDetail(vx, vy, pts);
       return;
     }
     if (kindOf(code) > KIND.PLAIN) {
@@ -984,6 +1037,164 @@ export class MapRenderer {
       if (right) rut(c, c + off, 1, c + off);
     }
     g.globalAlpha = 1;
+  }
+
+  /**
+   * Helpers to put detail on a cell in whole cache pixels, which is what pixel discipline means in
+   * a renderer that draws with polygons: `at` maps footprint coordinates to the pixel they land on,
+   * `dot` and `line` write single pixels from there.
+   */
+  private pix(pts: Pt[]): {
+    at: (u: number, v: number) => Pt;
+    dot: (u: number, v: number, c: string) => void;
+    line: (u0: number, v0: number, u1: number, v1: number, c: string) => void;
+  } {
+    const g = this.g;
+    const at = (u: number, v: number): Pt => {
+      const p = bilinear(pts, u, v);
+      return [Math.round(p[0]), Math.round(p[1])];
+    };
+    const dot = (u: number, v: number, c: string) => {
+      const [x, y] = at(u, v);
+      g.fillStyle = c;
+      g.fillRect(x, y, 1, 1);
+    };
+    const line = (u0: number, v0: number, u1: number, v1: number, c: string) => {
+      let [x0, y0] = at(u0, v0);
+      const [x1, y1] = at(u1, v1);
+      const dx = Math.abs(x1 - x0);
+      const dy = -Math.abs(y1 - y0);
+      const sx = x0 < x1 ? 1 : -1;
+      const sy = y0 < y1 ? 1 : -1;
+      let err = dx + dy;
+      g.fillStyle = c;
+      for (let guard = 0; guard < 400; guard++) {
+        g.fillRect(x0, y0, 1, 1);
+        if (x0 === x1 && y0 === y1) break;
+        const e2 = 2 * err;
+        if (e2 >= dy) {
+          err += dy;
+          x0 += sx;
+        }
+        if (e2 <= dx) {
+          err += dx;
+          y0 += sy;
+        }
+      }
+    };
+    return { at, dot, line };
+  }
+
+  /**
+   * Detail of the street, drawn over the asphalt in whole cache pixels: the kerb between street and
+   * sidewalk, the joints of the slabs, the grain of the asphalt and a drain now and then. The shape
+   * of the road is still the one the bands decide; this only gives it a surface.
+   */
+  private drawStreetDetail(vx: number, vy: number, pts: Pt[], i: number): void {
+    const code = this.bands[i];
+    if (tierOf(code) === DIRT) return;
+    const { dot, line } = this.pix(pts);
+    const a = 0.18;
+    const b = 0.82;
+    const up = this.isRoadView(vx, vy - 1);
+    const right = this.isRoadView(vx + 1, vy);
+    const down = this.isRoadView(vx, vy + 1);
+    const left = this.isRoadView(vx - 1, vy);
+    // The kerb: the line where the sidewalk meets the street, with its shadow underneath.
+    const kerb = PAL.concrete;
+    const joint = 'rgba(0,0,0,0.16)';
+    if (!up) {
+      line(0, a, 1, a, kerb);
+      for (const t of [0.28, 0.62]) line(t, 0.02, t, a, joint);
+    }
+    if (!down) {
+      line(0, b, 1, b, kerb);
+      for (const t of [0.36, 0.7]) line(t, b, t, 0.98, joint);
+    }
+    if (!left) {
+      line(a, 0, a, 1, kerb);
+      for (const t of [0.32, 0.66]) line(0.02, t, a, t, joint);
+    }
+    if (!right) {
+      line(b, 0, b, 1, kerb);
+      for (const t of [0.4, 0.74]) line(b, t, 0.98, t, joint);
+    }
+    // The grain of the asphalt, and a drain against the kerb every few cells.
+    const grain = tierOf(code) === 0 ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.06)';
+    for (let k = 0; k < 7; k++) {
+      const h = hash2(vx * 7 + k, vy * 13 + k, 31);
+      dot(a + 0.06 + h * (b - a - 0.12), a + 0.06 + hash2(vy * 5 + k, vx * 11 + k, 47) * (b - a - 0.12), grain);
+    }
+    if ((vx + vy) % 3 === 0) {
+      const u = 0.34 + hash2(vx, vy, 59) * 0.3;
+      if (!up) for (let k = 0; k < 2; k++) dot(u + k * 0.02, a - 0.06, 'rgba(0,0,0,0.4)');
+      else if (!down) for (let k = 0; k < 2; k++) dot(u + k * 0.02, b + 0.06, 'rgba(0,0,0,0.4)');
+    }
+  }
+
+  /**
+   * Detail of a dirt street: the blades that grow where the way ends, the stones that come up with
+   * the dust, and the ruts as pixels instead of one smooth line. The earth itself is still the one
+   * `drawDirt` lays down, patch by patch and cell by cell.
+   */
+  private drawDirtDetail(vx: number, vy: number, pts: Pt[]): void {
+    const { dot, line } = this.pix(pts);
+    const a = 0.18;
+    const b = 0.82;
+    // The earth comes in patches, one per piece, and at the scale of the cell they read as a quilt
+    // of squares. A dither over the roadway mixes them into one surface before the detail goes on.
+    this.poly(
+      [bilinear(pts, a, a), bilinear(pts, b, a), bilinear(pts, b, b), bilinear(pts, a, b)],
+      PAL.dirtShades[1],
+    );
+    for (let k = 0; k < 26; k++) {
+      const u = a + hash2(vx * 13 + k, vy * 17 + k, 23) * (b - a);
+      const v = a + hash2(vy * 19 + k, vx * 23 + k, 29) * (b - a);
+      dot(u, v, hash2(vx + k, vy, 37) < 0.5 ? PAL.dirtShades[3] : PAL.dirtShades[2]);
+    }
+    const up = this.isRoadView(vx, vy - 1);
+    const right = this.isRoadView(vx + 1, vy);
+    const down = this.isRoadView(vx, vy + 1);
+    const left = this.isRoadView(vx - 1, vy);
+    // Grass at the foot of the piled edge, the way a real dirt street frays.
+    const blade = '#5e8340';
+    for (const [on, u0, v0, du, dv] of [
+      [!up, 0.06, a + 0.03, 0.1, 0],
+      [!down, 0.06, b - 0.03, 0.1, 0],
+      [!left, a + 0.03, 0.06, 0, 0.1],
+      [!right, b - 0.03, 0.06, 0, 0.1],
+    ] as const) {
+      if (!on) continue;
+      for (let k = 0; k < 5; k++) {
+        const h = hash2(vx * 3 + k, vy * 7 + k, 11);
+        if (h < 0.35) continue;
+        dot(u0 + du * k * 1.6, v0 + dv * k * 1.6, blade);
+        if (h > 0.7) dot(u0 + du * k * 1.6 + dv * 0.02, v0 + dv * k * 1.6 + du * 0.02, blade);
+      }
+    }
+    // Stones and clods: pale, dark and the odd bit of rock, all inside the roadway.
+    for (let k = 0; k < 9; k++) {
+      const u = a + 0.04 + hash2(vx * 5 + k, vy * 3 + k, 71) * (b - a - 0.08);
+      const v = a + 0.04 + hash2(vy * 9 + k, vx * 5 + k, 73) * (b - a - 0.08);
+      const pick = hash2(vx + k, vy + k, 79);
+      const c = pick < 0.45 ? PAL.dirtLight : pick < 0.8 ? PAL.dirtShadow : PAL.rockLight;
+      dot(u, v, c);
+      if (pick > 0.62) dot(u + 0.02, v + 0.01, c);
+    }
+    // The ruts, as dashes of pixel: a smooth stroke turns a dirt track into a paved one.
+    const rut = 'rgba(97,71,45,0.55)';
+    const dash = (u0: number, v0: number, u1: number, v1: number) => {
+      for (let k = 0; k <= 8; k += 2) {
+        const t = k / 8;
+        line(u0 + (u1 - u0) * t, v0 + (v1 - v0) * t, u0 + (u1 - u0) * (t + 0.06), v0 + (v1 - v0) * (t + 0.06), rut);
+      }
+    };
+    for (const off of [-0.13, 0.13]) {
+      if (up) dash(0.5 + off, 0.5, 0.5 + off, 0);
+      if (down) dash(0.5 + off, 0.5, 0.5 + off, 1);
+      if (left) dash(0.5, 0.5 + off, 0, 0.5 + off);
+      if (right) dash(0.5, 0.5 + off, 1, 0.5 + off);
+    }
   }
 
   /**

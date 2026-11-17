@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "probe": "vite-node scripts/balance-probe.ts",
     "bake-maps": "vite-node scripts/bake-maps.ts",
-    "board": "vite-node scripts/unicos-board.ts"
+    "board": "vite-node scripts/unicos-board.ts",
+    "arte": "vite-node scripts/arte-board.ts"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

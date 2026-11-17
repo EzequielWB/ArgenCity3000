@@ -1,6 +1,8 @@
 import { PAL, shade } from './color';
 import { BUS_COLORS, type CoastKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
 import type { ZoneKind } from '../world/world';
+import { pixelArt } from './artSwitch';
+import { commercialPixelSprite, industrialPixelSprite, residentialPixelSprite } from './pixelArt';
 
 /**
  * Procedural isometric sprites. Every sprite is anchored at the top corner of its footprint
@@ -507,19 +509,23 @@ function industrial(level: number, v: number): Sprite {
 /** A bus depot, painted in the colour of its line: a bus parked on a slab beside a little booth under a canopy of the same colour. */
 function busDepot(color: number): Sprite {
   const body = BUS_COLORS[color].hex;
-  const p = painter(1, 22);
-  p.box(0.06, 0.06, 0.94, 0.94, 0, 1.5, '#a9a8ae', false);
-  // The booth, with its canopy in the line's colour.
-  p.box(0.62, 0.1, 0.9, 0.4, 1.5, 8, '#e8e4dc');
-  p.left(0.4, 0.68, 0.84, 3.5, 7, PAL.glass);
-  p.box(0.58, 0.06, 0.94, 0.44, 9.5, 2, body);
-  // The bus: a long body along u with a row of windows, a lighter roof and its wheels.
-  p.box(0.1, 0.52, 0.66, 0.88, 1.5, 8, body);
-  p.left(0.88, 0.14, 0.62, 5, 8, PAL.glassDark);
-  p.right(0.66, 0.56, 0.84, 5, 8, PAL.glassDark);
-  p.left(0.88, 0.14, 0.62, 1.5, 2.6, shade(body, 0.55));
-  p.box(0.1, 0.52, 0.66, 0.88, 9.5, 0.8, shade(body, 1.25), false);
-  for (const u of [0.2, 0.52]) p.box(u, 0.86, u + 0.1, 0.94, 1.5, 2.2, '#1f1611', false);
+  const p = painter(2, 22);
+  p.box(0.06, 0.06, 1.94, 1.94, 0, 1.5, '#a9a8ae', false);
+  // The office in the back corner, with its glass front and the canopy in the line's colour.
+  p.box(1.2, 0.12, 1.84, 0.62, 1.5, 8, '#e8e4dc');
+  p.left(0.62, 1.24, 1.8, 3.5, 7, PAL.glass);
+  p.box(1.14, 0.1, 1.9, 0.68, 9.5, 2, body);
+  // Two buses, nose to the street, so a 2×2 depot reads as a depot and not as a shed with a bus.
+  const parked = (v0: number): void => {
+    p.box(0.16, v0, 0.78, v0 + 0.34, 1.5, 8, body);
+    p.left(v0 + 0.34, 0.2, 0.72, 5, 8, PAL.glassDark);
+    p.right(0.78, v0 + 0.04, v0 + 0.3, 5, 8, PAL.glassDark);
+    p.left(v0 + 0.34, 0.2, 0.72, 1.5, 2.6, shade(body, 0.55));
+    p.box(0.16, v0, 0.78, v0 + 0.34, 9.5, 0.8, shade(body, 1.25), false);
+    for (const u of [0.22, 0.6]) p.box(u, v0 + 0.28, u + 0.1, v0 + 0.34, 1.5, 1.6, '#1f1611', false);
+  };
+  parked(0.6);
+  parked(1.45);
   return done(p);
 }
 
@@ -1326,8 +1332,21 @@ const VARIANTS = 8;
 
 export function buildingSprite(zone: ZoneKind, level: number, variant: number): Sprite {
   const v = variant % VARIANTS;
-  return cached(`${zone}${level}:${v}`, () =>
-    zone === 'R' ? residential(level, v * 7 + 3) : zone === 'C' ? commercial(level, v * 5 + 1) : industrial(level, v),
+  // The pixel pass is a switch, not a rewrite: with it off every zone draws exactly as before.
+  const family = zone === 'R' ? 'residential' : zone === 'C' ? 'commercial' : 'industrial';
+  const pixel = pixelArt(family);
+  return cached(`${pixel ? 'pixel:' : ''}${zone}${level}:${v}`, () =>
+    pixel
+      ? family === 'residential'
+        ? residentialPixelSprite(level, v)
+        : family === 'commercial'
+          ? commercialPixelSprite(level, v)
+          : industrialPixelSprite(level, v)
+      : zone === 'R'
+        ? residential(level, v * 7 + 3)
+        : zone === 'C'
+          ? commercial(level, v * 5 + 1)
+          : industrial(level, v),
   );
 }
 

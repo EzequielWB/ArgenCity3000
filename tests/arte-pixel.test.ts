@@ -1,0 +1,426 @@
+import { describe, expect, it } from 'vitest';
+import {
+  lotSize,
+  paintCoalPlant,
+  paintCommercial,
+  paintFishing,
+  paintGasPlant,
+  paintIndustrial,
+  paintLot,
+  paintPlaza,
+  paintPromenade,
+  paintResidential,
+  paintWindFarm,
+  type LotKind,
+} from '../src/render/pixelArt';
+
+const LEVELS = [1, 2, 3, 4, 5];
+
+interface Art {
+  px: { w: number; h: number; data: Uint8ClampedArray };
+  ax: number;
+  ay: number;
+}
+
+type Paint = (level: number, variant: number) => Art;
+
+/** The only partial alpha a sprite may contain is its shadow: black, and never a soft edge. */
+const SHADOW_ALPHA = 96;
+
+const alpha = (a: Art, x: number, y: number) => a.px.data[(y * a.px.w + x) * 4 + 3];
+
+/** Topmost row that has any paint, or the height of the canvas when it is empty. */
+function topRow(a: Art): number {
+  for (let y = 0; y < a.px.h; y++) for (let x = 0; x < a.px.w; x++) if (alpha(a, x, y)) return y;
+  return a.px.h;
+}
+
+/** Pixels the building rises above its anchor, so taller levels compare as taller. */
+const rises = (a: Art) => a.ay - topRow(a);
+
+/** Distinct colours, ignoring the transparent pixels. */
+function tones(a: Art): number {
+  const set = new Set<number>();
+  for (let i = 0; i < a.px.data.length; i += 4) {
+    if (!a.px.data[i + 3]) continue;
+    set.add((a.px.data[i] << 16) | (a.px.data[i + 1] << 8) | a.px.data[i + 2]);
+  }
+  return set.size;
+}
+
+/** Leftmost and rightmost painted column, shadow included. */
+function span(a: Art): [number, number] {
+  let lo = a.px.w;
+  let hi = -1;
+  for (let y = 0; y < a.px.h; y++) {
+    for (let x = 0; x < a.px.w; x++) {
+      if (!alpha(a, x, y)) continue;
+      lo = Math.min(lo, x);
+      hi = Math.max(hi, x);
+    }
+  }
+  return [lo, hi];
+}
+
+const FAMILIES: [string, Paint][] = [
+  ['residencial', paintResidential as unknown as Paint],
+  ['comercial', paintCommercial as unknown as Paint],
+  ['industrial', paintIndustrial as unknown as Paint],
+];
+
+for (const [family, paint] of FAMILIES) {
+  const art = (level: number, variant: number) => paint(level, variant);
+
+  describe(`${family} pixel art`, () => {
+    it('paints hard pixels: every pixel is opaque, empty, or black shadow', () => {
+      for (const level of LEVELS) {
+        for (let variant = 0; variant < 8; variant++) {
+          const a = art(level, variant);
+          for (let i = 3; i < a.px.data.length; i += 4) {
+            const al = a.px.data[i];
+            if (al === 0 || al === 255) continue;
+            const at = `level ${level} variant ${variant}, pixel ${(i - 3) / 4}`;
+            expect(al, at).toBeLessThanOrEqual(SHADOW_ALPHA);
+            expect([a.px.data[i - 3], a.px.data[i - 2], a.px.data[i - 1]], at).toEqual([0, 0, 0]);
+          }
+        }
+      }
+    });
+
+    it('shades each face with a few tones instead of one flat colour', () => {
+      for (const level of LEVELS) {
+        for (let variant = 0; variant < 4; variant++) {
+          const a = art(level, variant);
+          const painted = tones(a);
+          expect(painted, `level ${level} variant ${variant}`).toBeGreaterThan(6);
+          expect(painted, `level ${level} variant ${variant}`).toBeLessThanOrEqual(60);
+        }
+      }
+    });
+
+    it('casts a shadow on the lot', () => {
+      for (const level of LEVELS) {
+        const a = art(level, 0);
+        let soft = 0;
+        for (let i = 3; i < a.px.data.length; i += 4) if (a.px.data[i] !== 0 && a.px.data[i] !== 255) soft++;
+        expect(soft, `level ${level}: the shadow is missing`).toBeGreaterThan(10);
+      }
+    });
+
+    it('anchors the lot inside its canvas, with room above the roof and the ground diamond whole', () => {
+      for (const level of LEVELS) {
+        for (let variant = 0; variant < 8; variant++) {
+          const a = art(level, variant);
+          expect(a.ax, `level ${level}`).toBeGreaterThanOrEqual(16);
+          expect(a.px.w - a.ax, `level ${level}`).toBeGreaterThanOrEqual(16);
+          expect(a.ay + 16, `level ${level} variant ${variant}: ground diamond clipped`).toBeLessThanOrEqual(a.px.h);
+          expect(topRow(a), `level ${level} variant ${variant}: roof clipped`).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    it('grows with the level: each step builds taller', () => {
+      const rows = LEVELS.map((level) => rises(art(level, 0)));
+      for (let i = 1; i < rows.length; i++) expect(rows[i], `level ${LEVELS[i]}`).toBeGreaterThan(rows[i - 1]);
+    });
+
+    it('keeps the variants of a level different from each other', () => {
+      for (const level of LEVELS) {
+        const seen = new Set([0, 1, 2, 3].map((variant) => art(level, variant).px.data.join(',')));
+        expect(seen.size, `level ${level}`).toBeGreaterThan(1);
+      }
+    });
+  });
+}
+
+/**
+ * The lots of 2 x 2: the same pixel discipline, but on a 64 x 32 diamond, because these businesses
+ * need the frontage and not the height. They are not in the game yet (see S6 of the feature doc).
+ */
+const LOTS: LotKind[] = ['mercado', 'ropa', 'bar', 'oficinas', 'galpon', 'silos', 'quimica', 'frigorifico', 'polo', 'aceria'];
+/** The kinds that belong to the commercial roster, which is the one with an ordering to keep. */
+const SHOPS: LotKind[] = ['mercado', 'ropa', 'bar', 'oficinas'];
+
+for (const kind of LOTS) {
+  const art = (variant: number) => paintLot(kind, variant) as Art;
+
+  describe(`lote 2 x 2 · ${kind}`, () => {
+    it('paints hard pixels: every pixel is opaque, empty, or black shadow', () => {
+      for (let variant = 0; variant < 8; variant++) {
+        const a = art(variant);
+        for (let i = 3; i < a.px.data.length; i += 4) {
+          const al = a.px.data[i];
+          if (al === 0 || al === 255) continue;
+          const at = `variant ${variant}, pixel ${(i - 3) / 4}`;
+          expect(al, at).toBeLessThanOrEqual(SHADOW_ALPHA);
+          expect([a.px.data[i - 3], a.px.data[i - 2], a.px.data[i - 1]], at).toEqual([0, 0, 0]);
+        }
+      }
+    });
+
+    it('anchors the diamond of the lot inside the canvas, with its top corner on the anchor', () => {
+      const n = lotSize(kind);
+      for (let variant = 0; variant < 8; variant++) {
+        const a = art(variant);
+        expect(a.ax, `variant ${variant}`).toBeGreaterThanOrEqual(16 * n);
+        expect(a.px.w - a.ax, `variant ${variant}`).toBeGreaterThanOrEqual(16 * n);
+        expect(a.ay, `variant ${variant}: no room above the roof`).toBeGreaterThan(0);
+        expect(a.ay + 16 * n, `variant ${variant}: the lot is clipped`).toBeLessThanOrEqual(a.px.h);
+      }
+    });
+
+    it('paints across the whole frontage, which is what the lot is for', () => {
+      const w = 32 * lotSize(kind);
+      for (let variant = 0; variant < 4; variant++) {
+        const [lo, hi] = span(art(variant));
+        expect(hi - lo + 1, `variant ${variant}: the lot is not used`).toBeGreaterThanOrEqual(Math.round(w * 0.8));
+        expect(hi - lo + 1, `variant ${variant}: it spills out of the lot`).toBeLessThanOrEqual(w + 8);
+      }
+    });
+
+    it('shades each face with a few tones and casts a shadow', () => {
+      for (let variant = 0; variant < 4; variant++) {
+        const a = art(variant);
+        expect(tones(a), `variant ${variant}`).toBeGreaterThan(8);
+        expect(tones(a), `variant ${variant}`).toBeLessThanOrEqual(110);
+        let soft = 0;
+        for (let i = 3; i < a.px.data.length; i += 4) if (a.px.data[i] !== 0 && a.px.data[i] !== 255) soft++;
+        expect(soft, `variant ${variant}: the shadow is missing`).toBeGreaterThan(10);
+      }
+    });
+
+    it('keeps the variants different from each other', () => {
+      const seen = new Set([0, 1, 2, 3].map((variant) => art(variant).px.data.join(',')));
+      expect(seen.size).toBeGreaterThan(1);
+    });
+  });
+}
+
+describe('lotes grandes · la escalera de rubros', () => {
+  const rise = (kind: LotKind, variant: number) => rises(paintLot(kind, variant) as Art);
+
+  it('puts the offices on top of the shops and the market at the bottom', () => {
+    const highest = Math.min(...[0, 1, 2, 3].map((v) => rise('oficinas', v)));
+    for (const kind of SHOPS) {
+      if (kind === 'oficinas') continue;
+      for (let v = 0; v < 4; v++) expect(rise(kind, v), `${kind} v${v}`).toBeLessThan(highest);
+    }
+    expect(rise('mercado', 0), 'el mercado es el más bajo').toBeLessThan(highest);
+  });
+
+  it('gives the bar two flavours: the neighbourhood one is lower than the common one', () => {
+    for (const v of [0, 2]) expect(rise('bar', v), `barrio v${v}`).toBeLessThan(rise('bar', v + 1));
+  });
+
+  it('declares the chimney mouths as smoke, inside the canvas', () => {
+    for (const kind of LOTS) {
+      for (let v = 0; v < 4; v++) {
+        const painted = paintLot(kind, v);
+        for (const [dx, dy] of painted.smoke) {
+          const at = `${kind} v${v}: humo fuera del canvas`;
+          expect(Math.abs(dx), at).toBeLessThanOrEqual(painted.px.w / 2 + 8);
+          expect(painted.ay + dy, at).toBeGreaterThanOrEqual(0);
+          expect(painted.ay + dy, at).toBeLessThanOrEqual(painted.px.h);
+        }
+      }
+    }
+  });
+
+  it('is wider than the 1 x 1 shops, which is the whole point', () => {
+    const big = span(paintLot('ropa', 0) as Art);
+    const small = span(paintCommercial(5, 0) as Art);
+    expect(big[1] - big[0]).toBeGreaterThan(small[1] - small[0]);
+  });
+});
+
+/**
+ * The plaza: one cell of garden with its walks, and the ornament only where the cell has no edge.
+ * The floor has to cover the whole diamond, because the renderer still paints the old flat ground
+ * underneath it and a seam would show that green.
+ */
+const plazaArt = (variant: number, look: 'tree' | 'bare' | 'neglected', mask: number) => paintPlaza(variant, look, mask) as Art;
+
+/** How many pixels are paving, which is how a walk shows up in the buffer. */
+function paving(a: Art): number {
+  let n = 0;
+  for (let i = 0; i < a.px.data.length; i += 4) {
+    if (!a.px.data[i + 3]) continue;
+    if (a.px.data[i] > 160 && a.px.data[i + 1] > 150 && a.px.data[i + 2] < 190) n++;
+  }
+  return n;
+}
+
+describe('plaza pixel art', () => {
+  it('paints hard pixels: opaque or empty, never a soft edge', () => {
+    for (const look of ['tree', 'bare', 'neglected'] as const) {
+      for (let mask = 0; mask < 16; mask++) {
+        const a = plazaArt(mask % 8, look, mask);
+        for (let i = 3; i < a.px.data.length; i += 4) {
+          const al = a.px.data[i];
+          if (al === 0 || al === 255) continue;
+          expect([a.px.data[i - 3], a.px.data[i - 2], a.px.data[i - 1]], `${look} mask ${mask}`).toEqual([0, 0, 0]);
+        }
+      }
+    }
+  });
+
+  it('covers the cell diamond, so the old flat ground never shows through', () => {
+    for (let mask = 0; mask < 16; mask++) {
+      const a = plazaArt(3, 'bare', mask);
+      for (let y = 0; y < a.px.h; y++) {
+        for (let x = 0; x < a.px.w; x++) {
+          const du = (x + 0.5 - a.ax) / 16;
+          const dv = (y + 0.5 - a.ay) / 8;
+          const u = (du + dv) / 2;
+          const v = (dv - du) / 2;
+          if (u < 0.06 || u > 0.94 || v < 0.06 || v > 0.94) continue;
+          expect(alpha(a, x, y), `mask ${mask}: hueco en (${x}, ${y})`).toBe(255);
+        }
+      }
+    }
+  });
+
+  it('runs the walk out to the edges that touch another plaza', () => {
+    const alone = plazaArt(1, 'bare', 0);
+    const crossed = plazaArt(1, 'bare', 15);
+    const twoArms = plazaArt(1, 'bare', 5);
+    expect(paving(alone)).toBeLessThan(paving(twoArms));
+    expect(paving(twoArms)).toBeLessThan(paving(crossed));
+  });
+
+  it('puts the ornament in the middle, and only when the cell has no edge', () => {
+    const edge = plazaArt(0, 'bare', 1);
+    const middle = plazaArt(0, 'bare', 15);
+    expect(rises(middle)).toBeGreaterThan(rises(edge) + 4);
+    // The three ornaments of the middle are three different buildings.
+    const shapes = new Set([0, 1, 2].map((v) => plazaArt(v, 'bare', 15).px.data.join(',')));
+    expect(shapes.size).toBe(3);
+  });
+
+  it('shows a plaza nobody keeps differently from a kept one', () => {
+    const kept = plazaArt(2, 'bare', 15);
+    const dry = plazaArt(2, 'neglected', 15);
+    expect(dry.px.data.join(',')).not.toBe(kept.px.data.join(','));
+    // A kept plaza has an ornament; a neglected one is bare ground.
+    expect(rises(dry)).toBeLessThan(rises(kept));
+  });
+});
+
+/**
+ * The coast: the promenade looks at the river through a balustrade, and the fishing pier runs out to
+ * the water on one side. Both are one cell, so the same diamond rules apply.
+ */
+const coastArt = (art: Art) => art;
+
+describe('power plant pixel art', () => {
+  const plants = [
+    ['coal', paintCoalPlant as () => Art],
+    ['gas', paintGasPlant as () => Art],
+    ['wind', paintWindFarm as () => Art],
+  ] as const;
+
+  it('paints hard pixels: opaque or empty, never a soft edge', () => {
+    for (const [, paint] of plants) {
+      const art = paint();
+      for (let i = 3; i < art.px.data.length; i += 4) {
+        const al = art.px.data[i];
+        if (al === 0 || al === 255) continue;
+        expect([art.px.data[i - 3], art.px.data[i - 2], art.px.data[i - 1]]).toEqual([0, 0, 0]);
+        expect(al).toBeLessThanOrEqual(SHADOW_ALPHA);
+      }
+    }
+  });
+
+  it('covers the 2×2 block: the four corners of the pad are painted', () => {
+    for (const [, paint] of plants) {
+      const art = paint();
+      // The pad runs from the top corner of the diamond to the bottom one: both ends are painted.
+      expect(topRow(art)).toBeLessThan(art.ay);
+      const [lo, hi] = span(art);
+      expect(hi - lo).toBeGreaterThan(art.px.w * 0.5);
+    }
+  });
+
+  it('smokes where the game says it smokes: two mouths for coal, one for gas, none for wind', () => {
+    expect(paintCoalPlant().smoke).toHaveLength(2);
+    expect(paintGasPlant().smoke).toHaveLength(1);
+    expect(paintWindFarm()).not.toHaveProperty('smoke');
+  });
+
+  it('gives each kind its own drawing instead of a recolour', () => {
+    const [coal, gas, wind] = plants.map(([, paint]) => paint());
+    for (const [a, b] of [
+      [coal, gas],
+      [coal, wind],
+      [gas, wind],
+    ]) {
+      expect(tones(a)).not.toBe(tones(b));
+      expect(rises(a)).not.toBe(rises(b));
+    }
+    // The wind farm is the tall one: three towers and their blades.
+    expect(rises(wind)).toBeGreaterThan(rises(gas));
+  });
+});
+
+describe('coast pixel art', () => {
+  const promenades = [0, 1, 2, 4, 8, 3, 6, 12, 16, 17, 18, 20, 24];
+  const piers = [0, 1, 2, 3];
+
+  it('paints hard pixels: opaque or empty, never a soft edge', () => {
+    for (const art of [...promenades.map((v) => paintPromenade(v) as Art), ...piers.map((d) => paintFishing(d) as Art)]) {
+      for (let i = 3; i < art.px.data.length; i += 4) {
+        const al = art.px.data[i];
+        if (al === 0 || al === 255) continue;
+        expect([art.px.data[i - 3], art.px.data[i - 2], art.px.data[i - 1]]).toEqual([0, 0, 0]);
+      }
+    }
+  });
+
+  it('covers the cell diamond, so the paving underneath never shows through', () => {
+    for (const art of [coastArt(paintPromenade(1)), coastArt(paintPromenade(16)), coastArt(paintPromenade(0))]) {
+      for (let y = 0; y < art.px.h; y++) {
+        for (let x = 0; x < art.px.w; x++) {
+          const du = (x + 0.5 - art.ax) / 16;
+          const dv = (y + 0.5 - art.ay) / 8;
+          const u = (du + dv) / 2;
+          const v = (dv - du) / 2;
+          if (u < 0.07 || u > 0.93 || v < 0.07 || v > 0.93) continue;
+          expect(alpha(art, x, y), `hueco en (${x}, ${y})`).toBe(255);
+        }
+      }
+    }
+  });
+
+  /** How many pixels of a colour the sprite has, which is how a rail or a lamp shows up. */
+  function count(art: Art, rgb: [number, number, number]): number {
+    let n = 0;
+    for (let i = 0; i < art.px.data.length; i += 4) {
+      if (art.px.data[i] === rgb[0] && art.px.data[i + 1] === rgb[1] && art.px.data[i + 2] === rgb[2]) n++;
+    }
+    return n;
+  }
+  const CREAM: [number, number, number] = [0xef, 0xe9, 0xdc];
+  const WARM: [number, number, number] = [0xff, 0xd8, 0x4a];
+
+  it('puts the balustrade on the sides that face water', () => {
+    const none = count(paintPromenade(0) as Art, CREAM);
+    const one = count(paintPromenade(1) as Art, CREAM);
+    const two = count(paintPromenade(1 | 4) as Art, CREAM);
+    expect(one).toBeGreaterThan(none);
+    expect(two).toBeGreaterThan(one);
+    // Two different water sides draw two different rails.
+    expect((paintPromenade(1) as Art).px.data.join(',')).not.toBe((paintPromenade(4) as Art).px.data.join(','));
+  });
+
+  it('stands a lamp on every other cell of the promenade', () => {
+    expect(count(paintPromenade(1 | 16) as Art, WARM)).toBeGreaterThan(0);
+    expect(count(paintPromenade(1) as Art, WARM)).toBe(0);
+  });
+
+  it('runs the jetty out to the side it was asked for', () => {
+    const shapes = new Set(piers.map((dir) => (paintFishing(dir) as Art).px.data.join(',')));
+    expect(shapes.size).toBe(4);
+    // The deck is raised on pilings, so every cell paints above its anchor.
+    for (const dir of piers) expect(rises(paintFishing(dir) as Art)).toBeGreaterThan(0);
+  });
+});

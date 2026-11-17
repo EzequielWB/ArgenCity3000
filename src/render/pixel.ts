@@ -78,6 +78,29 @@ export class Pixels {
 
   /** Filled convex or concave polygon, sampled at pixel centres (no anti-aliasing). */
   poly(pts: Pt[], paint: Paint): void {
+    this.fill(pts, (x, y) => this.set(x, y, paint(x, y)));
+  }
+
+  /**
+   * Fills the polygon with a shadow: black at partial alpha, which the canvas blends with whatever
+   * the map drew underneath, so the same sprite works over grass, dirt or pavement. It never paints
+   * over a pixel that is already opaque.
+   */
+  shadow(pts: Pt[], alpha: number): void {
+    const a = Math.round(Math.max(0, Math.min(1, alpha)) * 255);
+    this.fill(pts, (x, y) => {
+      if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
+      const i = (y * this.w + x) * 4;
+      if (this.data[i + 3]) return;
+      this.data[i] = 0;
+      this.data[i + 1] = 0;
+      this.data[i + 2] = 0;
+      this.data[i + 3] = a;
+    });
+  }
+
+  /** Scanline fill: the pixels inside the polygon, handed to `put`. */
+  private fill(pts: Pt[], put: (x: number, y: number) => void): void {
     let y0 = Infinity;
     let y1 = -Infinity;
     for (const p of pts) {
@@ -88,13 +111,13 @@ export class Pixels {
       const yc = y + 0.5;
       const xs: number[] = [];
       for (let i = 0; i < pts.length; i++) {
-        const a = pts[i];
-        const b = pts[(i + 1) % pts.length];
-        if (a[1] <= yc !== b[1] <= yc) xs.push(a[0] + ((yc - a[1]) / (b[1] - a[1])) * (b[0] - a[0]));
+        const p = pts[i];
+        const q = pts[(i + 1) % pts.length];
+        if (p[1] <= yc !== q[1] <= yc) xs.push(p[0] + ((yc - p[1]) / (q[1] - p[1])) * (q[0] - p[0]));
       }
       xs.sort((p, q) => p - q);
       for (let k = 0; k + 1 < xs.length; k += 2) {
-        for (let x = Math.round(xs[k]); x < Math.round(xs[k + 1]); x++) this.set(x, y, paint(x, y));
+        for (let x = Math.round(xs[k]); x < Math.round(xs[k + 1]); x++) put(x, y);
       }
     }
   }
