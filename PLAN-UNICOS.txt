@@ -44,8 +44,11 @@ Los puede construir cualquier gobierno. Desbloqueo por hito: 1.000 para los prim
    Que evoca: la ciudad que se cree capital. Es el unico que no pide nada especial del
    terreno, solo aire alrededor. Su pico es el verano, cuando la ciudad se llena de gente.
 
-2. TEATRO COLON - 2x2 - $11.000, $260/mes - turismo +4 %, +10 % de abril a agosto
+2. TEATRO COLON - 3x3 - $16.000, $340/mes - turismo +5 %, +10 % de abril a agosto
    Lugar: valor del suelo 45 o mas alrededor, o sea un barrio que ya es caro.
+   Por que 3x3: es el unico de los cinco que necesito el lugar para leerse. Con dos celdas de lado
+   la fachada mide 22 pixeles y las seis columnas del portico no existen; con tres, la masa del
+   bloque, el fronton y la cupula entran juntos.
    Que evoca: la ciudad que ya no es un pueblo. El unico que se puede construir tarde y en
    el centro. Su temporada es el otono-invierno: la temporada alta de la cultura.
 
@@ -112,8 +115,8 @@ PREGUNTAS ABIERTAS
     pide 10). En llanura quedan cuatro unicos. Se acepta, o se le da una regla alternativa
     cuando no hay loma?
   - Comunismo: Sindicato, Centro Civico o Alto Horno.
-  - El Teatro es el dibujo mas flojo de los cinco: la cupula se come al edificio y las
-    columnas se pierden contra la pared clara.
+  - El Teatro ya no parece una mezquita (tenia cupula bulbosa con remate dorado), pero tampoco es
+    el Colon: es un teatro neoclasico con cupula. A 3x3 esta en el limite de lo que da la camara.
   - Los precios y los porcentajes no se midieron contra el bot ni contra una partida larga.
     Son un punto de partida razonable, no un numero defendido con datos.
   - Ninguno de los cinco de gobierno esta dibujado ni escrito en codigo.

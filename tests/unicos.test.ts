@@ -68,7 +68,7 @@ describe('the category of the uniques', () => {
     expect([UNIQUES.obelisco.w, UNIQUES.obelisco.h]).toEqual([2, 2]);
     expect([UNIQUES.calvario.w, UNIQUES.calvario.h]).toEqual([3, 6]);
     expect([UNIQUES.puente.w, UNIQUES.puente.h]).toEqual([2, 6]);
-    expect([UNIQUES.teatro.w, UNIQUES.teatro.h]).toEqual([2, 2]);
+    expect([UNIQUES.teatro.w, UNIQUES.teatro.h]).toEqual([3, 3]);
     expect([UNIQUES.estadio.w, UNIQUES.estadio.h]).toEqual([4, 4]);
     for (const kind of UNIQUE_KINDS) {
       const cells = footprintOfTool(kind, 32, 5, 5);

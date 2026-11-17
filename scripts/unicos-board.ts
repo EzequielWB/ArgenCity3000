@@ -41,6 +41,13 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-kind]'))) {
   const dh = s.canvas.height * k;
   g.imageSmoothingEnabled = false;
   g.drawImage(s.canvas, (W - dw) / 2, H - padBottom - dh, dw, dh);
+  // The size, the price and the upkeep come from the config, so the board cannot drift from the game.
+  const size = el.closest('figure') && el.closest('figure').querySelector('.size');
+  if (size) {
+    const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+    size.textContent =
+      w + 'x' + h + ' - ' + money(UNIQUES[kind].cost) + ' - ' + money(UNIQUES[kind].upkeep) + '/mes';
+  }
 }
 `;
 
@@ -89,35 +96,35 @@ const page = `<!doctype html>
         <canvas data-kind="obelisco"></canvas>
         <figcaption>
           <div class="name">Obelisco</div>
-          <div class="meta">2x2 - $9.000 - $180/mes<br />En una plaza de 8 lotes o mas<br /><span class="tour">Turismo +6 %, +8 % en diciembre y enero</span></div>
+          <div class="meta"><span class="size"></span><br />En una plaza de 8 lotes o mas<br /><span class="tour">Turismo +6 %, +8 % en diciembre y enero</span></div>
         </figcaption>
       </figure>
       <figure>
         <canvas data-kind="teatro"></canvas>
         <figcaption>
           <div class="name">Teatro Colon</div>
-          <div class="meta">2x2 - $11.000 - $260/mes<br />Valor del suelo 45 o mas alrededor<br /><span class="tour">Turismo +4 %, +10 % de abril a agosto</span></div>
+          <div class="meta"><span class="size"></span><br />Valor del suelo 45 o mas alrededor<br /><span class="tour">Turismo +5 %, +10 % de abril a agosto</span></div>
         </figcaption>
       </figure>
       <figure>
         <canvas data-kind="estadio"></canvas>
         <figcaption>
           <div class="name">Estadio</div>
-          <div class="meta">4x4 - $18.000 - $420/mes<br />Sobre un bulevar, a 6 lotes o menos<br /><span class="tour">Turismo +8 %, +12 % de marzo a noviembre</span></div>
+          <div class="meta"><span class="size"></span><br />Sobre un bulevar, a 6 lotes o menos<br /><span class="tour">Turismo +8 %, +12 % de marzo a noviembre</span></div>
         </figcaption>
       </figure>
       <figure class="wide">
         <canvas data-kind="calvario"></canvas>
         <figcaption>
           <div class="name">El Calvario</div>
-          <div class="meta">3x6 - $12.000 - $220/mes<br />En una loma de altura 10 o mas<br /><span class="tour">Turismo +2 %, +18 % en septiembre</span></div>
+          <div class="meta"><span class="size"></span><br />En una loma de altura 10 o mas<br /><span class="tour">Turismo +2 %, +18 % en septiembre</span></div>
         </figcaption>
       </figure>
       <figure class="wide">
         <canvas data-kind="puente"></canvas>
         <figcaption>
           <div class="name">Puente Transbordador</div>
-          <div class="meta">2x6 - $14.000 - $300/mes<br />Sobre el agua, con una punta en tierra<br /><span class="tour">Turismo +5 %, todo el ano</span></div>
+          <div class="meta"><span class="size"></span><br />Sobre el agua, con una punta en tierra<br /><span class="tour">Turismo +5 %, todo el ano</span></div>
         </figcaption>
       </figure>
       <div class="pending">

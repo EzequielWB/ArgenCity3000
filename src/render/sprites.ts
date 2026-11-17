@@ -1732,101 +1732,122 @@ function puenteArt(vw: number, vh: number): Sprite {
     g.lineTo(...Q(a1, cNear, zLow));
     g.stroke();
   }
-  // The carriage: four rods from mid span, the red hull and the cream deck the cars drive onto.
+  // The carriage: a thin deck hanging from four rods, with its railing and the small cabin of the
+  // operator. It hangs well under the truss and well over the water, or it reads as a barge sitting
+  // on the river instead of the thing the bridge carries.
   const mid = L / 2;
-  const carZ = 14;
-  for (const da of [-0.34, 0.34]) {
-    for (const c of [legIn + 0.06, legOut - 0.06]) {
+  const carZ = 20;
+  const cIn = 0.36;
+  const cOut = W - 0.36;
+  for (const da of [-0.42, 0.42]) {
+    for (const c of [cIn + 0.06, cOut - 0.06]) {
       g.strokeStyle = dark;
       g.lineWidth = 0.9;
       g.beginPath();
       g.moveTo(...Q(mid + da, c, trussLow));
-      g.lineTo(...Q(mid + da, c, carZ + 8.4));
+      g.lineTo(...Q(mid + da, c, carZ + 2.6));
       g.stroke();
     }
   }
-  box(mid - 0.46, 0.44, mid + 0.46, W - 0.44, carZ, 3.2, '#a8382c');
-  box(mid - 0.56, 0.4, mid + 0.56, W - 0.4, carZ + 3.2, 0.7, '#e8e0cc');
-  box(mid - 0.34, 0.6, mid + 0.34, W - 0.6, carZ + 3.9, 3.4, '#b84434');
-  box(mid - 0.4, 0.56, mid + 0.4, W - 0.56, carZ + 7.3, 0.6, '#e8e0cc');
-  for (const da of [-0.17, 0, 0.17]) box(mid + da - 0.035, W - 0.61, mid + da + 0.035, W - 0.59, carZ + 4.8, 1.5, '#3a444a', false);
+  // The deck: a red girder with the cream surface the cars drive onto.
+  box(mid - 0.5, cIn, mid + 0.5, cOut, carZ, 2.4, '#a8382c');
+  box(mid - 0.46, cIn + 0.04, mid + 0.46, cOut - 0.04, carZ + 2.4, 0.7, '#e8e0cc');
+  // The railing: four posts on the near edge and the bar that joins them.
+  for (const da of [-0.44, -0.15, 0.15, 0.44]) box(mid + da - 0.02, cOut - 0.1, mid + da + 0.02, cOut - 0.06, carZ + 3.1, 1.8, '#e8e0cc', false);
+  box(mid - 0.46, cOut - 0.1, mid + 0.46, cOut - 0.07, carZ + 4.7, 0.5, '#e8e0cc', false);
+  // The cabin, on the far half, so the deck stays free.
+  box(mid - 0.22, cIn + 0.08, mid + 0.22, cIn + 0.34, carZ + 3.1, 3, '#b84434');
+  box(mid - 0.26, cIn + 0.05, mid + 0.26, cIn + 0.37, carZ + 6.1, 0.6, '#e8e0cc');
+  for (const da of [-0.12, 0, 0.12]) box(mid + da - 0.035, cIn + 0.32, mid + da + 0.035, cIn + 0.34, carZ + 4.1, 1.3, '#3a444a', false);
   return done(p);
 }
 
-/** The Teatro Colón (2×2): the six columns and the pediment in front, the low copper dome behind. */
+/** The Teatro Colón (3×3): the portico of six columns, the pediment and the big copper dome. */
 function teatroArt(vw: number, vh: number): Sprite {
-  const p = rectPainter(vw, vh, 48);
+  const p = rectPainter(vw, vh, 66);
   const cx = vw / 2;
   const g = p.g;
   const wall = '#efe2c4';
-  const face = vh - 0.32;
+  const inn = 0.4;
+  const face = vh - inn;
+  const H = 30;
   // The stone apron, and the plinth the house stands on.
   p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1.2, '#cfc8bb', false);
-  p.box(0.24, 0.24, vw - 0.24, vh - 0.24, 1.2, 1.8, '#beb7a9');
-  // The house: one wide block that fills the lot, with the stone quoins on its corners.
-  p.box(0.32, 0.32, vw - 0.32, vh - 0.32, 3.0, 22, wall, true);
-  // The side wall: two tall windows with their stone frames.
-  for (const [v0, v1] of [
-    [0.56, 0.82],
-    [1.06, 1.32],
-  ]) {
-    p.right(vw - 0.32, v0, v1, 8, 21, '#d9cdb2');
-    p.right(vw - 0.32, v0 + 0.03, v1 - 0.03, 9.2, 20, PAL.glassDark);
+  p.box(0.22, 0.22, vw - 0.22, vh - 0.22, 1.2, 1.8, '#beb7a9');
+  // The house: one wide block of three floors, with the stone quoins on its corners.
+  p.box(inn, inn, vw - inn, vh - inn, 3.0, H, wall, true);
+  // The side wall: three rows of windows with their stone frames.
+  for (const z of [6.4, 13.4, 20.4]) {
+    for (const [v0, v1] of [
+      [inn + 0.18, inn + 0.44],
+      [inn + 0.62, inn + 0.88],
+      [inn + 1.06, inn + 1.32],
+    ]) {
+      p.right(vw - inn, v0, v1, z, z + 4.6, '#d9cdb2');
+      p.right(vw - inn, v0 + 0.03, v1 - 0.03, z + 0.7, z + 4.2, PAL.glassDark);
+    }
   }
-  // The loggia: the dark plane the columns stand against, so six pale columns still read at game size.
-  p.left(face, 0.5, vw - 0.5, 3.4, 24.4, '#5d4f3c');
-  p.left(face, 0.9, 1.1, 3.4, 14, '#332a24');
+  // The loggia: the dark plane the columns stand against, so six pale columns read at game size.
+  p.left(face, inn + 0.26, vw - inn - 0.26, 3.4, H - 5.4, '#5d4f3c');
+  p.left(face, cx - 0.17, cx + 0.17, 3.4, 12.6, '#332a24');
   // Six columns, proud of that plane, each with its base and its capital.
+  const c0 = inn + 0.24;
+  const c1 = vw - inn - 0.24;
   for (let k = 0; k < 6; k++) {
-    const u = 0.55 + (0.9 * k) / 5;
-    p.box(u - 0.05, face, u + 0.05, face + 0.12, 4.6, 18, '#fbf8f0', false);
-    p.box(u - 0.065, face - 0.02, u + 0.065, face + 0.14, 3.4, 1.3, '#ece4d2', false);
-    p.box(u - 0.065, face - 0.02, u + 0.065, face + 0.14, 22.6, 1.5, '#f4efe2', false);
+    const u = c0 + ((c1 - c0) * (k + 0.5)) / 6;
+    p.box(u - 0.06, face, u + 0.06, face + 0.14, 4.6, H - 4.6, '#fbf8f0', false);
+    p.box(u - 0.08, face - 0.02, u + 0.08, face + 0.16, 3.4, 1.4, '#ece4d2', false);
+    p.box(u - 0.08, face - 0.02, u + 0.08, face + 0.16, H - 0.6, 1.8, '#f4efe2', false);
   }
-  // The attic over the house, the stone drum and the copper dome. Wide and low, with a lantern on
+  // The attic over the house, then the drum and the dome. Wide and low, with a stone lantern on
   // top: a tall dome with a golden finial reads as a mosque, which is what this building is not.
-  p.box(0.30, 0.30, vw - 0.30, vh - 0.30, 25, 2.2, '#e6dbc4');
-  const dv = 0.96;
-  p.box(cx - 0.36, dv - 0.36, cx + 0.36, dv + 0.36, 27.2, 4.4, '#ded3bb', true);
-  const [dx, dy] = p.P(cx, dv, 31.6);
-  const rx = 11;
-  const ry = 6.2;
-  // The cap: a lit left half and a shaded right half, so it reads as a dome and not as a hole.
-  g.beginPath();
-  g.ellipse(dx, dy, rx, ry, 0, Math.PI, Math.PI * 1.5);
-  g.closePath();
-  g.fillStyle = '#8fb09a';
-  g.fill();
-  g.beginPath();
-  g.ellipse(dx, dy, rx, ry, 0, Math.PI * 1.5, Math.PI * 2);
-  g.closePath();
-  g.fillStyle = '#6d8b74';
-  g.fill();
-  g.beginPath();
-  g.ellipse(dx, dy, rx, ry, 0, Math.PI, Math.PI * 2);
-  g.strokeStyle = '#4f6a58';
-  g.lineWidth = 0.7;
-  g.stroke();
-  g.strokeStyle = 'rgba(79,106,88,0.35)';
-  g.lineWidth = 0.5;
-  g.beginPath();
-  g.ellipse(dx, dy - ry * 0.35, rx * 0.55, ry * 0.4, 0, Math.PI, Math.PI * 2);
-  g.stroke();
+  p.box(inn - 0.06, inn - 0.06, vw - inn + 0.06, vh - inn + 0.06, H, 2.4, '#e6dbc4');
+  const dv = vh / 2 - 0.15;
+  // The drum is narrower than the dome on purpose: a drum as wide as the cap hides it, and the
+  // monument ends up wearing a thin green ring instead of a dome.
+  const drum = 0.28;
+  p.box(cx - drum, dv - drum, cx + drum, dv + drum, H + 2.4, 4.8, '#ded3bb', true);
+  const rx = 0.34 * vw * 16;
+  // The dome is a stack of ellipses, each one smaller and higher than the last. A half ellipse on
+  // its own gets half eaten by the drum's top face and the monument ends up wearing a green ring.
+  const ring = (k: number, dz: number, col: string) => {
+    const [ex, ey] = p.P(cx, dv, H + 7.2 + dz);
+    g.beginPath();
+    g.ellipse(ex, ey, rx * k, rx * k * 0.5, 0, 0, Math.PI * 2);
+    g.closePath();
+    g.fillStyle = col;
+    g.fill();
+    if (dz === 0) {
+      g.strokeStyle = '#43604e';
+      g.lineWidth = 0.7;
+      g.stroke();
+    }
+  };
+  ring(1, 0, '#4f6a58');
+  ring(0.9, 3.2, '#6d8b74');
+  ring(0.68, 6.4, '#82a48c');
+  ring(0.42, 9.2, '#9fbea8');
   // The lantern that closes the dome, in stone, with its little cap.
-  p.box(cx - 0.09, dv - 0.09, cx + 0.09, dv + 0.09, 37.8, 2.4, '#e8dfc9', true);
-  p.hipRoof(cx - 0.11, dv - 0.11, cx + 0.11, dv + 0.11, 40.2, 1.8, '#7f9c86');
-  // The entablature and the pediment: wide and low, over the whole portico, as on the real house.
-  // The pediment is a shade darker than the wall and carries a dark tympanum, or it disappears.
-  p.box(0.30, face - 0.02, vw - 0.30, face + 0.16, 25, 2.4, '#e9dfca', true);
-  const base = 27.4;
-  p.poly([p.P(0.32, face + 0.02, base), p.P(vw - 0.32, face + 0.02, base), p.P(cx, face + 0.02, base + 8)], '#bdb097');
+  const top = H + 7.2 + 11.6;
+  p.box(cx - 0.09, dv - 0.09, cx + 0.09, dv + 0.09, top, 2.4, '#e8dfc9', true);
+  p.hipRoof(cx - 0.12, dv - 0.12, cx + 0.12, dv + 0.12, top + 2.4, 1.8, '#7f9c86');
+  // The entablature and the pediment: wide and low over the whole portico, a shade darker than the
+  // wall and with a dark tympanum, or it disappears at game size.
+  p.box(inn - 0.04, face - 0.04, vw - inn + 0.04, face + 0.18, H, 2.6, '#e9dfca', true);
+  const base = H + 2.6;
+  const apex = 8.4;
+  p.poly([p.P(inn + 0.02, face + 0.02, base), p.P(vw - inn - 0.02, face + 0.02, base), p.P(cx, face + 0.02, base + apex)], '#bdb097');
   p.poly(
-    [p.P(0.30, face + 0.16, base), p.P(vw - 0.30, face + 0.16, base), p.P(cx, face + 0.16, base + 8.8)],
+    [p.P(inn - 0.04, face + 0.18, base), p.P(vw - inn + 0.04, face + 0.18, base), p.P(cx, face + 0.18, base + apex + 0.8)],
     '#e2d6bc',
     '#8f8574',
   );
   p.poly(
-    [p.P(0.40, face + 0.165, base + 1.3), p.P(vw - 0.40, face + 0.165, base + 1.3), p.P(cx, face + 0.165, base + 6.4)],
+    [
+      p.P(inn + 0.16, face + 0.19, base + 1.3),
+      p.P(vw - inn - 0.16, face + 0.19, base + 1.3),
+      p.P(cx, face + 0.19, base + apex - 1.6),
+    ],
     '#b3a68d',
   );
   return done(p);

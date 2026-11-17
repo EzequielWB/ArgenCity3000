@@ -16,11 +16,12 @@ posterior (S10).
   segundo `planTool` del mismo tipo devuelve `cells: []`.
   *Check:* `tests/toolgroups.test.ts`, `tests/unicos.test.ts` (unicidad).
 
-- **S2 — Tamaños (verbatim, L5):** "El obelisco deberia ser 2x2, el Calvario lo imagino de 3x6 (El
-  calvario de Tandil como referencia), el Puente de 2x6, el teatro de 2x2 y el estadio de 4x4".
-  El ancla es la celda de arriba a la izquierda y no se rota, como los aeropuertos y los puertos
-  (`HUBS`, `hubFootprint`).
-  *Criterio:* `UNIQUES[kind].w/h` valen 2/2, 3/6, 2/6, 2/2 y 4/4; `footprintOfTool` devuelve esa
+- **S2 — Tamaños (verbatim, L5, corregido en L11):** "El obelisco deberia ser 2x2, el Calvario lo
+  imagino de 3x6 (El calvario de Tandil como referencia), el Puente de 2x6, el teatro de 2x2 y el
+  estadio de 4x4". El teatro pasó a **3x3**: con dos celdas de lado la fachada visible mide 22 px y
+  seis columnas de 1,5 px no se leen. El ancla es la celda de arriba a la izquierda y no se rota,
+  como los aeropuertos y los puertos (`HUBS`, `hubFootprint`).
+  *Criterio:* `UNIQUES[kind].w/h` valen 2/2, 3/6, 2/6, 3/3 y 4/4; `footprintOfTool` devuelve esa
   cantidad de celdas y las mantiene dentro del mapa.
   *Check:* `tests/unicos.test.ts` (footprints).
 
@@ -150,3 +151,13 @@ posterior (S10).
   coordenadas del eje largo sin mapearlas a la vista. `longPainter` ahora devuelve `uv`, y el
   Calvario y el Teatro se redibujaron. La revisión visual se hizo con el sprite dibujado sobre una
   cancha de celdas y una captura del navegador; el resto se verificó con los tests y el build.
+- **L11 (corrección del usuario, 2026-11-17):** "subilo a 3x3 para mayor fidelidad, y en el puente
+  fijate que el coso ese rojo queda superpuesto en el puente". El teatro pasa a 3x3 (con precio
+  ajustado a los nueve lotes: $16.000, $340/mes y +5 % de turismo). En el puente la barquilla colgaba
+  a 13 px del agua y con la cubierta crema tan ancha que se leía como una barcaza apoyada en el río;
+  ahora cuelga a 20 px de la viga con cuatro varillas largas y visibles, la plataforma es fina con
+  baranda y la cabina va angosta sobre el lado de atrás.
+- **L12 (evidencia, la cúpula):** la cúpula se dibujaba como media elipse y la cara superior del
+  tambor se la comía por abajo, dejando un anillo verde. Se probaron cuatro formas de rellenar media
+  elipse en el navegador y todas funcionaban, así que el problema no era el `fill` sino la
+  superposición; la cúpula quedó como una pila de cuatro elipses, cada una más chica y más alta.
