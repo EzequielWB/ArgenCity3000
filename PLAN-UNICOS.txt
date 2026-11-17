@@ -44,7 +44,8 @@ Los puede construir cualquier gobierno. Desbloqueo por hito: 1.000 para los prim
    Que evoca: la ciudad que se cree capital. Es el unico que no pide nada especial del
    terreno, solo aire alrededor. Su pico es el verano, cuando la ciudad se llena de gente.
 
-2. TEATRO COLON - 3x3 - $16.000, $340/mes - turismo +5 %, +10 % de abril a agosto
+2. TEATRO - 3x3 - $16.000, $340/mes - turismo +5 %, +10 % de abril a agosto
+   Se llama Teatro y nada mas: la inspiracion es el Colon, el nombre no lo es.
    Lugar: valor del suelo 45 o mas alrededor, o sea un barrio que ya es caro.
    Por que 3x3: es el unico de los cinco que necesito el lugar para leerse. Con dos celdas de lado
    la fachada mide 22 pixeles y las seis columnas del portico no existen; con tres, la masa del

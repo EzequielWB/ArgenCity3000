@@ -102,7 +102,7 @@ const page = `<!doctype html>
       <figure>
         <canvas data-kind="teatro"></canvas>
         <figcaption>
-          <div class="name">Teatro Colon</div>
+          <div class="name">Teatro</div>
           <div class="meta"><span class="size"></span><br />Valor del suelo 45 o mas alrededor<br /><span class="tour">Turismo +5 %, +10 % de abril a agosto</span></div>
         </figcaption>
       </figure>

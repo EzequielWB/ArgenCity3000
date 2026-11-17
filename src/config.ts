@@ -588,7 +588,7 @@ export const UNIQUES: Record<
   obelisco: { label: 'Obelisco', w: 2, h: 2, cost: 9000, upkeep: 180, boost: 0.06, peak: 0.08, peakMonths: [12, 1] },
   calvario: { label: 'El Calvario', w: 3, h: 6, cost: 12000, upkeep: 220, boost: 0.02, peak: 0.18, peakMonths: [9] },
   puente: { label: 'Puente Transbordador', w: 2, h: 6, cost: 14000, upkeep: 300, boost: 0.05, peak: 0.05, peakMonths: [] },
-  teatro: { label: 'Teatro Colón', w: 3, h: 3, cost: 16000, upkeep: 340, boost: 0.05, peak: 0.1, peakMonths: [4, 5, 6, 7, 8] },
+  teatro: { label: 'Teatro', w: 3, h: 3, cost: 16000, upkeep: 340, boost: 0.05, peak: 0.1, peakMonths: [4, 5, 6, 7, 8] },
   estadio: { label: 'Estadio', w: 4, h: 4, cost: 18000, upkeep: 420, boost: 0.08, peak: 0.12, peakMonths: [3, 4, 5, 6, 7, 8, 9, 10, 11] },
 };
 
