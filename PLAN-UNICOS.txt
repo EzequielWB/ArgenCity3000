@@ -1,0 +1,119 @@
+ARGENCITY 3000 - PLAN DE EDIFICIOS UNICOS
+=========================================
+Fecha: 2026-11-17
+Estado: los cinco compartidos estan en el juego. Los cinco de gobierno, propuestos.
+
+COMO SE USA ESTE ARCHIVO
+------------------------
+Aca se anota QUE se quiere disenar, en palabras: que tiene que evocar cada edificio, que
+lugar del mapa tiene que pedir y que le tiene que pasar a la ciudad cuando lo construis.
+Como se implementa vive en odd/tasks/edificios-unicos.md, con los specs numerados y los
+commits como evidencia.
+
+Para mirar el arte, abrir edificios-unicos.html en el navegador: dibuja los cinco sprites
+reales del juego con sus numeros al lado. Ese archivo lo escribe `npm run board`, asi que
+si cambia el dibujo se corre otra vez y queda al dia.
+
+LA REGLA QUE NO SE TOCA
+-----------------------
+Un unico no es un edificio mas grande. Es la marca de la ciudad, y por eso:
+
+  1. Uno por ciudad. No hay dos obeliscos. La ciudad que lo tiene se distingue de la del
+     costado aunque las dos tengan la misma poblacion.
+  2. Multiplica el turismo que YA entra, no da renta fija. El puerto y el muelle tuvieron
+     que nerfearse dos veces en este juego por imprimir plata; un unico que paga tanto por
+     mes es una trampa que ya nos comimos. Como porcentaje, crece con la ciudad y no
+     rompe el balance cuando la ciudad es chica.
+  3. Es una construccion argentina de verdad. Nada inventado y nada de paisaje: el paisaje
+     no se construye, y un unico que aparece hecho por el jugador tiene que poder
+     levantarse ladrillo por ladrillo. (Por eso quedaron afuera Cataratas, Cueva de las
+     Manos y Parque Nacional.)
+  4. Pide un lugar especial. El Faro ya enseno el camino: la ciudad puede tener un faro y
+     el faro quiere costa. Cada unico tiene que pedir un dato que el mapa ya calcula, no
+     un capricho nuevo.
+  5. Tiene temporada. Un pico de turismo en su mes, porque en Argentina el turismo es
+     estacional y porque le da ritmo al ano.
+
+LOS CINCO COMPARTIDOS (HECHOS)
+------------------------------
+Los puede construir cualquier gobierno. Desbloqueo por hito: 1.000 para los primeros dos,
+2.500 para el Calvario y el puente, 5.000 para el estadio.
+
+1. OBELISCO - 2x2 - $9.000, $180/mes - turismo +6 %, +8 % en diciembre y enero
+   Lugar: plaza de 8 lotes o mas alrededor. Se planta SOBRE los lotes de plaza y los ocupa.
+   Que evoca: la ciudad que se cree capital. Es el unico que no pide nada especial del
+   terreno, solo aire alrededor. Su pico es el verano, cuando la ciudad se llena de gente.
+
+2. TEATRO COLON - 2x2 - $11.000, $260/mes - turismo +4 %, +10 % de abril a agosto
+   Lugar: valor del suelo 45 o mas alrededor, o sea un barrio que ya es caro.
+   Que evoca: la ciudad que ya no es un pueblo. El unico que se puede construir tarde y en
+   el centro. Su temporada es el otono-invierno: la temporada alta de la cultura.
+
+3. ESTADIO - 4x4 - $18.000, $420/mes - turismo +8 %, +12 % de marzo a noviembre
+   Lugar: sobre un bulevar, a 6 lotes o menos. Es el unico que pide calle grande, y es el
+   que mas turismo mueve.
+   Que evoca: el domingo de futbol. Ademas es el que mejor juega con las reglas que ya
+   existen: si las calles de alrededor se saturan, la fiesta se corta, y entonces el estadio
+   obliga a agrandar las avenidas. Unico que te hace proyectar vialidad.
+
+4. EL CALVARIO - 3x6 - $12.000, $220/mes - turismo +2 %, +18 % en septiembre
+   Lugar: loma de altura 10 o mas. Es el unico que pide relieve.
+   Que evoca: la peregrinacion de Tandil. La escalinata y las tres cruces se tienen que
+   leer desde arriba, y el edificio crece a lo largo, no a lo alto. Su pico es septiembre,
+   el mes de la peregrinacion, y es el pico mas alto de todos justamente porque es el mes
+   mas flaco para la ciudad.
+
+5. PUENTE TRANSBORDADOR - 2x6 - $14.000, $300/mes - turismo +5 %, todo el ano
+   Lugar: sobre el agua, con una sola punta en tierra.
+   Que evoca: el puente de La Boca, el unico que no se apoya en tierra firme en las dos
+   puntas. Es el unico que se construye sobre el agua y el unico que no tiene temporada:
+   el puente es postal todo el ano. Se cruza, no se visita.
+
+LOS CINCO DE GOBIERNO (PENDIENTES, PROPUESTOS)
+----------------------------------------------
+Cada forma de gobierno tiene el suyo y son excluyentes: si fundaste la ciudad en dictadura,
+el Cabildo no lo vas a ver nunca. Son +10 % de turismo, no acumulable con otro de gobierno,
+y no piden hito: los habilita el gobierno con el que fundaste. El riesgo es que el jugador
+nunca sepa que existe el de los otros; por eso su ficha tiene que decir para que gobierno
+es.
+
+  GOBIERNO       EDIFICIO       QUE TIENE QUE EXPRESAR
+  democracia     Cabildo        la institucion. Plaza mayor, balcon, campanas. Turismo en
+                                octubre, mes electoral, y sube la aprobacion en el acto.
+  dictadura      El Regimiento  el orden por la fuerza. Cuartel con patio de armas: baja el
+                                crimen en el radio, baja el valor del suelo al lado, y el
+                                turismo aparece el dia del desfile.
+  tecnocracia    Planetario     la razon. Cupula, telescopio, y solo rinde si el barrio ya
+                                tiene educacion alta: es un premio, no un desahogo.
+  teocracia      Santuario      la fe. Basilica chica con atrio lleno de gente. Su bono NO
+                                puede entrar en las tres virtudes del favor (caridad,
+                                impuestos bajos, plazas) porque hay un test que exige que
+                                esas tres sumen 100 menos la base.
+  comunismo      Sindicato      el trabajo organizado. Se enciende cuando la ciudad cumple
+                                el plan, y su turismo escala con los puestos industriales.
+                                Nombre en revision: Centro Civico y Alto Horno son las
+                                alternativas si el Sindicato suena a lo que no es.
+
+COMO SE MIRA UN UNICO (arte)
+----------------------------
+  - Se lee a un vistazo, al tamano en que se ve en el juego, no al 300 %. Si hay que
+    explicarlo, esta mal.
+  - Silueta propia: tapalo con la mano y tiene que seguir siendo reconocible.
+  - No se confunde con lo que ya hay. El juego tiene faro, iglesia, hospital, escuela,
+    fabrica, aeropuerto y puerto: el unico tiene que destacarse de todos.
+  - El predio es parte del dibujo. Un 2x6 no se dibuja como un 2x2 estirado: el Calvario es
+    una escalera, el puente es un cruce, el estadio es una herradura.
+  - Lo que el edificio pide se ve. Si pide plaza, el dibujo tiene plaza alrededor; si pide
+    agua, el dibujo esta sobre el agua.
+
+PREGUNTAS ABIERTAS
+------------------
+  - El Calvario no se puede construir en llanura (el mapa no pasa de altura 6 y la regla
+    pide 10). En llanura quedan cuatro unicos. Se acepta, o se le da una regla alternativa
+    cuando no hay loma?
+  - Comunismo: Sindicato, Centro Civico o Alto Horno.
+  - El Teatro es el dibujo mas flojo de los cinco: la cupula se come al edificio y las
+    columnas se pierden contra la pared clara.
+  - Los precios y los porcentajes no se midieron contra el bot ni contra una partida larga.
+    Son un punto de partida razonable, no un numero defendido con datos.
+  - Ninguno de los cinco de gobierno esta dibujado ni escrito en codigo.
