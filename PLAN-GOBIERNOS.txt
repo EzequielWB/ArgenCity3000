@@ -1,0 +1,560 @@
+ARGENCITY 3000 - PLAN DE GOBIERNOS
+==================================
+Fecha: 2026-11-16
+Rama: feat/vertical-slice
+Estado: en curso, 4 de 5 gobiernos hablados.
+
+COMO SE USA ESTE ARCHIVO
+------------------------
+Se revisa una forma de gobierno por vuelta. Lo que queda hablado se anota aca con
+sus tareas (T1, T2...) antes de escribir una linea de codigo. Lo que todavia no
+esta decidido queda en su seccion marcado EN REVISION.
+
+Cada cambio se mide: `npx vite-node scripts/gov-probe.ts 40 --only=<gobierno>`
+y `npx vitest run tests/gobiernos.test.ts`. Un cambio que no mueve la medicion no
+se queda solo porque suena bien.
+
+Los numeros viven en GOVERNMENTS (src/config.ts), FAVOR (src/sim/favor.ts),
+APPROVAL (src/sim/politics.ts) y PLAN (src/sim/plan.ts).
+
+PREMISA (corregida el 2026-11-16)
+---------------------------------
+Este archivo se escribio creyendo que el 1-2k de poblacion era culpa de cada
+forma de gobierno. No lo era: era la deuda sin piso (seccion 0). Varias tareas
+conservan sentido por si mismas; otras solo existian para tapar ese sintoma.
+Clasificacion de las 18, para que nadie implemente la lista entera creyendo el
+diagnostico viejo:
+
+  HECHAS (5) - 2026-11-16, en tests/gobiernos.test.ts
+    T1   el favor llega a 100               teocracia
+    T2   milagros desde 65 + README         teocracia
+    T3   catastrofes un poco mas suaves     teocracia
+    T5   el favor un poco mejor             teocracia
+    T6   tests de las reglas                teocracia
+
+  SIGUEN INTACTAS (7) - arreglan algo roto o una decision de tacto, sin matriz
+    T7   amiguismo (la caja politica)       dictadura
+    T8   mano dura                          dictadura
+    T9   censura                            dictadura
+    T10  la tarjeta dice la verdad          dictadura
+    T11  el acto eleccionario paga          dictadura
+    T13  el piso de educacion paga algo     tecnocracia
+    T17  el premio del plan no escala       comunismo
+
+  EN PAUSA HASTA RE-MEDIR (2) - ablandaban un castigo por un sintoma que no era
+    T4   la ira se desata menos seguido     teocracia
+    T12  la aprobacion se mueve a 3         tecnocracia
+    Si despues de arreglar el arranque siguen muriendo en furia, se retoman.
+    Antes no: ablandar el castigo contradice la regla de que desatender rompe la
+    ciudad. (T3 se hizo igual porque el jugador lo pidio explicitamente: "hace
+    las catastrofes un poco menos fuerte y estamos".) 
+
+  DEPENDEN DE LA MEDICION (4) - no se pueden decidir a ciegas
+    T14  se va el 5 % menos de gente        tecnocracia
+    T15  la curva de administracion         comunismo (mueve a los cinco)
+    T16  re-ajuste de PLAN.growth           comunismo
+    T18  la aprobacion de 34                comunismo
+
+ORDEN DE IMPLEMENTACION
+  1. P0a  linea de deuda + interes   (destraba jugar, y destraba el bot)
+  2. P0b  contador + concurso        (que quebrar tenga consecuencia)
+  3. re-medir los 120
+  4. las 7 intactas
+  5. las 5 que dependen del numero
+Las 3 en pausa se revisan recien despues del paso 3.
+
+TABLA DE ESTADO - MATRIZ COMPLETA
+(120 corridas, 25 anos: 5 gobiernos x 3 estilos x 4 mapas x 2 semillas)
+
+  gobierno      pico mediano  150k  perdio  caja mediana  estado
+  ------------  ------------  ----  ------  ------------  -------------------
+  democracia        1.738      0 %   100 %     -631 k     pendiente
+  dictadura         1.050      0 %     0 %     -539 k     HABLADO, listo
+  tecnocracia       1.766      0 %   100 %     -613 k     HABLADO, listo
+  teocracia         1.450      0 %     0 %     -599 k     HABLADO, listo
+  comunismo        30.971      0 %    46 %     +174 k     HABLADO, listo
+
+OJO CON LO QUE MIDE CADA COLUMNA
+  - "perdio" no mide dificultad: mide si hay elecciones. Dictadura y teocracia
+    no votan (0 % por definicion); democracia y tecnocracia votan y pierden
+    siempre (100 %). Solo el 46 % del comunismo dice algo, porque su Congreso
+    pide 40 % y su aprobacion vive en 34.
+  - "caja" no mide la economia de cada gobierno: los cuatro que no son
+    comunismo caen en la trampa de la seccion 0, y la deuda es el sintoma.
+  - "150k" es 0 % en los cinco: el techo no es el gobierno, es la curva de
+    administracion (T15).
+  Con eso, la matriz tiene UN dato por gobierno: el comunismo tiene motor y los
+  otros cuatro no. El resto de la tabla es la trampa y el bot.
+
+
+================================================================
+0. PRERREQUISITO - LA CAJA EN ROJO ES UNA TRAMPA SIN VUELTA
+================================================================
+Va primero porque invalida cualquier balanceo por gobierno. Medido con el
+probe nuevo, 40 anos, mapa coast:
+
+    tecnocracia ano 3:  pop 1.627  caja -28.320  aprob 27
+    tecnocracia ano 4:  pop 0      abandonados 316  demanda 95/95/95
+    tecnocracia ano 40: pop 0      caja -1.096.792
+
+La ciudad entera se vacia en DOCE MESES y no vuelve nunca mas, con la demanda
+por el techo. No es un mal balance: es un mecanismo de un solo sentido.
+
+COMO FUNCIONA
+  unrest() simulation.ts:363   caja en rojo -> +3 de enojo por mes a TODOS los
+                               lotes, tenga o no algo roto al lado.
+  stepAnger() a 100            el duenio se va, el edificio queda abandonado.
+  unrest() por cada abandonado a 2 lotes: +2 por mes, hasta 4 (osea +8).
+  ANGER.cap = 10               el lote que ya perdio vecinos se vacia 3 veces
+                               mas rapido que uno que esta solo.
+  REOCCUPY simulation.ts:796   un abandonado vuelve SOLO si NO hay crisis.
+  grow() simulation.ts:386     un lote abandonado nunca se vuelve a construir.
+
+Todo junto: en rojo no entra nadie y los que estan se van.
+
+PERO EL TRIQUETE NO ES EL PROBLEMA - CORRECCION
+  Que una ciudad desatendida se rompa es la regla, y esta bien: es la
+  complejidad que el juego tiene que tener. Y la salida existe, y es manual:
+    - Demoler un abandonado cuesta COSTS.bulldoze 2 + nivel * 10 = 42 pesos
+      uno de nivel 4. Barato.
+    - Y no enoja a nadie: noteDemolition saltea los lotes sin ocupar
+      ("empty, abandoned or on fire: nobody to upset"), asi que limpiar
+      escombros no cuesta aprobacion.
+    - Hay credito: LOANS hasta 50.000, sin ninguna condicion de crisis.
+  Desatendes, se rompe, lo arreglas a mano. Eso es un costo de jugador, no un
+  bug. La propuesta anterior (subir REOCCUPY_RATE, sacar el gate de crisis)
+  ablandaba el juego sin necesidad.
+
+EL PROBLEMA REAL: LA DEUDA NO TIENE PISO
+  `spend()` (simulation.ts:440) es `if (cost > this.state.cash) return false`.
+  Sin cash no hay accion: ni demoler, ni construir, ni nada. Y el cash baja sin
+  limite: no hay clamp, no hay bancarrota, no hay final.
+      caja -600.000 + credito maximo 50.000 = -550.000
+      ingreso = pop * tasa   y   pop = 0  ->  ingreso = 0
+  Ahi se termina la partida sin que nadie avise: no podes gastar, no podes
+  ingresar, y no hay regla que te saque de ahi. Eso no es complejidad, es
+  mirar. Le pasa al bot y le pasaria a una persona.
+  Y explica la matriz entera: los cuatro gobiernos no pierden por su ficha,
+  pierden porque el primero que toca el rojo no vuelve a jugar nunca.
+
+P0 - LA SALIDA SI EXISTE, ES EL CREDITO
+  Un jugador en rojo puede pedir un credito: `takeLoan` (simulation.ts:461) no
+  tiene ninguna condicion de crisis ni de caja, y hay tres hasta 50.000. El
+  prestamo pone la caja en positivo, `crisis` se apaga (`crisis = cash < 0`) y
+  la ciudad vuelve a crecer. La salida estaba desde el principio.
+
+  Lo que se probo y NO funciono (2026-11-16, todo revertido):
+    1. LINEA DE DEUDA + INTERES (P0a). Se podia gastar hasta una linea
+       respaldada por los edificios, con 2 % de interes mensual. Implementado,
+       probado, 6 tests en verde, y despues medido: pico 1.699 igual que sin
+       el cambio, y caja -32.956.933 (era -681.726). El interes compone sobre
+       una deuda que ya paso la linea y nada la frena. Se revirtio entero.
+    2. DESBLOQUEAR LOS CREDITOS DEL BOT. Se le saco la condicion
+       `balance > -1500` de city-bot.ts:218. Pico 1.699, caja -705.518. Nada.
+
+  POR QUE NADA DE ESO MOVIO EL NUMERO
+  Tres configuraciones distintas (pristina, con linea de deuda, con creditos
+  desbloqueados) dan el MISMO pico, 1.699. Cuando tres juegos de reglas
+  distintos dan el mismo numero, el numero no lo producen las reglas: lo
+  produce lo que paso antes de que las reglas importaran.
+
+P0 (REEMPLAZADO) - EL ARRANQUE DEL BOT
+  city-bot.ts:244:
+      // The first three bands are the seed: industry, homes, homes.
+      if ((nextBand < 3 || canBuild()) && nextBand < bands.length)
+  El bot abre TRES bandas antes de que haya un solo habitante. Una banda son 5
+  filas de lotes + calle + tendido, sobre 128 de ancho, y hay 21 en el mapa.
+  Resultado, medido a 1.647 habitantes:
+      calles 1.194 (38 %) | luz 780 (25 %) | servicios 214 (7 %)
+      ingreso total 1.698
+  La ciudad nace insolvente: paga 1.194 de calles con 1.698 de ingreso. Ningun
+  credito tapa eso, y el comunismo sobrevive la misma semilla solo porque el
+  premio del plan le da la plata para pasar el pozo.
+  Propuesta: `nextBand < 3` -> `nextBand < 1`, y la banda siguiente solo cuando
+  la anterior este llena y el saldo no sea negativo. Es del BOT, no del juego,
+  y es la unica cosa que la medicion dice que puede mover el numero.
+
+  Los ajustes finos de la trampa quedan anotados y se deciden DESPUES de
+  re-medir, no antes:
+    - REOCCUPY_RATE 0,003 es 1 en 333 meses: 27,8 anos de espera promedio.
+      Si la idea es que el mercado nunca te salve, esta bien asi. Si la idea
+      era que un abandonado vuelva solo de vez en cuando, esta roto.
+    - ANGER.crisis 3 -> 2: cosmetico al lado del resto.
+    - REOCCUPY exige `!crisis`: no importa mientras el arranque no se arregle.
+  Lo que hay que decidir no es la insolvecia: es si el mercado puede devolver
+  la vida a un lote abandonado, o si esa es siempre tarea del jugador.
+
+DEL INSTRUMENTO: JUEGO O BOT
+  El argumento "los 3 estilos comparten la misma grilla, asi que una falla comun
+  no se veria comparando estilos" es correcto. Pero no hace falta comparar
+  estilos para descartarlo: el comunismo usa LA MISMA grilla y llega a 30.971.
+  Una falla compartida de grilla no puede matar a cuatro y salvar a uno.
+  (Correccion: en la primera pasada anote que 8 de 12 corridas volvian con pico
+  0 y que los estilos 'equilibrado' y 'cuidadoso' no producian nada. Era falso:
+  `--diag` corre UNA sola combinacion y deja celdas vacias en las tablas por
+  estilo y por mapa, que se imprimen como 0 / NaN %. El bot no estaba roto.)
+
+LA PRUEBA QUE CIERRA LA DUDA (medida, no opinada)
+    democracia tal como esta        pico 1.699   caja -681.726   333 abandonados
+    democracia con serviceCost 0,7  pico 1.783   caja -661.781   339 abandonados
+    (el mismo 0,7 del comunismo, mismo seed, mismos 4 mapas)
+
+  Darle a la democracia el descuento ENTERO de servicios del comunismo movio el
+  pico un 5 % y no la saco del rojo. Por que: a 1.647 habitantes el gasto
+  mensual era 3.163, de los cuales caminos 1.194 (38 %) y luz 780 (25 %) son el
+  62 %, y los servicios que la tarjeta descuenta son 214, el 7 %. El descuento
+  esta en la linea equivocada. Coincide con el balance L10: "el descuento de
+  servicios no mueve el pico".
+
+  Entonces, cada cosa en su lugar:
+  - LA TRAMPA (seccion 0) es del JUEGO, y es lo que hunde a los cuatro.
+  - EL MOTOR es del JUEGO: el premio del plan quinquenal es lo unico que inyecta
+    plata y aprobacion. Con el plan apagado el comunismo cae a 1.055 (L10), o
+    sea a la misma zona que los otros cuatro.
+  - EL COSTO DE CALLES es del BOT: 1.194 de mantenimiento de calles para 1.647
+    habitantes es una grilla que nadie construye a mano. Infla el nivel
+    absoluto, no la comparacion entre gobiernos.
+  - EL RELIEVE es del BOT: 0 en relief contra 1.699 en coast con el mismo seed.
+    Grilla plana sobre terreno que no lo es.
+
+  Conclusión: la matriz NO mide como se juega cada gobierno. Mide cuanto tarda
+  cada uno en caer en la trampa, con un bot que construye calles de mas.
+
+
+================================================================
+1. TEOCRACIA
+================================================================
+
+COMO ESTA HOY
+-------------
+El favor es un medidor paralelo de 0 a 100. Arranca en 60 y se mueve hasta 3
+puntos por mes hacia un target:
+
+    target = 55 (base) + caridad (hasta 8) + impuestos bajos (hasta 6)
+                      + plazas (hasta 12) - humo - delito - abandonos
+                      - usura - demoliciones - caja en rojo
+
+Bajo 35 de favor cae una catastrofe por mes; sobre 66, un milagro.
+
+
+LOS CUATRO PROBLEMAS
+--------------------
+P1. EL FAVOR NO PUEDE LLEGAR A 100. El techo real es 81 (55 + 8 + 6 + 12).
+    La franja 82-100 es decorativa: nadie la pisa nunca. Y como
+    judgementChance() divide por (100 - FAVOR.grace), la chance maxima de
+    milagro es ~36 % y no el 50 % que sugiere la formula.
+
+P2. LA DOCUMENTACION MIENTE. README linea 45 dice "por encima de 75 llegan
+    milagros"; README linea 96 dice 66. El codigo usa 66. El documento
+    odd/tasks/gobiernos-teocracia-comunismo.md (S4) tambien dice 75.
+
+P3. LAS CATASTROFES SON DEMASIADO DURAS. No por el evento en si, sino porque
+    `revuelta` resta 6 a 14 puntos de aprobacion CIVIL, que es la palanca que
+    decide si la ciudad crece o se muere (el acantilado de 31,8, balance L8).
+    El castigo divino empuja al jugador justo hacia el lado del que no se
+    vuelve. Encima la chance de castigo arranca en 30 % con solo estar bajo 35.
+
+P4. EL FAVOR ES UN ADORNO, NO UN MOTOR. Solo dispara eventos de un mes. Lo que
+    sostiene la ciudad es la aprobacion civil y la teocracia no tiene nada que
+    la empuje para arriba de forma sostenida. El unico feedback positivo es
+    `fe` (+8), a la suerte, y solo si ya estas en gracia. Esta es la razon de
+    fondo del 1.393. QUEDA PENDIENTE DE DISENO: no se toca en esta vuelta.
+
+
+CAMBIOS PLANEADOS
+-----------------
+
+T1 - EL FAVOR LLEGA A 100 (arregla P1)
+    Los pesos de las virtudes pasan a vivir en FAVOR, con nombres, y suman
+    exactamente 100 - FAVOR.base:
+        FAVOR.charity   8 -> 15   (obras de caridad)
+        FAVOR.lowTaxes  6 -> 10   (impuestos bajos)
+        FAVOR.gardens   12 -> 20  (jardines y plazas)
+        55 + 15 + 10 + 20 = 100
+    Las plazas pasan a puntuar contra MAX_FUNDING (120 %) en vez de contra 100:
+    el presupuesto al tope da el puntaje al tope. Los pecados no cambian: con
+    la ciudad en llamas el target sigue cayendo a 0.
+    Test de invariante: charity + lowTaxes + gardens === 100 - base, para que
+    el techo no se vuelva a perder sin que nadie se entere.
+
+T2 - LOS MILAGROS LLEGAN DESDE 65 (resuelve la decision del usuario)
+    FAVOR.grace: 66 -> 65. El texto de la placa y del panel leen la constante,
+    asi que se acomodan solos.
+    Se arregla P2: README linea 45 pasa a decir 65 y el S4 del documento de
+    gobiernos se corrige con una nota en el Log.
+
+T3 - LAS CATASTROFES PEGAN MENOS (arregla P3, la mitad de arriba)
+    Rayos:   3 + ceil(sev * 5)  -> 2 + ceil(sev * 3)   (8 lotes -> 5)
+    Plaga:   6 + round(sev* 14) -> 4 + round(sev * 8)  (20 edificios -> 12)
+    Sequia:  EFFECT_FACTOR[DROUGHT] 0,7 -> 0,8         (-30 % -> -20 % por 3 meses)
+    Revuelta: -(6 + round(sev * 8)) -> -(4 + round(sev * 5))  (-14 -> -9)
+    La sequia solo la usa la teocracia (grep: DROUGHT no aparece en events.ts),
+    asi que bajarla no toca ningun otro sistema.
+
+T4 - LA IRA SE DESATA MENOS SEGUIDO (arregla P3, la mitad de abajo)
+    judgementChance en furia: 0,30 + 0,50 * ... -> 0,25 + 0,40 * ...
+    Peor caso (favor 0): 0,80 -> 0,65 por mes. En gracia queda igual (0,25 a 0,50
+    sobre el rango que ahora si existe completo, gracias a T1).
+
+T5 - EL FAVOR ES UN POCO MEJOR (lo que pidio el usuario)
+    FAVOR.start:    60 -> 62   (la ciudad nace con un poco mas de credito)
+    FAVOR.tolerated: 10 -> 12  (banca un poco mas de humo y delito sin enojarse)
+    FAVOR.usury:     12 -> 14  (se puede recaudar un poco mas antes de que sea usura)
+    FAVOR.step:       3 -> 4   (sale del furor un tercio mas rapido; iguala el paso
+                                de la aprobacion civil, que hoy es 4)
+    Estos cuatro van juntos en un commit y se miden juntos; si alguno no mueve
+    la aguja se saca. El que mas deberia moverla es `step`.
+
+T6 - TESTS
+    Un test por regla pedida, no un test por cambio:
+    - una ciudad perfecta llega a 100 y una condenada llega a 0 (T1)
+    - el invariante de pesos (T1)
+    - moodOf(65) es 'calm' y moodOf(66) es 'grace' (T2)
+    - la revuelta resta como mucho 9 (T3)
+    - con favor 0 la chance de castigo es 0,65 (T4)
+    - el favor arranca en 62 (T5)
+
+LO QUE NO SE TOCA EN ESTA VUELTA
+--------------------------------
+- Que el favor mueva algo de forma continua (P4). Es una decision de diseno
+  aparte: hoy el favor no paga el alquiler. Hay que decidirlo antes de seguir
+  midiendo balance, o los numeros de arriba no van a cambiar el 1.393.
+- La Misa mayor sale con el calendario electoral de la DEMOCRACIA
+  (electionDue(tick, 'democracia')), asi que cae cada 4 anos en octubre. Para
+  un gobierno que no tiene mandatos es una dependencia escondida. Sin decidir.
+
+
+================================================================
+2. DICTADURA
+================================================================
+Estado: HABLADO, listo para hacer. Sus tres mecanicas (T7-T9) son un circuito.
+
+COMO ESTA HOY (config.ts, 10 lineas)
+------------------------------------
+    termYears: null, toWin: 0, migration: 0,8, grants: 0,
+    approvalCap: 60, approvalStep: 4, taxIncome: 1/1/1,
+    serviceCost: 1, fundingFloor: 0
+
+NO TIENE UNA SOLA LINEA DE CODIGO PROPIA
+----------------------------------------
+    grep -rn "dictadura" src   ->  solo config.ts y un texto de ayuda.
+La teocracia tiene favor.ts, el comunismo tiene plan.ts, la tecnocracia tiene
+taxIncome + serviceCost + fundingFloor. La dictadura es una fila de configuracion.
+
+EL TECHO DE 60 NO ES COSMETICO: ES -16 % DE POBLACION
+-----------------------------------------------------
+    apetito = 0,75 + 0,50 * (aprobacion / 100)
+    a 60 de aprobacion -> 1,05 ; a 100 -> 1,25
+    targetPop = (empleos C + empleos I) * 2 * apetito
+El tope de aprobacion no es un detalle de ficha: recorta el techo de poblacion
+un 16 % de forma estructural. El comentario de politics.ts:31 ya lo admite.
+
+Y ENCIMA PAGA DOS VECES POR LO MISMO
+------------------------------------
+La migracion 0,8 ya baja la velocidad de crecimiento un 20 %, y el techo de 60
+baja el apetito un 16 % mas. Combinado, el crecimiento efectivo queda ~33 % por
+debajo de la democracia, no el 20 % que promete la tarjeta.
+
+SUS DOS "PROS" NO TIENEN NINGUN NUMERO
+--------------------------------------
+  "No hay elecciones: nunca perdes el poder"   -> lo mismo tiene la teocracia,
+                                                  y gratis.
+  "La ciudad crece con la plata que haces vos" -> es una frase, no una regla.
+Es el unico gobierno cuyos dos beneficios no son mecanicas.
+
+EL ACTO ELECCIONARIO ES GRATIS
+------------------------------
+Cada 4 anos (usa el calendario de la democracia) salen dictatorHeadline y un
+DICTATOR_FOLLOWUPS: cuerpos en el rio, opositores que se van. Puro color. No
+cuesta aprobacion, no cuesta plata, no trae disturbios. El gobierno mas
+represivo del juego no paga nada por serlo.
+
+LAS TRES MECANICAS SON UN SOLO CIRCUITO
+---------------------------------------
+No son tres features sueltas: es una economia, y si no se conectan asi no
+valen la pena.
+
+    amiguismo ---> plata ---> mano dura (baja el delito)
+                        \---> censura   (sostiene la aprobacion)
+         |
+         +--> corrupcion: sube el mantenimiento y baja la aprobacion
+
+Te da el poder de tapar el desastre, y el desastre crece mientras lo tapas.
+Ese es el gobierno. La plata que sacas de la obra publica es la que paga la
+policia y el silencio; y la corrupcion que generas es la que te va a matar.
+
+Los numeros de abajo son punto de partida, no verdad revelada: se ajustan con
+el probe. La palanca de ajuste de todo el circuito es CORRUPTION.kickback.
+
+T7 - AMIGUISMO (la caja politica)
+    Estado nuevo: `slush` (la caja politica, en pesos) y `corruption` (0 a 100).
+    - Cada obra que construis deja un 15 % en la caja: `CORRUPTION.kickback`.
+      Ademas, un 5 % del costo mensual de servicios se va a la caja.
+    - La caja tiene techo (dos meses de servicios) para que no sea un banco.
+    - Cada obra sube `corruption` (4 puntos) y baja sola (1 punto por mes).
+    - La caja no es plata libre: solo la dictadura la puede gastar, y solo en
+      T8 y T9. En cualquier otro gobierno no existe.
+    - El freno, en los dos lugares que ya existen:
+        serviceCost = 1 + CORRUPTION.upkeep * corruption / 100   (0,3)
+        factor de aprobacion 'Corrupcion': -CORRUPTION.approval * corruption/100 (8)
+      La obra se hizo barata y hay que mantenerla toda la vida.
+    Test: construir una escuela bajo dictadura deja 15 % en la caja y sube
+    corruption; la misma escuela bajo democracia no deja nada.
+
+T8 - MANO DURA (la policia del regimen)
+    Estado nuevo: `repression` (0 a 100), una palanca en el panel.
+    - Se paga por mes desde la caja politica: `REPRESSION.cost` por cada 1000
+      habitantes, proporcional al nivel de la palanca.
+    - Efecto sobre el delito, en computeCrime (fields.ts:278), donde ya se lee
+      `w.safety`: la palanca suma cobertura sin sumar comisarias.
+        safetyEfectiva = min(100, safety + REPRESSION.safety * repression/100)
+    - Costo: factor de aprobacion 'Represion' hasta -12. El delito que baja
+      devuelve aprobacion por otro lado, asi que la palanca conviene solo si
+      el delito es el problema. Ese es el trade-off.
+    - Falla: con la palanca arriba de 70, cada tanto sale una linea de
+      DICTATOR_FOLLOWUPS y puede caer una revuelta (-4 a -9 de aprobacion, el
+      mismo evento que ya tiene la teocracia).
+    Test: la misma ciudad con represion 100 tiene menos delito que con
+    represion 0, y menos aprobacion.
+
+T9 - CENSURA (la prensa comprada)
+    Estado nuevo: `censorship` (0 o meses restantes).
+    - Se paga por mes desde la caja politica: `CENSORSHIP.cost` por 1000 hab.
+    - Efecto 1, el barato: las noticias malas no salen. En `publish()` una
+      linea mala cae si el regimen censura; en su lugar sale un relleno
+      ('Sin novedades en la ciudad').
+    - Efecto 2: +6 de aprobacion mientras dura (la propaganda trabaja).
+    - El castigo no es un evento aparte, es el propio mecanismo: si el diario
+      no cuenta lo que se rompe, VOS no te enteras y dejas de arreglarlo. El
+      diario es el tablero de problemas del juego; apagarlo es apagarte el
+      tablero. Gratis como castigo y no hay que inventar nada.
+    - Al terminar la censura, una linea: 'El diario vuelve a imprimir lo que
+      paso'.
+    Test: con censura activa no aparece ninguna noticia de catastrofe, y la
+    aprobacion del mismo mes es 6 puntos mas alta.
+
+T10 - LA TARJETA DEL GOBIERNO DICE LA VERDAD
+    Hoy los dos pros no tienen numeros. Pasan a ser:
+      pro: 'La caja politica paga la policia y la prensa: no hay que ponerlo a
+            la vista'
+      pro: 'Con el delito y la prensa bajo control, el poder no se discute'
+      contra: 'Cada obra deja corrupcion: el mantenimiento sube y la aprobacion
+            baja cuando se nota'
+      contra: 'Llega un 20 % menos de gente nueva, la Provincia no gira
+            subsidios y la aprobacion no pasa de 60'
+
+T11 - EL ACTO ELECCIONARIO PAGA
+    Hoy es gratis. Pasa a costar plata (la fiesta del regimen, desde la caja) y
+    a dar +5 de aprobacion ese mes: el desfile se paga y se cobra. Si no hay
+    plata en la caja, el acto sale igual pero con el followup de siempre y -5.
+
+LO QUE FALTA DECIDIR
+--------------------
+1. El techo de 60. PROPUESTA, sin decidir: que se quede, pero que suba con la
+   censura y la represion (`approvalCap = 60 + 40 * max(censura, represion)/100`).
+   Asi deja de ser una fila de configuracion y pasa a ser el premio del regimen.
+   Ojo: hoy `stepApproval` lee el tope de GOVERNMENTS sin ver el estado; esto
+   pide pasarle el estado, es un cambio de firma.
+2. Orden de implementacion. T7 primero (sin caja politica T8 y T9 no se pagan),
+   despues T8, despues T9. Uno por commit, medido cada uno: si el circuito es
+   demasiado fuerte se toca CORRUPTION.kickback y nada mas.
+3. Esto es la feature mas grande de las cinco. Si en algun momento pasa las
+   ~400 lineas autoradas por tarea, se parte: T7-T8 en un commit revisable y
+   T9-T11 en el siguiente.
+
+
+================================================================
+3. TECNOCRACIA
+================================================================
+Estado: HABLADO, listo para hacer. Ojo: su medicion todavia no sirve (ver 0).
+
+MEDIDO HOY (probe nuevo, 40 anos)
+    pico 1.647 | perdio 100 % de las corridas | caja -1.096.792
+    abandonados 316 | pop 0 desde el ano 4 y hasta el 40
+
+SUS TRES IDENTIDADES, Y CUANTO VALEN
+    taxIncome 1,1    +10 % de ingresos. Real, medible, sirve.
+    serviceCost 0,9  -10 % de mantenimiento. Real, pero en la medicion se nota
+                     poco porque el gasto grande es la administracion.
+    fundingFloor 80  escuelas y universidad nunca bajan del 80 %. Solo cuesta:
+                     se paga igual con la caja en rojo y no devuelve nada.
+
+EL PROBLEMA DE FONDO
+    La tecnocracia paga con `approvalStep: 2`. Media velocidad es una liability
+    pura: cuando la aprobacion arranca a caer no la recuperas antes de octubre,
+    y el acantilado de 31,8 no perdona. Es el problema de la dictadura por otro
+    camino: un gobierno definido por lo que le falta.
+
+T12 - LA APROBACION SE MUEVE A 3
+    GOVERNMENTS.tecnocracia.approvalStep 2 -> 3. Sigue siendo de los lentos
+    (los demas estan en 4, el comunismo en 1) pero deja de ser una condena.
+    Test: stepApproval(50, 100, 'tecnocracia') === 53.
+
+T13 - EL PISO DE EDUCACION PAGA ALGO
+    Hoy el piso de 80 % solo cuesta plata. Que compre lo que la tecnocracia
+    vende: una ciudad que sabe mas.
+    - `computeApproval` pasa a recibir `government` en sus inputs (hoy no lo ve).
+    - Factor nuevo, solo con tecnocracia: 'Educación técnica' de 0 a +5,
+      proporcional a la cobertura de educacion (w.edu) por encima de
+      SERVICE_NEED.
+    Resultado: el piso deja de ser un costo a cambio de nada y pasa a ser una
+    apuesta. Test: con educacion al 80 % el factor suma; al 30 % no suma nada.
+
+T14 - SE VA EL "5 % MENOS DE GENTE"
+    migration 0,95 -> 1. Es ruido al lado del paso de aprobacion, y es el unico
+    de sus cuatro contras que no ensena nada. Quedan tres contras, todos con
+    dientes. Actualizar tarjeta y README.
+
+
+================================================================
+4. COMUNISMO
+================================================================
+Estado: HABLADO. Es el unico que juega, y por eso es el que mas ensena.
+
+MEDIDO HOY (probe nuevo, 40 anos, coast + agresivo, 1 semilla)
+    pico 59.792 | no perdio ningun Congreso | caja +427.677 | aprob 34
+    ano 40: ingreso 56.027 | gasto 54.735 | admin 31.516 (56 % del ingreso)
+    demanda R/C/I  -3 / -5 / -5, y la poblacion planchada en ~59k desde el ano 20
+
+    En la matriz de 25 anos su mediana es 30.971 y pierde el 46 % de las veces.
+    Es el UNICO gobierno al que la medicion le cambia con el estilo y el mapa:
+    es el unico con margen para cambiar.
+
+LO QUE ESO DICE
+  1. No esta sano: esta en equilibrio. Aprobacion 34 durante 30 anos es DOS
+     puntos arriba del acantilado de 31,8. Un mal mes lo tira.
+  2. Se clava en 59k porque la administracion se lo come: 31.516 sobre 56.027
+     de ingreso. El plan quinquenal ya no es el limite; el limite es la curva
+     cuadratica de gasto (budget.ts:140):
+         services = pop * 0,1 * (1 + pop / servicesScale)
+  3. El documento de balance (L6) esta viejo: cita `servicesScale 9000` y un
+     cruce en 65.925. El codigo dice 14000, o sea cruce en ~102.550.
+
+T15 - LA CURVA DE ADMINISTRACION ES EL TECHO DEL JUEGO (va antes que todo)
+    `UPKEEP.servicesScale` 14.000 -> 40.000 (cruce ~130k). Es un solo numero y
+    mueve a los cinco gobiernos: se mide con los cinco o no se mide.
+
+T16 - RE-AJUSTAR EL FRENO DEL PLAN DESPUES DE T15
+    PLAN.growth 1,55 se eligio (L11) como el unico freno que baja el techo. Con
+    la curva arreglada puede volver a 1,40, o hacer falta 1,70. La columna que
+    decide es la de aprobacion, no la de poblacion: L11 ya avisa que la de
+    poblacion no es monotona.
+
+T17 - EL PREMIO DEL PLAN NO ESCALA
+    planPremium topa en 60.000, que hoy es un mes de ingreso y a 150k seria
+    calderilla. Si el plan tiene que ser un motor a cualquier escala, el tope
+    sube con la poblacion en vez de ser fijo.
+
+T18 - LA APROBACION DE 34 ES UN AVISO, NO UN EXITO
+    Con T15 la ciudad va a crecer y el plan va a pedir mas. Antes de tocar
+    nada: medir si PLAN.kept = 8 sigue alcanzando para sostener la aprobacion
+    arriba de 31,8 con una ciudad 2,5 veces mas grande.
+
+
+================================================================
+5. DEMOCRACIA
+================================================================
+Pendiente. Es la linea de base: todo lo demas se compara contra ella. Un
+cambio en la democracia no es un balanceo, es mover la vara de medir; tenerlo
+en cuenta cuando le toque el turno.
+
