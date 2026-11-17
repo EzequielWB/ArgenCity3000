@@ -1,7 +1,8 @@
-import { BUS, PARK, PLANT_SIZE, UNIQUES } from '../config';
+import { BUS, PARK, PLANT_SIZE, SERVICE_SIZE, UNIQUES } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
+import { serviceAt, serviceFootprint } from '../world/services';
 import { busColorOf, depotAt } from '../world/transport';
 import { busFootprint } from '../world/tools';
 import { HUBS, type HubKind } from '../config';
@@ -602,9 +603,26 @@ export class MapRenderer {
     }
     const service = serviceOf(tile);
     if (service) {
-      const [ax, ay] = this.toCache(vx, vy, hs[0]);
-      if (pixelArt('servicios')) return { sprite: servicePixelSprite(service), ax, ay };
-      return { sprite: serviceSprite(service), ax, ay };
+      const size = SERVICE_SIZE[service];
+      if (size === 1) {
+        const [ax, ay] = this.toCache(vx, vy, hs[0]);
+        if (pixelArt('servicios')) return { sprite: servicePixelSprite(service), ax, ay };
+        return { sprite: serviceSprite(service), ax, ay };
+      }
+      // The hospital and the university take several lots and are one building: drawn once, at the lot in
+      // front of the block, anchored at its back corner with the height of the whole footprint (the rule
+      // of the airports and the cochera).
+      const block = serviceAt(w, x, y);
+      if (!block) return null;
+      const foot = serviceFootprint(block.kind, n, block.x, block.y).map(([cx, cy]) => toView(cx, cy, rot, n));
+      const minVx = Math.min(...foot.map((c) => c[0]));
+      const minVy = Math.min(...foot.map((c) => c[1]));
+      const maxVx = Math.max(...foot.map((c) => c[0]));
+      const maxVy = Math.max(...foot.map((c) => c[1]));
+      if (vx !== maxVx || vy !== maxVy) return null;
+      const [ax, ay] = this.toCache(minVx, minVy, hubHeight(w, block.x, block.y, size, size));
+      if (pixelArt('servicios')) return { sprite: servicePixelSprite(block.kind), ax, ay };
+      return { sprite: serviceSprite(block.kind), ax, ay };
     }
     const [ax, ay] = this.toCache(vx, vy, avg(hs));
     const coast = coastOf(tile);

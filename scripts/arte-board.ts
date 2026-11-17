@@ -135,11 +135,17 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-plant]'))) {
 for (const el of Array.from(document.querySelectorAll('canvas[data-service]'))) {
   const kind = String(el.dataset.service) as ServiceKind;
   const k = Number(el.dataset.k || 3);
-  el.width = 44 * k;
-  el.height = 60 * k;
+  // The hospital and the university take 3x3 lots, so the canvas is the size of their own drawing and
+  // not a cell: asking the sprite keeps the two rows of the section honest.
+  const sprite = servicePixelSprite(kind);
+  el.width = sprite.canvas.width * k;
+  el.height = sprite.canvas.height * k;
+  el.style.width = el.width + 'px';
+  el.style.height = el.height + 'px';
   const g = el.getContext('2d');
   g.clearRect(0, 0, el.width, el.height);
-  place(g, servicePixelSprite(kind), el.width / 2, 17 * k, k);
+  // The ground line goes where the sprite's anchor is, so a 3x3 drawing is not clipped at the top.
+  place(g, sprite, el.width / 2, sprite.ay * k, k);
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-hub]'))) {
@@ -388,7 +394,7 @@ const page = `<!doctype html>
       canvas[data-depot] { width: 222px; height: 192px; }
       canvas[data-plant] { width: 228px; height: 300px; }
       canvas[data-hub] { max-width: 100%; height: auto; }
-      canvas[data-service] { width: 132px; height: 180px; }
+      canvas[data-service] { display: block; }
       figcaption { margin-top: 4px; font-size: 11px; color: #8e979e; }
     </style>
   </head>
@@ -433,12 +439,12 @@ const page = `<!doctype html>
     <section id="servicios">
       <h2>Servicios</h2>
       <p class="note">
-        Los seis edificios de una celda, sin niveles: son los que más aparecen en una ciudad, así que
-        son los que más cantaban en arte viejo. Cada uno se reconoce por lo que hace: la escuela por el
-        mástil con la bandera y el patio con reja, la salita por la cruz verde, la comisaría por la
-        baliza y el patrullero, los bomberos por la torre de secado, el hospital por la cruz roja y la
-        helisuperficie, y la universidad por el pórtico de columnas y la torre del reloj.
+        Ninguno tiene niveles. Los cuatro chicos ocupan una celda y son los que más aparecen en una
+        ciudad, así que son los que más cantaban en arte viejo: la escuela por el mástil con la bandera y
+        el patio con reja, la salita por la cruz verde, la comisaría por la baliza y el patrullero, y los
+        bomberos por la torre de secado.
       </p>
+      <h3>De una celda</h3>
       <div class="row">
         ${(
           [
@@ -446,6 +452,28 @@ const page = `<!doctype html>
             ['clinic', 'salita'],
             ['police', 'comisaría'],
             ['fire', 'bomberos'],
+          ] as const
+        )
+          .map(
+            ([kind, name]) => `
+          <figure>
+            <canvas data-service="${kind}" data-k="3"></canvas>
+            <figcaption>${name}</figcaption>
+          </figure>`,
+          )
+          .join('')}
+      </div>
+      <h3>De 3×3</h3>
+      <p class="note">
+        El hospital y la universidad ocupan nueve lotes: un edificio así de grande no entra en una
+        celda sin parecer un kiosco. Son <b>un</b> edificio para la cobertura, el mantenimiento, la luz y
+        la demolición, y se dibujan una sola vez sobre todo el bloque. El hospital es la torre de
+        internación con la helisuperficie, el ala de salas y la guardia con la ambulancia; la universidad
+        es la barra de aulas, el claustro con su jardín y el pórtico de columnas con la torre del reloj.
+      </p>
+      <div class="row">
+        ${(
+          [
             ['hospital', 'hospital'],
             ['university', 'universidad'],
           ] as const

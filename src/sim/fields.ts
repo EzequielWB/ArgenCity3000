@@ -1,7 +1,8 @@
 import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, HUBS, PARK, PLANTS, ROAD_REACH, TREE_CLEAN, SERVICES, TRAFFIC, UNIQUES, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { hubFacilities } from '../world/hubs';
-import { TILE, World, serviceOf } from '../world/world';
+import { serviceBlocksOf } from '../world/services';
+import { TILE, World } from '../world/world';
 import { uniqueSources } from '../world/uniques';
 import { coastWorks } from './coast';
 
@@ -244,12 +245,14 @@ export function computeServices(w: World, funding: Readonly<ServiceFunding> = DE
   w.fireCover.fill(0);
   w.hospital.fill(0);
   w.university.fill(0);
-  for (let i = 0; i < n * n; i++) {
-    const kind = serviceOf(w.tiles[i]);
-    if (!kind || !w.powered[i] || funding[kind] <= 0) continue;
+  // One disc per building: a hospital takes nine lots and covers its neighbours once, not nine times.
+  for (const b of serviceBlocksOf(w).blocks) {
+    const kind = b.kind;
+    const i = b.y * n + b.x;
+    if (!w.powered[i] || funding[kind] <= 0) continue;
     const { radius, capacity } = SERVICES[kind];
-    const cx = i % n;
-    const cy = (i - cx) / n;
+    const cx = b.x;
+    const cy = b.y;
     const r2 = radius * radius;
     const residents = residentsServed(w, i, kind);
     const efficiency = Math.min(1, capacity / Math.max(1, residents)) * (funding[kind] / 100);

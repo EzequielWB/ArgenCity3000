@@ -1,5 +1,6 @@
 import { HUBS, LINE_REACH, POWER_REACH, POWER_USE, SERVICES } from '../config';
 import { hubFacilities } from '../world/hubs';
+import { serviceBlocksOf, serviceFootprint } from '../world/services';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf } from '../world/world';
 import { fundingCondition } from './condition';
 import { plantCapacity } from './plants';
@@ -29,6 +30,29 @@ export function powerNeed(w: World, i: number): number {
  * What the airports and harbours ask for: the facility of its level, shared by its pieces, each one asking on its own first lot.
  * The bigger the facility, the more it takes: an international airport is half a coal plant.
  */
+/**
+ * What the services ask for. A building on nine lots asks once, on its anchor, and the rest of its lots
+ * ask for nothing: the alternative is a hospital that draws nine hospitals worth of light.
+ */
+function servicePowerNeeded(w: World): Map<number, number> {
+  const need = new Map<number, number>();
+  for (const b of serviceBlocksOf(w).blocks) {
+    if (b.size === 1) continue;
+    for (const [x, y] of serviceFootprint(b.kind, w.n, b.x, b.y)) need.set(w.idx(x, y), 0);
+    need.set(w.idx(b.x, b.y), SERVICES[b.kind].power);
+  }
+  return need;
+}
+
+/** A service is lit as a whole: one building cannot have a dark corner while the rest works. */
+function spreadServicePower(w: World): void {
+  for (const b of serviceBlocksOf(w).blocks) {
+    if (b.size === 1) continue;
+    const on = w.powered[w.idx(b.x, b.y)];
+    for (const [x, y] of serviceFootprint(b.kind, w.n, b.x, b.y)) w.powered[w.idx(x, y)] = on;
+  }
+}
+
 function hubPowerNeeds(w: World): Map<number, number> {
   const needs = new Map<number, number>();
   for (const f of hubFacilities(w)) {
@@ -114,6 +138,8 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
   let shortage = false;
   const queue = new Int32Array(n * n);
   const hubNeed = hubPowerNeeds(w);
+  const serviceNeed = servicePowerNeeded(w);
+  const needOf = (i: number) => hubNeed.get(i) ?? serviceNeed.get(i) ?? powerNeed(w, i);
 
   for (const plant of w.plants) {
     const start = w.idx(plant.x, plant.y);
@@ -155,7 +181,7 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
     let netUse = 0;
     for (let k = 0; k < tail; k++) {
       const i = queue[k];
-      const need = hubNeed.get(i) ?? powerNeed(w, i);
+      const need = needOf(i);
       if (need === 0) continue;
       netUse += need;
       if (need <= remaining) {
@@ -167,10 +193,11 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
     }
     for (let k = 0; k < tail; k++) {
       const i = queue[k];
-      if ((hubNeed.get(i) ?? powerNeed(w, i)) === 0) powered[i] = remaining > 0 ? 1 : 0;
+      if (needOf(i) === 0) powered[i] = remaining > 0 ? 1 : 0;
     }
     capacity += cap;
     use += netUse;
   }
+  spreadServicePower(w);
   return { capacity, use, shortage };
 }

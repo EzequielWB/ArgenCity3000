@@ -12,15 +12,23 @@ import { TILE, World } from '../src/world/world';
 
 declare const document: any;
 
-/** A block of streets with a plaza in the middle. */
-function city(): World {
+/** A block of streets with a plaza in the middle, and the plans the tools turned down. */
+function city(): { world: World; refused: string[] } {
   const n = 18;
   const world = new World(generateTerrain(7, n));
-  const plan = (tool: any, ax: number, ay: number, bx = ax, by = ay) =>
-    applyPlan(world, planTool(world, tool, dragCells(tool, ax, ay, bx, by, 1, n)));
+  // A plan the tools refuse (water, a taken lot, no street) is a silent no-op, and a sheet that is missing
+  // a building looks like a bug in the art: the refusals are said out loud in the title.
+  const refused: string[] = [];
+  const plan = (tool: any, ax: number, ay: number, bx = ax, by = ay) => {
+    const plan = planTool(world, tool, dragCells(tool, ax, ay, bx, by, 1, n));
+    if (plan.cells.length === 0) refused.push(`${tool}@${ax},${ay}`);
+    applyPlan(world, plan);
+  };
   plan('road', 2, 5, 15, 5);
   plan('road', 2, 10, 15, 10);
-  plan('road', 5, 2, 5, 14);
+  // The avenue stops a block short of the airport: a road through the ports would cut the two pieces
+  // of the airport apart, which is the seam this sheet is about.
+  plan('road', 5, 2, 5, 11);
   plan('road', 11, 2, 11, 14);
   plan('roadPaved', 12, 5, 15, 5);
   // A bus depot: 2x2, with the line the planner hands out on its own.
@@ -30,13 +38,14 @@ function city(): World {
   // An airport of two pieces: they are painted as one facility, so the seam has to disappear here.
   plan('airport', 2, 12);
   plan('airport', 5, 12);
-  // One of each service along the avenue, to see the six in the street they belong to.
-  plan('school', 2, 6);
-  plan('clinic', 3, 6);
-  plan('police', 4, 6);
-  plan('fire', 6, 6);
-  plan('hospital', 7, 6);
-  plan('university', 8, 6);
+  // One of each service along the avenue, to see the six in the street they belong to. The hospital and
+  // the university take 3x3 lots, so they go on the corners where a block fits.
+  plan('school', 6, 2);
+  plan('clinic', 7, 2);
+  plan('police', 8, 2);
+  plan('fire', 9, 2);
+  plan('hospital', 2, 2);
+  plan('university', 2, 6);
   // The plaza is set straight on the grid: the tool checks road access and would leave a fringe.
   for (let y = 7; y <= 9; y++) for (let x = 7; x <= 9; x++) world.tiles[y * n + x] = TILE.PARK;
   // The dirt street is set on the grid after every plan: the sheet is about the look, not the rules,
@@ -48,11 +57,11 @@ function city(): World {
   for (let y = 0; y <= n; y++) {
     for (let x = 0; x <= n; x++) world.terrain.corners[y * (n + 1) + x] = level;
   }
-  return world;
+  return { world, refused };
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-city]')) as any[]) {
-  const world = city();
+  const { world, refused } = city();
   const map = new MapRenderer(world);
   // The band analysis (which is what decides the quality of every street) is built on a redraw.
   map.redrawAll();
@@ -74,6 +83,7 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-city]')) as a
     by = Math.max(by, y);
   });
   if (parks !== 9) document.title = 'ojo: ' + parks + ' celdas de plaza';
+  else if (refused.length > 0) document.title = 'sin lugar: ' + refused.join(' ');
   // Chunks are drawn inside a time budget, so keep asking until the whole view is ready. The first
   // pass is not optional: pending() starts at zero because nothing has been looked at yet.
   for (let k = 0; k < 60; k++) {
@@ -89,7 +99,8 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-city]')) as a
     map.toCache(bx + m, by + m, 0),
   ];
   const left = Math.round(Math.min(...corners.map((c) => c[0]))) - 24;
-  const top = Math.round(Math.min(...corners.map((c) => c[1]))) - 80;
+  // Room above for the tallest thing in the block: the hospital is 54 px over its lots, plus its block.
+  const top = Math.round(Math.min(...corners.map((c) => c[1]))) - 130;
   const right = Math.round(Math.max(...corners.map((c) => c[0]))) + 24;
   const bottom = Math.round(Math.max(...corners.map((c) => c[1]))) + 24;
   const k = Number(el.dataset.k || 2);

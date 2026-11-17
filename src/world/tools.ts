@@ -2,10 +2,11 @@ import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES,
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
+import { serviceAt, serviceFootprint } from './services';
 import { depotAt, freeBusNumber, packBusLine } from './transport';
 import { hubFootprint, hubRefusal, markHubsDirty } from './hubs';
 import { uniqueFootprint, uniqueRefusal } from './uniques';
-import { TILE, World, coastTile, hubOf, hubTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
+import { TILE, World, coastTile, hubOf, hubTile, serviceOf, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
 export type ToolId = 'query' | 'bulldoze' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind | UniqueKind;
 
@@ -205,6 +206,7 @@ export function footprintOfTool(tool: ToolId, n: number, x: number, y: number): 
   const hub = hubKindOfTool(tool);
   if (hub) return hubFootprint(hub, n, x, y);
   if (tool === 'bus') return busFootprint(n, x, y);
+  if (isServiceTool(tool)) return serviceFootprint(tool, n, x, y);
   const unique = uniqueKindOfTool(tool);
   return unique ? uniqueFootprint(unique, n, x, y) : null;
 }
@@ -326,6 +328,14 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     return ok ? { tool, cells: foot, cost: BUS.cost } : { tool, cells: [], cost: 0 };
   }
 
+  if (isServiceTool(tool)) {
+    // A service is one building, however many lots it takes: the block goes up whole or not at all.
+    const [ax, ay] = cells[0] ?? [-1, -1];
+    const foot = serviceFootprint(tool, w.n, ax, ay);
+    const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.isWater(x, y) && !w.route[w.idx(x, y)] && isFreeLot(w, x, y));
+    return ok ? { tool, cells: foot, cost: SERVICES[tool].cost } : { tool, cells: [], cost: 0 };
+  }
+
   const hubKind = hubKindOfTool(tool);
   if (hubKind) {
     const [ax, ay] = cells[0] ?? [-1, -1];
@@ -419,6 +429,16 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
             out.push([cx, cy]);
           }
           cost += COSTS.bulldozePlant;
+        } else if (serviceOf(t)) {
+          // A hospital is one building on nine lots: three quarters of a hospital is not a hospital.
+          const block = serviceAt(w, x, y);
+          if (!block || plantsSeen.has(block)) break;
+          plantsSeen.add(block);
+          for (const [cx, cy] of serviceFootprint(block.kind, w.n, block.x, block.y)) {
+            seen.add(w.idx(cx, cy));
+            out.push([cx, cy]);
+          }
+          cost += COSTS.bulldozePlant;
         } else if (t === TILE.UNIQUE) {
           // A monument comes down whole too: nobody tears an obelisco down half way.
           const u = w.uniqueAt(x, y);
@@ -436,13 +456,6 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
         break;
       }
       default:
-        if (isServiceTool(tool)) {
-          if (!water && isFreeLot(w, x, y)) {
-            out.push([x, y]);
-            cost += SERVICES[tool].cost;
-          }
-          break;
-        }
         if (isCoastTool(tool)) {
           // One lighthouse per city: the first valid lot of the plan is the only one.
           if (tool === 'lighthouse' && out.length > 0) break;

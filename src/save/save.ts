@@ -31,9 +31,11 @@ import { APPROVAL } from '../sim/politics';
 import { NO_MODS, RUN_MARKS, upgradeById, type RunPick, type RunState } from '../sim/roguelike';
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
+import { SERVICE_NAMES } from '../sim/report';
+import { serviceBlocks, serviceFootprint } from '../world/services';
 import { busLineProblem, busStations } from '../world/transport';
 import { busFootprint } from '../world/tools';
-import { MAX_TILE, TILE, World, hubOf, hubTile, zoneOf } from '../world/world';
+import { MAX_TILE, TILE, World, hubOf, hubTile, serviceOf, serviceTile, zoneOf } from '../world/world';
 import { ALL_UNIQUE_KINDS, UNIQUES, type UniqueKind } from '../config';
 
 export const SAVE_VERSION = 20;
@@ -189,6 +191,38 @@ export function deserialize(text: string): SaveData {
     need((tiles[i] === TILE.BUS) === (world.busLine[i] !== 0), 'Las líneas de colectivos no coinciden con el plano');
     if (tiles[i] === TILE.BUS) need(busLineProblem(world, world.busLine[i], i) === null, 'Hay una línea de colectivos inválida o repetida');
   }
+
+  // The hospital and the university are 3x3 and the tiles are the truth, so nothing has to be written
+  // down for them. A city saved when every service was one lot has a single lot: it grows over the free
+  // ground around it, and it is said out loud when the ground is taken instead of trimming it in silence.
+  for (let pass = 0; pass < 4; pass++) {
+    let grew = false;
+    for (const block of serviceBlocks(tiles, n as number)) {
+      if (block.size === 1) continue;
+      const tile = serviceTile(block.kind);
+      for (const [cx, cy] of serviceFootprint(block.kind, n as number, block.x, block.y)) {
+        const j = cy * (n as number) + cx;
+        if (tiles[j] === tile) continue;
+        need(tiles[j] === TILE.EMPTY, `${SERVICE_NAMES[block.kind]}: no tiene lugar para su lote de ${block.size}×${block.size}`);
+        tiles[j] = tile;
+        world.tiles[j] = tile;
+        world.terrain.trees[j] = 0;
+        grew = true;
+      }
+    }
+    if (!grew) break;
+  }
+  let tileServices = 0;
+  for (let i = 0; i < size; i++) if (serviceOf(tiles[i]) !== null) tileServices++;
+  for (const block of serviceBlocks(tiles, n as number)) {
+    for (const [cx, cy] of serviceFootprint(block.kind, n as number, block.x, block.y)) {
+      need(tiles[cy * (n as number) + cx] === serviceTile(block.kind), 'Los servicios no coinciden con el plano');
+    }
+  }
+  need(
+    serviceBlocks(tiles, n as number).reduce((sum, b) => sum + b.size * b.size, 0) === tileServices,
+    'Hay un servicio sin su lote completo',
+  );
 
   need(Array.isArray(data.plants), 'Faltan las usinas');
   let plantCells = 0;

@@ -1,4 +1,5 @@
 import { DEFAULT_FUNDING, FIXED_SHARE, GOVERNMENTS, MAX_FUNDING, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type GovernmentKind, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
+import { serviceAnchorIndex } from '../world/services';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { coastBudget, portTaxBoost } from './coast';
 import { cityTotals, zoneTaxes } from './demand';
@@ -122,7 +123,8 @@ export function monthlyBudget(
       else if (tile === TILE.PARK) parks++;
       else {
         const k = serviceOf(tile);
-        if (k) upkeep[k] += serviceUpkeep(k, utilization(w, i, k));
+        // The upkeep is per building: a hospital on nine lots pays one hospital a month, not nine.
+        if (k && serviceAnchorIndex(w, i) === i) upkeep[k] += serviceUpkeep(k, utilization(w, i, k));
       }
     }
   }

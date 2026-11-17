@@ -404,6 +404,24 @@ describe('service buildings pixel art', () => {
     expect(rise('fire')).toBeGreaterThan(rise('clinic'));
   });
 
+  it('draws the two big ones on the diamond of their 3x3 block and the other four on a cell', () => {
+    for (const [kind, size] of [
+      ['school', 1],
+      ['clinic', 1],
+      ['police', 1],
+      ['fire', 1],
+      ['hospital', 3],
+      ['university', 3],
+    ] as const) {
+      const art = paintService(kind);
+      // `penLot(n, z)` sizes the canvas after the block: a 3x3 needs three cells of diamond, not one.
+      expect(art.px.w, kind).toBe(32 * size + 8);
+      expect(art.ax, kind).toBe(16 * size + 4);
+      const [lo, hi] = span(art);
+      if (size > 1) expect(hi - lo, `${kind} runs over more than one lot`).toBeGreaterThan(32);
+    }
+  });
+
   it('stays on its lot: a building above the anchor and a yard below it, nothing at all far away', () => {
     for (const [kind, art] of all) {
       expect(topRow(art), `${kind} rises above its anchor`).toBeLessThan(art.ay);

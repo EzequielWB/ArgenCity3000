@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAPACITY, DEFAULT_FUNDING, MAX_FUNDING, TICKS_PER_MONTH } from '../src/config';
+import { CAPACITY, DEFAULT_FUNDING, MAX_FUNDING, SERVICE_SIZE, TICKS_PER_MONTH } from '../src/config';
 import { deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { addBuilding, cityTotals } from '../src/sim/demand';
@@ -32,15 +32,27 @@ function cityOf(pop: number, n = 128): World {
       w.setLevel(i, 5);
     }
   }
-  for (const [tile, capacity] of [
-    [TILE.SCHOOL, 6000],
-    [TILE.CLINIC, 6000],
-    [TILE.POLICE, 8000],
-    [TILE.FIREHOUSE, 10000],
-    [TILE.HOSPITAL, 20000],
-    [TILE.UNIVERSITY, 25000],
+  // The hospital and the university take `SERVICE_SIZE` lots on each side, so the plan has to take them
+  // too: packing services lot by lot builds a plan the game itself cannot produce any more.
+  let x = i % n;
+  let y = Math.floor(i / n);
+  for (const [kind, tile, capacity] of [
+    ['school', TILE.SCHOOL, 6000],
+    ['clinic', TILE.CLINIC, 6000],
+    ['police', TILE.POLICE, 8000],
+    ['fire', TILE.FIREHOUSE, 10000],
+    ['hospital', TILE.HOSPITAL, 20000],
+    ['university', TILE.UNIVERSITY, 25000],
   ] as const) {
-    for (let k = Math.ceil(pop / capacity); k > 0; k--, i++) w.tiles[i] = tile;
+    const size = SERVICE_SIZE[kind];
+    for (let k = Math.ceil(pop / capacity); k > 0; k--) {
+      if (x + size > n) {
+        x = 0;
+        y += size;
+      }
+      for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) w.tiles[(y + dy) * n + x + dx] = tile;
+      x += size;
+    }
   }
   return w;
 }

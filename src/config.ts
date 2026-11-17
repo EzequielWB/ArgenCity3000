@@ -361,6 +361,13 @@ export const SERVICES: Record<ServiceKind, { cost: number; upkeep: number; radiu
 };
 
 /**
+ * Lots a service building takes on each side. The hospital and the university are one big building
+ * and not a pile of clinics: they take 3x3 lots, and the block is one building for the coverage, the
+ * upkeep, the power and the demolition (see `world/services.ts`).
+ */
+export const SERVICE_SIZE: Record<ServiceKind, number> = { school: 1, clinic: 1, police: 1, fire: 1, hospital: 3, university: 3 };
+
+/**
  * Share of a service's upkeep that is paid whether or not anybody uses it. The rest grows with
  * the share of its capacity in use: upkeep x (FIXED_SHARE + (1 - FIXED_SHARE) x utilization).
  */

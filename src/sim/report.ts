@@ -20,6 +20,7 @@ import {
   POWER_REACH,
   ROAD_REACH,
   ROAD_TIERS,
+  SERVICE_SIZE,
   SERVICES,
   TRAFFIC,
   UNIQUES,
@@ -35,6 +36,7 @@ import { SEA_LEVEL } from '../world/terrain';
 import { facilityAt } from '../world/hubs';
 import { uniqueWorks } from '../world/uniques';
 import { busColorOf, busNumberOf, streetNear } from '../world/transport';
+import { serviceAnchorIndex } from '../world/services';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf, type Unique, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
 import { MONTHS, dateOf } from './calendar';
@@ -172,16 +174,20 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
   const service = serviceOf(tile);
   if (service) {
     const info = SERVICES[service];
+    // The building, not the lot: every lot of a hospital reports the hospital, from its anchor.
+    const at = serviceAnchorIndex(w, i);
+    const lots = SERVICE_SIZE[service] > 1 ? [`Ocupa ${SERVICE_SIZE[service]}×${SERVICE_SIZE[service]} lotes`] : [];
     return {
       title: SERVICE_NAMES[service],
       lines: [
-        w.powered[i] ? 'Con luz' : 'Sin luz: no atiende a nadie',
+        w.powered[at] ? 'Con luz' : 'Sin luz: no atiende a nadie',
         `Radio: ${info.radius} lotes`,
-        `Atiende a ${formatNumber(w.powered[i] ? residentsServed(w, i, service) : 0)} de ${formatNumber(info.capacity)} vecinos`,
-        `Mantenimiento: $${formatNumber(Math.round((serviceUpkeep(service, utilization(w, i, service)) * sim.state.funding[service]) / 100))} por mes`,
+        `Atiende a ${formatNumber(w.powered[at] ? residentsServed(w, at, service) : 0)} de ${formatNumber(info.capacity)} vecinos`,
+        `Mantenimiento: $${formatNumber(Math.round((serviceUpkeep(service, utilization(w, at, service)) * sim.state.funding[service]) / 100))} por mes`,
+        ...lots,
         SERVICE_ROLE[service],
       ],
-      hint: w.powered[i] ? undefined : noLightHint(sim, 'Necesita luz', 'la'),
+      hint: w.powered[at] ? undefined : noLightHint(sim, 'Necesita luz', 'la'),
     };
   }
   const hubKind = hubOf(tile);
