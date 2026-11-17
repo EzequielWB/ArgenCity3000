@@ -13,7 +13,7 @@ import {
   FIRE_SAFE_COVER,
   FISHING_SALES,
   GOVERNMENTS,
-  LINE_REACH,
+  LINE_TIERS,
   PARK,
   PLANTS,
   PORT_TAX_BOOST,
@@ -146,7 +146,7 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
     };
   }
   if (water) {
-    if (tile === TILE.LINE) return { title: 'Tendido eléctrico sobre el agua', lines: [w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_REACH} lotes a su alrededor`] };
+    if (tile === TILE.LINE) return { title: `${LINE_TIERS[w.lineTier[i]].label} sobre el agua`, lines: [w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_TIERS[w.lineTier[i]].reach} lotes a su alrededor`] };
     // A monument over the water (the puente) gets its own card before the river's.
     const over = tile === TILE.UNIQUE ? w.uniqueAt(x, y) : undefined;
     if (over) return describeUnique(w, over);
@@ -170,7 +170,7 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
       hint: p.shortage ? 'La red no da abasto: construí otra usina conectada.' : undefined,
     };
   }
-  if (tile === TILE.LINE) return { title: 'Tendido eléctrico', lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_REACH} lotes a su alrededor`] };
+  if (tile === TILE.LINE) return { title: LINE_TIERS[w.lineTier[i]].label, lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_TIERS[w.lineTier[i]].reach} lotes a su alrededor`, `Mantenimiento: $${formatNumber(LINE_TIERS[w.lineTier[i]].upkeep)} por mes`] };
   const service = serviceOf(tile);
   if (service) {
     const info = SERVICES[service];

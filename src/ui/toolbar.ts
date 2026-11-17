@@ -2,11 +2,11 @@
  * The toolbar: the categories that open a flyout with their tools, plus undo, the
  * layers and the view controls. It only draws and reports clicks; the game decides what happens.
  */
-import { BUS, COAST, COSTS, HUBS, PLANTS, ROAD_TIERS, SERVICES, UNIQUES } from '../config';
+import { BUS, COAST, COSTS, HUBS, LINE_TIERS, PLANTS, ROAD_TIERS, SERVICES, UNIQUES } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { Layer } from '../render/view';
 import { MILESTONES, isUnlocked, milestoneOfTool } from '../sim/milestones';
-import { TOOL_GROUPS, groupOfTool, isCoastTool, isServiceTool, isUniqueTool, plantKindOfTool, roadTierOfTool, toolInfo, type ToolGroup, type ToolId } from '../world/tools';
+import { TOOL_GROUPS, groupOfTool, isCoastTool, isServiceTool, isUniqueTool, lineTierOfTool, plantKindOfTool, roadTierOfTool, toolInfo, type ToolGroup, type ToolId } from '../world/tools';
 import { escapeHtml } from './dom';
 import { TOOL_ICONS } from './icons';
 
@@ -16,6 +16,8 @@ export function toolPrice(tool: ToolId): number | null {
   if (plant) return PLANTS[plant].cost;
   const tier = roadTierOfTool(tool);
   if (tier !== null) return ROAD_TIERS[tier].cost;
+  const line = lineTierOfTool(tool);
+  if (line !== null) return LINE_TIERS[line].cost;
   if (isServiceTool(tool)) return SERVICES[tool].cost;
   if (isCoastTool(tool)) return COAST[tool].cost;
   if (isUniqueTool(tool)) return UNIQUES[tool].cost;
@@ -25,8 +27,6 @@ export function toolPrice(tool: ToolId): number | null {
     case 'airport':
     case 'harbor':
       return HUBS[tool].cost;
-    case 'line':
-      return COSTS.line;
     case 'park':
       return COSTS.park;
     case 'bulldoze':

@@ -446,7 +446,7 @@ describe('service buildings pixel art', () => {
 describe('the power line and the trees of the map', () => {
   it('writes the pole and the cables as hard pixels', () => {
     for (const v of [0, 1, 2]) {
-      const art = paintPole(v) as Art;
+      const art = paintPole(1, v) as Art;
       for (let i = 3; i < art.px.data.length; i += 4) {
         const al = art.px.data[i];
         if (al === 0 || al === 255) continue;
@@ -458,7 +458,7 @@ describe('the power line and the trees of the map', () => {
   });
 
   it('hangs the cable from the same point whatever the pole carries', () => {
-    const [plain, transformer, doubleArm] = [0, 1, 2].map((v) => paintPole(v));
+    const [plain, transformer, doubleArm] = [0, 1, 2].map((v) => paintPole(1, v));
     // The attach point is what the renderer uses to join one pole to the next, so it cannot move with the
     // ornament: a line of poles of different variants has to stay a straight cable.
     expect(plain.attach).toEqual(transformer.attach);

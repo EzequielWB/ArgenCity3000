@@ -25,6 +25,9 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   line: svg(
     '<path d="M10 28V7M22 28V9" stroke="#8a5a34" stroke-width="2.2"/><path d="M5 8h10M17 10h10" stroke="#8a5a34" stroke-width="2"/><path d="M6 8q10 6 16 2M14 8q6 5 12 2" stroke="#1f1611" stroke-width="1" fill="none"/><path d="M16 15l-3 5h3l-2 5 5-7h-3l2-3z" fill="#ffd84a"/>',
   ),
+  lineConcrete: svg(
+    '<path d="M16 29V6" stroke="#9c9891" stroke-width="3"/><path d="M16 29V6" stroke="#c9c5bc" stroke-width="1.2"/><path d="M3 28h10M19 28h10" stroke="#7c7871" stroke-width="1"/><path d="M6 7h20" stroke="#9c9891" stroke-width="2.2"/><path d="M6 5v3M26 5v3" stroke="#7fa2b8" stroke-width="2"/><path d="M19 12h6v7h-6z" fill="#6f7a72"/><path d="M19 12h2v7h-2z" fill="#87938a"/><path d="M4 7q12 8 22 2M8 7q8 7 18 3" stroke="#1f1611" stroke-width="1" fill="none"/>',
+  ),
   zoneR: svg(
     '<path d="M3 21l13-6.5L29 21l-13 6.5z" fill="#7cc06a" opacity=".6"/><path d="M9 21v-6l7-3.5 7 3.5v6l-7 3.5z" fill="#f1e3c6"/><path d="M7 15l9-8 9 8-9-3.5z" fill="#b4532f"/><path d="M14 23v-4l3-1.5v4z" fill="#5b3b26"/>',
   ),

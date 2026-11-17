@@ -24,7 +24,7 @@ La partida nueva arranca **en pausa** y con la ventana de fundación abierta: ah
 
 1. **Usina** (tecla `9`): sin luz no crece nada.
 2. **Calles** (`3`): se trazan arrastrando. Los lotes necesitan una calle a 3 lotes o menos.
-3. **Zonas** residencial (`5`), comercial (`6`) e industrial (`7`): todo tiene que tocar la red, porque la luz viaja por calles, zonas y tendido eléctrico (`4`).
+3. **Zonas** residencial (`5`), comercial (`6`) e industrial (`7`): todo tiene que tocar la red, porque la luz viaja por calles, zonas y **tendido eléctrico** (`4` el de madera, que alumbra 3 lotes; `|` el de hormigón, que alumbra 5 y se planta cada 5). Arrastrá el de hormigón sobre el de madera y lo mejora cobrando la diferencia.
 4. Mirá la **demanda R C I** arriba y la **caja**. Con la caja en rojo no se construye.
 5. Las **plazas** (`8`), el agua y los árboles suben el valor del suelo, y eso permite edificios más altos. La industria contamina.
 6. **Servicios públicos** (necesitan luz y cubren un radio): sin **salita** (`U`) las casas no pasan de chalet y sin **escuela** (`Y`) no hay torres ni oficinas. La **comisaría** (`I`) baja el delito y los **bomberos** (`O`) apagan incendios.

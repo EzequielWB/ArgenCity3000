@@ -66,3 +66,6 @@ los de las plazas ya los pinta el pase de plazas.
   (`replace(marca, () => js)`), en los dos tableros.
 - **L7.** Medido: 98 tests en `tests/arte-pixel.test.ts` (4 nuevos) y **1081** en la suite; el poste y los
   árboles no tocan la simulación ni el guardado, así que no hubo formato que subir.
+
+- **Sucesión.** El poste de hormigón que salió de este pase dejó de ser *el* poste del juego: ahora es la
+  mejora del tendido y el de madera volvió como base. Ver `odd/tasks/tendido-madera-hormigon.md`.

@@ -1,4 +1,4 @@
-import { HUBS, LINE_REACH, POWER_REACH, POWER_USE, SERVICES } from '../config';
+import { HUBS, LINE_TIERS, POWER_REACH, POWER_USE, SERVICES } from '../config';
 import { hubFacilities } from '../world/hubs';
 import { serviceBlocksOf, serviceFootprint } from '../world/services';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf } from '../world/world';
@@ -78,7 +78,8 @@ function discOffsets(reach: number): { dx: Int8Array; dy: Int8Array } {
 }
 
 const BUILDING_DISC = discOffsets(POWER_REACH);
-const LINE_DISC = discOffsets(LINE_REACH);
+/** One disc per quality of grid: the concrete line lights five lots around each pole instead of three. */
+const LINE_DISCS = LINE_TIERS.map((t) => discOffsets(t.reach));
 
 /**
  * The lots that relays standing on `cells` would light with the given reach: every cell of the
@@ -122,7 +123,7 @@ export function isRelay(w: World, i: number): boolean {
 
 /**
  * Lights the map from each plant. A relay lights every cell inside its reach (a disc of
- * POWER_REACH lots, or LINE_REACH for a power-line cell), whatever is on it; a lit cell passes the
+ * POWER_REACH lots, or the reach of the pole's own quality), whatever is on it; a lit cell passes the
  * light on only if it is a relay itself (see `isRelay`), so roads carry nothing and the light
  * travels over distance only through buildings or a power line. Buildings take power in BFS order
  * until the network runs out (a dark building still relays: connectivity does not depend on
@@ -154,7 +155,7 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
       if (!isRelay(w, i)) continue;
       const x = i % n;
       const y = (i - x) / n;
-      const disc = w.tiles[i] === TILE.LINE ? LINE_DISC : BUILDING_DISC;
+      const disc = w.tiles[i] === TILE.LINE ? LINE_DISCS[w.lineTier[i]] : BUILDING_DISC;
       for (let k = 0; k < disc.dx.length; k++) {
         const nx = x + disc.dx[k];
         const ny = y + disc.dy[k];

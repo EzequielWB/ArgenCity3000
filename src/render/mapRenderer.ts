@@ -9,7 +9,7 @@ import { HUBS, type HubKind } from '../config';
 import { facilityAt, hubFootprint } from '../world/hubs';
 import { uniqueFootprint } from '../world/uniques';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf } from '../world/world';
-import { DIRT, type RoadTier } from '../config';
+import { DIRT, lineReach, type RoadTier } from '../config';
 import { KIND, analyzeRoads, boulevardMedian, centreMark, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
 
 /** Asphalt of each street quality: plain, reinforced pavement, boulevard. */
@@ -51,7 +51,7 @@ import {
 } from './sprites';
 import { parkTreeHere } from './park';
 import { pixelArt } from './artSwitch';
-import { busDepotPixelSprite, polePixelSprite, treePixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, servicePixelSprite, type HubView } from './pixelArt';
+import { busDepotPixelSprite, poleAttach, polePixelSprite, treePixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, servicePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
@@ -671,7 +671,7 @@ export class MapRenderer {
       return { sprite: parkSpriteFor(w.variant[i], look), ax, ay };
     }
     if (tile === TILE.LINE) {
-      if (pixelArt('energia')) return { sprite: polePixelSprite(w.variant[i]), ax, ay };
+      if (pixelArt('energia')) return { sprite: polePixelSprite(w.lineTier[i], w.variant[i]), ax, ay };
       return { sprite: poleSpriteFor(), ax, ay };
     }
     const sign = tile === TILE.ROAD && !w.isWater(x, y) ? this.signs.get(i) : undefined;
@@ -1528,16 +1528,30 @@ export class MapRenderer {
     const g = this.g;
     const world = this.world;
     const n = world.n;
-    const targets = wireTargets(vx, vy, n, (cx, cy) => {
-      const [wx, wy] = fromView(cx, cy, this.rot, n);
-      return wireCell(world, wx, wy);
-    });
+    const hard = pixelArt('energia');
+    const [ownX, ownY] = fromView(vx, vy, this.rot, n);
+    // The reach is the one of the pole's own quality: the concrete line spans five cells, the wooden three.
+    const reach = lineReach(world.lineTier[world.idx(ownX, ownY)]);
+    const targets = wireTargets(
+      vx,
+      vy,
+      n,
+      (cx, cy) => {
+        const [wx, wy] = fromView(cx, cy, this.rot, n);
+        return wireCell(world, wx, wy);
+      },
+      reach,
+    );
     g.strokeStyle = PAL.wire;
     g.lineWidth = 0.6;
     for (const target of targets) {
       const nh = avg(surfaceHeights(world, target.vx, target.vy, this.rot));
       const [bx, by] = this.toCache(target.vx, target.vy, nh);
-      const other: Pt = [bx + s.attach![0], by + s.attach![1]];
+      // Each end hangs from its own pole: a mixed run has a wooden pole at one end and a concrete one at
+      // the other, and the cables have to arrive at both.
+      const [tx, ty] = fromView(target.vx, target.vy, this.rot, n);
+      const [ax0, ay0] = hard ? poleAttach(world.lineTier[world.idx(tx, ty)]) : s.attach!;
+      const other: Pt = [bx + ax0, by + ay0];
       // The two cables of the line, one on each side of the running cable, and a sag that grows
       // with the span so a long run dips properly. The offset is perpendicular, so a horizontal or
       // a diagonal run shows two wires instead of one drawn twice.

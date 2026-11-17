@@ -1,4 +1,4 @@
-import { DEFAULT_FUNDING, FIXED_SHARE, GOVERNMENTS, MAX_FUNDING, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type GovernmentKind, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
+import { DEFAULT_FUNDING, FIXED_SHARE, GOVERNMENTS, LINE_TIERS, MAX_FUNDING, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type GovernmentKind, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { serviceAnchorIndex } from '../world/services';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
 import { coastBudget, portTaxBoost } from './coast';
@@ -105,6 +105,7 @@ export function monthlyBudget(
   const t = cityTotals(w, mods);
   let roads = 0;
   let bridges = 0;
+  // Per cell and by quality: the concrete line costs more to keep than the wooden one.
   let lines = 0;
   let parks = 0;
   const upkeep = { school: 0, clinic: 0, police: 0, fire: 0, hospital: 0, university: 0 };
@@ -119,7 +120,7 @@ export function monthlyBudget(
         const extra = ROAD_TIERS[w.roadTier[i]].upkeep - UPKEEP.road;
         if (w.isWater(x, y)) bridges += UPKEEP.bridge + extra;
         else roads += ROAD_TIERS[w.roadTier[i]].upkeep;
-      } else if (tile === TILE.LINE) lines++;
+      } else if (tile === TILE.LINE) lines += LINE_TIERS[w.lineTier[i]].upkeep;
       else if (tile === TILE.PARK) parks++;
       else {
         const k = serviceOf(tile);
@@ -145,7 +146,7 @@ export function monthlyBudget(
     taxC,
     taxI,
     roads: Math.round(((roads + bridges) * Math.max(0, Math.min(MAX_FUNDING, roadsFunding))) / 100),
-    lines: Math.round(lines * UPKEEP.line),
+    lines: Math.round(lines),
     parks: Math.round(parks * UPKEEP.park * (Math.max(0, Math.min(MAX_FUNDING, green)) / 100)),
     plants: Math.round((plantsUpkeep(w) * Math.max(0, Math.min(MAX_FUNDING, plantsFunding))) / 100),
     // `adminCurve` is how much of the quadratic term survives a roguelike reform: 0 removes it.

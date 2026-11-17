@@ -135,6 +135,11 @@ export class World {
    */
   readonly roadTier: Uint8Array;
   /**
+   * Quality of each cell of the grid: an index into `LINE_TIERS` (0 = wooden, the line of always). Zero on
+   * every cell that is not a pole, and a cell that stops being one loses it, like `roadTier`.
+   */
+  readonly lineTier: Uint8Array;
+  /**
    * The line of each bus depot: its colour (an index into `BUS_COLORS`) and its number packed in
    * 16 bits (see `world/transport.ts`). Zero on every cell that is not a depot.
    */
@@ -186,6 +191,7 @@ export class World {
     this.inherited = new Uint8Array(size);
     this.route = new Uint8Array(size);
     this.roadTier = new Uint8Array(size);
+    this.lineTier = new Uint8Array(size);
     this.busLine = new Uint16Array(size);
     this.fire = new Uint8Array(size);
     this.crime = new Uint8Array(size);
@@ -234,6 +240,7 @@ export class World {
     this.anger[i] = 0;
     this.inherited[i] = 0;
     this.roadTier[i] = 0;
+    this.lineTier[i] = 0;
     this.busLine[i] = 0;
     this.fire[i] = 0;
     this.markDirty(i);

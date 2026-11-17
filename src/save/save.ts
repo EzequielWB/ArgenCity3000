@@ -8,6 +8,7 @@ import {
   LOANS,
   MAX_FUNDING,
   MAX_LEVEL,
+  MAX_LINE_TIER,
   MAX_ROAD_TIER,
   MAX_TAX,
   MIN_TAX,
@@ -38,7 +39,7 @@ import { busFootprint } from '../world/tools';
 import { MAX_TILE, TILE, World, hubOf, hubTile, serviceOf, serviceTile, zoneOf } from '../world/world';
 import { ALL_UNIQUE_KINDS, UNIQUES, type UniqueKind } from '../config';
 
-export const SAVE_VERSION = 20;
+export const SAVE_VERSION = 21;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -51,7 +52,7 @@ export const SAVE_VERSION = 20;
  * government, so they are democracies with no party; versions 1 to 17 have no roguelike run, so
  * they open as classic games; versions 1 to 19 have no unique buildings, so they have none.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -108,6 +109,7 @@ export function serialize(d: SaveData): string {
     inherited: toBase64(w.inherited),
     route: toBase64(w.route),
     roadTier: toBase64(w.roadTier),
+    lineTier: toBase64(w.lineTier),
     fire: toBase64(w.fire),
     buses: busStations(w).map((b) => [b.i, b.line]),
     plants: w.plants,
@@ -158,11 +160,14 @@ export function deserialize(text: string): SaveData {
   if ((data.version as number) >= 8) world.route.set(fromBase64(data.route, size, 1, 'La ruta provincial'));
   // Street qualities exist from version 9 on; older streets are all asphalt.
   if ((data.version as number) >= 9) world.roadTier.set(fromBase64(data.roadTier, size, MAX_ROAD_TIER, 'La calidad de las calles'));
+  // The line of hormigón exists from version 21 on: an older city has the whole grid of wood.
+  if ((data.version as number) >= 21) world.lineTier.set(fromBase64(data.lineTier, size, MAX_LINE_TIER, 'La calidad del tendido'));
   for (let i = 0; i < size; i++) {
     need(level[i] === 0 || zoneOf(tiles[i]) !== null, 'Hay edificios fuera de las zonas');
     need(world.inherited[i] === 0 || tiles[i] === TILE.ROAD, 'Las calles del mapa están dañadas');
     need(world.route[i] === 0 || tiles[i] === TILE.ROAD, 'La ruta provincial está dañada');
     need(world.roadTier[i] === 0 || tiles[i] === TILE.ROAD, 'La calidad de las calles está dañada');
+    need(world.lineTier[i] === 0 || tiles[i] === TILE.LINE, 'La calidad del tendido está dañada');
   }
 
   // Bus lines exist from version 15 on: a list of [cell, packed line], one for every depot.

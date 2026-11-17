@@ -3,7 +3,7 @@
  * bar, how many months the cash lasts, the upkeep shown when choosing a building, and the
  * newspaper's cause headlines. No DOM and no simulation state in here.
  */
-import { BUS, COAST, COAST_KINDS, HUBS, FIXED_SHARE, LINE_REACH, PLANTS, POWER_REACH, ROAD_TIERS, SERVICES, type PlantKind, type RoadTier, type ServiceKind } from '../config';
+import { BUS, COAST, COAST_KINDS, HUBS, FIXED_SHARE, LINE_TIERS, PLANTS, POWER_REACH, ROAD_TIERS, SERVICES, type LineTier, type PlantKind, type RoadTier, type ServiceKind } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { BudgetReport } from './budget';
 
@@ -78,6 +78,7 @@ export function serviceUpkeepRange(kind: ServiceKind): { min: number; max: numbe
 
 const PLANT_OF_TOOL: Record<string, PlantKind | undefined> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
 const ROAD_TIER_OF_TOOL: Record<string, RoadTier | undefined> = { roadDirt: 3, road: 0, roadPaved: 1, roadBoulevard: 2 };
+const LINE_TIER_OF_TOOL: Record<string, LineTier | undefined> = { line: 0, lineConcrete: 1 };
 
 /** The upkeep part of the placement tooltip for a tool, or null when the tool has none worth showing. */
 export function placementUpkeep(tool: string): string | null {
@@ -85,6 +86,8 @@ export function placementUpkeep(tool: string): string | null {
   if (plant) return `mantenimiento ${formatMoney(PLANTS[plant].upkeep)}/mes`;
   const tier = ROAD_TIER_OF_TOOL[tool];
   if (tier !== undefined) return `mantenimiento ${formatMoney(ROAD_TIERS[tier].upkeep)}/mes`;
+  const line = LINE_TIER_OF_TOOL[tool];
+  if (line !== undefined) return `mantenimiento ${formatMoney(LINE_TIERS[line].upkeep)}/mes`;
   if (tool === 'bus') return `mantenimiento ${formatMoney(BUS.upkeep)}/mes`;
   if (tool === 'airport' || tool === 'harbor') return `mantenimiento ${formatMoney(HUBS[tool].upkeep)}/mes`;
   if (tool === 'school' || tool === 'clinic' || tool === 'police' || tool === 'fire' || tool === 'hospital' || tool === 'university') {
@@ -98,7 +101,7 @@ export function placementUpkeep(tool: string): string | null {
 /** What a tool does that its price does not say, for the placement tooltip: how far the light goes. */
 export function placementNote(tool: string): string | null {
   if (PLANT_OF_TOOL[tool]) return `luz hasta ${POWER_REACH} lotes`;
-  if (tool === 'line') return `el tendido alumbra hasta ${LINE_REACH} lotes a su alrededor`;
+  if (tool === 'line' || tool === 'lineConcrete') return `el tendido alumbra hasta ${LINE_TIERS[LINE_TIER_OF_TOOL[tool]!].reach} lotes a su alrededor`;
   if (tool === 'bus') return `alivia el tránsito hasta ${BUS.radius} lotes a la redonda`;
   if (tool === 'airport' || tool === 'harbor') return 'pegala a otra pieza para que crezca; funciona con una calle cerca';
   return null;

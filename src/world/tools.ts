@@ -1,4 +1,4 @@
-import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES, GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, HUBS, LINE_REACH, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, roadRank, type CoastKind, type HubKind, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
+import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES, GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, HUBS, LINE_TIERS, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, lineRank, roadRank, type CoastKind, type HubKind, type LineTier, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
@@ -8,7 +8,7 @@ import { hubFootprint, hubRefusal, markHubsDirty } from './hubs';
 import { uniqueFootprint, uniqueRefusal } from './uniques';
 import { TILE, World, coastTile, hubOf, hubTile, serviceOf, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind | UniqueKind;
+export type ToolId = 'query' | 'bulldoze' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'lineConcrete' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind | UniqueKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -44,7 +44,8 @@ const ALL_TOOLS: readonly ToolInfo[] = [
   { id: 'road', label: 'Calle de asfalto', key: '3', shape: 'line', help: 'Arrastrá para trazar. Sobre el agua se hace puente.' },
   { id: 'roadPaved', label: 'Pavimento reforzado', key: 'r', shape: 'line', help: 'Calle de asfalto más resistente: entra un 60 % más de tránsito, cuesta más mantener y marca el medio con lucecitas amarillas. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
   { id: 'roadBoulevard', label: 'Bulevar', key: 't', shape: 'line', help: 'La calle de más capacidad, con cantero de cemento en el medio y farolas que bajan el delito alrededor. Arrastrá sobre una calle para mejorarla pagando la diferencia.' },
-  { id: 'line', label: 'Tendido eléctrico', key: '4', shape: 'line', help: 'Lleva la luz por terrenos vacíos y sobre el agua.' },
+  { id: 'line', label: LINE_TIERS[0].label, key: '4', shape: 'line', help: 'Lleva la luz por terrenos vacíos y sobre el agua. Es el de madera: alumbra 3 lotes a la redonda y un poste cada 3 lotes.' },
+  { id: 'lineConcrete', label: LINE_TIERS[1].label, key: '|', shape: 'line', help: 'El tendido que llega más lejos: alumbra 5 lotes a la redonda y un poste cada 5, así que cubre casi el triple con los mismos postes. Más caro de construir y de mantener. Arrastralo sobre el de madera para mejorarlo pagando la diferencia.' },
   { id: 'zoneR', label: 'Residencial', key: '5', shape: 'rect', help: 'Zona para viviendas. Necesita luz y calle cerca.' },
   { id: 'zoneC', label: 'Comercial', key: '6', shape: 'rect', help: 'Zona para comercios y oficinas.' },
   { id: 'zoneI', label: 'Industrial', key: '7', shape: 'rect', help: 'Zona para talleres y fábricas. Contamina.' },
@@ -132,7 +133,7 @@ export const TOOLS: readonly ToolInfo[] = GOVERNMENT_UNIQUES ? ALL_TOOLS : ALL_T
 
 export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'query', label: 'Consulta', tools: ['query', 'bulldoze'] },
-  { id: 'network', label: 'Calles y luz', tools: ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line'] },
+  { id: 'network', label: 'Calles y luz', tools: ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line', 'lineConcrete'] },
   { id: 'zones', label: 'Zonas', tools: ['zoneR', 'zoneC', 'zoneI', 'park'] },
   { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire', 'hospital', 'university'] },
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
@@ -251,6 +252,13 @@ export function isRoadTool(tool: ToolId): boolean {
   return roadTierOfTool(tool) !== null;
 }
 
+/** The quality of grid a tool builds, or null for any other tool. */
+export function lineTierOfTool(tool: ToolId): LineTier | null {
+  if (tool === 'line') return 0;
+  if (tool === 'lineConcrete') return 1;
+  return null;
+}
+
 function zoneKindOfTool(tool: ToolId): ZoneKind | null {
   if (tool === 'zoneR') return 'R';
   if (tool === 'zoneC') return 'C';
@@ -307,6 +315,7 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
   const zone = zoneKindOfTool(tool);
   const plantKind = plantKindOfTool(tool);
   const tier = roadTierOfTool(tool);
+  const lineTier = lineTierOfTool(tool);
   // With a route, a street is only accepted next to a street that comes from it, or to the cell accepted before it.
   const connected = tier !== null ? connectedToRoute(w) : null;
   let previous = -1;
@@ -383,14 +392,31 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     }
     switch (tool) {
       case 'line':
-        // One pole every LINE_REACH cells: it lights that far, so a long run costs that much less.
-        if (t === TILE.EMPTY && (poleX < 0 || (x - poleX) ** 2 + (y - poleY) ** 2 >= LINE_REACH ** 2)) {
+      case 'lineConcrete': {
+        const want = lineTier!;
+        if (t === TILE.LINE) {
+          // A better grid over an existing one is an upgrade in place: only the difference is charged, and
+          // the worse one over the better does nothing at all (the line is never torn down to a worse one).
+          // Either way the pole is there, so the rest of the run measures its spacing from it.
+          const was = w.lineTier[i] as LineTier;
+          if (lineRank(want) > lineRank(was)) {
+            out.push([x, y]);
+            cost += LINE_TIERS[want].cost - LINE_TIERS[was].cost;
+          }
+          poleX = x;
+          poleY = y;
+          break;
+        }
+        // One pole every `reach` cells: it lights that far, so a long run costs that much less.
+        const reach = LINE_TIERS[want].reach;
+        if (t === TILE.EMPTY && (poleX < 0 || (x - poleX) ** 2 + (y - poleY) ** 2 >= reach ** 2)) {
           out.push([x, y]);
-          cost += COSTS.line;
+          cost += LINE_TIERS[want].cost;
           poleX = x;
           poleY = y;
         }
         break;
+      }
       case 'park':
         if (!water && isFreeLot(w, x, y)) {
           out.push([x, y]);
@@ -499,8 +525,16 @@ export function applyPlan(w: World, plan: Plan): void {
     }
     switch (plan.tool) {
       case 'line':
-        w.setTile(x, y, TILE.LINE);
-        w.terrain.trees[i] = 0;
+      case 'lineConcrete':
+        // An upgrade keeps the cell as it is (same pole, same place) and only changes its quality.
+        if (w.tiles[i] === TILE.LINE) {
+          w.lineTier[i] = lineTierOfTool(plan.tool)!;
+          w.markDirty(i);
+        } else {
+          w.setTile(x, y, TILE.LINE);
+          w.lineTier[i] = lineTierOfTool(plan.tool)!;
+          w.terrain.trees[i] = 0;
+        }
         break;
       case 'park':
         w.setTile(x, y, TILE.PARK);

@@ -3036,8 +3036,75 @@ function crossarm(p: Pen, u: number, v: number, z: number, wide: number, thick =
  * variant hangs a transformer on it or doubles the arm. The post stands in the middle of the cell and the
  * cables leave from the middle of the arm.
  */
-/** Paints a pole on its own canvas, without turning it into a sprite. */
-export function paintPole(variant: number): { px: Pixels; ax: number; ay: number; attach: [number, number] } {
+/** Wood of the old line: the one that was there before the concrete poles came. */
+const POLE_WOOD: Ramp = ramp('#7d5a38');
+const CERAMIC = hex('#dfe3e0');
+
+/**
+ * A pole of the wooden line: a crooked post, a wooden crossarm and two ceramic insulators. It is shorter
+ * than the concrete one and it leans a little, which is what tells the two qualities apart from a block
+ * away. The variant hangs a rural transformer or a guy wire on it.
+ */
+function paintPoleWood(variant: number): { px: Pixels; ax: number; ay: number; attach: [number, number] } {
+  const p = pen(30);
+  const h = 18;
+  const [bx, by] = p.P(0.5, 0.5, 0);
+  const x = Math.round(bx);
+  const y = Math.round(by);
+  const top = y - h;
+  p.px.shadow(
+    [
+      [x - 3, y],
+      [x, y - 2],
+      [x + 3, y],
+      [x, y + 2],
+    ],
+    0.3,
+  );
+  // The post: straight and thin, with the grain of the wood and a wider foot where it goes into the ground.
+  p.px.rect(x, top, 2, h, POLE_WOOD[1]);
+  p.px.rect(x, top, 1, h, POLE_WOOD[0]);
+  p.px.rect(x + 1, top, 1, h, POLE_WOOD[2]);
+  p.px.rect(x - 1, y - 2, 4, 2, POLE_WOOD[1]);
+  p.px.rect(x - 1, y - 2, 2, 2, POLE_WOOD[0]);
+  p.px.rect(x + 2, y - 2, 1, 2, POLE_WOOD[2]);
+  p.px.set(x, y - 12, POLE_WOOD[2]);
+  p.px.set(x + 1, y - 8, POLE_WOOD[0]);
+  p.px.rect(x + 2, y - 10, 2, 1, STEEL[2]);
+  // The crossarm: wider than the concrete one and with a brace under each end, which is what a wooden line
+  // has instead of a bolted steel arm.
+  const arm = 4;
+  const x0 = x - 1 - arm;
+  p.px.rect(x0, top, arm * 2 + 2, 1, POLE_WOOD[0]);
+  p.px.rect(x0, top + 1, arm * 2 + 2, 1, POLE_WOOD[2]);
+  if (variant % 3 !== 1) {
+    p.px.line([x - 3, top + 5], [x - 1, top + 2], POLE_WOOD[2]);
+    p.px.line([x + 4, top + 5], [x + 2, top + 2], POLE_WOOD[2]);
+  }
+  for (const ix of [x0, x0 + arm * 2 + 1]) {
+    p.px.rect(ix, top - 2, 1, 2, CERAMIC);
+    p.px.set(ix, top - 2, shade(CERAMIC, 0.82));
+  }
+  if (variant % 3 === 1) {
+    // The transformer of the rural line: a grey can hanging from the arm, straddling the post.
+    p.px.rect(x - 2, top + 3, 5, 6, TRANSFORMER[1]);
+    p.px.rect(x - 2, top + 3, 2, 6, TRANSFORMER[0]);
+    p.px.rect(x + 2, top + 3, 1, 6, TRANSFORMER[2]);
+    p.px.rect(x - 2, top + 2, 5, 1, TRANSFORMER[2]);
+    p.px.rect(x - 2, top + 9, 5, 1, TRANSFORMER[2]);
+  } else if (variant % 3 === 2) {
+    // The three-leg arm of the rural line: a second, shorter crossarm below, offset the other way.
+    const arm2 = 2;
+    p.px.rect(x + 2, top + 5, arm2 * 2 + 1, 1, POLE_WOOD[0]);
+    p.px.rect(x + 2, top + 6, arm2 * 2 + 1, 1, POLE_WOOD[2]);
+    p.px.rect(x + 2 + arm2, top + 3, 1, 2, CERAMIC);
+    p.px.set(x + 2 + arm2, top + 3, shade(CERAMIC, 0.82));
+  }
+  return { px: p.px, ax: p.ax, ay: p.ay, attach: [x - p.ax, top - 1 - p.ay] };
+}
+
+/** Paints the concrete pole on its own canvas, without turning it into a sprite. */
+function paintPoleConcrete(variant: number): { px: Pixels; ax: number; ay: number; attach: [number, number] } {
   const p = pen(30);
   const u = 0.5;
   const v = 0.5;
@@ -3084,16 +3151,32 @@ export function paintPole(variant: number): { px: Pixels; ax: number; ay: number
   return { px: p.px, ax: p.ax, ay: p.ay, attach: [Math.round(axTop) - p.ax, Math.round(ayTop) - 1 - p.ay] };
 }
 
-const poleCache = new Map<number, Sprite>();
+const poleCache = new Map<string, Sprite>();
 
-/** The sprite of a power pole, keyed by its variant. */
-export function polePixelSprite(variant: number): Sprite {
+/** Where the cable hangs from, per quality of line, relative to the sprite's anchor. */
+const POLE_ATTACH: [number, number][] = [paintPoleWood(0).attach, paintPoleConcrete(0).attach];
+
+/** The attach point of the pole of a quality, for the far end of a cable (see `drawWires`). */
+export function poleAttach(tier: number): [number, number] {
+  return POLE_ATTACH[tier === 1 ? 1 : 0];
+}
+
+/** Paints a pole of the grid: the wooden one for the base quality, the concrete one for the improvement. */
+export function paintPole(tier: number, variant: number): { px: Pixels; ax: number; ay: number; attach: [number, number] } {
   const v = ((variant % 3) + 3) % 3;
-  let sprite = poleCache.get(v);
+  return tier === 1 ? paintPoleConcrete(v) : paintPoleWood(v);
+}
+
+/** The sprite of a pole, keyed by quality and variant. */
+export function polePixelSprite(tier: number, variant: number): Sprite {
+  const t = tier === 1 ? 1 : 0;
+  const v = ((variant % 3) + 3) % 3;
+  const key = `${t}:${v}`;
+  let sprite = poleCache.get(key);
   if (!sprite) {
-    const painted = paintPole(v);
+    const painted = paintPole(t, v);
     sprite = { ...spriteOf(painted), attach: painted.attach };
-    poleCache.set(v, sprite);
+    poleCache.set(key, sprite);
   }
   return sprite;
 }

@@ -187,10 +187,35 @@ export const weakerRoad = (a: RoadTier, b: RoadTier): RoadTier => (roadRank(b) <
 /** How far the boulevard's lamps reach, and how much crime they take out there. */
 export const BOULEVARD = { radius: 2, crime: 12 } as const;
 
+/**
+ * The two lines of the grid, in the order the player can build them. `reach` is how far a pole passes the
+ * light on — a disc of `reach` lots, and also the spacing a run of poles is laid out with — so the
+ * concrete line covers three times the ground of the wooden one with the same number of poles. The index
+ * is what `World.lineTier` and the save store, and the first one is the wooden line of always: never
+ * compare the raw index, use `lineRank`.
+ */
+export const LINE_TIERS = [
+  { label: 'Tendido de madera', cost: 5, upkeep: 0.3, reach: 3 },
+  { label: 'Tendido de hormigón', cost: 18, upkeep: 1, reach: 5 },
+] as const;
+
+export type LineTier = 0 | 1;
+export const MAX_LINE_TIER = LINE_TIERS.length - 1;
+export const WOODEN_LINE: LineTier = 0;
+
+/** How far the light reaches around a cell of the grid of that quality. */
+export const lineReach = (tier: number): number => LINE_TIERS[Math.max(0, Math.min(MAX_LINE_TIER, tier))].reach;
+
+/** Where a line stands in quality, worst first: the wooden one is the one of always. */
+export const lineRank = (tier: number): number => Math.max(0, Math.min(MAX_LINE_TIER, tier));
+
+/** The reach of the wooden line, for the places that talk about "the grid" without a world at hand. */
+export const LINE_REACH = LINE_TIERS[WOODEN_LINE].reach;
+
 export const COSTS = {
   road: ROAD_TIERS[ASPHALT].cost,
   bridge: 60, 
-  line: 5,
+  line: LINE_TIERS[WOODEN_LINE].cost,
   zone: 5,
   park: 20,
   plant: 3000,
@@ -203,7 +228,7 @@ export const COSTS = {
 export const UPKEEP = {
   road: ROAD_TIERS[ASPHALT].upkeep,
   bridge: 4,
-  line: 0.3,
+  line: LINE_TIERS[WOODEN_LINE].upkeep,
   /** Per cell of plaza, at the "Espacios verdes" budget in full. A 4×4 costs $80 a month. */
   park: 5,
   plant: 260,
@@ -245,11 +270,10 @@ export const WIND = { base: 160, perLevel: 80, coast: 80, radius: 6, min: 80, ma
  * How far the light reaches around a cell that passes it on, in lots (a disc: a lot is reached
  * when dx² + dy² <= reach², like the services). Plants, built zones and services pass the light
  * on with `POWER_REACH`; roads, parks, empty land and zoned lots without a building never do.
- * A power-line cell passes it on with `LINE_REACH`, the same distance: a line carries the light
- * over any distance (and over water) and lights the lots along its way.
+ * A power-line cell passes it on with the reach of its own quality (`LINE_TIERS`): a line carries the
+ * light over any distance (and over water) and lights the lots along its way.
  */
 export const POWER_REACH = 3;
-export const LINE_REACH = 3;
 
 export const MAX_LEVEL = 5;
 /** Residents (R) or jobs (C, I) per building level, index = level. Level 1 is the humble one: a tin-roof house, a kiosk, a shed. */

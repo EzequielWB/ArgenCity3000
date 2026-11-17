@@ -162,9 +162,9 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-tree]'))) {
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-pole]'))) {
-  const variant = Number(el.dataset.pole || 0);
+  const [tier, variant] = String(el.dataset.pole || '0:0').split(':').map(Number);
   const k = Number(el.dataset.k || 4);
-  const sprite = polePixelSprite(variant);
+  const sprite = polePixelSprite(tier, variant);
   el.width = sprite.canvas.width * k;
   el.height = sprite.canvas.height * k;
   el.style.width = el.width + 'px';
@@ -518,23 +518,38 @@ const page = `<!doctype html>
       <h2>El tendido y los árboles</h2>
       <p class="note">
         Las dos últimas piezas que estaban en canvas. El <b>tendido</b> es la otra mitad de la
-        electricidad: el poste de hormigón con su cruceta y sus aisladores, y los cables, que ahora se
+        electricidad y tiene dos calidades. El de <b>madera</b> es el de siempre: poste bajo, torcido,
+        cruceta de madera y dos aisladores de cerámica; alumbra tres lotes a la redonda y se planta cada
+        tres. El de <b>hormigón</b> es la mejora: más alto, derecho, con su placa y su transformador, y
+        llega a <b>cinco</b> lotes, así que cubre casi el triple con los mismos postes. Los cables se
         escriben con píxeles duros en vez del trazo suave de canvas pero conservan la misma curva, la
-        misma caída y el mismo punto de enganche. La variante del lote decide si el poste lleva un
-        transformador colgado o la cruceta doble.
+        misma caída y el mismo punto de enganche, y cada punta cuelga de la altura de su propio poste.
+        La variante del lote decide el transformador o la cruceta doble.
       </p>
       <div class="row">
         <figure>
-          <canvas data-pole="0" data-k="4"></canvas>
-          <figcaption>poste</figcaption>
+          <canvas data-pole="0:0" data-k="4"></canvas>
+          <figcaption>madera</figcaption>
         </figure>
         <figure>
-          <canvas data-pole="1" data-k="4"></canvas>
-          <figcaption>con transformador</figcaption>
+          <canvas data-pole="0:1" data-k="4"></canvas>
+          <figcaption>madera, transformador</figcaption>
         </figure>
         <figure>
-          <canvas data-pole="2" data-k="4"></canvas>
-          <figcaption>cruceta doble</figcaption>
+          <canvas data-pole="0:2" data-k="4"></canvas>
+          <figcaption>madera, con rienda</figcaption>
+        </figure>
+        <figure>
+          <canvas data-pole="1:0" data-k="4"></canvas>
+          <figcaption>hormigón</figcaption>
+        </figure>
+        <figure>
+          <canvas data-pole="1:1" data-k="4"></canvas>
+          <figcaption>hormigón, transformador</figcaption>
+        </figure>
+        <figure>
+          <canvas data-pole="1:2" data-k="4"></canvas>
+          <figcaption>hormigón, cruceta doble</figcaption>
         </figure>
       </div>
       <p class="note">

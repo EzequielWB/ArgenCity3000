@@ -26,8 +26,9 @@ export interface WireTarget {
 }
 
 /**
- * The poles this one hangs a cable to. A power line lights everything within `LINE_REACH` cells, so
- * poles two or three cells apart are one and the same grid: the cable spans the gap.
+ * The poles this one hangs a cable to. A power line lights everything within `reach` cells — the reach of
+ * the pole's own quality, see `LINE_TIERS` —, so poles two, three or five cells apart are one and the same
+ * grid: the cable spans the gap.
  *
  * Only the four sides that face the back of the picture are walked, the ones already painted when
  * this pole is drawn. That way every pair of poles is drawn exactly once — by the one in front —
@@ -35,7 +36,7 @@ export interface WireTarget {
  * diagonal run stops where the light does: a pole three cells along a diagonal is already outside
  * the disc. `cell` answers with the view cell's `WireCell`.
  */
-export function wireTargets(vx: number, vy: number, n: number, cell: (vx: number, vy: number) => WireCell): WireTarget[] {
+export function wireTargets(vx: number, vy: number, n: number, cell: (vx: number, vy: number) => WireCell, reach: number = LINE_REACH): WireTarget[] {
   const out: WireTarget[] = [];
   for (const [dx, dy] of [
     [-1, 0],
@@ -44,7 +45,7 @@ export function wireTargets(vx: number, vy: number, n: number, cell: (vx: number
     [1, -1],
   ]) {
     const step = dx * dx + dy * dy;
-    for (let d = 1; d * d * step <= LINE_REACH * LINE_REACH; d++) {
+    for (let d = 1; d * d * step <= reach * reach; d++) {
       const nx = vx + dx * d;
       const ny = vy + dy * d;
       if (nx < 0 || ny < 0 || nx >= n || ny >= n) break;
