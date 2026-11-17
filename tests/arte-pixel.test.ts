@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   lotSize,
   paintCoalPlant,
+  paintHub,
+  paintHubPiece,
   paintCommercial,
   paintFishing,
   paintGasPlant,
@@ -11,8 +13,10 @@ import {
   paintPromenade,
   paintResidential,
   paintWindFarm,
+  type HubView,
   type LotKind,
 } from '../src/render/pixelArt';
+import type { HubKind } from '../src/config';
 
 const LEVELS = [1, 2, 3, 4, 5];
 
@@ -359,6 +363,93 @@ describe('power plant pixel art', () => {
     }
     // The wind farm is the tall one: three towers and their blades.
     expect(rises(wind)).toBeGreaterThan(rises(gas));
+  });
+});
+
+describe('airport and harbour pixel art', () => {
+  /** The facilities the game can build: one piece, two and four for an airport, up to three for a port. */
+  const facilities: [HubKind, number, number, number, number, number][] = [
+    // kind, level, fw, fh, piece width, piece height
+    ['airport', 1, 3, 2, 3, 2],
+    ['airport', 2, 6, 2, 3, 2],
+    ['airport', 3, 6, 4, 3, 2],
+    ['harbor', 1, 2, 2, 2, 2],
+    ['harbor', 2, 4, 2, 2, 2],
+    ['harbor', 3, 6, 2, 2, 2],
+  ];
+
+  const rgba = (a: Art, x: number, y: number) => {
+    const i = (y * a.px.w + x) * 4;
+    return [a.px.data[i], a.px.data[i + 1], a.px.data[i + 2], a.px.data[i + 3]];
+  };
+
+  it('paints hard pixels: opaque or empty, never a soft edge', () => {
+    for (const [kind, level, fw, fh] of facilities) {
+      const art = paintHub(kind, level, fw, fh);
+      for (let i = 3; i < art.px.data.length; i += 4) {
+        const al = art.px.data[i];
+        if (al === 0 || al === 255) continue;
+        expect([art.px.data[i - 3], art.px.data[i - 2], art.px.data[i - 1]]).toEqual([0, 0, 0]);
+        expect(al).toBeLessThanOrEqual(SHADOW_ALPHA);
+      }
+    }
+  });
+
+  it('is one painting cut into pieces, not one painting per piece', () => {
+    // The whole point of the pass: two pieces side by side have to read as a single terminal, so every
+    // pixel a piece paints has to agree with the painting of the whole facility, and together the
+    // pieces have to cover it exactly once.
+    for (const [kind, level, fw, fh, pw, ph] of facilities) {
+      for (const side of kind === 'harbor' ? [0, 1, 2, 3] : [0]) {
+      const whole = paintHub(kind, level, fw, fh, side);
+      const seen = new Uint8Array(whole.px.w * whole.px.h);
+      for (let i = 0; i < fw; i += pw) {
+        for (let j = 0; j < fh; j += ph) {
+          const view: HubView = { fw, fh, i, j, pw, ph };
+          const piece = paintHubPiece(kind, level, view, side);
+          // Where the piece's canvas lands inside the canvas of the whole facility.
+          const ox = 16 * (fh - ph) + 16 * (i - j);
+          const oy = 8 * (i + j);
+          for (let y = 0; y < piece.px.h; y++) {
+            for (let x = 0; x < piece.px.w; x++) {
+              const c = rgba(piece, x, y);
+              if (!c[3]) continue;
+              const at = `piece ${i},${j} pixel ${x},${y}`;
+              expect(rgba(whole, ox + x, oy + y), at).toEqual(c);
+              seen[(oy + y) * whole.px.w + ox + x] = 1;
+            }
+          }
+        }
+      }
+      // No gaps: every pixel of the painting belongs to at least one piece. The pieces do overlap by
+      // the four-pixel margin of their canvas, and that is harmless: it is the same drawing either way.
+      let painted = 0;
+      for (let k = 3; k < whole.px.data.length; k += 4) if (whole.px.data[k]) painted++;
+      expect(painted, `${kind} ${level}: the painting is not empty`).toBeGreaterThan(200);
+      expect(seen.filter((n) => n > 0).length, `${kind} ${level} side ${side}: the pieces cover the painting`).toBe(painted);
+      }
+    }
+  });
+
+  it('grows with the level: a bigger facility is a bigger drawing, not the same one stretched', () => {
+    const painted = (a: Art) => [...a.px.data].filter((_, k) => k % 4 === 3 && a.px.data[k]).length;
+    const small = paintHub('airport', 1, 3, 2);
+    const big = paintHub('airport', 3, 6, 4);
+    expect(big.px.w).toBeGreaterThan(small.px.w);
+    expect(painted(big)).toBeGreaterThan(painted(small));
+    // Same rectangle, more level: more gates, a taller tower, the cargo apron.
+    const two = paintHub('airport', 2, 6, 2);
+    const three = paintHub('airport', 3, 6, 2);
+    expect(painted(three)).toBeGreaterThan(painted(two));
+    expect(tones(three)).not.toBe(tones(two));
+  });
+
+  it('puts the water on the side it is told, with the terminal away from it', () => {
+    const shots = [0, 1, 2, 3].map((side) => paintHub('harbor', 2, 4, 2, side));
+    for (let k = 0; k < 4; k++) {
+      expect(topRow(shots[k])).toBeLessThan(shots[k].ay);
+      for (let j = k + 1; j < 4; j++) expect([...shots[k].px.data]).not.toEqual([...shots[j].px.data]);
+    }
   });
 });
 

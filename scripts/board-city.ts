@@ -27,6 +27,9 @@ function city(): World {
   plan('bus', 12, 6);
   // One coal plant on the free corner, to see it stand next to the streets.
   plan('plant', 9, 12);
+  // An airport of two pieces: they are painted as one facility, so the seam has to disappear here.
+  plan('airport', 2, 12);
+  plan('airport', 5, 12);
   // The plaza is set straight on the grid: the tool checks road access and would leave a fringe.
   for (let y = 7; y <= 9; y++) for (let x = 7; x <= 9; x++) world.tiles[y * n + x] = TILE.PARK;
   // The dirt street is set on the grid after every plan: the sheet is about the look, not the rules,

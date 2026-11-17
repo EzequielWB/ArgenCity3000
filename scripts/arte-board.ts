@@ -16,7 +16,8 @@ declare const process: { cwd(): string };
 const entry = `
 import './scripts/board-city';
 import { buildingSprite } from './src/render/sprites';
-import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite } from './src/render/pixelArt';
+import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub } from './src/render/pixelArt';
+import type { HubKind } from './src/config';
 
 const NEW = { R: residentialPixelSprite, C: commercialPixelSprite, I: industrialPixelSprite };
 const K = 3;
@@ -129,6 +130,18 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-plant]'))) {
   const g = el.getContext('2d');
   g.clearRect(0, 0, el.width, el.height);
   place(g, plantPixelSprite(kind), el.width / 2, 62 * k, k);
+}
+
+for (const el of Array.from(document.querySelectorAll('canvas[data-hub]'))) {
+  const [kind, level, fw, fh, side] = String(el.dataset.hub).split(':');
+  const k = Number(el.dataset.k || 2);
+  const art = paintHub(kind as HubKind, Number(level), Number(fw), Number(fh), Number(side || 0));
+  el.width = art.px.w * k;
+  el.height = art.px.h * k;
+  const g = el.getContext('2d');
+  g.clearRect(0, 0, el.width, el.height);
+  g.imageSmoothingEnabled = false;
+  g.drawImage(art.px.toCanvas(k), 0, 0);
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-depot]'))) {
@@ -364,6 +377,7 @@ const page = `<!doctype html>
       canvas[data-coast] { width: 120px; height: 132px; }
       canvas[data-depot] { width: 222px; height: 192px; }
       canvas[data-plant] { width: 228px; height: 300px; }
+      canvas[data-hub] { max-width: 100%; height: auto; }
       figcaption { margin-top: 4px; font-size: 11px; color: #8e979e; }
     </style>
   </head>
@@ -377,7 +391,8 @@ const page = `<!doctype html>
     <p class="sub">
       No cambia nada del juego hasta que se pide: <code>?pixel=residencial</code>,
       <code>?pixel=comercial</code>, <code>?pixel=industrial</code>, <code>?pixel=plazas</code>,
-      <code>?pixel=calles</code>, <code>?pixel=tierra</code>, <code>?pixel=costa</code> o
+      <code>?pixel=calles</code>, <code>?pixel=tierra</code>, <code>?pixel=costa</code>,
+      <code>?pixel=energia</code>, <code>?pixel=transporte</code> o
       <code>?pixel=todo</code> al final de la dirección. Sin eso vuelve solo al arte de siempre.
     </p>
     ${sections}
@@ -401,6 +416,45 @@ const page = `<!doctype html>
         <figure>
           <canvas data-plant="wind" data-k="3"></canvas>
           <figcaption>parque eólico</figcaption>
+        </figure>
+      </div>
+    </section>
+    <section id="transporte">
+      <h2>Transporte</h2>
+      <p class="note">
+        El aeropuerto y el puerto no se dibujan por pieza: cada pieza es una <b>ventana</b> de un dibujo
+        único de la instalación, así que dos piezas pegadas son una sola terminal y no dos galpones
+        repetidos. El nivel es la cantidad de piezas pegadas, de modo que el dibujo crece con el
+        rectángulo: más pista, más puertas, más contenedores.
+      </p>
+      <h3>Aeropuerto</h3>
+      <div class="row">
+        <figure>
+          <canvas data-hub="airport:1:3:2" data-k="2"></canvas>
+          <figcaption>una pieza: hangar y pista</figcaption>
+        </figure>
+        <figure>
+          <canvas data-hub="airport:2:6:2" data-k="2"></canvas>
+          <figcaption>dos piezas: aeródromo con terminal y torre</figcaption>
+        </figure>
+        <figure>
+          <canvas data-hub="airport:3:6:4" data-k="4"></canvas>
+          <figcaption>cuatro piezas: aeropuerto internacional</figcaption>
+        </figure>
+      </div>
+      <h3>Puerto</h3>
+      <div class="row">
+        <figure>
+          <canvas data-hub="harbor:1:2:2:0" data-k="2"></canvas>
+          <figcaption>una pieza: muelle de paseos</figcaption>
+        </figure>
+        <figure>
+          <canvas data-hub="harbor:2:4:2:1" data-k="2"></canvas>
+          <figcaption>dos piezas: puerto con grúa</figcaption>
+        </figure>
+        <figure>
+          <canvas data-hub="harbor:3:6:2:1" data-k="3"></canvas>
+          <figcaption>tres piezas: puerto con cruceros</figcaption>
         </figure>
       </div>
     </section>

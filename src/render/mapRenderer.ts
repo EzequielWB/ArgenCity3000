@@ -4,7 +4,7 @@ import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
 import { busColorOf, depotAt } from '../world/transport';
 import { busFootprint } from '../world/tools';
-import { HUBS } from '../config';
+import { HUBS, type HubKind } from '../config';
 import { facilityAt, hubFootprint } from '../world/hubs';
 import { uniqueFootprint } from '../world/uniques';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf } from '../world/world';
@@ -50,7 +50,7 @@ import {
 } from './sprites';
 import { parkTreeHere } from './park';
 import { pixelArt } from './artSwitch';
-import { busDepotPixelSprite, fishingPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite } from './pixelArt';
+import { busDepotPixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
@@ -571,7 +571,16 @@ export class MapRenderer {
       const { w: fw, h: fh } = HUBS[piece.kind];
       const [ax, ay] = this.toCache(minVx, minVy, hubHeight(w, piece.x, piece.y, fw, fh));
       const level = facilityAt(w, x, y)?.level ?? 1;
-      return { sprite: hubSprite(piece.kind, level, maxVx - minVx + 1, maxVy - minVy + 1, this.hubWaterSide(foot)), ax, ay };
+      const side = this.hubWaterSide(foot);
+      if (!pixelArt('transporte')) return { sprite: hubSprite(piece.kind, level, maxVx - minVx + 1, maxVy - minVy + 1, side), ax, ay };
+      // The pixel pass paints the whole facility once and gives each piece the window it owns, so two
+      // pieces side by side join at the pixel instead of stacking two whole buildings. The water side
+      // is the side of the whole facility, not of this piece: two pieces of one harbour cannot look at
+      // different waters, or the drawing would be stitched from two different pictures.
+      const view = this.hubView(piece, minVx, minVy, maxVx, maxVy);
+      const cells: [number, number][] = [];
+      for (let cy = view.minVy; cy <= view.maxVy; cy++) for (let cx = view.minVx; cx <= view.maxVx; cx++) cells.push([cx, cy]);
+      return { sprite: hubPixelSprite(piece.kind, level, view, this.hubWaterSide(cells)), ax, ay };
     }
     if (tile === TILE.UNIQUE) {
       // A monument is drawn once, at the cell in front of its footprint, like a piece of an airport.
@@ -807,6 +816,50 @@ export class MapRenderer {
    * face water (bits 1, 2, 4, 8 in the order of the sprite's edges, plus 16 on every other lot
    * for a lamp) for the promenade, and the side the jetty runs out to for the fishing pier.
    */
+  /**
+   * Where a piece sits inside the rectangle of its facility, in view cells. The pixel pass needs it
+   * because the drawing of an airport or a harbour is one picture cut into pieces, never one picture
+   * per piece: that is what makes two pieces read as a single terminal.
+   */
+  private hubView(piece: { kind: HubKind; x: number; y: number }, pminVx: number, pminVy: number, pmaxVx: number, pmaxVy: number): HubView & { minVx: number; minVy: number; maxVx: number; maxVy: number } {
+    const w = this.world;
+    const pieces = facilityAt(w, piece.x, piece.y)?.pieces ?? [piece];
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const pc of pieces) {
+      for (const [cx, cy] of hubFootprint(pc.kind, w.n, pc.x, pc.y)) {
+        x0 = Math.min(x0, cx);
+        y0 = Math.min(y0, cy);
+        x1 = Math.max(x1, cx);
+        y1 = Math.max(y1, cy);
+      }
+    }
+    const q = [
+      [x0, y0],
+      [x1, y0],
+      [x0, y1],
+      [x1, y1],
+    ].map(([cx, cy]) => toView(cx, cy, this.rot, w.n));
+    const fminVx = Math.min(...q.map(([a]) => a));
+    const fminVy = Math.min(...q.map(([, b]) => b));
+    const fmaxVx = Math.max(...q.map(([a]) => a));
+    const fmaxVy = Math.max(...q.map(([, b]) => b));
+    return {
+      fw: fmaxVx - fminVx + 1,
+      fh: fmaxVy - fminVy + 1,
+      i: pminVx - fminVx,
+      j: pminVy - fminVy,
+      pw: pmaxVx - pminVx + 1,
+      ph: pmaxVy - pminVy + 1,
+      minVx: fminVx,
+      minVy: fminVy,
+      maxVx: fmaxVx,
+      maxVy: fmaxVy,
+    };
+  }
+
   /** Which side of a footprint (view cells) has the water, as the index of the direction +u, +v, -u, -v; 0 when none does. */
   private hubWaterSide(foot: readonly (readonly [number, number])[]): number {
     const n = this.world.n;

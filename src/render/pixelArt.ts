@@ -12,7 +12,7 @@
  */
 import { Pixels, bayer, hex, noise, shade, type Paint, type Pt, type RGB, type WallPaint } from './pixel';
 import type { Sprite } from './sprites';
-import { BUS_COLORS, type PlantKind } from '../config';
+import { BUS_COLORS, type HubKind, type PlantKind } from '../config';
 
 /** Face tones measured on the reference. */
 const LEFT = 0.69;
@@ -1859,6 +1859,402 @@ export function plantPixelSprite(kind: PlantKind): Sprite {
   if (!sprite) {
     sprite = spriteOf(kind === 'coal' ? paintCoalPlant() : kind === 'gas' ? paintGasPlant() : paintWindFarm());
     plantCache.set(kind, sprite);
+  }
+  return sprite;
+}
+
+/* ---------- The airport and the harbour ---------- */
+
+const APRON: Ramp = [hex('#aaa69b'), hex('#9d998f'), hex('#85827a')];
+const TARMAC: Ramp = [hex('#4e515a'), hex('#464951'), hex('#3a3d45')];
+const STRIPE = hex('#e9e4d6');
+const LINE_Y = hex('#d9b23c');
+const HULL: Ramp = [hex('#f1eee7'), hex('#e6e2da'), hex('#c6c9cf')];
+const WING_GREY: Ramp = [hex('#c6cbd2'), hex('#b6bbc2'), hex('#9aa0a8')];
+const PLANE_GLASS = hex('#33424f');
+const CRANE: Ramp = ramp('#e3b431');
+const CARGO: RGB[] = ['#c8392f', '#2f63a6', '#3c8d4a', '#e0a526'].map(hex);
+const QUAY: Ramp = [hex('#bdb8ab'), hex('#aca79b'), hex('#959085')];
+const DARK_IRON = ramp('#3c3c40');
+
+/** A frame of reference on the ground: `(a, c)` are cells of a rectangle of lots. */
+interface Frame {
+  at(a: number, c: number): [number, number];
+  pt(a: number, c: number, z?: number): Pt;
+  /** A flat patch of ground from (a0, c0) to (a1, c1) at one height. */
+  quad(a0: number, c0: number, a1: number, c1: number, z: number, paint: Paint): void;
+  /** A flat patch whose four corners each have their own height. */
+  plane(pts: [number, number, number][], paint: Paint): void;
+  flat(a0: number, c0: number, a1: number, c1: number, z: number, c: RGB): void;
+  line(a0: number, c0: number, a1: number, c1: number, z: number, c: RGB): void;
+  /** A box over the rectangle, with the same details on both visible faces. */
+  box(a0: number, c0: number, a1: number, c1: number, z0: number, h: number, base: Ramp, tex: Tex, patches?: Patch[], top?: RGB): void;
+  cornice(a0: number, c0: number, a1: number, c1: number, z: number, h: number, base: Ramp): void;
+  /** A two-slope roof with its ridge along `a`, whatever the view does with the axes. */
+  gable(a0: number, c0: number, a1: number, c1: number, z: number, rise: number, roof: Ramp): void;
+}
+
+/**
+ * The frame the two facilities are painted in. Everything is in the coordinates of the whole
+ * facility, never of one piece: each piece's canvas is only the window that belongs to it, so two
+ * pieces side by side join at the pixel and read as one building.
+ */
+function frameUV(p: Pen, uv: (a: number, c: number) => [number, number]): Frame {
+  const corners = (a0: number, c0: number, a1: number, c1: number) => [uv(a0, c0), uv(a1, c0), uv(a1, c1), uv(a0, c1)];
+  const box = (a0: number, c0: number, a1: number, c1: number) => {
+    const q = corners(a0, c0, a1, c1);
+    return [
+      Math.min(...q.map(([u]) => u)),
+      Math.min(...q.map(([, v]) => v)),
+      Math.max(...q.map(([u]) => u)),
+      Math.max(...q.map(([, v]) => v)),
+    ] as [number, number, number, number];
+  };
+  const poly = (pts: [number, number, number][], paint: Paint) =>
+    p.poly(
+      pts.map(([a, c, z]) => {
+        const [u, v] = uv(a, c);
+        return p.P(u, v, z);
+      }),
+      paint,
+    );
+  return {
+    at: uv,
+    pt: (a, c, z = 0) => {
+      const [u, v] = uv(a, c);
+      return p.P(u, v, z);
+    },
+    quad: (a0, c0, a1, c1, z, paint) => poly([[a0, c0, z], [a1, c0, z], [a1, c1, z], [a0, c1, z]], paint),
+    plane: poly,
+    flat: (a0, c0, a1, c1, z, c) => poly([[a0, c0, z], [a1, c0, z], [a1, c1, z], [a0, c1, z]], () => c),
+    line: (a0, c0, a1, c1, z, c) => {
+      const [u0, v0] = uv(a0, c0);
+      const [u1, v1] = uv(a1, c1);
+      p.px.line(p.P(u0, v0, z), p.P(u1, v1, z), c);
+    },
+    box: (a0, c0, a1, c1, z0, h, base, tex, patches = [], top) => {
+      const [u0, v0, u1, v1] = box(a0, c0, a1, c1);
+      p.box(u0, v0, u1, v1, z0, h, base, tex, patches, patches, top);
+    },
+    cornice: (a0, c0, a1, c1, z, h, base) => {
+      const [u0, v0, u1, v1] = box(a0, c0, a1, c1);
+      p.cornice(u0, v0, u1, v1, z, h, base);
+    },
+    gable: (a0, c0, a1, c1, z, rise, roof) => {
+      const cm = (c0 + c1) / 2;
+      const rows = (f: number): Paint => (x, y) => shade(roof[0], (x + 2 * y) % 4 === 0 ? f * 0.86 : f);
+      poly([[a0, c0, z], [a1, c0, z], [a1, cm, z + rise], [a0, cm, z + rise]], rows(0.72));
+      poly([[a0, cm, z + rise], [a1, cm, z + rise], [a1, c1, z], [a0, c1, z]], rows(1));
+    },
+  };
+}
+
+/** The frame of a rectangle with its long side (the runway, the quay) along `a`. */
+const frameAC = (p: Pen, alongU: boolean): Frame => frameUV(p, alongU ? (a, c) => [a, c] : (a, c) => [c, a]);
+
+/** The frame of a harbour: `t` runs along the water edge and `w` from the land out to the water. */
+function frameQuay(p: Pen, fw: number, fh: number, side: number): Frame {
+  const alongU = side === 0 || side === 2;
+  const uv = (t: number, w: number): [number, number] => {
+    if (alongU) return [side === 0 ? w : fw - w, t];
+    return [t, side === 1 ? w : fh - w];
+  };
+  return frameUV(p, uv);
+}
+
+/** An airliner on the apron: fuselage along the runway, wings across it, tail fin and engines. */
+function airliner(p: Pen, F: Frame, a: number, c: number, s: number, body: Ramp = HULL): void {
+  const z = 1.6;
+  const h = Math.max(2, Math.round(2.3 * s));
+  const plan: Pt[] = [
+    F.pt(a - 0.06 * s, c - 0.33 * s, 1.5),
+    F.pt(a + 0.15 * s, c - 0.33 * s, 1.5),
+    F.pt(a + 0.15 * s, c + 0.33 * s, 1.5),
+    F.pt(a - 0.06 * s, c + 0.33 * s, 1.5),
+  ];
+  p.px.shadow(plan.map(([x, y]) => [x + 2, y + 1] as Pt), 0.3);
+  const tail = Math.max(2, Math.round(2.6 * s));
+  F.box(a - 0.36 * s, c - 0.05 * s, a + 0.36 * s, c + 0.05 * s, z, h, body, 'plain', [
+    { t0: 2, t1: 99, k0: h - 1, k1: h, c: PLANE_GLASS },
+  ]);
+  F.box(a + 0.34 * s, c - 0.035 * s, a + 0.4 * s, c + 0.035 * s, z, Math.max(1, h - 1), body, 'plain');
+  F.box(a + 0.19 * s, c - 0.03 * s, a + 0.27 * s, c + 0.03 * s, z + h - 1, 1, body, 'plain', [{ t0: 0, t1: 9, k0: 0, k1: 1, c: PLANE_GLASS }]);
+  F.box(a - 0.05 * s, c - 0.33 * s, a + 0.15 * s, c + 0.33 * s, z + 1, 1, WING_GREY, 'plain');
+  F.box(a - 0.37 * s, c - 0.012 * s, a - 0.25 * s, c + 0.012 * s, z + h, tail, body, 'plain');
+  F.box(a - 0.38 * s, c - 0.16 * s, a - 0.27 * s, c + 0.16 * s, z + h, 1, WING_GREY, 'plain');
+  for (const d of [-0.19, 0.19]) F.box(a - 0.02 * s, c + (d - 0.045) * s, a + 0.1 * s, c + (d + 0.045) * s, z + 1, 1, ramp('#a9aeb6'), 'plain');
+}
+
+/** The control tower: the shaft with its slits, the glazed cab, the roof and the aerial. */
+function controlTower(p: Pen, F: Frame, a: number, c: number, shaft: number): void {
+  const z = 1.5;
+  F.box(a - 0.15, c - 0.15, a + 0.15, c + 0.15, z, shaft, TOWER_WALL, 'plain', [
+    { t0: 2, t1: 3, k0: 4, k1: shaft - 2, c: shade(TOWER_WALL[1], 0.84) },
+  ]);
+  F.box(a - 0.22, c - 0.22, a + 0.22, c + 0.22, z + shaft, 4, ramp('#7fa3b8'), 'plain', [
+    { t0: 0, t1: 99, k0: 3, k1: 4, c: shade(GLASS_LIT, 1.15) },
+  ]);
+  F.box(a - 0.25, c - 0.25, a + 0.25, c + 0.25, z + shaft + 4, 2, ramp('#a9a49b'), 'plain');
+  const [u, v] = F.at(a, c);
+  p.antenna(u, v, z + shaft + 6, 5);
+}
+
+/**
+ * The airport, painted across the whole facility: the runway at the back with its markings, the apron
+ * in the middle, the terminal and the tower in front, the hangar and the cargo shed along the ends.
+ */
+function paintAirport(p: Pen, level: number, fw: number, fh: number): void {
+  const alongU = fw >= fh;
+  const F = frameAC(p, alongU);
+  const A = Math.max(fw, fh);
+  const C = Math.min(fw, fh);
+
+  // Three bands across the rectangle: the runway at the back, the buildings behind the apron and the
+  // apron itself along the front. The buildings go behind and never in front, because a building in
+  // front hides a couple of cells of whatever stands behind it, and the apron is the part of an
+  // airport that has to be seen: it is where the planes are.
+  const runC0 = 0.06;
+  const runC1 = runC0 + Math.max(0.55, Math.min(0.44 * C + 0.05, C * 0.36));
+  const termC0 = runC1 + 0.08;
+  const termC1 = termC0 + Math.min(0.62, C * 0.31);
+  const planeC = Math.min(C - 0.42, termC1 + 0.4);
+  const runMid = (runC0 + runC1) / 2;
+
+  // The concrete under everything: an airport is not built on the grass of its lots. The top face
+  // gets its own grain, or the kerb's checker would read as a pattern of tiles.
+  F.box(0.04, 0.04, A - 0.04, C - 0.04, 0, 1.4, APRON, 'plain');
+  F.quad(0.04, 0.04, A - 0.04, C - 0.04, 1.5, (x, y) => (noise(x, y, 9) > 0.62 ? APRON[0] : APRON[1]));
+
+  // The runway: asphalt with its grain, the edge lines, the centre dashes and the threshold bars. The
+  // lines are thin quads and not pixel lines, because a one-pixel line along a diagonal comes out
+  // dotted and a dotted runway reads as noise.
+  F.quad(0, runC0, A, runC1, 1.6, (x, y) => (noise(x, y, 5) > 0.74 ? TARMAC[0] : TARMAC[1]));
+  F.flat(0.04, runC0 + 0.05, A - 0.04, runC0 + 0.1, 1.7, STRIPE);
+  F.flat(0.04, runC1 - 0.1, A - 0.04, runC1 - 0.05, 1.7, STRIPE);
+  for (let a = 0.34; a < A - 0.6; a += 0.98) F.flat(a, runMid - 0.03, a + 0.52, runMid + 0.03, 1.7, STRIPE);
+  for (const a0 of [0.16, A - 0.3]) {
+    for (let k = 0; k < 2; k++) {
+      const c = runC0 + 0.16 + k * 0.22;
+      if (c < runC1 - 0.12) F.flat(a0, c, a0 + 0.14, c + 0.05, 1.7, STRIPE);
+    }
+  }
+
+  // The taxiway that leaves the runway and runs along the apron, with its yellow guide line.
+  F.flat(0.04, runC1 + 0.01, A - 0.04, runC1 + 0.05, 1.65, LINE_Y);
+  if (level >= 2) F.flat(A - 0.62, runC1, A - 0.56, planeC + 0.2, 1.66, LINE_Y);
+
+  // The terminal: a compact block with the red band of its fascia and the glass of the airside, and
+  // the jet bridges that run from it out to the planes.
+  const tA0 = 0.06 * A + 0.06;
+  const tA1 = tA0 + Math.min(0.42 * A, 2.1);
+  const th = level === 1 ? 9 : level === 2 ? 12 : 16;
+  const gates = level === 1 ? 1 : level === 2 ? 2 : 3;
+  const step = (tA1 - tA0) / (gates + 0.4);
+  F.box(tA0, termC0, tA1, termC1, 1.5, th, TOWER_WALL, 'plain', [
+    ...ribbonIn(2, 999, 2, 4, GLASS_LIT),
+    { t0: 0, t1: 999, k0: th - 3, k1: th - 2, c: hex('#c8392f') },
+    { t0: 0, t1: 999, k0: th - 2, k1: th - 1, c: shade(TOWER_WALL[1], 1.16) },
+    { t0: 0, t1: 999, k0: th - 1, k1: th, c: shade(TOWER_WALL[1], 0.82) },
+    { t0: Math.round(step * 0.6), t1: Math.round(step * 0.6) + 8, k0: 0, k1: 5, c: GLASS_LIT },
+  ]);
+  F.cornice(tA0, termC0, tA1, termC1, 1.5 + th, 1.5, TOWER_WALL);
+  for (let k = 0; k < gates; k++) {
+    const a = tA0 + step * (k + 0.7);
+    F.box(a - 0.05, termC1 - 0.02, a + 0.05, planeC - 0.16, 4.5, 2.4, STEEL, 'plain');
+    F.flat(a - 0.03, termC1, a + 0.03, planeC - 0.18, 1.66, LINE_Y);
+  }
+
+  // The hangar at the far end of the same band, its door to the apron, and the tower beside it.
+  const hA1 = A - 0.1;
+  const hA0 = hA1 - Math.min(0.34 * A, 1.15);
+  F.box(hA0, termC0, hA1, termC1, 1.5, 7, ramp('#e2dfd6'), 'plain', [
+    { t0: 4, t1: 999, k0: 0, k1: 6, c: GARAGE },
+    { t0: 2, t1: 4, k0: 0, k1: 7, c: hex('#c8392f') },
+    { t0: 0, t1: 999, k0: 6, k1: 7, c: hex('#c8392f') },
+  ]);
+  F.gable(hA0, termC0, hA1, termC1, 8.5, 3, ramp('#8f9aa2'));
+  controlTower(p, F, (tA1 + hA0) / 2, termC0 + 0.22, level === 1 ? 12 : level === 2 ? 19 : 26);
+
+  // The cargo shed and its containers, where the airport is big enough to have a cargo apron.
+  if (level === 3) {
+    const cA0 = (tA1 + hA0) / 2 + 0.5;
+    const cA1 = Math.min(hA0 - 0.12, cA0 + 1.1);
+    F.box(cA0, termC0 + 0.06, cA1, termC1, 1.5, 6, ramp('#d8d4c8'), 'plain', [
+      { t0: 0, t1: 999, k0: 3, k1: 5, c: GLASS },
+    ]);
+    for (let k = 0; k < 3; k++) {
+      const c = CARGO[k % 4];
+      F.box(cA0 + k * 0.3, termC1 + 0.06, cA0 + k * 0.3 + 0.24, termC1 + 0.22, 1.5, 3, [shade(c, 1.06), shade(c, LEFT), shade(c, RIGHT)], 'sheet');
+    }
+  }
+
+  // The planes on the apron, the biggest one in the middle, each on its own shadow.
+  const planes = level === 1 ? 1 : level === 2 ? 2 : 3;
+  const s = Math.min(1.5, 0.62 * C + 0.1);
+  for (let k = 0; k < planes; k++) {
+    const a = tA0 + step * (k + 0.7) + (level === 3 && k === 1 ? 0.25 : 0);
+    airliner(p, F, a, planeC, level === 3 && k === 1 ? s * 1.25 : s);
+  }
+
+  // The fuel depot in the apron the terminal does not use, with its two tanks and their kerb.
+  const fA = level === 3 ? A * 0.5 : A * 0.2;
+  const fC = Math.min(C - 0.5, termC1 + 0.34);
+  F.box(fA - 0.02, fC - 0.34, fA + 0.8, fC + 0.24, 1.5, 3, APRON, 'plain');
+  for (const d of [0.16, 0.52]) {
+    const [tu, tv] = F.at(fA + d, fC - 0.06);
+    p.silo(tu, tv, 0.2, 1.5, 5);
+  }
+
+  // The wind sock by the runway, on its mast.
+  const [sx, sy] = F.pt(A - 0.2, runC1 - 0.02, 1.5);
+  p.px.rect(Math.round(sx), Math.round(sy) - 8, 1, 8, LEG);
+  p.px.rect(Math.round(sx) + 1, Math.round(sy) - 8, 3, 1, hex('#e8702a'));
+  p.px.rect(Math.round(sx) + 1, Math.round(sy) - 7, 3, 1, CREAM);
+}
+
+/** A dockside crane: four legs, the tower, the cab and the boom reaching out over the water. */
+function docksideCrane(p: Pen, F: Frame, t: number, w: number, h: number, reach: number): void {
+  const z = 1.5;
+  for (const dt of [-0.15, 0.15]) {
+    for (const dw of [-0.14, 0.14]) {
+      F.box(t + dt - 0.03, w + dw - 0.03, t + dt + 0.03, w + dw + 0.03, z, 3, CRANE, 'plain');
+    }
+  }
+  F.box(t - 0.17, w - 0.03, t + 0.17, w + 0.03, z + 3, 2, CRANE, 'plain');
+  F.box(t - 0.1, w - 0.1, t + 0.1, w + 0.1, z + 5, h, CRANE, 'plain', [
+    { t0: 0, t1: 999, k0: h - 2, k1: h - 1, c: shade(CRANE[1], 0.72) },
+  ]);
+  F.box(t - 0.06, w - 0.06, t + 0.06, w + reach, z + 4 + h, 2, CRANE, 'plain');
+  F.box(t - 0.07, w - 0.26, t + 0.07, w - 0.12, z + 3 + h, 3, ramp('#c3cfd4'), 'plain', [
+    { t0: 0, t1: 9, k0: 1, k1: 3, c: GLASS },
+  ]);
+  // The hoist line and its hook, hanging over the water.
+  const [hx, hy] = F.pt(t, w + reach - 0.08, z + 4 + h);
+  p.px.line([Math.round(hx), Math.round(hy)], [Math.round(hx), Math.round(hy) + 6], LEG);
+  p.px.rect(Math.round(hx) - 1, Math.round(hy) + 6, 3, 1, DARK_IRON[1]);
+}
+
+/**
+ * The harbour, painted across the whole facility: the quay with its cope and its bollards, the crane
+ * and the containers on the water side, the terminal away from it, and the wooden jetty between them.
+ */
+function paintHarbor(p: Pen, level: number, fw: number, fh: number, side: number): void {
+  const alongU = side === 0 || side === 2;
+  const F = frameQuay(p, fw, fh, side % 4);
+  const T = alongU ? fh : fw;
+  const W = alongU ? fw : fh;
+
+  // The quay: a concrete platform over the edge of the water, with its darker cope and its bollards.
+  F.box(0.04, 0.04, T - 0.04, W - 0.04, 0, 1.4, QUAY, 'plain');
+  F.quad(0.04, 0.04, T - 0.04, W - 0.04, 1.5, (x, y) => (noise(x, y, 11) > 0.66 ? QUAY[0] : QUAY[1]));
+  F.flat(0.04, W - 0.22, T - 0.04, W - 0.04, 1.55, shade(QUAY[1], 0.84));
+  F.line(0.05, W - 0.22, T - 0.05, W - 0.22, 1.56, STRIPE);
+  for (let t = 0.16; t < T - 0.1; t += 0.46) F.box(t - 0.035, W - 0.16, t + 0.035, W - 0.09, 1.5, 2, DARK_IRON, 'plain');
+
+  // The wooden jetty along the water edge, on its pilings, and the fenders under the cope.
+  F.box(T * 0.2, W - 0.74, T * 0.66, W - 0.03, 1.5, 1, WOOD_DECK, 'plain');
+  for (let t = T * 0.24; t < T * 0.64; t += 0.18) {
+    const [u, v] = F.at(t, W - 0.05);
+    const [x, y] = p.P(u, v, 1);
+    p.px.rect(Math.round(x), Math.round(y) + 1, 1, 5, WOOD_PILING[1]);
+  }
+
+  // The crane on the water side: small for a jetty, a container crane once it is a harbour.
+  docksideCrane(p, F, T * 0.72, W - 0.46, level === 1 ? 8 : level === 2 ? 10 : 13, level === 1 ? 0.5 : 0.85);
+  if (level === 3) docksideCrane(p, F, T * 0.36, W - 0.46, 11, 0.7);
+
+  // The containers, in rows along the quay between the terminal and the jetty: the long side along
+  // the water, which is how they are stacked in a port, and never on top of the buildings.
+  const depth = Math.min(0.52, W * 0.3);
+  const rows = level === 1 ? 1 : level === 2 ? 2 : W > 3.2 ? 3 : 2;
+  const stacks = Math.max(1, Math.floor((T - 0.25) / 0.46));
+  for (let r = 0; r < rows; r++) {
+    const w = 0.1 + depth + 0.14 + r * 0.24;
+    for (let k = 0; k < stacks; k++) {
+      const t = 0.12 + k * 0.46;
+      const c = CARGO[(k + r * 3) % 4];
+      F.box(t, w, t + 0.36, w + 0.16, 1.5, 3.5, [shade(c, 1.06), shade(c, LEFT), shade(c, RIGHT)], 'sheet');
+      if (level === 3 && r === 0) F.box(t + 0.02, w + 0.01, t + 0.34, w + 0.14, 5, 3.5, [shade(c, 1.1), shade(c, LEFT), shade(c, RIGHT)], 'sheet');
+    }
+  }
+
+  // The terminal, away from the water: a shed for a jetty, a cruise terminal for a harbour.
+  const len = T * (level === 1 ? 0.42 : level === 2 ? 0.52 : 0.64);
+  const th = level === 1 ? 6 : level === 2 ? 9 : 12;
+  const wall = level === 3 ? ramp('#e8e4dc') : ramp('#f1e3c6');
+  F.box(0.1 * T, 0.08, 0.1 * T + len, 0.08 + depth, 1.5, th, wall, 'plain', [
+    ...ribbonIn(3, 999, 3, 2, GLASS),
+    { t0: 0, t1: 999, k0: th - 2, k1: th - 1, c: shade(wall[1], 1.14) },
+  ]);
+  F.gable(0.1 * T, 0.08, 0.1 * T + len, 0.08 + depth, 1.5 + th, 3, level === 3 ? ramp('#c8392f') : ramp('#2f63a6'));
+  if (level === 3) {
+    const [fu, fv] = F.at(0.1 * T + len - 0.3, 0.08 + depth * 0.5);
+    p.flag(fu, fv, 1.5 + th + 3, 8);
+  }
+
+  // The lamps of the quay, two of them, so the platform is lit at night.
+  for (const t of [0.14 * T, 0.78 * T]) {
+    const [lu, lv] = F.at(t, W - 0.62);
+    lampPost(p, lu, lv);
+  }
+}
+
+const HUB_MAX_Z: Record<HubKind, number> = { airport: 40, harbor: 30 };
+
+/** The canvas of a facility `fw`×`fh` cells big, with the pen anchored at its top corner. */
+function penHub(kind: HubKind, fw: number, fh: number): Pen {
+  const maxZ = HUB_MAX_Z[kind];
+  return new Pen(new Pixels(16 * (fw + fh) + 8, maxZ + 8 * (fw + fh) + 8), 16 * fh + 4, maxZ + 2);
+}
+
+/** Where a piece sits inside the rectangle of its facility, in view cells. */
+export interface HubView {
+  fw: number;
+  fh: number;
+  i: number;
+  j: number;
+  pw: number;
+  ph: number;
+}
+
+/** The whole facility on one canvas: what the board shows and what the tests compare against. */
+export function paintHub(kind: HubKind, level: number, fw: number, fh: number, side = 0): { px: Pixels; ax: number; ay: number } {
+  const p = penHub(kind, fw, fh);
+  if (kind === 'airport') paintAirport(p, level, fw, fh);
+  else paintHarbor(p, level, fw, fh, side);
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+/**
+ * One piece of a facility is a **crop** of the painting of the whole thing, never a painting of its
+ * own. Two pieces therefore cannot disagree along the edge they share: the seam does not exist, the
+ * same pixels come from the same drawing.
+ */
+export function paintHubPiece(kind: HubKind, level: number, view: HubView, side = 0): { px: Pixels; ax: number; ay: number } {
+  const whole = paintHub(kind, level, view.fw, view.fh, side);
+  const maxZ = HUB_MAX_Z[kind];
+  const px = new Pixels(16 * (view.pw + view.ph) + 8, maxZ + 8 * (view.pw + view.ph) + 8);
+  const ox = 16 * (view.fh - view.ph) + 16 * (view.i - view.j);
+  const oy = 8 * (view.i + view.j);
+  for (let y = 0; y < px.h; y++) {
+    for (let x = 0; x < px.w; x++) {
+      const from = ((oy + y) * whole.px.w + ox + x) * 4;
+      const to = (y * px.w + x) * 4;
+      for (let k = 0; k < 4; k++) px.data[to + k] = whole.px.data[from + k] ?? 0;
+    }
+  }
+  return { px, ax: 16 * view.ph + 4, ay: maxZ + 2 };
+}
+
+const hubCache = new Map<string, Sprite>();
+
+/** The sprite of one piece of an airport or a harbour, cut out of the painting of the whole facility. */
+export function hubPixelSprite(kind: HubKind, level: number, view: HubView, side = 0): Sprite {
+  const key = `${kind}|${level}|${view.fw}x${view.fh}|${view.i},${view.j}|${view.pw}x${view.ph}|${side}`;
+  let sprite = hubCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintHubPiece(kind, level, view, side));
+    hubCache.set(key, sprite);
   }
   return sprite;
 }
