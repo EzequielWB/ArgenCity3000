@@ -3,7 +3,7 @@ import { GOVERNMENTS, GOVERNMENT_KINDS, TICKS_PER_MONTH } from '../src/config';
 import { deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { DROUGHT, MIRACLE, incomeFactor } from '../src/sim/effects';
-import { FAVOR, computeFavor, judgementChance, moodOf, stepFavor } from '../src/sim/favor';
+import { FAVOR, computeFavor, judgementChance, moodOf, stepFavor, wrathApproval, wrathFires, wrathSick } from '../src/sim/favor';
 import { PLAN, newPlan, planMonthsLeft, planPremium } from '../src/sim/plan';
 import { stepApproval } from '../src/sim/politics';
 import { Simulation, newSimState } from '../src/sim/simulation';
@@ -83,22 +83,48 @@ describe('the new forms of government', () => {
 });
 
 describe('the favor of God', () => {
-  it('starts at 60 under a theocracy, and moves at most 3 points a month towards what the city deserves', () => {
-    expect(newSimState(1, 'teocracia').favor).toBe(FAVOR.start);
-    expect(stepFavor(60, 100)).toBe(63);
-    expect(stepFavor(60, 0)).toBe(57);
+  it('starts at 62 under a theocracy, and moves at most 4 points a month towards what the city deserves', () => {
+    expect(newSimState(1, 'teocracia').favor).toBe(62);
+    expect(FAVOR.start).toBe(62);
+    expect(stepFavor(60, 100)).toBe(64);
+    expect(stepFavor(60, 0)).toBe(56);
     expect(stepFavor(60, 61)).toBe(61);
     expect(stepFavor(99, 100)).toBe(100);
   });
 
-  it('is angry under 35, pleased over 66, and sends nothing in between', () => {
+  it('is angry under 35, pleased over 65, and sends nothing in between', () => {
     expect(moodOf(34)).toBe('wrath');
     expect(moodOf(35)).toBe('calm');
-    expect(moodOf(66)).toBe('calm');
-    expect(moodOf(67)).toBe('grace');
+    expect(moodOf(65)).toBe('calm');
+    expect(moodOf(66)).toBe('grace');
     expect(judgementChance(50)).toBe(0);
     expect(judgementChance(0)).toBeGreaterThan(judgementChance(30));
     expect(judgementChance(100)).toBeGreaterThan(judgementChance(80));
+  });
+
+  it('reaches the top of the scale: the virtues add up to what the base is missing', () => {
+    expect(FAVOR.charity + FAVOR.lowTaxes + FAVOR.gardens).toBe(100 - FAVOR.base);
+    const { world } = town('teocracia');
+    for (let i = 0; i < world.tiles.length; i++) (world.pollution[i] = 0), (world.crime[i] = 0), (world.health[i] = 100);
+    const perfect = { taxes: { R: 0, C: 0, I: 0 }, crisis: false, abandoned: 0, grief: 0, pop: 5000, green: 120 };
+    expect(computeFavor(world, perfect).target).toBe(100);
+    for (let i = 0; i < world.tiles.length; i++) (world.pollution[i] = 100), (world.crime[i] = 100), (world.health[i] = 0);
+    const damned = { taxes: { R: 20, C: 20, I: 20 }, crisis: true, abandoned: 999, grief: 100_000, pop: 5000, green: 0 };
+    expect(computeFavor(world, damned).target).toBe(0);
+  });
+
+  it('counts more smoke and more usury before it makes Him angry', () => {
+    expect(FAVOR.tolerated).toBe(12);
+    expect(FAVOR.usury).toBe(14);
+  });
+
+  it('caps each catastrophe, because an angry God is not the end of the city', () => {
+    expect(wrathFires(0)).toBe(2);
+    expect(wrathFires(1)).toBe(6);
+    expect(wrathSick(0)).toBe(4);
+    expect(wrathSick(1)).toBe(14);
+    expect(wrathApproval(0)).toBe(4);
+    expect(wrathApproval(1)).toBe(10);
   });
 
   it('goes down with smoke, crime, usury and a cash in the red, and up with kept plazas', () => {
@@ -135,14 +161,14 @@ describe('the favor of God', () => {
     expect(sim.state.favor).toBe(5);
   });
 
-  it('makes the drought a third poorer and the miracle a fifth richer', () => {
+  it('makes the drought a fifth poorer and the miracle a fifth richer', () => {
     const { world } = town('teocracia');
     const usual = monthlyBudget(world, 7).income;
     expect(usual).toBeGreaterThan(0);
-    expect(incomeFactor({ [DROUGHT]: 2 })).toBe(0.7);
+    expect(incomeFactor({ [DROUGHT]: 2 })).toBe(0.8);
     expect(incomeFactor({ [MIRACLE]: 2 })).toBe(1.2);
     expect(incomeFactor({})).toBe(1);
-    expect(monthlyBudget(world, 7, undefined, null, undefined, 100, 1, 100, 'democracia', 0.7).income).toBeLessThan(usual);
+    expect(monthlyBudget(world, 7, undefined, null, undefined, 100, 1, 100, 'democracia', 0.8).income).toBeLessThan(usual);
     expect(monthlyBudget(world, 7, undefined, null, undefined, 100, 1, 100, 'democracia', 1.2).income).toBeGreaterThan(usual);
   });
 });

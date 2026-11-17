@@ -37,7 +37,7 @@ import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDe
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
 import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, misaHeadline, pollHeadline } from './mayor';
-import { FAVOR, computeFavor, judgementChance, moodOf, stepFavor, type FavorReport } from './favor';
+import { FAVOR, computeFavor, judgementChance, moodOf, stepFavor, wrathApproval, wrathFires, wrathSick, type FavorReport } from './favor';
 import { PLAN, newPlan, planPremium, type FivePlan } from './plan';
 import { advanceMilestones, nextMilestone, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
@@ -590,19 +590,19 @@ export class Simulation {
     const kind = this.rng.pick(['rayos', 'plaga', 'sequia', 'revuelta'] as const);
     const city = this.cityName;
     if (kind === 'rayos') {
-      const hit = this.builtAround(centre, 5).slice(0, 3 + Math.ceil(severity * 5));
+      const hit = this.builtAround(centre, 5).slice(0, wrathFires(severity));
       for (const i of hit) this.ignite(i);
       this.publish(`Cayeron rayos sobre ${city}: hay incendios en un barrio y dicen que es el castigo del cielo`, true);
     } else if (kind === 'plaga') {
-      const sick = this.builtAround(centre, 7).filter((i) => zoneOf(this.world.tiles[i]) !== 'I' && !this.world.abandoned[i]).slice(0, 6 + Math.round(severity * 14));
+      const sick = this.builtAround(centre, 7).filter((i) => zoneOf(this.world.tiles[i]) !== 'I' && !this.world.abandoned[i]).slice(0, wrathSick(severity));
       for (const i of sick) this.setAbandoned(i, true);
       this.recomputeDemand();
       this.publish(`Plaga de langostas: ${sick.length} edificios de ${city} quedaron vacíos y la gente reza en la calle`, true);
     } else if (kind === 'sequia') {
       this.effect(DROUGHT, 3);
-      this.publish(`Sequía en ${city}: la plata del mes se seca durante tres meses (los ingresos caen un 30 %)`, true);
+      this.publish(`Sequía en ${city}: la plata del mes se seca durante tres meses (los ingresos caen un 20 %)`, true);
     } else {
-      this.nudgeApproval(-(6 + Math.round(severity * 8)));
+      this.nudgeApproval(-wrathApproval(severity));
       this.publish(`Revuelta de los fieles en ${city}: dicen que el Intendente le dio la espalda a Dios`, true);
     }
     s.favor = Math.min(100, s.favor + 3); // the wrath is spent: it does not fall without end

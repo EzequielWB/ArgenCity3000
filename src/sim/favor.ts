@@ -4,26 +4,34 @@
  * houses and usury anger Him; kept plazas, health posts and a clean cash please Him. Low, He sends
  * catastrophes; high, miracles (the simulation rolls them, see `Simulation.judgement`).
  */
-import { CAPACITY, DEFAULT_TAX, type ZoneTaxes } from '../config';
+import { CAPACITY, DEFAULT_TAX, MAX_FUNDING, type ZoneTaxes } from '../config';
 import { TILE, type World } from '../world/world';
 import { averageTax } from './demand';
 import { demolitionPoints, type ApprovalFactor } from './politics';
 
 export const FAVOR = {
   /** Favor of a brand-new city. */
-  start: 60,
+  start: 62,
   /** Most points it moves in a month. */
-  step: 3,
+  step: 4,
   /** What a city with nothing to praise or to blame deserves. */
   base: 55,
   /** Below this He is angry: a catastrophe may fall each month. */
   wrath: 35,
   /** Above this He is pleased: a miracle may come each month. */
-  grace: 66,
+  grace: 65,
   /** Smoke and crime (0 to 100) that He tolerates, like the neighbours. */
-  tolerated: 10,
+  tolerated: 12,
   /** Average tax rate from which He calls it usury. */
-  usury: 12,
+  usury: 14,
+  /**
+   * What the three virtues add together at their best. They have to add up to `100 - base`, or the
+   * top of the scale is a stretch of needle nobody can reach; a test holds the sum, so moving one
+   * means moving the others with it.
+   */
+  charity: 15,
+  lowTaxes: 10,
+  gardens: 20,
 } as const;
 
 export interface FavorInputs {
@@ -72,14 +80,16 @@ export function computeFavor(w: World, inp: FavorInputs): FavorReport {
     raw.push(['Delito', -Math.min(12, Math.max(0, avg(crime) - FAVOR.tolerated) * 0.25)]);
     // A village is not asked for a hospital: the charity expected grows with the city.
     const expects = Math.min(1, inp.pop / 1000);
-    raw.push(['Obras de caridad', expects * clamp((avg(health) - 35) / 65, -1, 1) * 8]);
+    raw.push(['Obras de caridad', expects * clamp((avg(health) - 35) / 65, -1, 1) * FAVOR.charity]);
   }
   if (built > 0) raw.push(['Edificios abandonados', -Math.min(10, (70 * inp.abandoned) / built)]);
   const tax = averageTax(inp.taxes);
   raw.push(['Usura', tax > FAVOR.usury ? -Math.min(12, (tax - FAVOR.usury) * 2) : 0]);
-  raw.push(['Impuestos bajos', tax <= DEFAULT_TAX ? Math.min(6, DEFAULT_TAX - tax) : 0]);
+  // No tax at all is worth every point; the ordinary rate is worth none.
+  raw.push(['Impuestos bajos', FAVOR.lowTaxes * clamp(1 - tax / DEFAULT_TAX, 0, 1)]);
   raw.push(['Demoliciones', -Math.min(15, demolitionPoints(inp.grief, inp.pop) * 1.5)]);
-  raw.push(['Jardines y plazas', (10 * clamp(inp.green, 0, 120)) / 100]);
+  // The green budget at the top of its slider is worth every point, the same way.
+  raw.push(['Jardines y plazas', (FAVOR.gardens * clamp(inp.green, 0, MAX_FUNDING)) / MAX_FUNDING]);
   raw.push(['Caja en rojo', inp.crisis ? -10 : 0]);
   const factors = raw.map(([label, v]) => ({ label, points: Math.round(v) })).filter((f) => f.points !== 0);
   factors.sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
@@ -105,3 +115,12 @@ export function judgementChance(favor: number): number {
   if (mood === 'grace') return 0.25 + 0.25 * ((favor - FAVOR.grace) / (100 - FAVOR.grace));
   return 0;
 }
+
+/**
+ * What a punishment takes at `severity` (0 to 1, how far below `wrath` He is): the lots a strike
+ * sets on fire, the buildings a plague empties, and the approval a revolt takes. Pure, so the
+ * numbers can be read and held down by a test instead of hiding inside the simulation.
+ */
+export const wrathFires = (severity: number): number => 2 + Math.ceil(severity * 4);
+export const wrathSick = (severity: number): number => 4 + Math.round(severity * 10);
+export const wrathApproval = (severity: number): number => 4 + Math.round(severity * 6);

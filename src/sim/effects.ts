@@ -15,7 +15,7 @@ export const INDUSTRY_FROZEN = 'industryFrozen';
 export const INDUSTRY_BOOM = 'industryBoom';
 /** The coast earns half again (see `monthlyBudget`). */
 export const COAST_BOOST = 'coastBoost';
-/** A drought, a plague of locusts: everything the city earns is a third less (see `incomeFactor`). */
+/** A drought, a plague of locusts: everything the city earns is a fifth less (see `incomeFactor`). */
 export const DROUGHT = 'sequia';
 /** A miracle of the faithful: everything the city earns is a fifth more. */
 export const MIRACLE = 'milagro';
@@ -38,7 +38,7 @@ export const EFFECT_FACTOR: Record<string, number> = {
   [INDUSTRY_BOOM]: 1.4,
   [COAST_BOOST]: 1.5,
   [COAST_WORN]: 0.4,
-  [DROUGHT]: 0.7,
+  [DROUGHT]: 0.8,
   [MIRACLE]: 1.2,
   [FIESTA]: 1.25,
 };
