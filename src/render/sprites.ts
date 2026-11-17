@@ -1,5 +1,5 @@
 import { PAL, shade } from './color';
-import { BUS_COLORS, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
+import { BUS_COLORS, type CoastKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
 import type { ZoneKind } from '../world/world';
 
 /**
@@ -1439,4 +1439,291 @@ function routeSignSprite(dvx: number, dvy: number): Sprite {
 /** The route sign for a view direction (-1, 0, 1 on each axis) pointing from the cell to its inner edge. */
 export function routeSignSpriteFor(dvx: number, dvy: number): Sprite {
   return cached(`rp:${dvx},${dvy}`, () => routeSignSprite(dvx, dvy));
+}
+
+// ---------------------------------------------------------------- unique buildings
+
+/**
+ * A footprint painter that works along the long side of the monument, whatever side the camera is on:
+ * `norm` takes lengths along the monument (a) and across it (c) and returns view-space u0, v0, u1, v1.
+ */
+function longPainter(vw: number, vh: number, height: number) {
+  const p = rectPainter(vw, vh, height);
+  const alongU = vw >= vh;
+  const L = Math.max(vw, vh);
+  const W = Math.min(vw, vh);
+  const norm = (a0: number, c0: number, a1: number, c1: number): [number, number, number, number] => {
+    const [u0, v0] = alongU ? [a0, c0] : [c0, a0];
+    const [u1, v1] = alongU ? [a1, c1] : [c1, a1];
+    return [Math.min(u0, u1), Math.min(v0, v1), Math.max(u0, u1), Math.max(v0, v1)];
+  };
+  const box = (a0: number, c0: number, a1: number, c1: number, z0: number, h: number, color: string, outline = true) => {
+    const [u0, v0, u1, v1] = norm(a0, c0, a1, c1);
+    p.box(u0, v0, u1, v1, z0, h, color, outline);
+  };
+  /** A point given along the monument (a) and across it (c), in view coordinates: for posts and trees. */
+  const uv = (a: number, c: number): [number, number] => (alongU ? [a, c] : [c, a]);
+  return { p, alongU, L, W, norm, uv, box };
+}
+
+/** The obelisco (2×2): a stone esplanade and a tall shaft of light stone with a pointed cap. */
+function obeliscoArt(vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, 104);
+  const cx = vw / 2;
+  const cy = vh / 2;
+  // The esplanade of the plaza it stands in: two stone steps all round.
+  p.box(0.04, 0.04, vw - 0.04, vh - 0.04, 0, 1.4, '#cfc8bb', false);
+  p.box(0.42, 0.42, vw - 0.42, vh - 0.42, 1.4, 2.4, '#b9b2a4');
+  // The shaft: seven courses that narrow as they climb, so it reads as the real taper.
+  let z = 3.8;
+  const courses = 7;
+  for (let k = 0; k < courses; k++) {
+    const half = 0.36 - k * 0.026;
+    p.box(cx - half, cy - half, cx + half, cy + half, z, 11, k % 2 ? '#f4f0e6' : '#eceae2', true);
+    z += 11;
+  }
+  // A band of small windows near the top, and the pointed cap.
+  p.box(cx - 0.2, cy - 0.2, cx + 0.2, cy + 0.2, z - 9, 5, '#5a5560', false);
+  p.hipRoof(cx - 0.19, cy - 0.19, cx + 0.19, cy + 0.19, z, 9, '#d9d4cc');
+  // Lamps at the four corners of the esplanade.
+  for (const [u, v] of [
+    [0.3, 0.3],
+    [vw - 0.3, 0.3],
+    [0.3, vh - 0.3],
+    [vw - 0.3, vh - 0.3],
+  ]) {
+    p.post(u, v, 13, '#4a4440');
+    const [x, y] = p.P(u, v, 13);
+    p.g.fillStyle = '#f6d86a';
+    p.g.fillRect(Math.round(x) - 2, y - 1, 3, 2);
+  }
+  return done(p);
+}
+
+/** El Calvario (3×6): the stone stair of Tandil climbing a hill, three crosses on the summit. */
+function calvarioArt(vw: number, vh: number): Sprite {
+  const { p, L, W, uv, box } = longPainter(vw, vh, 72);
+  // The hill: a green slope, so the monument sits on grass and not on a slab.
+  box(0.02, 0.02, L - 0.02, W - 0.02, 0, 2, '#6f9a52', false);
+  // Five terraces cut into the slope, each one shorter and higher than the last: the summit is at
+  // the far end of the long side, the way the real calvario climbs.
+  const steps = 5;
+  const slice = (L - 1.9) / steps;
+  const stepH = 5;
+  for (let k = 0; k < steps; k++) {
+    const a0 = 0.2 + k * slice;
+    const a1 = L - 0.25;
+    const c0 = 0.22 + k * 0.05;
+    const c1 = W - 0.22 - k * 0.05;
+    box(a0, c0, a1, c1, 0, 2 + (k + 1) * stepH, k % 2 ? '#b3aca0' : '#c2bbb0');
+  }
+  // The stair itself, up the front face, in light stone, one flight per terrace.
+  for (let k = 0; k < steps; k++) {
+    const a0 = 0.2 + k * slice;
+    box(a0, W - 0.62, a0 + slice + 0.06, W - 0.24, 0, 3 + (k + 1) * stepH, '#e8e4dc', false);
+    // Two rails of the stair, a shade darker, so the flights read from above.
+    box(a0, W - 0.68, a0 + slice + 0.06, W - 0.62, 0, 4 + (k + 1) * stepH, '#c9c2b4', false);
+  }
+  // The three crosses on the summit: the tall one in the middle, two shorter at its sides.
+  const topZ = 2 + steps * stepH;
+  const summit = L - 0.75;
+  const cross = (a: number, c: number, h: number, arm: number) => {
+    const [u, v] = uv(a, c);
+    p.post(u, v, topZ + h, '#6b4a2e');
+    const [x, y] = p.P(u, v, topZ + h * 0.7);
+    p.g.fillStyle = '#6b4a2e';
+    p.g.fillRect(Math.round(x) - Math.round(arm * 22), Math.round(y), Math.round(arm * 45), 2);
+  };
+  cross(summit, W / 2, 24, 0.2);
+  cross(summit - 0.62, W / 2 - 0.08, 16, 0.15);
+  cross(summit - 0.62, W / 2 + 0.08, 16, 0.15);
+  // A few trees around the foot of the hill.
+  for (const [a, c] of [
+    [0.35, W - 0.7],
+    [0.35, 0.7],
+    [L - 0.45, W - 0.55],
+  ]) {
+    const [u, v] = uv(a, c);
+    p.tree(u, v, 0, 0.8);
+  }
+  return done(p);
+}
+
+/** The Puente Transbordador (2×6): two stone piers, two towers and the deck with its hanging carriage. */
+function puenteArt(vw: number, vh: number): Sprite {
+  const { p, L, W, alongU, box } = longPainter(vw, vh, 56);
+  const zDeck = 9;
+  // The piers, at both ends of the span, going down into the water.
+  box(0, 0, 0.55, W, -3, 12, '#8f8a7e');
+  box(L - 0.55, 0, L, W, -3, 12, '#8f8a7e');
+  // The deck: a slab along the span with railings on both sides.
+  box(0.3, 0.28, L - 0.3, W - 0.28, zDeck, 1.6, '#cfc8bb');
+  for (let a = 0.5; a < L - 0.4; a += 0.42) {
+    box(a, 0.26, a + 0.06, 0.34, zDeck + 1.6, 3, '#efe6d8', false);
+    box(a, W - 0.34, a + 0.06, W - 0.26, zDeck + 1.6, 3, '#efe6d8', false);
+  }
+  // The two towers, with their cross beams and the cables down to the deck.
+  for (const a of [1.1, L - 1.1]) {
+    for (const c of [0.34, W - 0.34]) box(a - 0.13, c - 0.12, a + 0.13, c + 0.12, 1.5, 30, '#a8a196');
+    box(a - 0.16, 0.22, a + 0.16, W - 0.22, 28, 3.4, '#8f8a7e');
+    const top = 31.4;
+    const g = p.g;
+    for (const c of [0.34, W - 0.34]) {
+      const [tx, ty] = p.P(a, c, top);
+      for (const off of [-1, 1]) {
+        const [bx, by] = p.P(a + off * 0.9, c, zDeck + 1.6);
+        g.strokeStyle = '#4a4440';
+        g.lineWidth = 0.8;
+        g.beginPath();
+        g.moveTo(tx, ty);
+        g.lineTo(bx, by);
+        g.stroke();
+      }
+    }
+  }
+  // The hanging carriage at mid span: the transbordador itself.
+  const mid = L / 2;
+  box(mid - 0.28, W / 2 - 0.24, mid + 0.28, W / 2 + 0.24, zDeck - 5.5, 4.6, '#c8392f');
+  const g = p.g;
+  g.strokeStyle = '#4a4440';
+  g.lineWidth = 0.9;
+  for (const off of [-0.22, 0.22]) {
+    const [ax, ay] = p.P(mid + (alongU ? off : 0), W / 2 + (alongU ? 0 : off), zDeck);
+    const [bx, by] = p.P(mid + (alongU ? off : 0), W / 2 + (alongU ? 0 : off), zDeck - 1.4);
+    g.beginPath();
+    g.moveTo(ax, ay);
+    g.lineTo(bx, by);
+    g.stroke();
+  }
+  return done(p);
+}
+
+/** The Teatro Colón (2×2): the flight of steps, the six columns, the pediment and the dome. */
+function teatroArt(vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, 78);
+  const cx = vw / 2;
+  const cy = vh / 2;
+  const g = p.g;
+  // The stone apron, with the red carpet up the middle of the front.
+  p.box(0.03, 0.03, vw - 0.03, vh - 0.03, 0, 1.6, '#c9c2b4', false);
+  p.box(0.4, 0.4, vw - 0.4, vh - 0.4, 1.6, 2.6, '#b9b2a4');
+  p.box(cx - 0.12, vh - 0.42, cx + 0.12, vh - 0.05, 0, 3.2, '#7a2f3a', false);
+  // The house: tall walls, two rows of windows and the cornice.
+  p.box(0.5, 0.5, vw - 0.5, vh - 0.5, 4.2, 21, '#f1e3c6', true);
+  p.windows(0.5, 0.5, vw - 0.5, vh - 0.5, 6, 24, 6, PAL.glassDark, 4, 3.4);
+  p.box(0.42, 0.42, vw - 0.42, vh - 0.42, 25.2, 1.8, '#e8e4dc');
+  // Six columns standing proud of the front wall, with their capitals.
+  for (let k = 0; k < 6; k++) {
+    const u = 0.62 + ((vw - 1.24) * (k + 0.5)) / 6;
+    p.box(u - 0.05, vh - 0.5, u + 0.05, vh - 0.4, 4.2, 21, '#fbf8f0', false);
+    p.box(u - 0.07, vh - 0.52, u + 0.07, vh - 0.38, 25.2, 1.4, '#f4f0e6', false);
+  }
+  // The pediment over the columns and the entablature under it.
+  const tri: Pt[] = [p.P(0.44, vh - 0.46, 27), p.P(vw - 0.44, vh - 0.46, 27), p.P(cx, vh - 0.46, 34)];
+  p.poly(tri, '#e8e4dc', '#8f8a7e');
+  const triBack: Pt[] = [p.P(0.44, vh - 0.46, 27), p.P(0.44, vh - 0.5, 27), p.P(cx, vh - 0.5, 34)];
+  p.poly(triBack, '#d9d4cc');
+  // The dome behind the pediment: drum, tiled cap and the golden tip.
+  p.cylinder(cx, cy - 0.3, 0.36, 25, 6, '#8a9a86');
+  p.hipRoof(cx - 0.3, cy - 0.6, cx + 0.3, cy, 31, 9, '#7d8f79');
+  const [tx, ty] = p.P(cx, cy - 0.3, 40);
+  g.fillStyle = '#e0a526';
+  g.fillRect(Math.round(tx), Math.round(ty), 2, 7);
+  g.beginPath();
+  g.arc(tx + 1, ty - 1, 2.6, 0, Math.PI * 2);
+  g.fillStyle = '#ffd84a';
+  g.fill();
+  // The marquee over the entrance, with its lights.
+  p.awning(vh - 0.44, 0.72, vw - 0.72, 7.6, '#7a2f3a', '#f4f0e6', 6);
+  for (const u of [0.7, 1.0, vw - 1.0, vw - 0.7]) {
+    const [x, y] = p.P(u, vh - 0.36, 8.8);
+    g.fillStyle = '#ffd84a';
+    g.fillRect(Math.round(x), Math.round(y), 2, 2);
+  }
+  return done(p);
+}
+
+/** The stadium (4×4): the bowl of stands, the pitch, the four floodlights and the crowd. */
+function estadioArt(vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, 50);
+  const g = p.g;
+  const [cx, cy] = [vw / 2, vh / 2];
+  const [gx, gy] = p.P(cx, cy, 0);
+  // The apron of the ground, then three rising tiers of stands drawn as rings.
+  p.box(0.03, 0.03, vw - 0.03, vh - 0.03, 0, 1.2, '#a9a8ae', false);
+  const rings: [number, number, string][] = [
+    [0.94, 5, '#9a9ba0'],
+    [0.78, 5, '#8a8b90'],
+    [0.62, 4, '#7b7c82'],
+  ];
+  let z = 1.2;
+  for (const [span, h, color] of rings) {
+    g.beginPath();
+    g.ellipse(gx, gy - z, span * 10.5, span * 5.3, 0, 0, Math.PI * 2);
+    g.fillStyle = color;
+    g.fill();
+    g.beginPath();
+    g.ellipse(gx, gy - z - h, span * 10.5, span * 5.3, 0, 0, Math.PI * 2);
+    g.fillStyle = shade(color, 1.16);
+    g.fill();
+    z += h;
+  }
+  // The pitch, with its lines.
+  g.beginPath();
+  g.ellipse(gx, gy - z, 22, 11, 0, 0, Math.PI * 2);
+  g.fillStyle = '#3f8f4a';
+  g.fill();
+  g.strokeStyle = 'rgba(244,240,230,0.8)';
+  g.lineWidth = 0.8;
+  g.stroke();
+  g.beginPath();
+  g.ellipse(gx, gy - z, 5.6, 3.6, 0, 0, Math.PI * 2);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(gx, gy - z - 11);
+  g.lineTo(gx, gy - z + 11);
+  g.stroke();
+  // The crowd: flecks of colour over the top tier.
+  const flecks = ['#e0a526', '#c8392f', '#f4f0e6', '#6fb7e0'];
+  for (let k = 0; k < 90; k++) {
+    const angle = (k / 90) * Math.PI * 2 + (k % 7) * 0.11;
+    const jitter = 0.94 + ((k * 37) % 13) / 100;
+    const x = gx + Math.cos(angle) * 40 * jitter;
+    const y = gy - z - 1 + Math.sin(angle) * 20 * jitter;
+    g.fillStyle = flecks[k % flecks.length];
+    g.fillRect(Math.round(x), Math.round(y), 1, 1);
+  }
+  // The four floodlight masts.
+  for (const [a, c] of [
+    [0.35, 0.35],
+    [vw - 0.35, 0.35],
+    [0.35, vh - 0.35],
+    [vw - 0.35, vh - 0.35],
+  ]) {
+    p.post(a, c, 34, '#4a4440');
+    const [x, y] = p.P(a, c, 34);
+    g.fillStyle = '#ffe08a';
+    g.fillRect(Math.round(x) - 3, Math.round(y) - 1, 7, 2);
+    g.fillStyle = 'rgba(255,224,138,0.28)';
+    g.fillRect(Math.round(x) - 5, Math.round(y) + 1, 11, 3);
+  }
+  return done(p);
+}
+
+/** The sprite of a unique building, on a footprint of `vw`×`vh` lots as the camera sees it. */
+export function uniqueSprite(kind: UniqueKind, vw: number, vh: number): Sprite {
+  return cached(`unique:${kind}:${vw}x${vh}`, () => {
+    switch (kind) {
+      case 'obelisco':
+        return obeliscoArt(vw, vh);
+      case 'calvario':
+        return calvarioArt(vw, vh);
+      case 'puente':
+        return puenteArt(vw, vh);
+      case 'teatro':
+        return teatroArt(vw, vh);
+      case 'estadio':
+        return estadioArt(vw, vh);
+    }
+  });
 }

@@ -1,10 +1,11 @@
-import { PARK, PLANT_SIZE } from '../config';
+import { PARK, PLANT_SIZE, UNIQUES } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
 import { busColorOf } from '../world/transport';
 import { HUBS } from '../config';
 import { facilityAt, hubFootprint } from '../world/hubs';
+import { uniqueFootprint } from '../world/uniques';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf } from '../world/world';
 import { DIRT, type RoadTier } from '../config';
 import { KIND, analyzeRoads, boulevardMedian, centreMark, indexOf, isRouteCentre, kindOf, laneLine, routeSigns, tierOf, widthOf, type LaneLine } from './avenue';
@@ -29,7 +30,7 @@ import {
   type Rect,
 } from './chunks';
 import { PAL, mix, rgb, toRgb } from './color';
-import { hubHeight, isPlatform, surfaceHeights, viewCornerHeights, plantHeight, type Pt } from './geometry';
+import { hubHeight, isPlatform, surfaceHeights, uniqueHeight, viewCornerHeights, plantHeight, type Pt } from './geometry';
 import {
   abandonedBuildingSprite,
   buildingSprite,
@@ -43,6 +44,7 @@ import {
   routeSignSpriteFor,
   serviceSprite,
   treeSpriteFor,
+  uniqueSprite,
   type Sprite,
 } from './sprites';
 import { parkTreeHere } from './park';
@@ -566,6 +568,18 @@ export class MapRenderer {
       const [ax, ay] = this.toCache(minVx, minVy, hubHeight(w, piece.x, piece.y, fw, fh));
       const level = facilityAt(w, x, y)?.level ?? 1;
       return { sprite: hubSprite(piece.kind, level, maxVx - minVx + 1, maxVy - minVy + 1, this.hubWaterSide(foot)), ax, ay };
+    }
+    if (tile === TILE.UNIQUE) {
+      // A monument is drawn once, at the cell in front of its footprint, like a piece of an airport.
+      const monument = w.uniqueAt(x, y);
+      if (!monument) return null;
+      const foot = uniqueFootprint(monument.kind, n, monument.x, monument.y).map(([cx, cy]) => toView(cx, cy, rot, n));
+      const [minVx, minVy] = [Math.min(...foot.map((c) => c[0])), Math.min(...foot.map((c) => c[1]))];
+      const [maxVx, maxVy] = [Math.max(...foot.map((c) => c[0])), Math.max(...foot.map((c) => c[1]))];
+      if (vx !== maxVx || vy !== maxVy) return null;
+      const { w: fw, h: fh } = UNIQUES[monument.kind];
+      const [ax, ay] = this.toCache(minVx, minVy, uniqueHeight(w, monument.x, monument.y, fw, fh));
+      return { sprite: uniqueSprite(monument.kind, maxVx - minVx + 1, maxVy - minVy + 1), ax, ay };
     }
     const hs = surfaceHeights(w, vx, vy, rot);
     if (level > 0 && zoneOf(tile)) {
