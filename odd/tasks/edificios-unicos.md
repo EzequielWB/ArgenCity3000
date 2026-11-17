@@ -65,9 +65,8 @@ posterior (S10).
   sobre el agua, para el puente) devuelve el nombre del edificio y las líneas de turismo y temporada.
   *Check:* `tests/unicos.test.ts` (ficha y servicio).
 
-- **S7 — Desbloqueo por hito:** entran por `MILESTONES`, como el resto de las herramientas: Obelisco
-  y Teatro en `Ciudad` (1.000), Calvario y Puente en `Ciudad pujante` (2.500), Estadio en
-  `Gran ciudad` (5.000). La barra ya avisa con `lockNotice`.
+- **S7 — Desbloqueo por hito (corregido en L13):** entran por `MILESTONES`, como el resto de las
+  herramientas, y los cinco juntos en `Metrópolis` (25.000). La barra ya avisa con `lockNotice`.
   *Criterio:* `milestoneOfTool` devuelve un hito para los cinco y `isUnlocked` es falso antes.
   *Check:* `tests/unicos.test.ts` (hitos), `tests/milestones.test.ts`.
 
@@ -161,3 +160,7 @@ posterior (S10).
   tambor se la comía por abajo, dejando un anillo verde. Se probaron cuatro formas de rellenar media
   elipse en el navegador y todas funcionaban, así que el problema no era el `fill` sino la
   superposición; la cúpula quedó como una pila de cuatro elipses, cada una más chica y más alta.
+- **L13 (corrección del usuario, 2026-11-17):** "hacé que se desbloquee a los 25k de habitantes
+  todos los edificios únicos". Antes entraban repartidos en 1.000, 2.500 y 5.000; ahora los cinco
+  comparten el hito `Metrópolis`, que ya existía sin desbloqueos. El test de hitos es genérico
+  (`milestoneOfTool` para cada uno), así que sigue valiendo sin tocarlo.

@@ -36,8 +36,8 @@ Un unico no es un edificio mas grande. Es la marca de la ciudad, y por eso:
 
 LOS CINCO COMPARTIDOS (HECHOS)
 ------------------------------
-Los puede construir cualquier gobierno. Desbloqueo por hito: 1.000 para los primeros dos,
-2.500 para el Calvario y el puente, 5.000 para el estadio.
+Los puede construir cualquier gobierno. Los cinco se desbloquean juntos con 25.000 habitantes,
+al llegar a Metropolis: son el techo de la ciudad, no un premio temprano.
 
 1. OBELISCO - 2x2 - $9.000, $180/mes - turismo +6 %, +8 % en diciembre y enero
    Lugar: plaza de 8 lotes o mas alrededor. Se planta SOBRE los lotes de plaza y los ocupa.
