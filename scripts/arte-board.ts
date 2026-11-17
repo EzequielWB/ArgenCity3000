@@ -17,7 +17,7 @@ const entry = `
 import './scripts/board-city';
 import { buildingSprite } from './src/render/sprites';
 import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite } from './src/render/pixelArt';
-import { carPixelSprite } from './src/render/vehicleArt';
+import { boatPixelSprite, carPixelSprite, planePixelSprite } from './src/render/vehicleArt';
 import type { HubKind, ServiceKind } from './src/config';
 
 const NEW = { R: residentialPixelSprite, C: commercialPixelSprite, I: industrialPixelSprite };
@@ -178,7 +178,13 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-pole]'))) {
 for (const el of Array.from(document.querySelectorAll('canvas[data-veh]'))) {
   const [kind, color, dir] = String(el.dataset.veh || 'car:0:0').split(':');
   const k = Number(el.dataset.k || 8);
-  const sprite = carPixelSprite(kind as 'car' | 'taxi' | 'bus', Number(color), Number(dir) as 0 | 1 | 2 | 3);
+  const heading = Number(dir) as 0 | 1 | 2 | 3;
+  const sprite =
+    kind === 'tour' || kind === 'fishing' || kind === 'cruise'
+      ? boatPixelSprite(kind, heading)
+      : kind === 'plane'
+        ? planePixelSprite(Number(color || 3), heading)
+        : carPixelSprite(kind as 'car' | 'taxi' | 'bus', Number(color), heading);
   el.width = sprite.canvas.width * k;
   el.height = sprite.canvas.height * k;
   el.style.width = el.width + 'px';
@@ -616,6 +622,44 @@ const page = `<!doctype html>
               )
               .join('')}
             <figcaption>${kind === 'car' ? 'auto' : kind === 'taxi' ? 'taxi' : 'colectivo'}</figcaption>
+          </figure>`,
+          )
+          .join('')}
+      </div>
+      <p class="note">
+        En el <b>agua</b> la forma la da la obra viva: el casco oscuro abajo, la obra muerta blanca arriba y
+        la cubierta en el medio. El de pesca lleva su casilla y el mástil con la bandera; el de paseo, la
+        cabina con la rueda; el <b>crucero</b> lleva dos puentes con ventanillas y la chimenea colorada. La
+        estela de dos píxeles es lo que distingue uno navegando de uno parado.
+      </p>
+      <div class="row">
+        ${[
+          ['fishing', 'de pesca'],
+          ['tour', 'de paseo'],
+          ['cruise', 'crucero'],
+        ]
+          .map(
+            ([kind, name]) => `
+          <figure class="veh">
+            ${[0, 1, 2, 3].map((dir) => `<canvas data-veh="${kind}:0:${dir}" data-k="5"></canvas>`).join('')}
+            <figcaption>${name}</figcaption>
+          </figure>`,
+          )
+          .join('')}
+      </div>
+      <p class="note">
+        El <b>avión</b> se ve desde arriba, así que se lee por la silueta: el fuselaje blanco con la panza
+        en sombra, las alas en flecha que lo cruzan, el estabilizador y la deriva de la cola, y la cabina
+        oscura en la punta. El tamaño lo pone el nivel del aeropuerto, y abajo, en la pista, queda su
+        sombra mientras sube.
+      </p>
+      <div class="row">
+        ${[1, 3, 5]
+          .map(
+            (level) => `
+          <figure class="veh">
+            ${[0, 1, 2, 3].map((dir) => `<canvas data-veh="plane:${level}:${dir}" data-k="4"></canvas>`).join('')}
+            <figcaption>avión, nivel ${level}</figcaption>
           </figure>`,
           )
           .join('')}

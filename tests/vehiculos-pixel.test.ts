@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pixelArt } from '../src/render/artSwitch';
 import type { Pixels } from '../src/render/pixel';
-import { headingOf, roadVehicle } from '../src/render/vehicleArt';
+import { boatArt, headingOf, planeArt, roadVehicle } from '../src/render/vehicleArt';
 
 /** The painted pixels of a vehicle, as the painter leaves them: no canvas is needed to judge them. */
 const painted = (kind: 'car' | 'taxi' | 'bus', color: number, dir: 0 | 1 | 2 | 3): Pixels => roadVehicle(kind, color, dir).px;
@@ -47,6 +47,24 @@ describe('the road vehicles in pixel', () => {
       }
       expect(count).toBeGreaterThan(10);
     }
+  });
+
+  it('draws the boats with a hull, a deck and the four headings', () => {
+    for (const kind of ['fishing', 'tour', 'cruise'] as const) {
+      const drawn = [0, 1, 2, 3].map((dir) => Array.from(boatArt(kind, dir as 0 | 1 | 2 | 3).px.data).join(','));
+      expect(new Set(drawn).size).toBe(4);
+      expect(opaque(boatArt(kind, 0).px)).toBeGreaterThan(30);
+    }
+    // A cruise ship is a lot more boat than a fishing boat.
+    expect(opaque(boatArt('cruise', 0).px)).toBeGreaterThan(opaque(boatArt('fishing', 0).px) * 2);
+  });
+
+  it('draws the planes bigger with the level of their airport', () => {
+    const level1 = opaque(planeArt(1, 0).px);
+    const level5 = opaque(planeArt(5, 0).px);
+    expect(level5).toBeGreaterThan(level1 * 2);
+    const drawn = [0, 1, 2, 3].map((dir) => Array.from(planeArt(3, dir as 0 | 1 | 2 | 3).px.data).join(','));
+    expect(new Set(drawn).size).toBe(4);
   });
 
   it('paints the same thing twice for the same vehicle, and a different colour for another line', () => {

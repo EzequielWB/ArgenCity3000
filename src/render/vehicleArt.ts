@@ -78,11 +78,14 @@ function footprint(dir: Heading, len: number, wid: number): { corners: Pt[]; fac
 }
 
 const TYRE: RGB = hex('#15141a');
+const WAKE: RGB = hex('#cfe6ef');
+const WING: RGB = hex('#c9ccd1');
 const GLASS_DARK: RGB = hex('#2b3a4a');
 const HEADLIGHT: RGB = hex('#f7e6a8');
 const TAILLIGHT: RGB = hex('#c8392f');
 const HULL_DARK: RGB = hex('#243044');
 const HULL_TOP: RGB = hex('#e8e2d2');
+const DECK: RGB = hex('#d8cfb8');
 const WATER_LINE: RGB = hex('#7fb6cb');
 const RED_BAND: RGB = hex('#c8392f');
 const WHITE: RGB = hex('#f4f0e6');
@@ -101,7 +104,7 @@ export function roadVehicle(kind: 'car' | 'taxi' | 'bus', color: number, dir: He
   const len = bus ? 0.56 : 0.3;
   const wid = bus ? 0.17 : 0.15;
   const h = bus ? 3 : 2;
-  const p = rig(h + (bus ? 2 : 4), 32 * (len + wid));
+  const p = rig(h + (bus ? 2 : 4), 16 * (len + wid) + 8);
   const body: Ramp =
     kind === 'taxi'
       ? ramp('#33303a')
@@ -166,8 +169,10 @@ export function roadVehicle(kind: 'car' | 'taxi' | 'bus', color: number, dir: He
     const cabAt = (q: Pt): Pt => at(q, cz);
     const cabFace = (face: [Pt, Pt]): [Pt, Pt] => [cabAt(face[0]), cabAt(face[1])];
     const glass: WallPaint = () => GLASS_DARK;
-    p.px.wall(...cabFace(cab.faces.u), 1, glass);
-    p.px.wall(...cabFace(cab.faces.v), 1, glass);
+    const cabU = cabFace(cab.faces.u);
+    const cabV = cabFace(cab.faces.v);
+    p.px.wall(cabU[0], cabU[1], 1, glass);
+    p.px.wall(cabV[0], cabV[1], 1, glass);
     // The pillars: a pixel of body at the two corners of the windshield, so the glass is a window and not a hole.
     for (const q of cab.faces.u) {
       const [x, y] = cabAt(q);
@@ -185,7 +190,163 @@ export function roadVehicle(kind: 'car' | 'taxi' | 'bus', color: number, dir: He
   return { px: p.px, ax: p.ax, ay: p.ay };
 }
 
+/** Paints a boat: the hull on the water, the deck on it, and the wheelhouse or the funnel above. */
+function paintBoat(kind: 'tour' | 'fishing' | 'cruise', dir: Heading): { px: Pixels; ax: number; ay: number } {
+  const cruise = kind === 'cruise';
+  const fishing = kind === 'fishing';
+  const len = cruise ? 1.2 : fishing ? 0.55 : 0.65;
+  const wid = cruise ? 0.46 : fishing ? 0.2 : 0.24;
+  const hullH = cruise ? 3 : 2;
+  const deckH = cruise ? 4 : 2;
+  const p = rig(hullH + deckH + 5, 16 * (len + wid) + 12);
+  const { corners, faces } = footprint(dir, len, wid);
+  const at = (q: Pt, z = 0): Pt => p.P(q[0], q[1], z);
+  const foot = (face: [Pt, Pt]): [Pt, Pt] => [at(face[0]), at(face[1])];
+  // Its shadow on the water, a pixel below and to the left, like everything else.
+  p.px.shadow(
+    corners.map((q) => {
+      const [x, y] = at(q, -0.5);
+      return [x - 0.5, y + 1.5] as Pt;
+    }),
+    0.3,
+  );
+  // The wake: two pixels of foam behind the stern, which is what tells a boat moving from one parked.
+  const [wx, wy] = along([at(corners[2], 0), at(corners[3], 0)], 0.5);
+  p.px.rect(Math.round(wx), Math.round(wy) + 1, 2, 1, WAKE);
+  p.px.rect(Math.round(wx) - 1, Math.round(wy) + 2, 2, 1, WAKE);
+  // The hull: the work below the waterline dark, the freeboard white, and the deck on top.
+  const cap = foot(faces.capIsU ? faces.u : faces.v);
+  const side = foot(faces.capIsU ? faces.v : faces.u);
+  const hull: WallPaint = (t, k) => (k === 0 ? HULL_DARK : fishing && k === 1 ? RED_BAND : WHITE);
+  p.px.wall(side[0], side[1], hullH, hull);
+  p.px.wall(cap[0], cap[1], hullH, hull);
+  if (cruise) {
+    // The portholes along the hull, one every other pixel: without them the ship is a white slab.
+    for (let t = 0.08; t < 0.92; t += 0.14) {
+      const [x, y] = along(side, t);
+      p.px.rect(Math.round(x), Math.round(y) - 1 - (hullH - 1), 1, 1, GLASS_DARK);
+    }
+  }
+  p.px.poly(
+    corners.map((q) => at(q, hullH)),
+    () => DECK,
+  );
+  // What stands on the deck.
+  const houseLen = cruise ? len * 0.7 : fishing ? wid * 1.4 : len * 0.5;
+  const houseWid = cruise ? wid * 0.72 : wid * 0.8;
+  const house = footprint(dir, houseLen, houseWid);
+  const hAt = (q: Pt): Pt => at(q, hullH);
+  const hFace = (face: [Pt, Pt]): [Pt, Pt] => [hAt(face[0]), hAt(face[1])];
+  if (fishing) {
+    // The wheelhouse at the stern, a mast with its yellow flag, and a red band along the hull.
+    const wf = footprint(dir, houseLen, houseWid);
+    const wAt = (q: Pt): Pt => at(q, hullH);
+    const wu = wf.faces.u.map(wAt);
+    const wv = wf.faces.v.map(wAt);
+    p.px.wall(wu[0], wu[1], 2, () => WHITE);
+    p.px.wall(wv[0], wv[1], 2, () => WHITE);
+    p.px.rect(Math.round(wAt(wf.corners[0])[0]), Math.round(wAt(wf.corners[0])[1]) - 1, 1, 1, GLASS_DARK);
+    const [mx, my] = at(corners[0], hullH);
+    p.px.rect(Math.round(mx), Math.round(my) - 6, 1, 6, MAST);
+    p.px.rect(Math.round(mx) + 1, Math.round(my) - 6, 2, 1, FLAG);
+  } else {
+    // The cabin (a tour boat) or the two decks and the funnel (the cruise ship).
+    const decks = cruise ? 2 : 1;
+    for (let d = 0; d < decks; d++) {
+      const z = hullH + d * 2;
+      const inset = cruise ? footprint(dir, houseLen * (d === 0 ? 1 : 0.82), houseWid * (d === 0 ? 1 : 0.8)) : house;
+      const zAt = (q: Pt): Pt => at(q, z);
+      const glassRow: WallPaint = (t, k) => (k === 0 ? WHITE : k === 1 ? GLASS_DARK : WHITE);
+      const iu = inset.faces.u.map(zAt);
+      const iv = inset.faces.v.map(zAt);
+      p.px.wall(iu[0], iu[1], 2, glassRow);
+      p.px.wall(iv[0], iv[1], 2, glassRow);
+      p.px.poly(
+        inset.corners.map((q) => zAt(q)),
+        () => (cruise ? WHITE : RED_BAND),
+      );
+    }
+    if (cruise) {
+      // The funnel, red with a black mouth, over the middle of the top deck.
+      const [fx, fy] = at(frame(dir)(0, 0), hullH + 4);
+      p.px.rect(Math.round(fx) - 1, Math.round(fy) - 3, 3, 3, RED_BAND);
+      p.px.rect(Math.round(fx) - 1, Math.round(fy) - 3, 3, 1, TYRE);
+    } else {
+      // The wheel of a tour boat and a row of portholes on the bow.
+      const [fx, fy] = at(frame(dir)(len * 0.3, 0), hullH + 2);
+      p.px.rect(Math.round(fx), Math.round(fy) - 1, 1, 1, GLASS_DARK);
+    }
+  }
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+/** Paints a plane: fuselage, swept wings, tail and windows, all seen from above. */
+function paintPlane(level: number, dir: Heading): { px: Pixels; ax: number; ay: number } {
+  const len = 0.5 + 0.14 * Math.max(1, Math.min(5, level));
+  const wid = len * 0.28;
+  const span = len * 1.9;
+  const p = rig(10, 16 * (span + len) + 12);
+  const { corners, faces } = footprint(dir, len, wid);
+  const at = (q: Pt, z = 0): Pt => p.P(q[0], q[1], z);
+  const foot = (face: [Pt, Pt]): [Pt, Pt] => [at(face[0]), at(face[1])];
+  // The wings, swept a little, one pixel thick: they cross the fuselage.
+  const wing = footprint(dir, len * 0.34, span);
+  const wingBack = frame(dir)(-len * 0.16, 0);
+  const wq = wing.corners.map((q) => at([q[0] + wingBack[0], q[1] + wingBack[1]], 1));
+  p.px.poly(wq, () => WING);
+  const wq2 = wing.corners.map((q) => at([q[0] + wingBack[0], q[1] + wingBack[1]], 0));
+  p.px.poly(wq2, () => shade(WING, 0.72));
+  // The fuselage, white with a dark belly, and the cockpit at the nose.
+  const cap = foot(faces.capIsU ? faces.u : faces.v);
+  const side = foot(faces.capIsU ? faces.v : faces.u);
+  p.px.wall(side[0], side[1], 2, (t, k) => (k === 0 ? shade(WHITE, 0.7) : WHITE));
+  p.px.wall(cap[0], cap[1], 2, () => GLASS_DARK);
+  p.px.poly(
+    corners.map((q) => at(q, 2)),
+    () => WHITE,
+  );
+  // The tail fin: a pixel standing up at the stern, and a stabiliser across it.
+  const tail = footprint(dir, len * 0.16, wid * 2.6);
+  const back = frame(dir)(-len * 0.42, 0);
+  const tq = tail.corners.map((q) => at([q[0] + back[0], q[1] + back[1]], 2));
+  p.px.poly(tq, () => WING);
+  const fin = at([back[0], back[1]], 4);
+  p.px.rect(Math.round(fin[0]), Math.round(fin[1]), 1, 2, RED_BAND);
+  // The windows along the side of the fuselage.
+  for (let t = 0.3; t < 0.85; t += 0.22) {
+    const [x, y] = along(side, t);
+    p.px.rect(Math.round(x), Math.round(y) - 1, 1, 1, GLASS_DARK);
+  }
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
 const vehicleCache = new Map<string, Sprite>();
+
+/** The sprite of a boat, cached by kind and heading. */
+export function boatPixelSprite(kind: 'tour' | 'fishing' | 'cruise', dir: Heading): Sprite {
+  const key = `boat:${kind}:${dir}`;
+  let sprite = vehicleCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintBoat(kind, dir));
+    vehicleCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+/** The sprite of a plane, cached by the level of its airport and its heading. */
+export function planePixelSprite(level: number, dir: Heading): Sprite {
+  const key = `plane:${level}:${dir}`;
+  let sprite = vehicleCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintPlane(level, dir));
+    vehicleCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+/** The painted form of a boat or a plane, for the tests and the sheet. */
+export const boatArt = (kind: 'tour' | 'fishing' | 'cruise', dir: Heading) => paintBoat(kind, dir);
+export const planeArt = (level: number, dir: Heading) => paintPlane(level, dir);
 
 /** The sprite of a road vehicle, cached by kind, colour and heading. */
 export function carPixelSprite(kind: 'car' | 'taxi' | 'bus', color: number, dir: Heading): Sprite {

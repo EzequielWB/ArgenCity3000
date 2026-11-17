@@ -36,7 +36,7 @@ sombra. Esta pasada los dibuja con el mismo taller que el resto y con **cuatro r
 | T4 | Botes: de pesca, de paseo y crucero | S2–S4 | `src/render/vehicleArt.ts`, `src/render/vessels.ts` | hecho |
 | T5 | Aviones, con su sombra en la pista | S2–S4 | `src/render/vehicleArt.ts`, `src/render/vessels.ts` | hecho |
 | T6 | Tablero: los rumbos de cada vehículo a 6× | – | `scripts/arte-board.ts` | hecho |
-| T7 | Tests: un sprite por rumbo, píxel duro, sombra permitida y sin tocar la simulación | S1–S6 | `tests/vehiculos.test.ts` | hecho |
+| T7 | Tests: un sprite por rumbo, píxel duro, sombra permitida y sin tocar la simulación | S1–S6 | `tests/vehiculos-pixel.test.ts` | hecho |
 
 ## Log
 
@@ -60,5 +60,16 @@ sombra. Esta pasada los dibuja con el mismo taller que el resto y con **cuatro r
 - **L6.** El tablero de la ciudad dibuja ahora también el tráfico con el `drawTraffic` real, con seis
   vehículos sembrados en las calles del bloque: es la única forma de juzgar un auto de seis píxeles, entre
   edificios y asfalto. Un sprite solo a 8× engaña.
-- **L7.** Evidencia: `npx vitest run tests/vehiculos-pixel.test.ts` (5) · `npx vitest run` (**1101 / 64
-  archivos**) · `npx tsc --noEmit` limpio · `npm run arte` (182 kB).
+- **L7.** Botes y aviones. El bote se lee por la **obra viva**: casco oscuro abajo, obra muerta blanca arriba,
+  cubierta en el medio y la superestructura encima; la estela de dos píxeles es lo que separa uno navegando
+  de uno parado. El crucero lleva dos puentes y una hilera de ojos de buey — sin ellos es una losa blanca.
+  El avión se lee por la silueta desde arriba: fuselaje, alas en flecha, estabilizador, deriva colorada y
+  cabina oscura en la punta; el tamaño lo pone el nivel del aeropuerto. Su sombra queda en la pista
+  mientras el cuerpo sube, que es la misma regla de antes.
+- **L8.** Evidencia: `npx vitest run tests/vehiculos-pixel.test.ts` (7) · `npx vitest run` (**1103 / 64
+  archivos**) · `npx tsc --noEmit` limpio · `npm run arte` (191 kB). En el tablero de la ciudad se ven los
+  rodados en las calles (con el `drawTraffic` real) y los dos aviones en la pista del aeropuerto; con
+  `?pixel=off` vuelven el paralelogramo de los autos y la barra blanca de los aviones.
+- **L9.** Los botes no se pudieron ver en el tablero de la ciudad: no hay puerto en ese bloque y una
+  instalación sin luz no cría botes. Quedan verificados como sprites (las cuatro variantes de cada uno, en
+  el tablero de vehículos) y por el mismo camino de dibujo que los autos, que sí se vio en el mapa.

@@ -10,9 +10,11 @@ import { Rng } from '../core/rng';
 import { hubFacilities, hubFootprint, type HubFacility } from '../world/hubs';
 import { TILE, type World } from '../world/world';
 import { coastWorks } from '../sim/coast';
+import { pixelArt } from './artSwitch';
 import type { Pt } from './geometry';
 import type { MapRenderer } from './mapRenderer';
 import { heightAt } from './traffic';
+import { boatPixelSprite, headingOf, planePixelSprite } from './vehicleArt';
 
 /** Seconds a take-off (or its reverse, a landing) lasts, and how many of them are on the ground. */
 const FLIGHT = 4;
@@ -283,6 +285,12 @@ export function drawBoats(g: CanvasRenderingContext2D, v: Vessels, map: MapRende
     const [rdx, rdy] = rotateDir(b.dx, b.dy, map.rot);
     const ux = rdx - rdy;
     const uy = (rdx + rdy) / 2;
+    if (pixelArt('vehiculos')) {
+      // The painted boat, anchored on the water and snapped to whole pixels, like the cars.
+      const sprite = boatPixelSprite(b.kind, headingOf(rdx, rdy));
+      g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
+      continue;
+    }
     const cruise = b.kind === 'cruise';
     const fishing = b.kind === 'fishing';
     const len = cruise ? 8.5 : fishing ? 3.8 : 4.5;
@@ -344,6 +352,17 @@ export function drawPlanes(g: CanvasRenderingContext2D, v: Vessels, map: MapRend
     const [rdx, rdy] = rotateDir(p.dir, 0, map.rot);
     const ux = rdx - rdy;
     const uy = (rdx + rdy) / 2;
+    if (pixelArt('vehiculos')) {
+      // The body goes up with the altitude and its shadow stays on the runway, as before.
+      const sprite = planePixelSprite(p.level, headingOf(rdx, rdy));
+      const shadow = planePixelSprite(p.level, headingOf(rdx, rdy));
+      g.globalAlpha = at.alpha * 0.22;
+      g.drawImage(shadow.canvas, Math.round(sx - shadow.ax), Math.round(sy - shadow.ay));
+      g.globalAlpha = at.alpha;
+      g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - at.altitude - sprite.ay));
+      g.globalAlpha = 1;
+      continue;
+    }
     const size = 3.4 + p.level * 1.1;
     const cy = sy - at.altitude;
     // Its shadow stays on the ground.

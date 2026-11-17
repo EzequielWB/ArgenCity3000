@@ -9,6 +9,7 @@ import { MapRenderer } from '../src/render/mapRenderer';
 import { generateTerrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { Traffic, drawTraffic } from '../src/render/traffic';
+import { Vessels, drawBoats, drawPlanes } from '../src/render/vessels';
 import { TILE, World } from '../src/world/world';
 
 declare const document: any;
@@ -118,6 +119,16 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-city]')) as a
   });
   // The vehicles on the street, with the renderer's own traffic pass: this is the sheet where they are
   // judged, because a car alone at 8x says little about how it reads among the buildings.
+  // Where to put them: a piece of the runway, and a water cell inside the crop.
+  const pieces: [number, number][] = [];
+  let water: [number, number] | null = null;
+  world.tiles.forEach((t: number, i: number) => {
+    const x = i % world.n;
+    const y = Math.floor(i / world.n);
+    if (t === TILE.AIRPORT && ax <= x && x <= bx && ay <= y && y <= by) pieces.push([x, y]);
+    if (!water && world.isWater(x, y) && ax - 2 <= x && x <= bx + 2 && ay - 2 <= y && y <= by + 2) water = [x, y];
+  });
+  const runway = pieces.sort((p, q) => p[1] - q[1] || p[0] - q[0])[0] ?? [ax, ay];
   const traffic = new Traffic(world, 7);
   const street: [number, number, number, number][] = [
     // [cell x, cell y, dx, dy]: a car parked on each heading of the two streets of the block.
@@ -144,4 +155,13 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-city]')) as a
     });
   });
   drawTraffic(g, traffic, map, [view.x0, view.y0, view.x1, view.y1]);
+  // A plane of the airport and a boat of the port, so the sheet shows them where they live.
+  const vessels = new Vessels(world, 3);
+  // The facilities of the sheet are not working, so no plane or boat is born by itself: the sheet puts
+  // two planes on the runway and a boat on the water, one per quality of drawing, and that is what it shows.
+  vessels.planes.set('k1', { x: runway[0], y: runway[1], level: 1, phase: 'takeoff', t: 2, dir: 1, far: 40 });
+  vessels.planes.set('k2', { x: runway[0], y: runway[1], level: 5, phase: 'out', t: 6, dir: 1, far: 40 });
+  if (water) vessels.boats.set('b1', { x: water[0], y: water[1], dx: 1, dy: 0, t: 0.5, speed: 1, home: water, kind: 'cruise', roam: 20 });
+  drawBoats(g, vessels, map, [view.x0, view.y0, view.x1, view.y1]);
+  drawPlanes(g, vessels, map, [view.x0, view.y0, view.x1, view.y1]);
 }
