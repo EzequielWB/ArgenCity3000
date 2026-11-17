@@ -18,7 +18,7 @@ export function viewCornerHeights(w: World, vx: number, vy: number, rot: Rotatio
 /** True when the cell is drawn as a flat platform (buildings, plants) instead of following the terrain. */
 export function isPlatform(w: World, i: number): boolean {
   const t = w.tiles[i];
-  return t === TILE.PLANT || serviceOf(t) !== null || hubOf(t) !== null || (w.level[i] > 0 && t >= TILE.R && t <= TILE.I);
+  return t === TILE.PLANT || t === TILE.UNIQUE || serviceOf(t) !== null || hubOf(t) !== null || (w.level[i] > 0 && t >= TILE.R && t <= TILE.I);
 }
 
 /** Least a bridge deck rides above the sea, in levels, when its banks are lower than that. */
@@ -139,6 +139,14 @@ export function hubHeight(w: World, px: number, py: number, fw: number, fh: numb
   let m = 0;
   for (let y = py; y <= py + fh; y++) for (let x = px; x <= px + fw; x++) m = Math.max(m, cornerAt(w.terrain, x, y));
   return m;
+}
+
+/**
+ * A unique building sits on the highest corner of its footprint like a plant, but never below the
+ * water: the puente stands over the river, whose bed is a level under the surface.
+ */
+export function uniqueHeight(w: World, px: number, py: number, fw: number, fh: number): number {
+  return Math.max(SEA_LEVEL, hubHeight(w, px, py, fw, fh));
 }
 
 /** Screen corners (relative to the map origin) of a view cell's surface: top, right, bottom, left. */

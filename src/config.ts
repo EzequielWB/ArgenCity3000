@@ -557,3 +557,55 @@ export const COAST_FIELDS = {
 
 /** Approval: one point per `promenadeLots` promenade lots up to `promenadeMax`, and `lighthouse` points for the lighthouse. */
 export const COAST_APPROVAL = { promenadeLots: 8, promenadeMax: 5, lighthouse: 3 } as const;
+
+/**
+ * The unique buildings: monuments the city may raise once each, and only where the ground and the
+ * neighbourhood suit them (see `world/uniques.ts`). They do not pay a fixed rent: each one adds a
+ * share of the city's tourism — what the resorts, airports and harbours bring in — and has a season
+ * of its own, so a monument grows with the city instead of dying of old age. Measured with the probe
+ * of `odd/tasks/edificios-unicos.md`: five of them at their peak are a third of the tourism of a
+ * mature city and cost about three years of upkeep to pay for themselves, like a full airport.
+ */
+export type UniqueKind = 'obelisco' | 'calvario' | 'puente' | 'teatro' | 'estadio';
+export const UNIQUE_KINDS: readonly UniqueKind[] = ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'];
+
+export const UNIQUES: Record<
+  UniqueKind,
+  {
+    label: string;
+    /** Footprint in lots, anchored at its top-left cell and never rotated, like an airport. */
+    w: number;
+    h: number;
+    cost: number;
+    upkeep: number;
+    /** Share of the tourism of the city this one adds. */
+    boost: number;
+    /** Share it adds instead of `boost` in the months of `peakMonths`. */
+    peak: number;
+    peakMonths: readonly number[];
+  }
+> = {
+  obelisco: { label: 'Obelisco', w: 2, h: 2, cost: 9000, upkeep: 180, boost: 0.06, peak: 0.08, peakMonths: [12, 1] },
+  calvario: { label: 'El Calvario', w: 3, h: 6, cost: 12000, upkeep: 220, boost: 0.02, peak: 0.18, peakMonths: [9] },
+  puente: { label: 'Puente Transbordador', w: 2, h: 6, cost: 14000, upkeep: 300, boost: 0.05, peak: 0.05, peakMonths: [] },
+  teatro: { label: 'Teatro Colón', w: 2, h: 2, cost: 11000, upkeep: 260, boost: 0.04, peak: 0.1, peakMonths: [4, 5, 6, 7, 8] },
+  estadio: { label: 'Estadio', w: 4, h: 4, cost: 18000, upkeep: 420, boost: 0.08, peak: 0.12, peakMonths: [3, 4, 5, 6, 7, 8, 9, 10, 11] },
+};
+
+/**
+ * Where each unique may stand. Every rule reads a layer the city already keeps, so the monument asks
+ * for something the player can see and plan for instead of an arbitrary square of the map.
+ */
+export const UNIQUE_RULES = {
+  /** The obelisco wants this many plaza cells within `reach` lots of its footprint (it stands in the plaza). */
+  obelisco: { plazaCells: 8, reach: 2 },
+  /** The highest corner of the calvario's footprint, in terrain levels: it goes up on the hill. */
+  calvario: { height: 10 },
+  /** The land value the lots around the teatro must already have. */
+  teatro: { value: 45, reach: 2 },
+  /** The estadio wants a boulevard this near (Manhattan), because the crowd has to get there. */
+  estadio: { boulevard: 6 },
+} as const;
+
+/** Ceiling of what all the uniques together may add to tourism, so the shares can never run away. */
+export const UNIQUE_BOOST_MAX = 0.35;

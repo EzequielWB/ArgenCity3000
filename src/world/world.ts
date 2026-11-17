@@ -1,4 +1,4 @@
-import { HUBS, PLANT_SIZE, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
+import { HUBS, PLANT_SIZE, UNIQUES, type CoastKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
 import { isWaterCell, cellMinMax, type Terrain } from './terrain';
 
 /** What occupies a cell. Zones keep their building level in `World.level`. */
@@ -25,8 +25,9 @@ export const TILE = {
   HARBOR: 19,
   HOSPITAL: 20,
   UNIVERSITY: 21,
+  UNIQUE: 22,
 } as const;
-export const MAX_TILE = TILE.UNIVERSITY;
+export const MAX_TILE = TILE.UNIQUE;
 export type TileId = (typeof TILE)[keyof typeof TILE];
 
 export type ZoneKind = 'R' | 'C' | 'I';
@@ -87,6 +88,13 @@ export interface Hub {
   kind: HubKind;
 }
 
+/** A unique building: its top-left cell (its size is in `UNIQUES`) and which monument it is. */
+export interface Unique {
+  x: number;
+  y: number;
+  kind: UniqueKind;
+}
+
 export function hubTile(kind: HubKind): TileId {
   return kind === 'airport' ? TILE.AIRPORT : TILE.HARBOR;
 }
@@ -136,6 +144,8 @@ export class World {
   plants: Plant[] = [];
   /** The pieces of the airports and harbours, each with its anchor; pieces that touch are one facility. */
   hubs: Hub[] = [];
+  /** The unique buildings of the city, at most one of each kind, each with its anchor. */
+  uniques: Unique[] = [];
 
   readonly powered: Uint8Array;
   readonly pollution: Uint8Array;
@@ -247,6 +257,11 @@ export class World {
   /** The piece of an airport or a harbour that covers the cell, if any. */
   hubAt(x: number, y: number): Hub | undefined {
     return this.hubs.find((h) => x >= h.x && x < h.x + HUBS[h.kind].w && y >= h.y && y < h.y + HUBS[h.kind].h);
+  }
+
+  /** The unique building that covers the cell, if any. */
+  uniqueAt(x: number, y: number): Unique | undefined {
+    return this.uniques.find((u) => x >= u.x && x < u.x + UNIQUES[u.kind].w && y >= u.y && y < u.y + UNIQUES[u.kind].h);
   }
 
   markDirty(i: number): void {
