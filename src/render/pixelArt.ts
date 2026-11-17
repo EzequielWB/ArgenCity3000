@@ -12,7 +12,7 @@
  */
 import { Pixels, bayer, hex, noise, shade, type Paint, type Pt, type RGB, type WallPaint } from './pixel';
 import type { Sprite } from './sprites';
-import { BUS_COLORS, type HubKind, type PlantKind } from '../config';
+import { BUS_COLORS, type HubKind, type PlantKind, type ServiceKind } from '../config';
 
 /** Face tones measured on the reference. */
 const LEFT = 0.69;
@@ -1859,6 +1859,285 @@ export function plantPixelSprite(kind: PlantKind): Sprite {
   if (!sprite) {
     sprite = spriteOf(kind === 'coal' ? paintCoalPlant() : kind === 'gas' ? paintGasPlant() : paintWindFarm());
     plantCache.set(kind, sprite);
+  }
+  return sprite;
+}
+
+/* ---------- The services ---------- */
+
+const SERVICE_MAX_Z: Record<ServiceKind, number> = { school: 30, clinic: 24, police: 30, fire: 36, hospital: 46, university: 44 };
+
+const RED_CROSS = hex('#c8392f');
+const GREEN_CROSS = hex('#2f9a55');
+const CHALK_WHITE = hex('#f4f0e6');
+const CHALK: Ramp = ramp('#f4f0e6');
+const SLATE: Ramp = ramp('#6b6f78');
+const LIGHT_BAR: [RGB, RGB] = [hex('#2f63e0'), hex('#e03a2f')];
+const FASCIA = hex('#b8322a');
+
+/** The yard of an institution: a concrete apron between the building and the street, with its kerb. */
+function yard(p: Pen, u0: number, v0: number, u1: number, v1: number): void {
+  p.box(u0, v0, u1, v1, 0, 1.2, PAD, 'plain');
+  p.px.line(p.P(u0, v1, 1.2), p.P(u1, v1, 1.2), shade(PAD[1], 1.2));
+}
+
+/** A cross standing on a roof, one pixel of arm for every two of its height. */
+function roofCross(p: Pen, u: number, v: number, z: number, c: RGB, size = 4): void {
+  const [x, y] = p.P(u, v, z);
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  p.px.rect(cx, cy - size * 2, 1, size * 2, c);
+  p.px.rect(cx - Math.floor(size / 2), cy - size * 2 + size, size + 1, 1, c);
+}
+
+/**
+ * The school: two floors of cream wall under a brick gable roof, the yard behind an iron fence and
+ * the flag on its mast. The flag is what says "escuela" from across the map.
+ */
+function paintSchool(p: Pen): void {
+  const u0 = 0.06;
+  const v0 = 0.1;
+  const u1 = 0.82;
+  const v1 = 0.68;
+  const wall = WALLS[0];
+  const h = 13;
+  p.shadow(u0, v0, u1, v1);
+  yard(p, 0.04, 0.7, 0.96, 0.94);
+  p.box(u0, v0, u1, v1, 0, h, wall, 'plain', [
+    ...glazed(1, 12, 8, 3, 4, GLASS),
+    ...glazed(1, 4, 2, 3, 3, GLASS),
+    ...glazed(9, 12, 2, 3, 3, GLASS),
+    { t0: 5, t1: 9, k0: 0, k1: 7, c: DOOR },
+    { t0: 4, t1: 10, k0: 7, k1: 9, c: CHALK_WHITE },
+  ], [
+    ...glazed(2, 9, 8, 3, 4, GLASS),
+    { t0: 0, t1: 99, k0: 0, k1: 2, c: shade(wall[2], 0.62) },
+  ], ROOFTOP);
+  p.gable(u0 - 0.03, v0 - 0.03, u1 + 0.03, v1 + 0.03, h, 5, ROOFS[0], wall[1], 'plain');
+  // The little bell tower over the ridge, and the canopy over the door.
+  p.box(0.36, 0.3, 0.52, 0.46, h + 4, 4, CHALK, 'plain', [{ t0: 1, t1: 3, k0: 1, k1: 3, c: GARAGE }]);
+  p.hip(0.34, 0.28, 0.54, 0.48, h + 8, 3, ROOFS[1]);
+  p.canopy(0.3, 0.7, 0.5, 7.5, ROOFS[1][1], CHALK_WHITE, 2);
+  // The mast with the flag, in the corner of the yard, and a tree by the fence.
+  const [fx, fy] = p.P(0.9, 0.86, 1.2);
+  p.px.rect(Math.round(fx), Math.round(fy) - 22, 1, 22, LEG);
+  p.flag(0.9, 0.86, 23, 9);
+  p.tree(0.16, 0.88);
+  p.fence(p.P(0.06, 0.95), p.P(0.94, 0.95));
+}
+
+/** The salita: one floor, the green band of the health centre and the green cross on the roof. */
+function paintClinic(p: Pen): void {
+  const u0 = 0.12;
+  const v0 = 0.14;
+  const u1 = 0.88;
+  const v1 = 0.72;
+  const wall = WALLS[2];
+  const h = 10;
+  p.shadow(u0, v0, u1, v1);
+  yard(p, 0.06, 0.74, 0.94, 0.94);
+  p.box(u0, v0, u1, v1, 0, h, wall, 'plain', [
+    { t0: 0, t1: 99, k0: 5, k1: 7, c: GREEN_CROSS },
+    ...glazed(1, 5, 1, 3, 3, GLASS),
+    ...glazed(8, 12, 1, 3, 3, GLASS),
+    { t0: 5, t1: 8, k0: 0, k1: 5, c: DOOR },
+  ], [
+    { t0: 0, t1: 99, k0: 5, k1: 7, c: shade(GREEN_CROSS, 0.72) },
+    ...glazed(1, 10, 1, 3, 4, GLASS),
+  ], ROOFTOP);
+  p.cornice(u0, v0, u1, v1, h, 1.5, wall);
+  p.parapet(u0, v0, u1, v1, h + 1.5, 1, wall);
+  roofCross(p, 0.5, 0.42, h + 2.5, GREEN_CROSS, 4);
+  p.box(0.62, 0.2, 0.8, 0.36, h + 1.5, 3, CHALK, 'plain', [{ t0: 0, t1: 99, k0: 1, k1: 2, c: GREEN_CROSS }]);
+  // The awning over the door and the bench where the neighbours wait.
+  p.canopy(0.3, 0.72, 0.6, 6, GREEN_CROSS, CHALK_WHITE, 2);
+  bench(p, 0.72, 0.84);
+}
+
+/** The police station: a blue-grey block, the white band, the light bar and the patrol car in the yard. */
+function paintPolice(p: Pen): void {
+  const u0 = 0.1;
+  const v0 = 0.12;
+  const u1 = 0.86;
+  const v1 = 0.7;
+  const wall: Ramp = [hex('#4a6386'), hex('#3f5f8a'), hex('#355073')];
+  const h = 15;
+  p.shadow(u0, v0, u1, v1);
+  yard(p, 0.06, 0.72, 0.94, 0.94);
+  p.box(u0, v0, u1, v1, 0, h, wall, 'plain', [
+    { t0: 0, t1: 99, k0: 8, k1: 11, c: CHALK_WHITE },
+    ...glazed(1, 4, 12, 3, 3, GLASS_LIT),
+    ...glazed(8, 12, 12, 3, 3, GLASS_LIT),
+    ...glazed(1, 4, 2, 3, 3, GLASS),
+    ...glazed(8, 12, 2, 3, 3, GLASS),
+    { t0: 5, t1: 8, k0: 0, k1: 7, c: GLASS },
+    { t0: 5, t1: 8, k0: 7, k1: 9, c: CHALK_WHITE },
+  ], [
+    { t0: 0, t1: 99, k0: 8, k1: 11, c: CHALK_WHITE },
+    ...glazed(2, 9, 12, 3, 4, GLASS_LIT),
+    ...glazed(2, 9, 2, 3, 4, GLASS),
+  ], ROOFTOP);
+  p.cornice(u0, v0, u1, v1, h, 1.5, CONCRETE);
+  // The plant of the roof with the light bar on top, and the radio mast next to it.
+  p.box(0.34, 0.3, 0.56, 0.5, h + 1.5, 3, CONCRETE, 'plain');
+  const [bx, by] = p.P(0.45, 0.4, h + 4.5);
+  p.px.rect(Math.round(bx) - 3, Math.round(by), 3, 1, LIGHT_BAR[0]);
+  p.px.rect(Math.round(bx), Math.round(by), 3, 1, LIGHT_BAR[1]);
+  p.antenna(0.7, 0.3, h + 1.5, 8);
+  // The patrol car waiting with its light bar on.
+  const [cx, cy] = p.P(0.34, 0.84, 1.2);
+  const px = Math.round(cx);
+  const py = Math.round(cy);
+  p.px.rect(px - 3, py - 3, 7, 3, hex('#1f2a3a'));
+  p.px.rect(px - 2, py - 5, 5, 2, hex('#2f4a72'));
+  p.px.rect(px - 1, py - 6, 1, 1, LIGHT_BAR[0]);
+  p.px.rect(px + 1, py - 6, 1, 1, LIGHT_BAR[1]);
+  p.px.rect(px - 3, py - 1, 1, 1, TYRE);
+  p.px.rect(px + 3, py - 1, 1, 1, TYRE);
+}
+
+/** The firehouse: two white garage doors in a brick wall and the hose tower with its siren. */
+function paintFirehouse(p: Pen): void {
+  const u0 = 0.06;
+  const v0 = 0.1;
+  const u1 = 0.9;
+  const v1 = 0.68;
+  const h = 14;
+  p.shadow(u0, v0, u1, v1);
+  yard(p, 0.04, 0.7, 0.96, 0.94);
+  p.box(u0, v0, u1, v1, 0, h, BRICK, 'brick', [
+    { t0: 0, t1: 99, k0: 11, k1: 13, c: CHALK_WHITE },
+    { t0: 1, t1: 6, k0: 0, k1: 10, c: CHALK_WHITE },
+    { t0: 7, t1: 12, k0: 0, k1: 10, c: CHALK_WHITE },
+    { t0: 1, t1: 6, k0: 10, k1: 10, c: shade(CHALK_WHITE, 0.8) },
+    { t0: 7, t1: 12, k0: 10, k1: 10, c: shade(CHALK_WHITE, 0.8) },
+    { t0: 1, t1: 6, k0: 5, k1: 6, c: shade(LEG, 1.5) },
+    { t0: 7, t1: 12, k0: 5, k1: 6, c: shade(LEG, 1.5) },
+  ], [
+    { t0: 0, t1: 99, k0: 11, k1: 13, c: shade(CHALK_WHITE, 0.86) },
+    ...glazed(3, 9, 4, 4, 4, GLASS),
+  ], ROOFTOP);
+  p.cornice(u0, v0, u1, v1, h, 1.5, BRICK);
+  // The hose tower on the corner, with its pointed roof and the siren under it.
+  p.box(0.68, 0.14, 0.86, 0.3, h + 1.5, 16, BRICK, 'brick', [
+    { t0: 0, t1: 99, k0: 10, k1: 11, c: CHALK_WHITE },
+    { t0: 1, t1: 3, k0: 12, k1: 15, c: GLASS },
+  ], [
+    { t0: 0, t1: 99, k0: 10, k1: 11, c: shade(CHALK_WHITE, 0.86) },
+    { t0: 1, t1: 3, k0: 12, k1: 15, c: shade(GLASS, 0.85) },
+  ]);
+  p.hip(0.66, 0.12, 0.88, 0.32, h + 17.5, 4, SLATE);
+  const [sx, sy] = p.P(0.77, 0.22, h + 17.5);
+  p.px.rect(Math.round(sx) - 1, Math.round(sy) + 2, 3, 1, hex('#e8b93c'));
+  // The hydrant by the door of the garage.
+  const [hx, hy] = p.P(0.94, 0.8, 1.2);
+  p.px.rect(Math.round(hx) - 1, Math.round(hy) - 4, 2, 4, hex('#c8392f'));
+  p.px.rect(Math.round(hx) - 2, Math.round(hy) - 3, 4, 1, hex('#c8392f'));
+}
+
+/** The hospital: four floors of white wall and blue glass, the red cross and the helipad on the roof. */
+function paintHospital(p: Pen): void {
+  const u0 = 0.1;
+  const v0 = 0.12;
+  const u1 = 0.8;
+  const v1 = 0.74;
+  const wall = WALLS[0];
+  const h = 34;
+  p.shadow(u0, v0, u1, v1);
+  yard(p, 0.06, 0.76, 0.94, 0.94);
+  p.box(u0, v0, u1, v1, 0, h, wall, 'plain', [
+    ...ribbonIn(0, 99, 6, 3, GLASS_LIT),
+    ...ribbonIn(0, 99, 13, 3, GLASS_LIT),
+    ...ribbonIn(0, 99, 20, 3, GLASS_LIT),
+    ...ribbonIn(0, 99, 27, 3, GLASS_LIT),
+    { t0: 5, t1: 8, k0: 23, k1: 30, c: RED_CROSS },
+    { t0: 3, t1: 10, k0: 25, k1: 28, c: RED_CROSS },
+    { t0: 4, t1: 7, k0: 0, k1: 6, c: GLASS },
+    { t0: 1, t1: 4, k0: 0, k1: 4, c: CHALK_WHITE },
+  ], [
+    ...ribbonIn(0, 99, 6, 3, GLASS_LIT),
+    ...ribbonIn(0, 99, 13, 3, GLASS_LIT),
+    ...ribbonIn(0, 99, 20, 3, GLASS_LIT),
+    ...ribbonIn(0, 99, 27, 3, GLASS_LIT),
+    { t0: 0, t1: 99, k0: 0, k1: 2, c: shade(wall[2], 0.6) },
+  ], ROOFTOP);
+  p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
+  // The helipad: the dark square with its H painted on it.
+  p.box(0.24, 0.3, 0.66, 0.66, h + 2, 1, [GARAGE, shade(GARAGE, 0.86), shade(GARAGE, 0.74)], 'plain', [], [], GARAGE);
+  const [px, py] = p.P(0.45, 0.48, h + 3);
+  const cx = Math.round(px);
+  const cy = Math.round(py);
+  p.px.rect(cx - 3, cy - 4, 2, 7, CHALK_WHITE);
+  p.px.rect(cx + 2, cy - 4, 2, 7, CHALK_WHITE);
+  p.px.rect(cx - 1, cy - 2, 4, 2, CHALK_WHITE);
+  // The ambulance under the canopy of emergencies.
+  p.canopy(0.12, 0.76, 0.42, 7, CHALK_WHITE, FASCIA, 2);
+  const [ax, ay] = p.P(0.26, 0.84, 1.2);
+  p.px.rect(Math.round(ax) - 3, Math.round(ay) - 4, 7, 4, CHALK_WHITE);
+  p.px.rect(Math.round(ax) - 3, Math.round(ay) - 2, 7, 1, RED_CROSS);
+  p.px.rect(Math.round(ax) - 2, Math.round(ay) - 6, 4, 2, CHALK_WHITE);
+}
+
+
+/** The university: brick and the portico of white columns, with the clock tower on the corner. */
+function paintUniversity(p: Pen): void {
+  const u0 = 0.06;
+  const v0 = 0.1;
+  const u1 = 0.94;
+  const v1 = 0.66;
+  const h = 18;
+  p.shadow(u0, v0, u1, v1);
+  yard(p, 0.04, 0.68, 0.96, 0.94);
+  p.box(u0, v0, u1, v1, 0, h, BRICK, 'brick', [
+    ...ribbonIn(0, 99, 12, 3, GLASS_LIT),
+    ...glazed(1, 3, 3, 5, 3, GLASS),
+    ...glazed(5, 7, 3, 5, 3, GLASS),
+    ...glazed(9, 11, 3, 5, 3, GLASS),
+    { t0: 4, t1: 8, k0: 0, k1: 11, c: GARAGE },
+    { t0: 3, t1: 9, k0: 11, k1: 13, c: CHALK_WHITE },
+  ], [
+    ...ribbonIn(0, 99, 12, 3, GLASS_LIT),
+    ...glazed(2, 4, 3, 5, 3, GLASS),
+    ...glazed(6, 8, 3, 5, 3, GLASS),
+  ], ROOFTOP);
+  // The portico: four columns and their entablature, in front of the door.
+  for (const u of [0.18, 0.34, 0.5, 0.66]) p.box(u, 0.66, u + 0.04, 0.7, 0, 11, CHALK, 'plain');
+  p.box(0.14, 0.64, 0.72, 0.72, 11, 2, CHALK, 'plain');
+  p.hip(0.12, 0.62, 0.74, 0.74, 13, 3, ROOFS[1]);
+  p.cornice(u0, v0, u1, v1, h, 1.5, BRICK);
+  // The clock tower on the far corner, with its pointed roof and the clock over the door.
+  p.box(0.68, 0.16, 0.92, 0.4, h + 1.5, 12, WALLS[1], 'plain', [
+    { t0: 2, t1: 4, k0: 8, k1: 11, c: CHALK_WHITE },
+    { t0: 1, t1: 5, k0: 3, k1: 6, c: GLASS },
+  ], [{ t0: 2, t1: 4, k0: 8, k1: 11, c: shade(CHALK_WHITE, 0.85) }]);
+  p.hip(0.66, 0.14, 0.94, 0.42, h + 13.5, 5, SLATE);
+  const [cx, cy] = p.P(0.8, 0.4, h + 5);
+  p.px.rect(Math.round(cx) - 1, Math.round(cy) - 2, 3, 3, CHALK_WHITE);
+  p.px.rect(Math.round(cx), Math.round(cy) - 1, 1, 1, GARAGE);
+  p.px.set(Math.round(cx), Math.round(cy) - 2, GARAGE);
+  p.tree(0.2, 0.86);
+}
+
+/** Paints a service building on its own canvas, without turning it into a sprite. */
+export function paintService(kind: ServiceKind): { px: Pixels; ax: number; ay: number } {
+  const p = pen(SERVICE_MAX_Z[kind]);
+  if (kind === 'school') paintSchool(p);
+  else if (kind === 'clinic') paintClinic(p);
+  else if (kind === 'police') paintPolice(p);
+  else if (kind === 'fire') paintFirehouse(p);
+  else if (kind === 'hospital') paintHospital(p);
+  else paintUniversity(p);
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+const serviceCache = new Map<ServiceKind, Sprite>();
+
+/** The sprite of a service building, keyed by its kind, in the pixel pass of the city. */
+export function servicePixelSprite(kind: ServiceKind): Sprite {
+  let sprite = serviceCache.get(kind);
+  if (!sprite) {
+    sprite = spriteOf(paintService(kind));
+    serviceCache.set(kind, sprite);
   }
   return sprite;
 }

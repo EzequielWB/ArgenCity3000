@@ -30,6 +30,13 @@ function city(): World {
   // An airport of two pieces: they are painted as one facility, so the seam has to disappear here.
   plan('airport', 2, 12);
   plan('airport', 5, 12);
+  // One of each service along the avenue, to see the six in the street they belong to.
+  plan('school', 2, 6);
+  plan('clinic', 3, 6);
+  plan('police', 4, 6);
+  plan('fire', 6, 6);
+  plan('hospital', 7, 6);
+  plan('university', 8, 6);
   // The plaza is set straight on the grid: the tool checks road access and would leave a fringe.
   for (let y = 7; y <= 9; y++) for (let x = 7; x <= 9; x++) world.tiles[y * n + x] = TILE.PARK;
   // The dirt street is set on the grid after every plan: the sheet is about the look, not the rules,

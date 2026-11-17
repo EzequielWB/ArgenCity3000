@@ -50,7 +50,7 @@ import {
 } from './sprites';
 import { parkTreeHere } from './park';
 import { pixelArt } from './artSwitch';
-import { busDepotPixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, type HubView } from './pixelArt';
+import { busDepotPixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, servicePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
@@ -603,6 +603,7 @@ export class MapRenderer {
     const service = serviceOf(tile);
     if (service) {
       const [ax, ay] = this.toCache(vx, vy, hs[0]);
+      if (pixelArt('servicios')) return { sprite: servicePixelSprite(service), ax, ay };
       return { sprite: serviceSprite(service), ax, ay };
     }
     const [ax, ay] = this.toCache(vx, vy, avg(hs));

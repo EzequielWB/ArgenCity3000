@@ -10,13 +10,14 @@ import {
   paintIndustrial,
   paintLot,
   paintPlaza,
+  paintService,
   paintPromenade,
   paintResidential,
   paintWindFarm,
   type HubView,
   type LotKind,
 } from '../src/render/pixelArt';
-import type { HubKind } from '../src/config';
+import { SERVICE_KINDS, type HubKind } from '../src/config';
 
 const LEVELS = [1, 2, 3, 4, 5];
 
@@ -363,6 +364,55 @@ describe('power plant pixel art', () => {
     }
     // The wind farm is the tall one: three towers and their blades.
     expect(rises(wind)).toBeGreaterThan(rises(gas));
+  });
+});
+
+describe('service buildings pixel art', () => {
+  const all = SERVICE_KINDS.map((kind) => [kind, paintService(kind) as Art] as const);
+
+  /** Lowest painted row, so the yard can be told from the building. */
+  const bottomRow = (a: Art) => {
+    for (let y = a.px.h - 1; y >= 0; y--) for (let x = 0; x < a.px.w; x++) if (alpha(a, x, y)) return y;
+    return 0;
+  };
+
+  it('paints hard pixels: opaque or empty, never a soft edge', () => {
+    for (const [kind, art] of all) {
+      for (let i = 3; i < art.px.data.length; i += 4) {
+        const al = art.px.data[i];
+        if (al === 0 || al === 255) continue;
+        const at = `${kind}, pixel ${(i - 3) / 4}`;
+        expect([art.px.data[i - 3], art.px.data[i - 2], art.px.data[i - 1]], at).toEqual([0, 0, 0]);
+        expect(al, at).toBeLessThanOrEqual(SHADOW_ALPHA);
+      }
+    }
+  });
+
+  it('gives the six of them a drawing of their own', () => {
+    for (let i = 0; i < all.length; i++) {
+      for (let j = i + 1; j < all.length; j++) {
+        const [ka, a] = all[i];
+        const [kb, b] = all[j];
+        expect([a.px.w, a.px.h, ...a.px.data], `${ka} vs ${kb}`).not.toEqual([b.px.w, b.px.h, ...b.px.data]);
+      }
+    }
+    // Read them from far away: the hospital and the university are the two big ones, the salita the
+    // small one, and that has to show in the silhouette.
+    const rise = (kind: string) => rises(paintService(kind as never) as Art);
+    expect(rise('hospital')).toBeGreaterThan(rise('clinic') + 6);
+    expect(rise('university')).toBeGreaterThan(rise('clinic') + 4);
+    expect(rise('fire')).toBeGreaterThan(rise('clinic'));
+  });
+
+  it('stays on its lot: a building above the anchor and a yard below it, nothing at all far away', () => {
+    for (const [kind, art] of all) {
+      expect(topRow(art), `${kind} rises above its anchor`).toBeLessThan(art.ay);
+      expect(bottomRow(art), `${kind} has its yard in front`).toBeGreaterThan(art.ay);
+      const [lo, hi] = span(art);
+      // The lot is 32 px across, and the canvas keeps a margin for the shadow: nothing may reach it.
+      expect(lo, `${kind} keeps to its lot`).toBeGreaterThanOrEqual(2);
+      expect(hi, `${kind} keeps to its lot`).toBeLessThanOrEqual(art.px.w - 3);
+    }
   });
 });
 

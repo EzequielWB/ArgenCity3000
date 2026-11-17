@@ -16,8 +16,8 @@ declare const process: { cwd(): string };
 const entry = `
 import './scripts/board-city';
 import { buildingSprite } from './src/render/sprites';
-import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub } from './src/render/pixelArt';
-import type { HubKind } from './src/config';
+import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, servicePixelSprite } from './src/render/pixelArt';
+import type { HubKind, ServiceKind } from './src/config';
 
 const NEW = { R: residentialPixelSprite, C: commercialPixelSprite, I: industrialPixelSprite };
 const K = 3;
@@ -130,6 +130,16 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-plant]'))) {
   const g = el.getContext('2d');
   g.clearRect(0, 0, el.width, el.height);
   place(g, plantPixelSprite(kind), el.width / 2, 62 * k, k);
+}
+
+for (const el of Array.from(document.querySelectorAll('canvas[data-service]'))) {
+  const kind = String(el.dataset.service) as ServiceKind;
+  const k = Number(el.dataset.k || 3);
+  el.width = 44 * k;
+  el.height = 60 * k;
+  const g = el.getContext('2d');
+  g.clearRect(0, 0, el.width, el.height);
+  place(g, servicePixelSprite(kind), el.width / 2, 17 * k, k);
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-hub]'))) {
@@ -378,6 +388,7 @@ const page = `<!doctype html>
       canvas[data-depot] { width: 222px; height: 192px; }
       canvas[data-plant] { width: 228px; height: 300px; }
       canvas[data-hub] { max-width: 100%; height: auto; }
+      canvas[data-service] { width: 132px; height: 180px; }
       figcaption { margin-top: 4px; font-size: 11px; color: #8e979e; }
     </style>
   </head>
@@ -392,7 +403,7 @@ const page = `<!doctype html>
       No cambia nada del juego hasta que se pide: <code>?pixel=residencial</code>,
       <code>?pixel=comercial</code>, <code>?pixel=industrial</code>, <code>?pixel=plazas</code>,
       <code>?pixel=calles</code>, <code>?pixel=tierra</code>, <code>?pixel=costa</code>,
-      <code>?pixel=energia</code>, <code>?pixel=transporte</code> o
+      <code>?pixel=energia</code>, <code>?pixel=transporte</code>, <code>?pixel=servicios</code> o
       <code>?pixel=todo</code> al final de la dirección. Sin eso vuelve solo al arte de siempre.
     </p>
     ${sections}
@@ -417,6 +428,36 @@ const page = `<!doctype html>
           <canvas data-plant="wind" data-k="3"></canvas>
           <figcaption>parque eólico</figcaption>
         </figure>
+      </div>
+    </section>
+    <section id="servicios">
+      <h2>Servicios</h2>
+      <p class="note">
+        Los seis edificios de una celda, sin niveles: son los que más aparecen en una ciudad, así que
+        son los que más cantaban en arte viejo. Cada uno se reconoce por lo que hace: la escuela por el
+        mástil con la bandera y el patio con reja, la salita por la cruz verde, la comisaría por la
+        baliza y el patrullero, los bomberos por la torre de secado, el hospital por la cruz roja y la
+        helisuperficie, y la universidad por el pórtico de columnas y la torre del reloj.
+      </p>
+      <div class="row">
+        ${(
+          [
+            ['school', 'escuela'],
+            ['clinic', 'salita'],
+            ['police', 'comisaría'],
+            ['fire', 'bomberos'],
+            ['hospital', 'hospital'],
+            ['university', 'universidad'],
+          ] as const
+        )
+          .map(
+            ([kind, name]) => `
+          <figure>
+            <canvas data-service="${kind}" data-k="3"></canvas>
+            <figcaption>${name}</figcaption>
+          </figure>`,
+          )
+          .join('')}
       </div>
     </section>
     <section id="transporte">
