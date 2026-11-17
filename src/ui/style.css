@@ -61,18 +61,28 @@ button {
   cursor: pointer;
 }
 
+/*
+ * Hover brightens, it does not paint. A green fill on top of the button erased whatever it was
+ * showing: the icon of a tool, the gold of a pressed one and, worst of all, the colour of the bus
+ * line you were picking, which turned green under the pointer instead of its own colour.
+ */
 button:hover {
   border-color: var(--gold-light);
-  background: #26694f;
+  filter: brightness(1.16);
 }
 
 button:active {
   box-shadow: var(--bevel-in);
+  filter: brightness(0.94);
 }
 
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+button:disabled:hover {
+  filter: none;
 }
 
 button[aria-pressed='true'] {

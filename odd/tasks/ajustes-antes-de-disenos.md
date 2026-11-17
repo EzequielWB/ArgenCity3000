@@ -151,3 +151,10 @@ cuatro de simulación. Todos se pueden hacer por separado y cada uno se puede re
   calle siguen saturadas con cinco líneas alrededor.
 - **L7.** Evidencia: `npx vitest run` **1116 / 66 archivos** verdes · `npx tsc --noEmit` limpio.
   Commits `14f3b1c`, `bb72e82`, `d9a88b4` (y el cierre de los textos de la meta, aparte).
+- **L9.** S2 no alcanzaba, y por una razón de cascada: arreglé el fondo de `#toolbar` y `.fly .tool`,
+  pero el verde venía de la regla general `button:hover { background: #26694f }`, que le gana en
+  especificidad a `.bus-swatch` (0,1,1 contra 0,1,0). Por eso la paleta de la línea de colectivos se
+  pintaba de verde al pasar el mouse y no se veía el color que estabas eligiendo. Ahora `button:hover`
+  **ilumina** (`filter: brightness(1.16)`) en vez de pintar: sirve para todos los botones que traen su
+  propio color o su propio ícono —las muestras de la línea, las herramientas, los botones dorados
+  apretados— sin taparlos. `:active` oscurece un poco y `:disabled:hover` no cambia nada.
