@@ -1,5 +1,5 @@
 import { PAL, shade } from './color';
-import type { CoastKind, UniqueKind } from '../config';
+import type { UniqueKind } from '../config';
 import type { ZoneKind } from '../world/world';
 import { commercialPixelSprite, industrialPixelSprite, residentialPixelSprite } from './pixelArt';
 
@@ -147,34 +147,10 @@ class Painter {
   }
 
   /** Red-and-white striped chimney; registers a smoke source at its top. */
-  chimney(u0: number, v0: number, s: number, h: number, base = 0, a = '#c8462f', b = '#efe6d8'): void {
-    const bands = 5;
-    for (let k = 0; k < bands; k++) {
-      this.box(u0, v0, u0 + s, v0 + s, base + (h * k) / bands, h / bands, k % 2 ? b : a, false);
-    }
-    const [x, y] = this.P(u0 + s / 2, v0 + s / 2, base + h);
-    this.smoke.push([x - this.ax, y - this.ay]);
-  }
 
   /** Striped awning hanging off the left wall. */
-  awning(v: number, u0: number, u1: number, z: number, c1: string, c2: string, stripes = 4): void {
-    const P = this.P.bind(this);
-    for (let k = 0; k < stripes; k++) {
-      const a = u0 + ((u1 - u0) * k) / stripes;
-      const b = u0 + ((u1 - u0) * (k + 1)) / stripes;
-      this.poly([P(a, v, z), P(b, v, z), P(b, v + 0.13, z - 4), P(a, v + 0.13, z - 4)], k % 2 ? c2 : c1);
-    }
-  }
 
   /** Same awning on the right wall. */
-  awningRight(u: number, v0: number, v1: number, z: number, c1: string, c2: string, stripes = 4): void {
-    const P = this.P.bind(this);
-    for (let k = 0; k < stripes; k++) {
-      const a = v0 + ((v1 - v0) * k) / stripes;
-      const b = v0 + ((v1 - v0) * (k + 1)) / stripes;
-      this.poly([P(u, a, z), P(u, b, z), P(u + 0.13, b, z - 4), P(u + 0.13, a, z - 4)], shade(k % 2 ? c2 : c1, 0.85));
-    }
-  }
 
   /**
    * A tree, in the same language as the buildings: flat facets, the same three values of light and
@@ -342,123 +318,6 @@ function burningOf(base: Sprite): Sprite {
 
 /** What stands on a plaza cell: a kept one with its tree, a kept one left bare, or a neglected one. */
 export type ParkLook = 'tree' | 'bare' | 'neglected';
-
-/** Cargo port: a quay with stacked containers and a gantry crane. */
-function port(): Sprite {
-  const p = painter(1, 58);
-  p.box(0.02, 0.02, 0.98, 0.98, 0, 3, '#aaa293', false);
-  const stack = (u0: number, v0: number, u1: number, v1: number, colors: string[]) => {
-    colors.forEach((c, k) => p.box(u0, v0, u1, v1, 3 + k * 5.2, 5.2, c));
-  };
-  stack(0.08, 0.58, 0.46, 0.92, ['#c8462f', '#3f6f9f']);
-  stack(0.54, 0.6, 0.92, 0.92, ['#e0a526', '#2f9a55', '#c8462f']);
-  stack(0.55, 0.28, 0.9, 0.5, ['#3f6f9f']);
-  // Gantry crane: two legs, a beam along u, a cab and a hanging spreader.
-  p.box(0.07, 0.1, 0.15, 0.18, 3, 38, '#e0a526');
-  p.box(0.83, 0.1, 0.91, 0.18, 3, 38, '#e0a526');
-  p.box(0.05, 0.08, 0.93, 0.2, 41, 3.4, '#e0a526');
-  p.box(0.42, 0.06, 0.62, 0.22, 44.4, 6, '#c8462f');
-  p.right(0.62, 0.08, 0.2, 46, 49, PAL.glassDark);
-  const g = p.g;
-  const [cx, cy] = p.P(0.52, 0.14, 41);
-  g.strokeStyle = '#3a2a20';
-  g.lineWidth = 0.8;
-  g.beginPath();
-  g.moveTo(cx - 2, cy);
-  g.lineTo(cx - 2, cy + 12);
-  g.moveTo(cx + 2, cy);
-  g.lineTo(cx + 2, cy + 12);
-  g.stroke();
-  p.box(0.44, 0.1, 0.6, 0.18, 29, 3, '#3a2a20', false);
-  return done(p);
-}
-
-function umbrella(p: Painter, u: number, v: number, color: string): void {
-  const g = p.g;
-  const [x, y] = p.P(u, v, 0);
-  g.fillStyle = '#6b4a2e';
-  g.fillRect(x - 0.6, y - 14, 1.2, 14);
-  const rx = 7.5;
-  const ry = 3.4;
-  const cy = y - 11;
-  const wedges = 6;
-  for (let k = 0; k < wedges; k++) {
-    const a0 = Math.PI * (k / wedges);
-    const a1 = Math.PI * ((k + 1) / wedges);
-    g.beginPath();
-    g.moveTo(x, cy - 4.5);
-    g.lineTo(x - Math.cos(a0) * rx, cy + Math.sin(a0) * ry);
-    g.lineTo(x - Math.cos(a1) * rx, cy + Math.sin(a1) * ry);
-    g.closePath();
-    g.fillStyle = k % 2 ? '#f4f0e6' : color;
-    g.fill();
-  }
-}
-
-/** Beach resort: a thatched bar with an awning, umbrellas and sun loungers on the sand. */
-function resort(): Sprite {
-  const p = painter(1, 38);
-  p.box(0.5, 0.08, 0.92, 0.46, 0, 9, '#f1e3c6');
-  p.left(0.46, 0.56, 0.86, 2, 7.5, PAL.glassDark);
-  p.hipRoof(0.46, 0.04, 0.96, 0.5, 9, 5.5, '#c9a45a');
-  p.awning(0.46, 0.5, 0.92, 8.6, '#e0453a', '#f4f0e6', 5);
-  p.box(0.12, 0.62, 0.3, 0.74, 0, 1.4, '#f4f0e6');
-  p.box(0.55, 0.7, 0.73, 0.82, 0, 1.4, '#f4f0e6');
-  umbrella(p, 0.22, 0.38, '#e0453a');
-  umbrella(p, 0.3, 0.78, '#3f8fe0');
-  umbrella(p, 0.68, 0.64, '#e0b542');
-  return done(p);
-}
-
-/** Lighthouse: a tapered tower banded red and white, a gallery and a lit lantern under a red cap. */
-function lighthouse(): Sprite {
-  const p = painter(1, 100);
-  const g = p.g;
-  p.box(0.18, 0.18, 0.82, 0.82, 0, 3, '#aaa293', false);
-  const bands = 5;
-  const bandH = 13;
-  for (let k = 0; k < bands; k++) {
-    p.cylinder(0.5, 0.5, 0.27 - k * 0.018, 3 + k * bandH, bandH, k % 2 ? '#c8392f' : '#f4f0e6');
-  }
-  const top = 3 + bands * bandH;
-  p.cylinder(0.5, 0.5, 0.27, top, 3, '#4a4650');
-  const [lx, ly] = p.P(0.5, 0.5, top + 3);
-  const glow = g.createRadialGradient(lx, ly - 5, 1, lx, ly - 5, 20);
-  glow.addColorStop(0, 'rgba(255,230,120,0.55)');
-  glow.addColorStop(1, 'rgba(255,230,120,0)');
-  g.fillStyle = glow;
-  g.fillRect(lx - 22, ly - 28, 44, 46);
-  p.cylinder(0.5, 0.5, 0.14, top + 3, 9, '#ffd84a');
-  const [cx, cy] = p.P(0.5, 0.5, top + 12);
-  g.beginPath();
-  g.moveTo(cx - 6.4, cy);
-  g.lineTo(cx, cy - 10);
-  g.lineTo(cx + 6.4, cy);
-  g.closePath();
-  g.fillStyle = '#c8392f';
-  g.fill();
-  g.strokeStyle = shade('#c8392f', 0.5);
-  g.lineWidth = 0.6;
-  g.stroke();
-  return done(p);
-}
-
-/**
- * Sprite of a coast building. The promenade and the fishing pier are painted in pixel (see
- * `pixelArt.ts`); what is left here are the three unique buildings of the coast, one of each per map.
- */
-export function coastSprite(kind: CoastKind): Sprite {
-  switch (kind) {
-    case 'port':
-      return cached('coast:port', port);
-    case 'resort':
-      return cached('coast:resort', resort);
-    case 'lighthouse':
-      return cached('coast:lighthouse', lighthouse);
-    default:
-      throw new Error(`la costa no tiene un edificio de canvas para ${kind}`);
-  }
-}
 
 /** Same building, emptied: darker, washed out, with boarded windows. */
 function abandonedOf(base: Sprite): Sprite {

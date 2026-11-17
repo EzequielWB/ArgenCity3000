@@ -33,9 +33,9 @@ import {
 } from './chunks';
 import { PAL, mix, rgb, toRgb } from './color';
 import { hubHeight, isPlatform, surfaceHeights, uniqueHeight, viewCornerHeights, plantHeight, type Pt } from './geometry';
-import { abandonedBuildingSprite, buildingSprite, burningBuildingSprite, coastSprite, routeSignSpriteFor, uniqueSprite, type Sprite } from './sprites';
+import { abandonedBuildingSprite, buildingSprite, burningBuildingSprite, routeSignSpriteFor, uniqueSprite, type Sprite } from './sprites';
 import { parkTreeHere } from './park';
-import { busDepotPixelSprite, poleAttach, polePixelSprite, treePixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, servicePixelSprite, type HubView } from './pixelArt';
+import { busDepotPixelSprite, coastPixelSprite, poleAttach, polePixelSprite, treePixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, servicePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
@@ -607,11 +607,7 @@ export class MapRenderer {
     const coast = coastOf(tile);
     if (coast) {
       const variant = this.coastVariant(coast, vx, vy, x, y);
-      // The promenade and the pier are sprites; the port, the resort and the lighthouse are unique
-      // buildings and stay in canvas until their own pass.
-      if (coast === 'promenade') return { sprite: promenadePixelSprite(variant), ax, ay };
-      if (coast === 'fishing') return { sprite: fishingPixelSprite(variant), ax, ay };
-      return { sprite: coastSprite(coast), ax, ay };
+      return { sprite: coastPixelSprite(coast, variant), ax, ay };
     }
     if (tile === TILE.BUS) {
       // A depot is a block drawn once, at the cell in front of its footprint, like a plant.
@@ -879,8 +875,12 @@ export class MapRenderer {
     return 0;
   }
 
+  /**
+   * What the sprite has to know about this cell of the coast. The four low bits are always the sides
+   * that face water: the promenade stands its balustrade on them, the pier runs its jetty out to one,
+   * and the port, the resort and the lighthouse lean on them with the quay, the sand and the rock.
+   */
   private coastVariant(kind: ReturnType<typeof coastOf>, vx: number, vy: number, x: number, y: number): number {
-    if (kind !== 'promenade' && kind !== 'fishing') return 0;
     const n = this.world.n;
     let mask = 0;
     [
@@ -894,9 +894,12 @@ export class MapRenderer {
       if (this.world.isWater(wx, wy)) mask |= 1 << k;
     });
     if (kind === 'promenade') return mask | ((x + y) % 2 === 0 ? 16 : 0);
-    // The jetty goes to the first side facing water; with water only at a corner, to the front-left one.
-    for (const k of [2, 1, 0, 3]) if (mask & (1 << k)) return k;
-    return 2;
+    if (kind === 'fishing') {
+      // The jetty goes to the first side facing water; with water only at a corner, to the front-left one.
+      for (const k of [2, 1, 0, 3]) if (mask & (1 << k)) return k;
+      return 2;
+    }
+    return mask;
   }
 
   private isRoadView(vx: number, vy: number): boolean {

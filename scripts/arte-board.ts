@@ -1,6 +1,6 @@
 /**
- * Assembles `arte.html`: the residential and commercial ladders in the new pixel art next to the art
- * the game draws today, so a pass can be judged before it is switched on.
+ * Assembles `arte.html`: every family of the pixel art, level by level, on the board the game draws
+ * with, plus a city block drawn by the renderer itself.
  *
  * Run with `npm run arte`, from the project root. The page carries its own copy of the sprite code,
  * so it opens by double click, with no server; run the script again after touching
@@ -15,9 +15,9 @@ declare const process: { cwd(): string };
 
 const entry = `
 import './scripts/board-city';
-import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite } from './src/render/pixelArt';
+import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, coastPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite } from './src/render/pixelArt';
 import { boatPixelSprite, carPixelSprite, planePixelSprite } from './src/render/vehicleArt';
-import type { HubKind, ServiceKind } from './src/config';
+import type { CoastKind, HubKind, ServiceKind } from './src/config';
 
 const NEW = { R: residentialPixelSprite, C: commercialPixelSprite, I: industrialPixelSprite };
 const K = 3;
@@ -112,14 +112,18 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-plazatile]'))
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-coast]'))) {
-  const kind = el.dataset.coast;
+  const kind = String(el.dataset.coast) as CoastKind;
   const variant = Number(el.dataset.variant || 0);
   const k = Number(el.dataset.k || 3);
-  el.width = 40 * k;
-  el.height = 44 * k;
+  // The lighthouse is three times taller than a cell: the canvas is the size of the drawing, not of a lot.
+  const sprite = coastPixelSprite(kind, variant);
+  el.width = sprite.canvas.width * k;
+  el.height = sprite.canvas.height * k;
+  el.style.width = el.width + 'px';
+  el.style.height = el.height + 'px';
   const g = el.getContext('2d');
   g.clearRect(0, 0, el.width, el.height);
-  place(g, kind === 'fishing' ? fishingPixelSprite(variant) : promenadePixelSprite(variant), el.width / 2, 21 * k, k);
+  place(g, sprite, el.width / 2, sprite.ay * k, k);
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-plant]'))) {
@@ -427,7 +431,7 @@ const page = `<!doctype html>
       canvas[data-plazablock] { width: 208px; height: 144px; }
       canvas[data-plazatile] { width: 160px; height: 152px; }
       canvas[data-city] { width: auto; height: auto; max-width: 100%; }
-      canvas[data-coast] { width: 120px; height: 132px; }
+      canvas[data-coast] { display: block; }
       canvas[data-depot] { width: 222px; height: 192px; }
       canvas[data-plant] { width: 228px; height: 300px; }
       canvas[data-hub] { max-width: 100%; height: auto; }
@@ -734,6 +738,55 @@ const page = `<!doctype html>
           <figure>
             <canvas data-coast="fishing" data-variant="${dir}"></canvas>
             <figcaption>lado ${dir}</figcaption>
+          </figure>`,
+          )
+          .join('')}
+      </div>
+      <h3>Puerto de carga</h3>
+      <p class="note">
+        Los contenedores apilados dicen qué es y la grúa pórtico le da la altura: dos patas, la viga y
+        un contenedor colgado. El muelle de hormigón corre hasta los lados que dan al agua, con sus
+        bolardos; cada dibujo es una máscara distinta.
+      </p>
+      <div class="row">
+        ${[0, 1, 4, 5, 2, 8, 3, 12]
+          .map(
+            (variant) => `
+          <figure>
+            <canvas data-coast="port" data-variant="${variant}"></canvas>
+            <figcaption>agua ${variant}</figcaption>
+          </figure>`,
+          )
+          .join('')}
+      </div>
+      <h3>Balneario</h3>
+      <p class="note">
+        El bar de paja con el toldo a rayas sobre el mostrador, las sombrillas y las reposeras en la
+        arena. La arena llega al agua con su espuma; el bar se queda de este lado.
+      </p>
+      <div class="row">
+        ${[0, 1, 4, 5, 2, 8]
+          .map(
+            (variant) => `
+          <figure>
+            <canvas data-coast="resort" data-variant="${variant}"></canvas>
+            <figcaption>agua ${variant}</figcaption>
+          </figure>`,
+          )
+          .join('')}
+      </div>
+      <h3>Faro</h3>
+      <p class="note">
+        La torre a franjas, la galería, la luz encendida y su haz. Es lo más alto de la costa: se lee
+        de lejos por la silueta, agarrado a la roca donde rompe el agua.
+      </p>
+      <div class="row">
+        ${[0, 1, 4, 8]
+          .map(
+            (variant) => `
+          <figure>
+            <canvas data-coast="lighthouse" data-variant="${variant}"></canvas>
+            <figcaption>agua ${variant}</figcaption>
           </figure>`,
           )
           .join('')}

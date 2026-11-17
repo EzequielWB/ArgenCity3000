@@ -13,7 +13,7 @@
  */
 import { Pixels, bayer, hex, noise, shade, type Paint, type Pt, type RGB, type WallPaint } from './pixel';
 import type { Sprite } from './sprites';
-import { BUS_COLORS, SERVICE_SIZE, type HubKind, type PlantKind, type ServiceKind } from '../config';
+import { BUS_COLORS, SERVICE_SIZE, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
 
 /** Face tones measured on the reference. */
 const LEFT = 0.69;
@@ -2931,6 +2931,350 @@ export function fishingPixelSprite(dir: number): Sprite {
   let sprite = coastCache.get(key);
   if (!sprite) {
     sprite = spriteOf(paintFishing(dir));
+    coastCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+/* ---------- The three buildings of the coast ---------- */
+
+/** The sand of the beach, warmer than any pavement. */
+const SAND: Ramp = [hex('#b58d52'), hex('#e2c48f'), hex('#cfae74')];
+/** Thatch: straw over the shadow of the eave. */
+const THATCH: Ramp = [hex('#7a5320'), hex('#c9a45a'), hex('#a8823f')];
+/** The stone the lighthouse stands on, and the foam that hits it. */
+const STONE: Ramp = ramp('#8b8b84');
+const FOAM = hex('#eaf5f8');
+const LAMP = hex('#ffe37a');
+const BEAM = hex('#ffeeb4');
+const PLASTER = ramp('#f2efe6');
+
+/** The sides of a cell that face water, in the order back-right, front-right, front-left, back-left. */
+const waterSides = (mask: number): number[] => [0, 1, 2, 3].filter((k) => mask & (1 << k));
+
+/** The two end points of each side of the diamond, in footprint units. */
+const SIDE_EDGE: readonly [number, number, number, number][] = [
+  [0, 0, 1, 0],
+  [1, 0, 1, 1],
+  [0, 1, 1, 1],
+  [0, 0, 0, 1],
+];
+
+/** A line of foam along a side of the cell that looks at the river, dithered so it is not a bar. */
+function surf(p: Pen, side: number, z = -1.2): void {
+  const [a, b, c, d] = SIDE_EDGE[side];
+  p.px.line(p.P(a, b, z), p.P(c, d, z), FOAM);
+  p.poly([p.P(a, b, z - 1), p.P(c, d, z - 1), p.P(c, d, z), p.P(a, b, z)], (x, y) => (bayer(x, y) < 0.34 ? WATER_SHALLOW : null));
+}
+
+/**
+ * The concrete apron of the port: slabs over the whole cell, a white line along the wet sides and
+ * the bollards where the ship ties up. The crane and the stacks stand on this.
+ */
+function quayFloor(p: Pen, water: number[]): void {
+  p.poly([p.P(0, 0), p.P(1, 0), p.P(1, 1), p.P(0, 1)], (x, y) => {
+    const u = ((x - p.ax) / 16 + (y - p.ay) / 8) / 2;
+    const v = ((y - p.ay) / 8 - (x - p.ax) / 16) / 2;
+    // A joint every three slabs in both directions, and two tones between them so it is not a plate.
+    if (Math.floor(u * 3) !== Math.floor((u + 0.05) * 3) || Math.floor(v * 3) !== Math.floor((v + 0.05) * 3)) return QUAY[0];
+    return bayer(x, y) < 0.5 ? QUAY[1] : QUAY[2];
+  });
+  for (const k of water) {
+    // The wall of the quay dropping to the water, and the white edge line along its top.
+    const [a, b, c, d] = SIDE_EDGE[k];
+    p.poly(
+      [p.P(a, b), p.P(c, d), p.P(c, d, -2), p.P(a, b, -2)],
+      (x, y) => (bayer(x, y) < 0.5 ? shade(QUAY[2], 0.66) : shade(QUAY[1], 0.74)),
+    );
+    p.px.line(p.P(a, b, 0.4), p.P(c, d, 0.4), shade(QUAY[1], 1.32));
+    surf(p, k, -2.4);
+  }
+  // The bollards, on the wet sides: a one-pixel post with its cap.
+  for (const k of water) {
+    const [a, b, c, d] = SIDE_EDGE[k];
+    for (const t of [0.3, 0.68]) {
+      const u = a + (c - a) * t;
+      const v = b + (d - b) * t;
+      const [x, y] = p.P(u, v, 0.4);
+      const cx = Math.round(x);
+      const cy = Math.round(y);
+      p.px.rect(cx, cy - 3, 1, 3, LEG);
+      p.px.rect(cx - 1, cy - 3, 3, 1, STEEL[1]);
+    }
+  }
+}
+
+/**
+ * A gantry crane over the quay: two legs and the beam on top, the cab where the beam crosses the
+ * middle, and a container hanging from the spreader. This is what says "puerto" at a glance.
+ */
+function gantryCrane(p: Pen, u0: number, u1: number, v: number, h: number, color: Ramp): [number, number] {
+  const legW = 0.1;
+  const depth = 0.12;
+  // The legs, four pixels wide each: a two-pixel post reads as a wire and the crane disappears.
+  for (const ua of [u0, u1 - legW]) {
+    p.box(ua, v, ua + legW, v + depth, 0, h, color, 'sheet');
+    // One rail down the middle of each leg, which is what makes it a lattice and not a slab.
+    const [lx, ly] = p.P(ua + legW / 2, v + depth, h);
+    p.px.rect(Math.round(lx), Math.round(ly), 1, h - 4, shade(color[2], 0.78));
+  }
+  // A brace at the foot of each leg: without it the beam looks like it is standing on two sticks.
+  p.box(u0 - 0.01, v + depth, u0 + 0.2, v + depth + 0.06, 0, 3, color, 'plain');
+  p.box(u1 - 0.2, v + depth, u1 + 0.01, v + depth + 0.06, 0, 3, color, 'plain');
+  // The beam, five pixels over the legs, with its dark underside and a lit top rail.
+  p.box(u0 - 0.04, v, u1 + 0.04, v + depth, h, 4, color, 'plain');
+  p.px.line(p.P(u0 - 0.04, v, h), p.P(u1 + 0.04, v, h), shade(color[2], 0.7));
+  p.px.line(p.P(u0 - 0.04, v, h + 4), p.P(u1 + 0.04, v, h + 4), shade(color[2], 1.42));
+  const uc = (u0 + u1) / 2;
+  // The cab, hanging under the beam with its glass facing the quay.
+  p.box(uc - 0.1, v + 0.02, uc + 0.1, v + depth, h - 6, 6, color, 'plain', [
+    { t0: 1, t1: 4, k0: 2, k1: 4, c: GLASS },
+    { t0: 1, t1: 4, k0: 5, k1: 6, c: shade(color[2], 1.35) },
+  ]);
+  p.px.line(p.P(uc - 0.1, v, h - 6), p.P(uc + 0.1, v, h - 6), shade(color[0], 0.72));
+  return [uc, v + depth / 2];
+}
+
+/**
+ * The load of the crane: the trolley, its two cables, the spreader and a container in the air. It is
+ * painted after the stacks, so it hangs in front of them instead of disappearing behind the yard.
+ */
+function gantryLoad(p: Pen, uc: number, v: number, h: number, color: Ramp, load: RGB): void {
+  const z = h - 24;
+  const [tx, ty] = p.P(uc, v, h);
+  p.px.rect(Math.round(tx) - 4, Math.round(ty), 9, 2, shade(color[0], 0.82));
+  const [bx, by] = p.P(uc, v, z + 5);
+  for (const dx of [-4, 4]) p.px.rect(Math.round(tx) + dx, Math.round(ty) + 2, 1, Math.max(2, Math.round(by) - Math.round(ty) - 1), LEG);
+  p.px.rect(Math.round(bx) - 5, Math.round(by) - 1, 11, 2, shade(color[0], 0.68));
+  p.box(
+    uc - 0.13,
+    v - 0.03,
+    uc + 0.13,
+    v + 0.03,
+    z,
+    4,
+    [shade(load, 1.05), shade(load, LEFT), shade(load, RIGHT)],
+    'sheet',
+    [{ t0: 0, t1: 99, k0: 1, k1: 3, c: shade(load, 0.82) }],
+  );
+}
+
+/** A row of containers stacked one on top of the other, in the colour of each company. */
+function containerStack(p: Pen, u: number, v: number, w: number, colors: number[], h: number): void {
+  colors.forEach((k, i) => {
+    const c = CARGO[k % 4];
+    const z = i * h;
+    // The ribs of the plate: one dark line every three pixels, which is what makes it a container.
+    const ribs: Patch[] = [];
+    for (let t = 2; t < w * 32; t += 3) ribs.push({ t0: t, t1: t + 1, k0: 0, k1: h, c: shade(c, 0.84) });
+    p.box(u, v, u + w, v + 0.22, z, h, [shade(c, 1.04), shade(c, LEFT), shade(c, RIGHT)], 'sheet', ribs, ribs, shade(c, 1.1));
+  });
+}
+
+/**
+ * The cargo port. `mask` is the sides of the lot that face water: the apron runs out to them with the
+ * bollards, and the stacks of containers and the crane work over the middle.
+ */
+function paintPort(p: Pen, mask: number): void {
+  const water = waterSides(mask);
+  p.shadow(0.06, 0.06, 0.94, 0.94);
+  quayFloor(p, water);
+  // Two long rows of containers, one behind the other: a container is long, and four short boxes in a
+  // square read as a heap of cubes instead of a yard.
+  containerStack(p, 0.04, 0.3, 0.9, [1, 0], 4);
+  containerStack(p, 0.04, 0.62, 0.9, [3, 2, 1], 4);
+  const [cu, cv] = gantryCrane(p, 0.1, 0.9, 0.04, 38, CRANE);
+  gantryLoad(p, cu, cv, 38, CRANE, CARGO[0]);
+}
+
+/** Paints the cargo port. */
+export function paintPortCell(mask: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penLot(1, 58);
+  paintPort(p, mask);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+/** A parasol of the beach: a pole and a dome of stripes, wide enough to read at 1x. */
+function parasol(p: Pen, u: number, v: number, a: RGB, b: RGB): void {
+  const [x, y] = p.P(u, v);
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  p.px.rect(cx, cy - 9, 1, 9, shade(WOOD_DARK[1], 0.9));
+  // The dome: four rows that widen, with the stripes turning with it.
+  for (const [dy, half] of [
+    [-13, 1],
+    [-12, 3],
+    [-11, 4],
+    [-10, 5],
+  ] as const) {
+    for (let dx = -half; dx <= half; dx++) p.px.set(cx + dx, cy + dy, Math.floor((dx + 5) / 2) % 2 ? a : b);
+  }
+  p.px.rect(cx - 5, cy - 9, 11, 1, shade(a, 0.62));
+  p.px.set(cx, cy - 14, shade(b, 0.9));
+}
+
+/** A sun lounger on the sand: the canvas seat, the back raised and its two legs. */
+function lounger(p: Pen, u: number, v: number, c: RGB): void {
+  const [x, y] = p.P(u, v);
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  // The shadow first, so the lounger is lying on the sand instead of floating over it.
+  p.px.rect(cx - 3, cy, 7, 1, shade(SAND[0], 0.82));
+  p.px.rect(cx - 3, cy - 4, 1, 2, shade(c, 0.8));
+  p.px.set(cx - 2, cy - 3, shade(c, 0.8));
+  p.px.rect(cx - 2, cy - 2, 6, 2, c);
+  p.px.rect(cx - 2, cy - 1, 1, 1, LEG);
+  p.px.rect(cx + 3, cy - 1, 1, 1, LEG);
+}
+
+/**
+ * The beach resort. `mask` is the water: the sand runs out to it with the foam, the bar stays on the
+ * dry side, and the parasols and the loungers fill the sand between them.
+ */
+function paintResort(p: Pen, mask: number): void {
+  p.shadow(0.06, 0.06, 0.94, 0.94);
+  // The sand over the whole lot: mostly the light tone, the dark one only where the wind ripples it.
+  p.poly([p.P(0, 0), p.P(1, 0), p.P(1, 1), p.P(0, 1)], (x, y) => {
+    const n = noise(x, y, 3);
+    return n > 0.9 ? SAND[0] : n > 0.42 ? SAND[1] : SAND[2];
+  });
+  for (const k of waterSides(mask)) surf(p, k, -1.2);
+  // A wooden deck under the bar, so the hut is not standing on the sand.
+  p.box(0.42, 0.02, 0.98, 0.44, 0, 1.4, WOOD_DECK, 'plain', [], [], shade(WOOD_DECK[1], 1.08));
+  // The bar: a small hut in the back corner, because the cell is a beach and the beach is the point.
+  const u0 = 0.48;
+  const v0 = 0.06;
+  const u1 = 0.94;
+  const v1 = 0.38;
+  const h = 8;
+  p.box(
+    u0,
+    v0,
+    u1,
+    v1,
+    1.4,
+    h,
+    PLASTER,
+    'plain',
+    [
+      { t0: 2, t1: 8, k0: 3, k1: 6, c: INSIDE },
+      { t0: 2, t1: 8, k0: 2, k1: 3, c: WOOD[1] },
+    ],
+    [{ t0: 1, t1: 4, k0: 3, k1: 6, c: GLASS }],
+    shade(PLASTER[0], 1.02),
+  );
+  // The thatch over it: thick, with the straw rows showing on the eave, and the ridge on top.
+  p.hip(u0 - 0.04, v0 - 0.04, u1 + 0.04, v1 + 0.04, 1.4 + h, 5, THATCH);
+  const [qx] = p.P(u0 - 0.04, v1 + 0.04, 0);
+  for (let k = 0; k < 4; k++) {
+    const [rx, ry] = p.P(u0 - 0.04, v1 + 0.04, 1.4 + h + k);
+    p.px.rect(Math.round(rx) + 1, Math.round(ry), Math.round(qx) - Math.round(rx) - 1, 1, k % 2 ? shade(THATCH[1], 0.88) : THATCH[1]);
+  }
+  p.px.line(p.P(u0 - 0.02, (v0 + v1) / 2, 1.4 + h + 5), p.P(u1 + 0.02, (v0 + v1) / 2, 1.4 + h + 5), shade(THATCH[1], 1.22));
+  // The awning over the counter, red and white: the thing that says "bar" from across the beach.
+  p.canopy(u0 + 0.01, v1, u1 - 0.01, 1.4 + 5, hex('#e0453a'), hex('#f4f0e6'), 4);
+  // The counter outside, with the bottles on it.
+  const [cx, cy] = p.P(0.66, 0.5, 1.4);
+  p.px.rect(Math.round(cx) - 4, Math.round(cy) - 3, 9, 3, WOOD[1]);
+  p.px.rect(Math.round(cx) - 4, Math.round(cy), 9, 1, shade(WOOD[1], 0.7));
+  for (const dx of [-2, 1, 4]) p.px.set(Math.round(cx) + dx, Math.round(cy) - 4, [hex('#2f9a55'), hex('#e0a526'), hex('#c8462f')][(dx + 4) % 3]);
+  // The beach: two parasols with a lounger next to each, and the sand between them.
+  parasol(p, 0.2, 0.18, hex('#e0453a'), hex('#f4f0e6'));
+  parasol(p, 0.12, 0.56, hex('#3f8fe0'), hex('#f4f0e6'));
+  parasol(p, 0.52, 0.88, hex('#e0b542'), hex('#f4f0e6'));
+  lounger(p, 0.32, 0.3, hex('#f4f0e6'));
+  lounger(p, 0.07, 0.84, hex('#e8dece'));
+  lounger(p, 0.8, 0.72, hex('#f4f0e6'));
+}
+
+/** Paints the beach resort. */
+export function paintResortCell(mask: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penLot(1, 42);
+  paintResort(p, mask);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+/**
+ * The lighthouse: the rock in the water, the tapered tower banded red and white, the gallery and the
+ * lantern with its beam. It is the tallest thing on the coast, so it reads as a silhouette: the bands
+ * and the cone of the cap are what has to survive at 1x.
+ */
+function paintLighthouse(p: Pen, mask: number): void {
+  p.shadow(0.26, 0.26, 0.74, 0.74);
+  // The rock the tower stands on, with the foam breaking against it.
+  const [rx, ry] = p.P(0.5, 0.5);
+  p.px.blob(Math.round(rx), Math.round(ry + 1), 11, 6, [shade(STONE[2], 1.08), STONE[1], STONE[0]], shade(STONE[0], 0.7), false);
+  p.px.blob(Math.round(rx) - 7, Math.round(ry + 2), 5, 4, [shade(STONE[2], 1.08), STONE[1], STONE[0]], shade(STONE[0], 0.7), false);
+  for (const k of waterSides(mask)) {
+    const [a, b, c, d] = SIDE_EDGE[k];
+    p.px.line(p.P(a, b, -1.4), p.P(c, d, -1.4), FOAM);
+  }
+  const bands = 5;
+  const h = 54;
+  const [bx, by] = p.P(0.5, 0.5, 5);
+  const cx = Math.round(bx);
+  const cy = Math.round(by);
+  for (let k = 0; k < h; k++) {
+    const t = k / h;
+    // The tower tapers: six pixels of half width at the foot, three at the top.
+    const half = Math.max(3, Math.round(6 - 3 * t));
+    const c = Math.floor(k / (h / bands)) % 2 ? hex('#c8392f') : hex('#f4f0e6');
+    p.px.rect(cx - half, cy - k, half * 2 + 1, 1, c);
+    // The lit side on the left and the shade on the right, so the tower turns instead of stacking.
+    p.px.set(cx - half, cy - k, shade(c, 1.12));
+    p.px.set(cx + half, cy - k, shade(c, 0.74));
+  }
+  const top = cy - h;
+  // The gallery: a slab that sticks out, its railing and the lantern room with the light on.
+  p.px.rect(cx - 6, top - 1, 13, 1, BALUSTRE);
+  p.px.rect(cx - 6, top - 2, 13, 1, BALUSTRE_DARK);
+  for (const dx of [-6, -3, 3, 6]) p.px.set(cx + dx, top - 3, BALUSTRE_DARK);
+  p.px.rect(cx - 3, top - 9, 7, 7, shade(GLASS, 1.1));
+  p.px.rect(cx - 2, top - 8, 5, 5, LAMP);
+  p.px.rect(cx - 1, top - 7, 3, 3, hex('#fffbe8'));
+  // The cap, a cone of red rows, with its ball on top.
+  for (const [dy, half] of [
+    [-10, 3],
+    [-11, 2],
+    [-12, 1],
+  ] as const) {
+    p.px.rect(cx - half, top + dy, half * 2 + 1, 1, hex('#c8392f'));
+  }
+  p.px.set(cx, top - 13, hex('#8a2a22'));
+  // The beams: solid against the glass, then dithered until they fade, and a pixel taller near the lamp.
+  for (const dir of [-1, 1]) {
+    for (let d = 1; d < 16; d++) {
+      const x = cx + dir * (4 + d);
+      if (d > 5 && bayer(x, top - 7) > 0.62 - d * 0.03) continue;
+      p.px.set(x, top - 7, d < 8 ? BEAM : shade(BEAM, 0.82));
+      if (d <= 3) p.px.set(x, top - 6, shade(BEAM, 0.9));
+    }
+  }
+}
+
+/** Paints the lighthouse. */
+export function paintLighthouseCell(mask: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penLot(1, 76);
+  paintLighthouse(p, mask);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+/** The sprite of a coast building, keyed by its kind and the sides that face water. */
+export function coastPixelSprite(kind: CoastKind, variant: number): Sprite {
+  const key = `coast:${kind}:${variant}`;
+  let sprite = coastCache.get(key);
+  if (!sprite) {
+    const painted =
+      kind === 'promenade'
+        ? paintPromenade(variant)
+        : kind === 'fishing'
+          ? paintFishing(variant)
+          : kind === 'port'
+            ? paintPortCell(variant)
+            : kind === 'resort'
+              ? paintResortCell(variant)
+              : paintLighthouseCell(variant);
+    sprite = spriteOf(painted);
     coastCache.set(key, sprite);
   }
   return sprite;

@@ -6,7 +6,7 @@
 import { DIRT } from '../src/config';
 import { CHUNK_PAD } from '../src/render/chunks';
 import { MapRenderer } from '../src/render/mapRenderer';
-import { generateTerrain } from '../src/world/terrain';
+import { SEA_LEVEL, generateTerrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { Traffic, drawTraffic } from '../src/render/traffic';
 import { Vessels, drawBoats, drawPlanes } from '../src/render/vessels';
@@ -27,7 +27,7 @@ function city(): { world: World; refused: string[] } {
     applyPlan(world, plan);
   };
   plan('road', 2, 5, 15, 5);
-  plan('road', 2, 10, 15, 10);
+  plan('road', 2, 10, 13, 10);
   // The avenue stops a block short of the airport: a road through the ports would cut the two pieces
   // of the airport apart, which is the seam this sheet is about.
   plan('road', 5, 2, 5, 11);
@@ -41,8 +41,8 @@ function city(): { world: World; refused: string[] } {
   plan('airport', 2, 12);
   plan('airport', 5, 12);
   // A run of each quality, side by side: the wooden line every three lots, the concrete one every five.
-  plan('line', 15, 2, 15, 9);
-  plan('lineConcrete', 16, 2, 16, 9);
+  plan('line', 12, 2, 12, 3);
+  plan('lineConcrete', 12, 4, 12, 9);
   // One of each service along the avenue, to see the six in the street they belong to. The hospital and
   // the university take 3x3 lots, so they go on the corners where a block fits.
   plan('school', 6, 2);
@@ -55,13 +55,38 @@ function city(): { world: World; refused: string[] } {
   for (let y = 7; y <= 9; y++) for (let x = 7; x <= 9; x++) world.tiles[y * n + x] = TILE.PARK;
   // The dirt street is set on the grid after every plan: the sheet is about the look, not the rules,
   // and a later plan recomputes the quality of the cells around the ones it touches.
-  for (let x = 2; x <= 15; x++) world.roadTier[10 * n + x] = DIRT;
+  for (let x = 2; x <= 13; x++) world.roadTier[10 * n + x] = DIRT;
+  // The three buildings of the coast, on the last lot before the sea (x = 14 on is water): the port,
+  // the resort and the lighthouse read the sides of their lot that face water, and that is only
+  // visible here, on the map.
+  for (const [y, tile] of [
+    [2, TILE.PORT],
+    [4, TILE.RESORT],
+    [11, TILE.LIGHTHOUSE],
+  ] as [number, number][])
+    world.tiles[y * n + 13] = tile;
   // A plaza on a slope reads as broken tiles, so the block is levelled: this is a sheet to judge the
-  // art, not a place to study relief.
-  const level = world.terrain.corners[2 * (n + 1) + 2] + 1;
+  // art, not a place to study relief. The sea and the river are left alone, or levelling the land
+  // would fill them in and the coast would have nothing to look at.
+  // Both planes are levelled, the land one step above the water one: levelling the land to the height
+  // of a tower left a cliff eight levels tall along the shore, and that wall is not what the coast of
+  // the game looks like.
   for (let y = 0; y <= n; y++) {
-    for (let x = 0; x <= n; x++) world.terrain.corners[y * (n + 1) + x] = level;
+    for (let x = 0; x <= n; x++) {
+      const i = y * (n + 1) + x;
+      world.terrain.corners[i] = world.terrain.corners[i] >= SEA_LEVEL ? SEA_LEVEL + 1 : SEA_LEVEL - 1;
+    }
   }
+  // A street the planner laid before the shore was levelled can end up standing in the water, on a slab
+  // that looks like a bridge: the sea is not a street, so those cells go back to open water.
+  world.tiles.forEach((t, i) => {
+    const x = i % n;
+    const y = Math.floor(i / n);
+    if (t === TILE.ROAD && world.isWater(x, y)) {
+      world.tiles[i] = TILE.EMPTY;
+      world.roadTier[i] = 0;
+    }
+  });
   return { world, refused };
 }
 
