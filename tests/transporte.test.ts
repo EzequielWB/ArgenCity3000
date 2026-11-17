@@ -11,8 +11,8 @@ import { transitBuses, transitFactor, transitRelief, transitUpkeep } from '../sr
 import { toolPrice } from '../src/ui/toolbar';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { UndoHistory } from '../src/world/history';
-import { applyPlan, groupOfTool, planTool, toolInfo } from '../src/world/tools';
-import { busArea, busColorOf, busLineProblem, busNumberOf, busRefusal, busStations, freeBusNumber, packBusLine } from '../src/world/transport';
+import { applyPlan, busFootprint, footprintOfTool, groupOfTool, planTool, toolInfo } from '../src/world/tools';
+import { busArea, busColorOf, busLineProblem, busNumberOf, busRefusal, busStations, depotAt, freeBusNumber, packBusLine } from '../src/world/transport';
 import { TILE, World } from '../src/world/world';
 
 function flat(n = 16): Terrain {
@@ -20,10 +20,17 @@ function flat(n = 16): Terrain {
   return { n, corners: new Uint8Array(s * s).fill(SEA_LEVEL + 1), trees: new Uint8Array(n * n) };
 }
 
-/** A depot of the given colour and number at (x, y). */
+/** A depot of the given colour and number, with (x, y) as its anchor corner. */
 function depot(w: World, x: number, y: number, color: number, number: number): void {
-  w.setTile(x, y, TILE.BUS);
-  w.busLine[w.idx(x, y)] = packBusLine(color, number);
+  for (const [cx, cy] of busFootprint(w.n, x, y)) {
+    w.setTile(cx, cy, TILE.BUS);
+    w.busLine[w.idx(cx, cy)] = packBusLine(color, number);
+  }
+}
+
+/** Tears a depot down cell by cell, for the tests that work on the grid without the tool. */
+function clearDepot(w: World, x: number, y: number): void {
+  for (const [cx, cy] of busFootprint(w.n, x, y)) w.setTile(cx, cy, TILE.EMPTY);
 }
 
 describe('a bus line in a cell', () => {
@@ -48,7 +55,7 @@ describe('a bus line in a cell', () => {
     const w = new World(flat());
     depot(w, 3, 3, 2, 60);
     expect(busStations(w).map((s) => s.number)).toEqual([60]);
-    w.setTile(3, 3, TILE.EMPTY);
+    clearDepot(w, 3, 3);
     expect(busStations(w)).toEqual([]);
     expect(w.busLine[w.idx(3, 3)]).toBe(0);
   });
@@ -83,13 +90,17 @@ describe('undoing a demolition', () => {
     const w = new World(flat());
     depot(w, 5, 5, 6, 148);
     const history = new UndoHistory();
-    const plan = planTool(w, 'bulldoze', [[5, 5]]);
-    expect(plan.cells).toEqual([[5, 5]]);
+    // Bulldozing any cell of the depot takes the whole block: half a cochera is not a cochera.
+    const plan = planTool(w, 'bulldoze', [[6, 6]]);
+    expect(plan.cells).toEqual(busFootprint(w.n, 5, 5));
     history.record(w, plan, 0);
     applyPlan(w, plan);
     expect(w.tiles[w.idx(5, 5)]).toBe(TILE.EMPTY);
+    expect(w.tiles[w.idx(6, 6)]).toBe(TILE.EMPTY);
+    expect(busStations(w)).toEqual([]);
     history.undo(w, 0);
     expect(w.tiles[w.idx(5, 5)]).toBe(TILE.BUS);
+    expect(w.tiles[w.idx(6, 6)]).toBe(TILE.BUS);
     expect(busStations(w)).toMatchObject([{ color: 6, number: 148 }]);
   });
 });
@@ -117,7 +128,58 @@ describe('saving the lines', () => {
     expect(() => deserialize(withBuses([[a, packBusLine(3, 7)], [b, packBusLine(1, 7)]]))).toThrow(/repetida/);
     expect(() => deserialize(withBuses([[a, packBusLine(3, 7)], [b, packBusLine(1, 1000)]]))).toThrow(/inválida/);
     expect(() => deserialize(withBuses([[a, packBusLine(3, 7)], [b, packBusLine(1, 8)], [w.idx(0, 0), 5]]))).toThrow(/cochera/);
-    expect(() => deserialize(withBuses([[a, packBusLine(3, 7)]]))).toThrow(/no coinciden/);
+    expect(() => deserialize(withBuses([[a, packBusLine(3, 7)], [a + 1, packBusLine(3, 7)]]))).toThrow(/mismo número/);
+  });
+});
+
+describe('the 2×2 depot', () => {
+  it('is one station and one upkeep, whichever of its four cells you ask about', () => {
+    const w = new World(flat());
+    depot(w, 4, 4, 2, 12);
+    expect(busStations(w)).toMatchObject([{ x: 4, y: 4, color: 2, number: 12 }]);
+    for (const [x, y] of busFootprint(w.n, 4, 4)) expect(depotAt(w, x, y)).toEqual({ x: 4, y: 4, line: packBusLine(2, 12) });
+    expect(depotAt(w, 6, 4)).toBeNull();
+    expect(transitUpkeep(w)).toBe(BUS.upkeep);
+  });
+
+  it('announces the whole block in the preview, not the lot under the cursor', () => {
+    expect(footprintOfTool('bus', 16, 4, 4)).toEqual(busFootprint(16, 4, 4));
+  });
+
+  it('refuses a block that would overlap another depot or hang off the map', () => {
+    const w = new World(flat(16));
+    applyPlan(w, planTool(w, 'bus', [[4, 4]]));
+    expect(planTool(w, 'bus', [[5, 5]]).cells).toEqual([]);
+    expect(planTool(w, 'bus', [[7, 4]]).cells).toEqual(busFootprint(16, 7, 4));
+    // The last column cannot start a block that runs off the map: it clamps back inside.
+    expect(planTool(w, 'bus', [[15, 8]]).cells).toEqual(busFootprint(16, 15, 8));
+    expect(busFootprint(16, 15, 8)).toEqual([
+      [14, 8],
+      [15, 8],
+      [14, 9],
+      [15, 9],
+    ]);
+  });
+
+  it('grows to its four cells when it is loaded from an older save', () => {
+    const w = new World(flat());
+    depot(w, 4, 4, 3, 7);
+    const data = JSON.parse(serialize({ name: 'X', seed: 1, world: w, sim: newSimState(1) })) as Record<string, unknown>;
+    expect((data.buses as unknown[]).length).toBe(1); // one entry per depot, at its anchor
+    const back = deserialize(JSON.stringify(data)).world;
+    for (const [x, y] of busFootprint(back.n, 4, 4)) expect(back.tiles[back.idx(x, y)]).toBe(TILE.BUS);
+    expect(busStations(back)).toMatchObject([{ x: 4, y: 4, color: 3, number: 7 }]);
+  });
+
+  it('refuses a save whose depot has no ground left for its block', () => {
+    const w = new World(flat());
+    // The depot saved when a cochera was one lot wide, with the rest of its block now a street.
+    for (const [x, y] of busFootprint(w.n, 4, 4)) w.setTile(x, y, TILE.ROAD);
+    w.setTile(4, 4, TILE.BUS);
+    w.busLine[w.idx(4, 4)] = packBusLine(3, 7);
+    const broken = JSON.parse(serialize({ name: 'X', seed: 1, world: w, sim: newSimState(1) })) as Record<string, unknown>;
+    broken.buses = [[w.idx(4, 4), packBusLine(3, 7)]];
+    expect(() => deserialize(JSON.stringify(broken))).toThrow(/lugar/);
   });
 });
 
@@ -139,13 +201,14 @@ describe('placing a bus line', () => {
 
   it('goes on a free lot with a street within three lots, and costs what a line costs', () => {
     const w = withStreet();
-    expect(planTool(w, 'bus', [[4, 8]])).toMatchObject({ cells: [[4, 8]], cost: BUS.cost });
+    // The depot is a block of four lots, charged once.
+    expect(planTool(w, 'bus', [[4, 8]])).toMatchObject({ cells: busFootprint(16, 4, 8), cost: BUS.cost });
     expect(busRefusal(w, 4, 8)).toBeNull();
   });
 
   it('goes on any land, even far from a street (it only works with one), but not on a taken lot or on water', () => {
     const w = withStreet();
-    expect(planTool(w, 'bus', [[4, 10]]).cells).toEqual([[4, 10]]);
+    expect(planTool(w, 'bus', [[4, 10]]).cells).toEqual(busFootprint(16, 4, 10));
     expect(busRefusal(w, 4, 10)).toBeNull();
     expect(planTool(w, 'bus', [[4, 5]]).cells).toEqual([]);
     const lake = new World({ n: 16, corners: new Uint8Array(17 * 17).fill(SEA_LEVEL - 1), trees: new Uint8Array(256) });
@@ -276,7 +339,7 @@ describe('the buses on the street', () => {
     const traffic = new Traffic(w, 7);
     traffic.refresh();
     for (let step = 0; step < 50; step++) traffic.update(0.25);
-    w.setTile(20, 8, TILE.EMPTY);
+    clearDepot(w, 20, 8);
     traffic.refresh();
     traffic.update(0.1);
     expect(traffic.cars.filter((c) => c.kind === 'bus')).toHaveLength(0);

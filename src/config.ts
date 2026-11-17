@@ -441,7 +441,8 @@ export const ROAD_REACH = 3;
  * add up, never past `maxRelief`. It needs a street within ROAD_REACH to be built. `buses` of the
  * line run on the streets of its area.
  */
-export const BUS = { label: 'Línea de colectivos', cost: 900, upkeep: 90, radius: 9, relief: 0.35, maxRelief: 0.6, buses: 3 } as const;
+export const BUS_SIZE = 2;
+export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 9, relief: 0.35, maxRelief: 0.6, buses: 3 } as const;
 /**
  * The commercial hubs of the transport category: an airport and a harbour for walks and cruises. A
  * piece takes `w`×`h` lots, always the same way round, and pieces that share an edge are one

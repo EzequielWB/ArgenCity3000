@@ -2,7 +2,7 @@ import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES,
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
-import { busRefusal, freeBusNumber, packBusLine } from './transport';
+import { depotAt, freeBusNumber, packBusLine } from './transport';
 import { hubFootprint, hubRefusal, markHubsDirty } from './hubs';
 import { uniqueFootprint, uniqueRefusal } from './uniques';
 import { TILE, World, coastTile, hubOf, hubTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
@@ -68,7 +68,7 @@ const ALL_TOOLS: readonly ToolInfo[] = [
   { id: 'promenade', label: COAST.promenade.label, key: 'x', shape: 'rect', help: 'Paseo sobre la costa, se arrastra como la plaza. Con calle cerca y luz sube el valor del suelo y la aprobación.' },
   { id: 'port', label: COAST.port.label, key: 'v', shape: 'point', help: 'Sobre la costa. Con calle cerca y luz da 40 empleos industriales y sube los impuestos de las fábricas; contamina.' },
   { id: 'resort', label: COAST.resort.label, key: 'l', shape: 'point', help: 'En la playa. Con calle cerca y luz da 30 empleos y mucho turismo en verano.' },
-  { id: 'bus', label: BUS.label, key: 'ñ', shape: 'point', help: 'Se puede poner en cualquier lote de tierra, pero solo funciona con una calle a 3 lotes o menos. Alivia el tránsito de las calles a su alrededor y se ven los colectivos andar. Al colocarla elegís el color y el número de la línea.' },
+  { id: 'bus', label: BUS.label, key: 'ñ', shape: 'point', help: 'Ocupa una cochera de 2×2 lotes de tierra, pero solo funciona con una calle a 3 lotes o menos. Alivia el tránsito de las calles a su alrededor y se ven los colectivos andar. Al colocarla elegís el color y el número de la línea.' },
   { id: 'harbor', label: HUBS.harbor.label, key: '.', shape: 'anchor', help: 'Una pieza de 2×2 pegada al agua: un muelle con un barco de paseos. Funciona con una calle a 3 lotes o menos de alguna pieza y con luz: consume mucha electricidad, más cuanto más grande. Si ponés otra pegada es un puerto más grande, y con tres o más hay cruceros. Da empleos y turismo.' },
   { id: 'airport', label: HUBS.airport.label, key: ',', shape: 'anchor', help: 'Una pieza de 3×2 en tierra: un hangar con uno o dos aviones. Funciona con una calle a 3 lotes o menos de alguna pieza y con luz: consume mucha electricidad, más cuanto más grande. Con otra pegada es un aeródromo y con cuatro o más, un aeropuerto internacional. Da empleos y turismo, pero hace ruido: baja el valor del suelo alrededor.' },
   { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Con calle cerca y luz suma aprobación y valor del suelo.' },
@@ -204,8 +204,18 @@ export function footprintOfTool(tool: ToolId, n: number, x: number, y: number): 
   if (plantKindOfTool(tool)) return plantFootprint(n, x, y);
   const hub = hubKindOfTool(tool);
   if (hub) return hubFootprint(hub, n, x, y);
+  if (tool === 'bus') return busFootprint(n, x, y);
   const unique = uniqueKindOfTool(tool);
   return unique ? uniqueFootprint(unique, n, x, y) : null;
+}
+
+/** The cells of a bus depot whose anchor is the lot clicked: a `BUS.size`×`BUS.size` block, kept inside the map. */
+export function busFootprint(n: number, x: number, y: number): Cell[] {
+  const fx = clamp(x, 0, n - BUS.size);
+  const fy = clamp(y, 0, n - BUS.size);
+  const foot: Cell[] = [];
+  for (let dy = 0; dy < BUS.size; dy++) for (let dx = 0; dx < BUS.size; dx++) foot.push([fx + dx, fy + dy]);
+  return foot;
 }
 
 /** The 2×2 cells a power plant placed at (x, y) would cover, kept inside the map. */
@@ -309,6 +319,13 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     return ok ? { tool, cells: foot, cost: PLANTS[plantKind].cost } : { tool, cells: [], cost: 0 };
   }
 
+  if (tool === 'bus') {
+    const [ax, ay] = cells[0] ?? [-1, -1];
+    const foot = busFootprint(w.n, ax, ay);
+    const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.route[w.idx(x, y)] && isFreeLot(w, x, y) && !w.isWater(x, y));
+    return ok ? { tool, cells: foot, cost: BUS.cost } : { tool, cells: [], cost: 0 };
+  }
+
   const hubKind = hubKindOfTool(tool);
   if (hubKind) {
     const [ax, ay] = cells[0] ?? [-1, -1];
@@ -392,6 +409,16 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
             out.push([cx, cy]);
           }
           cost += COSTS.bulldozePlant;
+        } else if (t === TILE.BUS) {
+          // A depot comes down whole: half a cochera is not a cochera.
+          const depot = depotAt(w, x, y);
+          if (!depot || plantsSeen.has(depot)) break;
+          plantsSeen.add(depot);
+          for (const [cx, cy] of busFootprint(w.n, depot.x, depot.y)) {
+            seen.add(w.idx(cx, cy));
+            out.push([cx, cy]);
+          }
+          cost += COSTS.bulldozePlant;
         } else if (t === TILE.UNIQUE) {
           // A monument comes down whole too: nobody tears an obelisco down half way.
           const u = w.uniqueAt(x, y);
@@ -409,13 +436,6 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
         break;
       }
       default:
-        if (tool === 'bus') {
-          if (isFreeLot(w, x, y) && busRefusal(w, x, y) === null) {
-            out.push([x, y]);
-            cost += BUS.cost;
-          }
-          break;
-        }
         if (isServiceTool(tool)) {
           if (!water && isFreeLot(w, x, y)) {
             out.push([x, y]);
@@ -447,6 +467,8 @@ export function applyPlan(w: World, plan: Plan): void {
   const zone = zoneKindOfTool(plan.tool);
   const plantKind = plantKindOfTool(plan.tool);
   const tier = roadTierOfTool(plan.tool);
+  // The four cells of a depot share one line: drawing it per cell would number them separately.
+  const busLine = plan.tool === 'bus' ? plan.line ?? packBusLine(0, freeBusNumber(w)) : 0;
   for (const [x, y] of plan.cells) {
     const i = w.idx(x, y);
     if (w.route[i]) continue;
@@ -472,7 +494,7 @@ export function applyPlan(w: World, plan: Plan): void {
         break;
       case 'bus':
         w.setTile(x, y, TILE.BUS);
-        w.busLine[i] = plan.line ?? packBusLine(0, freeBusNumber(w));
+        w.busLine[i] = busLine;
         w.terrain.trees[i] = 0;
         break;
       case 'plant':

@@ -1,4 +1,5 @@
 import {
+  BUS,
   DEFAULT_FUNDING,
   EVENT,
   GOVERNMENT_KINDS,
@@ -31,6 +32,7 @@ import { NO_MODS, RUN_MARKS, upgradeById, type RunPick, type RunState } from '..
 import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { busLineProblem, busStations } from '../world/transport';
+import { busFootprint } from '../world/tools';
 import { MAX_TILE, TILE, World, hubOf, hubTile, zoneOf } from '../world/world';
 import { ALL_UNIQUE_KINDS, UNIQUES, type UniqueKind } from '../config';
 
@@ -164,11 +166,23 @@ export function deserialize(text: string): SaveData {
   // Bus lines exist from version 15 on: a list of [cell, packed line], one for every depot.
   if ((data.version as number) >= 15) {
     need(Array.isArray(data.buses), 'Faltan las líneas de colectivos');
+    const taken = new Set<number>();
     for (const b of data.buses as unknown[]) {
       need(Array.isArray(b) && b.length === 2 && isInt(b[0]) && isInt(b[1]), 'Hay una línea de colectivos dañada');
       const [cell, line] = b as [number, number];
       need(cell >= 0 && cell < size && tiles[cell] === TILE.BUS, 'Hay una línea de colectivos fuera de su cochera');
-      world.busLine[cell] = line;
+      // A save keeps one entry per depot, at its anchor: the block is grown from it. A depot saved
+      // when the cochera was one lot wide finds the rest of its ground empty and takes it.
+      need(!taken.has(line), 'Hay dos líneas de colectivos con el mismo número');
+      taken.add(line);
+      for (const [cx, cy] of busFootprint(n as number, cell % (n as number), Math.floor(cell / (n as number)))) {
+        const j = cy * (n as number) + cx;
+        need(tiles[j] === TILE.BUS || tiles[j] === TILE.EMPTY, `La línea de colectivos no tiene lugar para su cochera de ${BUS.size}×${BUS.size}`);
+        tiles[j] = TILE.BUS;
+        world.tiles[j] = TILE.BUS;
+        world.busLine[j] = line;
+        world.terrain.trees[j] = 0;
+      }
     }
   }
   for (let i = 0; i < size; i++) {

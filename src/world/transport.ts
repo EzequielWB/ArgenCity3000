@@ -22,24 +22,59 @@ export interface BusStation {
   number: number;
 }
 
-/** Every bus depot of the city, in cell order. */
+/**
+ * Every bus depot of the city, in cell order. A depot is a `BUS.size`×`BUS.size` block of cells that
+ * all carry the same line, so the cells of one depot are one station: the anchor, the lowest index.
+ */
 export function busStations(w: World): BusStation[] {
   const out: BusStation[] = [];
+  const seen = new Set<number>();
   for (let i = 0; i < w.tiles.length; i++) {
     if (w.tiles[i] !== TILE.BUS) continue;
     const line = w.busLine[i];
+    if (seen.has(line)) continue;
+    seen.add(line);
     out.push({ i, x: i % w.n, y: Math.floor(i / w.n), line, color: busColorOf(line), number: busNumberOf(line) });
   }
   return out;
 }
 
-/** Why a line (colour and number packed) cannot be had by the depot at `cell`, or null when it can. `cell` is left out of the count of numbers in use. */
+/** The depot that covers a cell: the corner its block starts at, and its line. Null when the cell has no depot. */
+export function depotAt(w: World, x: number, y: number): { x: number; y: number; line: number } | null {
+  const i = w.idx(x, y);
+  if (w.tiles[i] !== TILE.BUS) return null;
+  const line = w.busLine[i];
+  let ax = x;
+  let ay = y;
+  // A block is only a couple of cells: whichever corner of the block this cell is, the anchor is one
+  // step back in x, in y or both, and the cells beyond that corner belong to another depot.
+  for (const [dx, dy] of [
+    [-1, 0],
+    [0, -1],
+    [-1, -1],
+  ]) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= w.n || ny >= w.n) continue;
+    const j = w.idx(nx, ny);
+    if (w.tiles[j] === TILE.BUS && w.busLine[j] === line) {
+      ax = Math.min(ax, nx);
+      ay = Math.min(ay, ny);
+    }
+  }
+  return { x: ax, y: ay, line };
+}
+
+/** Why a line (colour and number packed) cannot be had by the depot at `cell`, or null when it can. The depot at `cell` is left out of the count of numbers in use. */
 export function busLineProblem(w: World, line: number, cell = -1): string | null {
   const color = busColorOf(line);
   const number = busNumberOf(line);
   if (color < 0 || color >= BUS_COLORS.length) return 'Elegí uno de los colores';
   if (number < 1 || number > MAX_BUS_NUMBER) return `El número tiene que ser de 1 a ${MAX_BUS_NUMBER}`;
-  if (busStations(w).some((s) => s.i !== cell && s.number === number)) return `Ya hay una línea ${number}`;
+  // The depot being changed still carries its old line, so its own station has to be left out by line
+  // and not by cell: the four cells of a depot are four cells of the same station.
+  const own = cell >= 0 && w.tiles[cell] === TILE.BUS ? w.busLine[cell] : -1;
+  if (busStations(w).some((s) => s.line !== line && s.line !== own && s.number === number)) return `Ya hay una línea ${number}`;
   return null;
 }
 
