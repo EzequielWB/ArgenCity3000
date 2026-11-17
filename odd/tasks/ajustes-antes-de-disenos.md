@@ -88,17 +88,17 @@ cuatro de simulación. Todos se pueden hacer por separado y cada uno se puede re
 
 | ID | Tarea | Specs | Archivos | Commit |
 |---|---|---|---|---|
-| T1 | Botón de la capa de píxel en el menú, con redibujo inmediato | S1 | `src/render/artSwitch.ts`, `src/game.ts`, `index.html`, `src/ui/style.css` | |
-| T2 | Selección y hover de la barra: sólo borde | S2 | `src/ui/style.css` | |
-| T3 | La ventana de mejoras lista las anteriores y explica la administración sin el costo | S3 | `src/ui/upgrades.ts` | |
-| T4 | Meta de 500.000 y marcas reacomodadas | S4 | `src/sim/roguelike.ts`, `src/game.ts`, `src/ui/upgrades.ts` | |
-| T5 | Colectivos por capacidad de viajes, no por porcentaje | S5 | `src/config.ts`, `src/sim/transit.ts`, `src/sim/congestion.ts` | |
-| T6 | El botón derecho no abre el menú del navegador | S6 | `src/main.ts`, `src/input/controls.ts` | |
-| T7 | El rechazo de la calle nombra la ruta y la otra calle | S7 | `src/world/tools.ts` | |
-| T8 | El Calvario se mide contra la altura del mapa | S8 | `src/config.ts`, `src/world/uniques.ts`, `src/world/tools.ts` | |
-| T9 | La ficha de consulta se cierra al primer clic | S9 | `src/game.ts` | |
-| T10 | Demoler enoja: cuadrático, con techo alto y golpe inmediato | S10 | `src/config.ts`, `src/sim/politics.ts`, `src/sim/simulation.ts` | |
-| T11 | El comercio crece con la gente educada de la ciudad | S11 | `src/sim/demand.ts`, `src/sim/simulation.ts`, `src/sim/report.ts` | |
+| T1 | Botón de la capa de píxel en el menú, con redibujo inmediato | S1 | `src/render/artSwitch.ts`, `src/game.ts`, `index.html`, `src/main.ts`, `tests/artswitch.test.ts` | `14f3b1c` |
+| T2 | Selección y hover de la barra: sólo borde | S2 | `src/ui/style.css` | `14f3b1c` |
+| T3 | La ventana de mejoras lista las anteriores y explica la administración sin el costo | S3 | `src/ui/upgrades.ts` | `14f3b1c` |
+| T4 | Meta de 500.000 y marcas reacomodadas | S4 | `src/sim/roguelike.ts`, `src/game.ts`, `src/ui/upgrades.ts`, `src/main.ts`, `src/ui/panels.ts`, `index.html` | `14f3b1c` |
+| T5 | Colectivos por capacidad de viajes, no por porcentaje | S5 | `src/config.ts`, `src/sim/transit.ts`, `src/sim/congestion.ts`, `src/sim/report.ts`, `src/ui/panels.ts`, `README.md` | `d9a88b4` |
+| T6 | El botón derecho no abre el menú del navegador | S6 | `src/main.ts` | `14f3b1c` |
+| T7 | El rechazo de la calle nombra la ruta y la otra calle | S7 | `src/world/tools.ts`, `src/ui/tutorial.ts` | `14f3b1c` |
+| T8 | El Calvario se mide contra la altura del mapa | S8 | `src/config.ts`, `src/world/uniques.ts`, `src/world/tools.ts`, `tests/unicos.test.ts` | `bb72e82` |
+| T9 | La ficha de consulta se cierra al primer clic | S9 | `src/game.ts` | `14f3b1c` |
+| T10 | Demoler enoja: cuadrático, con techo alto y golpe inmediato | S10 | `src/config.ts`, `src/sim/politics.ts`, `src/sim/simulation.ts`, `tests/demoliciones.test.ts` | `bb72e82` |
+| T11 | El comercio crece con la gente educada de la ciudad | S11 | `src/sim/demand.ts`, `src/sim/simulation.ts`, `src/sim/report.ts`, `src/sim/warnings.ts`, `tests/comercio-educacion.test.ts` | `bb72e82` |
 
 ## Log
 
@@ -132,3 +132,22 @@ cuatro de simulación. Todos se pueden hacer por separado y cada uno se puede re
   no funciona es el techo: dos líneas dan 0,58 de alivio y tres tocan el techo de 0,6, y como el alivio
   es un porcentaje, ese 0,6 borra cualquier congestión por grande que sea. El problema no era el área,
   era la forma del alivio.
+- **L3.** Los cuatro de interfaz, verificados: el botón del menú dice su estado («Píxel: sí»,
+  `aria-pressed="true"`) en la página viva; la barra de herramientas se miró con la hoja de estilos
+  real —la línea de colectivos elegida queda con borde y anillo, sin fondo dorado y con su colectivo
+  rojo a la vista—. La ficha de consulta ya no se rearma si el texto no cambió, y el cierre se
+  escucha en el contenedor, que nunca se reemplaza: la causa era que el HUD refresca cada mes y
+  cambiaba el botón bajo el puntero, así que el `click` caía en un nodo que ya no existía.
+- **L4.** El botón del menú no tiene atajo de teclado a propósito: casi todas las letras ya son de una
+  herramienta, y meter una más rompía el test de teclas únicas. Un clic alcanza.
+- **L5.** Demoler: el techo y la fórmula quedaron en `gravity 2.2`, `floor 300`, `max 35`, `shock 20`.
+  Casos de control: una casa (20 personas) en un pueblo de 300 = 3 puntos; doce casas en una ciudad de
+  5.000 = 25; las mismas doce en una de 50.000 = 3; 500 personas en 30.000 = 18; diez torres en 30.000
+  tocan el techo de 35. El golpe inmediato es la suba del enojo con techo de 20, así que repetir la
+  misma obra no lo vuelve a cobrar.
+- **L6.** Colectivos: se probó con carga sintética que cada calle del área baja exactamente
+  `BUS.trips` viajeros (no un porcentaje), que dos líneas suman y que una calle con menos carga que los
+  colectivos queda en cero y la línea ociosa. Y con la ciudad del test: veinticuatro torres sobre una
+  calle siguen saturadas con cinco líneas alrededor.
+- **L7.** Evidencia: `npx vitest run` **1116 / 66 archivos** verdes · `npx tsc --noEmit` limpio.
+  Commits `14f3b1c`, `bb72e82`, `d9a88b4` (y el cierre de los textos de la meta, aparte).

@@ -79,7 +79,7 @@ export function openUpgrades(game: Game): void {
 }
 
 const ENDINGS = {
-  ganada: { title: 'Un millón', line: 'La ciudad llegó al millón de habitantes. Ganaste la run.' },
+  ganada: { title: 'Medio millón', line: 'La ciudad llegó a los 500.000 habitantes. Ganaste la run.' },
   eleccion: { title: 'Lo echó el voto', line: 'Perdiste la elección y el mandato se terminó: la run se pierde con el poder.' },
   caja: { title: 'Dos años en rojo', line: 'La caja pasó 24 meses seguidos en rojo. La Provincia intervino la municipalidad.' },
 } as const;

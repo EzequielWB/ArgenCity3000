@@ -119,7 +119,7 @@ function showKindNote(): void {
 
 const MODE_NOTES: Record<string, string> = {
   clasico: 'La ciudad de siempre: crecés sin apuro y la Provincia te paga cada hito.',
-  roguelike: 'Un millón de habitantes para ganar. Cada cierta marca elegís 1 de 3 mejoras, y la run se pierde si perdés la elección o pasás dos años con la caja en rojo.',
+  roguelike: 'Medio millón de habitantes para ganar. Cada cierta marca elegís 1 de 3 mejoras, y la run se pierde si perdés la elección o pasás dos años con la caja en rojo.',
 };
 
 function showModeNote(): void {
