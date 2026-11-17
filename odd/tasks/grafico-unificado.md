@@ -20,9 +20,9 @@ una captura del mapa de la ciudad igual a la de antes del cambio.
 
 | ID | Tarea | Specs | Archivos | Commit |
 |---|---|---|---|---|
-| T1 | Sacar el interruptor: el píxel pasa a ser el único camino | S1 | `src/render/artSwitch.ts`, `src/render/mapRenderer.ts`, `src/render/sprites.ts`, `src/render/traffic.ts`, `src/render/vessels.ts`, `src/game.ts`, `src/main.ts`, `index.html`, `tests/artswitch.test.ts` | |
-| T2 | Borrar los pintores de canvas que quedaron sin uso | S3 | `src/render/sprites.ts` | |
-| T3 | Textos: tablero de arte, README y ayuda sin `?pixel=` | S1 | `scripts/arte-board.ts`, `scripts/board-city.ts`, `src/ui/panels.ts`, `README.md` | |
+| T1 | Sacar el interruptor: el píxel pasa a ser el único camino | S1 | `src/render/artSwitch.ts`, `src/render/mapRenderer.ts`, `src/render/sprites.ts`, `src/render/traffic.ts`, `src/render/vessels.ts`, `src/game.ts`, `src/main.ts`, `index.html`, `tests/artswitch.test.ts`, `tests/vehiculos-pixel.test.ts` | `0c7bf12` |
+| T2 | Borrar los pintores de canvas que quedaron sin uso | S3 | `src/render/sprites.ts` | `0c7bf12` |
+| T3 | Textos: tablero de arte, README y ayuda sin `?pixel=` | S1 | `scripts/arte-board.ts`, `scripts/board-city.ts`, `src/render/pixelArt.ts`, `README.md` | `0c7bf12` |
 | T4 | Verificar y llevar a `main` | S4, S5 | — | |
 
 ## Log
@@ -34,3 +34,19 @@ una captura del mapa de la ciudad igual a la de antes del cambio.
   reconciliar ni riesgo de pisar trabajo de la otra rama.
 - **L3.** Qué queda en canvas a propósito: `port`, `resort` y `lighthouse` de `coastSprite`, y los 10
   de `uniqueSprite`. Todo lo demás tiene su versión en píxel, así que su pintor viejo se borra.
+- **L4.** `noUnusedLocals` hizo de árbitro en las dos tareas: cada bloque borrado que dejaba un helper
+  o una constante sin uso aparecía en `tsc --noEmit`, y se siguió borrando hasta que el compilador
+  quedó limpio. Así se fueron también `WALLS`, `ROOFS`, `AWNINGS`, `EDGES`, `inset`, `lamp`, `blob`,
+  `SIDES`, `inOrder` y el tipo `Op`.
+- **L5.** `rectPainter` se salvó del borrado: lo borré con el resto del aeropuerto y `tsc` avisó que
+  los diez únicos y los tres edificios de costa lo usan. Volvió con su comentario.
+- **L6.** `coastSprite` quedó sin los casos `promenade` y `fishing` —el mapa los dibuja en píxel antes
+  de llamarlo— y tira un error si le piden algo que no sea `port`, `resort` o `lighthouse`: un `default`
+  que grita es mejor que devolver `undefined` y que la costa desaparezca sin decir por qué.
+- **L7.** Verificación: `tsc --noEmit` limpio · `vitest` **1112 / 65 archivos** (los 4 de `artswitch`
+  y el del interruptor de vehículos ya no tienen sujeto) · `npm run arte` 171 kB (bajó de 191 al no
+  llevar los canvas viejos) · `npm run board` 35 kB · la manzana de `arte.html?solo=city` se ve igual
+  que antes, con usina, plaza, calle, tierra y tendido · la costa con sus 13 variantes de rambla y los
+  4 muelles · el inicio del juego arranca sin errores en consola.
+- **L8.** `sprites.ts`: 2.255 → 1.350 líneas. Lo que queda en canvas es lo que falta hacer: los 10
+  únicos y puerto, balneario y faro.
