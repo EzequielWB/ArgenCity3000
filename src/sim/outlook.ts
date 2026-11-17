@@ -56,7 +56,7 @@ export function describeOutlook(b: BudgetReport, cash: number): Outlook {
   const publicServices = b.schools + b.clinics + b.police + b.firefighters + b.hospitals + b.universities;
   const lines = [
     'Estimación de un mes con la ciudad como está hoy',
-    `Ingresos: ${money(b.income)} (viviendas ${money(b.taxR)}, comercios ${money(b.taxC)}, fábricas ${money(b.taxI)}${b.coastIncome ? `, pesca y turismo ${money(b.coastIncome)}` : ''})`,
+    `Ingresos: ${money(b.income)} (viviendas ${money(b.taxR)}, comercios ${money(b.taxC)}, fábricas ${money(b.taxI)}${b.coastIncome ? `, pesca y turismo ${money(b.coastIncome)}` : ''}${b.uniqueIncome ? `, edificios únicos ${money(b.uniqueIncome)}` : ''})`,
     `Gastos: ${money(b.expenses)}`,
     `  Servicios públicos: ${money(publicServices)}`,
     `  Administración: ${money(b.services)}`,
@@ -64,6 +64,7 @@ export function describeOutlook(b: BudgetReport, cash: number): Outlook {
     `  Calles, tendido y plazas: ${money(b.roads + b.lines + b.parks)}`,
   ];
   if (b.coast) lines.push(`  Costa: ${money(b.coast)}`);
+  if (b.uniques) lines.push(`  Edificios únicos: ${money(b.uniques)}`);
   lines.push(`Saldo: ${money(b.balance)}`);
   if (cash < 0) lines.push('La caja ya está en rojo: no se construye hasta que se recupere.');
   else if (months !== null) lines.push(months === 0 ? 'A este ritmo la caja no alcanza para un mes.' : `Con la caja actual alcanza para ${monthsText(months)}.`);

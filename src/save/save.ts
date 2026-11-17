@@ -32,8 +32,9 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { busLineProblem, busStations } from '../world/transport';
 import { MAX_TILE, TILE, World, hubOf, hubTile, zoneOf } from '../world/world';
+import { UNIQUE_KINDS, UNIQUES, type UniqueKind } from '../config';
 
-export const SAVE_VERSION = 19;
+export const SAVE_VERSION = 20;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -44,9 +45,9 @@ export const SAVE_VERSION = 19;
  * provincial route, so they have none and their streets are free to start anywhere; versions 1 to
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
  * government, so they are democracies with no party; versions 1 to 17 have no roguelike run, so
- * they open as classic games.
+ * they open as classic games; versions 1 to 19 have no unique buildings, so they have none.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -107,6 +108,7 @@ export function serialize(d: SaveData): string {
     buses: busStations(w).map((b) => [b.i, b.line]),
     plants: w.plants,
     hubs: w.hubs,
+    uniques: w.uniques,
     sim: d.sim,
   });
 }
@@ -215,6 +217,35 @@ export function deserialize(text: string): SaveData {
   for (let i = 0; i < size; i++) if (hubOf(tiles[i])) tileHubs++;
   need(tileHubs === hubCells, 'Los aeropuertos y puertos no coinciden con el plano');
 
+  // Unique buildings exist from version 20 on: one anchor each, over a footprint of TILE.UNIQUE.
+  let uniqueCells = 0;
+  if ((data.version as number) >= 20) {
+    need(Array.isArray(data.uniques), 'Faltan los edificios únicos');
+    const coveredUniques = new Set<number>();
+    const seenKinds = new Set<UniqueKind>();
+    for (const u of data.uniques as unknown[]) {
+      const { x, y, kind } = (u ?? {}) as { x?: unknown; y?: unknown; kind?: unknown };
+      need(UNIQUE_KINDS.includes(kind as UniqueKind), 'Hay un edificio único de un tipo desconocido');
+      const known = kind as UniqueKind;
+      need(!seenKinds.has(known), 'Hay dos edificios únicos iguales');
+      seenKinds.add(known);
+      const { w: pw, h: ph } = UNIQUES[known];
+      need(isInt(x) && isInt(y) && x >= 0 && y >= 0 && x <= (n as number) - pw && y <= (n as number) - ph, 'Hay un edificio único fuera del mapa');
+      for (let dy = 0; dy < ph; dy++) {
+        for (let dx = 0; dx < pw; dx++) {
+          const cell = ((y as number) + dy) * (n as number) + (x as number) + dx;
+          need(tiles[cell] === TILE.UNIQUE && !coveredUniques.has(cell), 'Hay un edificio único sin terreno');
+          coveredUniques.add(cell);
+        }
+      }
+      world.uniques.push({ x: x as number, y: y as number, kind: known });
+      uniqueCells += pw * ph;
+    }
+  }
+  let tileUniques = 0;
+  for (let i = 0; i < size; i++) if (tiles[i] === TILE.UNIQUE) tileUniques++;
+  need(tileUniques === uniqueCells, 'Los edificios únicos no coinciden con el plano');
+
   return {
     name: typeof data.name === 'string' ? data.name.slice(0, 40) : 'Ciudad sin nombre',
     seed: isInt(data.seed) ? data.seed : 0,
@@ -290,9 +321,9 @@ function parseSim(raw: unknown): SimState {
   let lastBudget: BudgetReport | null = null;
   if (s.lastBudget !== null && s.lastBudget !== undefined) {
     const b = s.lastBudget as Record<string, unknown>;
-    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'income', 'expenses', 'balance'];
-    // Older budgets had no lines for services, the loan instalment or the coast; they count as zero.
-    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome']) if (b[k] === undefined) b[k] = 0;
+    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'uniques', 'uniqueIncome', 'income', 'expenses', 'balance'];
+    // Older budgets had no lines for services, the loan instalment, the coast or the uniques; they count as zero.
+    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'uniques', 'uniqueIncome']) if (b[k] === undefined) b[k] = 0;
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }

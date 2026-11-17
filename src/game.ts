@@ -28,7 +28,8 @@ import { openApproval, openElectionLost, openElectionWon, openEvent, openMilesto
 import { openRunOver, openUpgrades } from './ui/upgrades';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
-import { applyPlan, dragCells, footprintOfTool, isCoastTool, planTool, plantKindOfTool, routeRefusal, toolInfo, type Plan, type ToolId } from './world/tools';
+import { applyPlan, dragCells, footprintOfTool, isCoastTool, planTool, plantKindOfTool, routeRefusal, toolInfo, uniqueKindOfTool, type Plan, type ToolId } from './world/tools';
+import { uniqueFootprint, uniqueRefusal } from './world/uniques';
 import { busArea, busRefusal, busLineProblem } from './world/transport';
 import { openBusLine } from './ui/busline';
 import { UndoHistory } from './world/history';
@@ -532,6 +533,11 @@ export class Game implements PointerTarget {
 
   /** Why the tool in hand cannot build on a cell (the route rules, or the coast ones), or null (a lot that is merely taken). */
   private refusalAt(cell: [number, number]): string | null {
+    const unique = uniqueKindOfTool(this.tool);
+    if (unique) {
+      const foot = uniqueFootprint(unique, this.world.n, cell[0], cell[1]);
+      return routeRefusal(this.world, this.tool, cell[0], cell[1]) ?? uniqueRefusal(this.world, unique, foot);
+    }
     return routeRefusal(this.world, this.tool, cell[0], cell[1]) ?? (isCoastTool(this.tool) ? coastRefusal(this.world, this.tool, cell[0], cell[1]) : this.tool === 'bus' ? busRefusal(this.world, cell[0], cell[1]) : null);
   }
 

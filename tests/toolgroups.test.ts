@@ -10,7 +10,7 @@ describe('tool groups', () => {
     expect(new Set(grouped).size).toBe(grouped.length);
   });
 
-  it('has the seven categories of the toolbar, in order', () => {
+  it('has the eight categories of the toolbar, in order', () => {
     expect(TOOL_GROUPS.map((g) => [g.label, g.tools])).toEqual([
       ['Consulta', ['query', 'bulldoze']],
       ['Calles y luz', ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line']],
@@ -19,6 +19,7 @@ describe('tool groups', () => {
       ['Usinas', ['plant', 'plantGas', 'plantWind']],
       ['Costa', ['fishing', 'promenade', 'port', 'resort', 'lighthouse']],
       ['Transportes', ['bus', 'harbor', 'airport']],
+      ['Únicos', ['obelisco', 'calvario', 'puente', 'teatro', 'estadio']],
     ]);
   });
 

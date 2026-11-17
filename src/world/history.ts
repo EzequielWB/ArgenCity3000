@@ -1,7 +1,7 @@
 import { TICKS_PER_MONTH } from '../config';
 import type { Plan, ToolId } from './tools';
 import { markHubsDirty } from './hubs';
-import { World, type Hub, type Plant } from './world';
+import { World, type Hub, type Plant, type Unique } from './world';
 
 interface CellBefore {
   i: number;
@@ -43,6 +43,7 @@ interface Entry {
   cells: CellBefore[];
   plants: Plant[];
   hubs: Hub[];
+  uniques: Unique[];
   /** Terrain before the action: zoning may level the ground around the cells it changes. */
   corners: Uint8Array;
 }
@@ -87,7 +88,7 @@ export class UndoHistory {
         bus: w.busLine[i],
       };
     });
-    this.entries.push({ tool: plan.tool, cost: plan.cost, tick, cells, plants: w.plants.map((p) => ({ ...p })), hubs: w.hubs.map((h) => ({ ...h })), corners: w.terrain.corners.slice() });
+    this.entries.push({ tool: plan.tool, cost: plan.cost, tick, cells, plants: w.plants.map((p) => ({ ...p })), hubs: w.hubs.map((h) => ({ ...h })), uniques: w.uniques.map((u) => ({ ...u })), corners: w.terrain.corners.slice() });
     if (this.entries.length > UndoHistory.MAX_ENTRIES) this.entries.shift();
   }
 
@@ -112,6 +113,7 @@ export class UndoHistory {
     }
     w.plants = e.plants.map((p) => ({ ...p }));
     w.hubs = e.hubs.map((h) => ({ ...h }));
+    w.uniques = e.uniques.map((u) => ({ ...u }));
     markHubsDirty(w);
     restoreCorners(w, e.corners);
     w.bumpNetwork();

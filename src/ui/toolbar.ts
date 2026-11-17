@@ -1,12 +1,12 @@
 /**
- * The toolbar: five categories that open a flyout with their tools, plus undo, the
+ * The toolbar: the categories that open a flyout with their tools, plus undo, the
  * layers and the view controls. It only draws and reports clicks; the game decides what happens.
  */
-import { BUS, COAST, COSTS, HUBS, PLANTS, ROAD_TIERS, SERVICES } from '../config';
+import { BUS, COAST, COSTS, HUBS, PLANTS, ROAD_TIERS, SERVICES, UNIQUES } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { Layer } from '../render/view';
 import { MILESTONES, isUnlocked, milestoneOfTool } from '../sim/milestones';
-import { TOOL_GROUPS, groupOfTool, isCoastTool, isServiceTool, plantKindOfTool, roadTierOfTool, toolInfo, type ToolGroup, type ToolId } from '../world/tools';
+import { TOOL_GROUPS, groupOfTool, isCoastTool, isServiceTool, isUniqueTool, plantKindOfTool, roadTierOfTool, toolInfo, type ToolGroup, type ToolId } from '../world/tools';
 import { escapeHtml } from './dom';
 import { TOOL_ICONS } from './icons';
 
@@ -18,6 +18,7 @@ export function toolPrice(tool: ToolId): number | null {
   if (tier !== null) return ROAD_TIERS[tier].cost;
   if (isServiceTool(tool)) return SERVICES[tool].cost;
   if (isCoastTool(tool)) return COAST[tool].cost;
+  if (isUniqueTool(tool)) return UNIQUES[tool].cost;
   switch (tool) {
     case 'bus':
       return BUS.cost;
@@ -48,7 +49,7 @@ export function lockNotice(tool: ToolId): string {
 const pixelIcon = (rects: string) => `<svg viewBox="0 0 10 10" aria-hidden="true">${rects}</svg>`;
 const px = (x: number, y: number, w: number, h: number, fill: string) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
 
-/** Pixel pictograms of the categories: a magnifier, a street with a pole, four zones, a school with its flag, a plant, a lighthouse on the shore. */
+/** Pixel pictograms of the categories: a magnifier, a street with a pole, four zones, a school with its flag, a plant, a lighthouse on the shore, and a star for the uniques. */
 const GROUP_ICONS: Record<ToolGroup['id'], string> = {
   query: pixelIcon(px(3, 1, 4, 4, '#bcd3ee') + px(4, 2, 2, 2, '#1f4f8a') + px(6, 5, 1, 1, '#e0a526') + px(7, 6, 1, 1, '#e0a526') + px(8, 7, 1, 2, '#e0a526')),
   network: pixelIcon(px(0, 4, 10, 3, '#5a5560') + px(1, 5, 2, 1, '#f6f2e8') + px(5, 5, 2, 1, '#f6f2e8') + px(7, 0, 1, 4, '#6b4a2e') + px(5, 1, 5, 1, '#ffd84a')),
@@ -64,6 +65,10 @@ const GROUP_ICONS: Record<ToolGroup['id'], string> = {
   ),
   coast: pixelIcon(
     px(0, 6, 10, 3, '#4f8fb0') + px(0, 9, 10, 1, '#e2cc94') + px(1, 7, 2, 1, '#cfe6ec') + px(6, 8, 3, 1, '#cfe6ec') + px(4, 1, 2, 5, '#f6f2e8') + px(4, 2, 2, 1, '#c8392f') + px(4, 4, 2, 1, '#c8392f') + px(4, 0, 2, 1, '#ffd84a'),
+  ),
+  // A gold star: the category of the buildings there is only one of.
+  uniques: pixelIcon(
+    px(4, 0, 2, 2, '#ffd84a') + px(3, 2, 4, 1, '#ffd84a') + px(2, 3, 6, 1, '#f2c02a') + px(1, 4, 8, 1, '#e0a526') + px(0, 5, 10, 1, '#e0a526') + px(2, 6, 6, 1, '#e0a526') + px(1, 7, 2, 2, '#c98a1e') + px(7, 7, 2, 2, '#c98a1e'),
   ),
 };
 

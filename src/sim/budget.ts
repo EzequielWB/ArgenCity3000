@@ -8,6 +8,7 @@ import { hubIncome, hubUpkeep } from './hubs';
 import { plantsUpkeep } from './plants';
 import { NO_MODS, type RunMods } from './roguelike';
 import { transitUpkeep } from './transit';
+import { uniqueBoost, uniqueUpkeep } from '../world/uniques';
 
 export interface BudgetReport {
   taxR: number;
@@ -37,6 +38,10 @@ export interface BudgetReport {
   coast: number;
   /** Fish sold by the docks and tourism at the resorts. */
   coastIncome: number;
+  /** Upkeep of the unique buildings of the city. */
+  uniques: number;
+  /** What the unique buildings add to the tourism of the city this month: a share of the coast and the hubs. */
+  uniqueIncome: number;
   income: number;
   expenses: number;
   balance: number;
@@ -128,6 +133,11 @@ export function monthlyBudget(
   const taxI = Math.round(t.iJobs * taxes.I * 0.075 * portTaxBoost(coast.ports) * gov.taxIncome.I * earnings * mods.income);
   const funded = (k: ServiceKind) => Math.round((upkeep[k] * funding[k] * gov.serviceCost * mods.serviceCost) / 100);
   const loanDue = loan && !loanPaidOff(loan) ? loanInstalment(loan) : 0;
+  // The uniques are a multiplier, not a rent: a share of the tourism the city already brings in,
+  // each with its own season, so the monuments grow with the city instead of dying of old age.
+  const coastRaw = coast.income * coastFactor * earnings;
+  const hubRaw = hubIncome(w) * earnings;
+  const uniqueIncome = Math.round((coastRaw + hubRaw) * uniqueBoost(w, month));
   const r = {
     taxR,
     taxC,
@@ -147,11 +157,13 @@ export function monthlyBudget(
     loan: loanDue,
     transport: transitUpkeep(w, transport),
     hubs: hubUpkeep(w),
-    hubIncome: Math.round(hubIncome(w) * earnings),
+    hubIncome: Math.round(hubRaw),
     coast: coast.upkeep,
-    coastIncome: Math.round(coast.income * coastFactor * earnings),
+    coastIncome: Math.round(coastRaw),
+    uniques: uniqueUpkeep(w),
+    uniqueIncome,
   };
-  const income = r.taxR + r.taxC + r.taxI + r.coastIncome + r.hubIncome;
-  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.hospitals + r.universities + r.loan + r.coast + r.transport + r.hubs;
+  const income = r.taxR + r.taxC + r.taxI + r.coastIncome + r.hubIncome + r.uniqueIncome;
+  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.hospitals + r.universities + r.loan + r.coast + r.transport + r.hubs + r.uniques;
   return { ...r, income, expenses, balance: income - expenses };
 }

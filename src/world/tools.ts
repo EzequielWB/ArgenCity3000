@@ -1,12 +1,13 @@
-import { ASPHALT, BUS, COAST, COSTS, DIRT, HUBS, type HubKind, LINE_REACH, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, roadRank, type CoastKind, type PlantKind, type RoadTier, type ServiceKind } from '../config';
+import { ASPHALT, BUS, COAST, COSTS, DIRT, HUBS, LINE_REACH, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, roadRank, type CoastKind, type HubKind, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
 import { busRefusal, freeBusNumber, packBusLine } from './transport';
 import { hubFootprint, hubRefusal, markHubsDirty } from './hubs';
+import { uniqueFootprint, uniqueRefusal } from './uniques';
 import { TILE, World, coastTile, hubOf, hubTile, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind;
+export type ToolId = 'query' | 'bulldoze' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind | UniqueKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -17,6 +18,12 @@ export interface ToolInfo {
   shape: ToolShape;
   help: string;
 }
+
+const percent = (share: number): string => `${Math.round(share * 100)} %`;
+const UNIQUE_PLAZA = UNIQUE_RULES.obelisco.plazaCells;
+const UNIQUE_HEIGHT = UNIQUE_RULES.calvario.height;
+const UNIQUE_TEATRO = UNIQUE_RULES.teatro.value;
+const UNIQUE_ESTADIO = UNIQUE_RULES.estadio.boulevard;
 
 export const TOOLS: readonly ToolInfo[] = [
   { id: 'query', label: 'Consulta', key: '1', shape: 'point', help: 'Clic en el mapa para ver la ficha del lote.' },
@@ -54,6 +61,11 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'harbor', label: HUBS.harbor.label, key: '.', shape: 'anchor', help: 'Una pieza de 2×2 pegada al agua: un muelle con un barco de paseos. Funciona con una calle a 3 lotes o menos de alguna pieza y con luz: consume mucha electricidad, más cuanto más grande. Si ponés otra pegada es un puerto más grande, y con tres o más hay cruceros. Da empleos y turismo.' },
   { id: 'airport', label: HUBS.airport.label, key: ',', shape: 'anchor', help: 'Una pieza de 3×2 en tierra: un hangar con uno o dos aviones. Funciona con una calle a 3 lotes o menos de alguna pieza y con luz: consume mucha electricidad, más cuanto más grande. Con otra pegada es un aeródromo y con cuatro o más, un aeropuerto internacional. Da empleos y turismo, pero hace ruido: baja el valor del suelo alrededor.' },
   { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Con calle cerca y luz suma aprobación y valor del suelo.' },
+  { id: 'obelisco', label: UNIQUES.obelisco.label, key: '/', shape: 'anchor', help: `Uno solo por ciudad, de 2×2, en el medio de una plaza: necesita ${UNIQUE_PLAZA} lotes de plaza a 2 lotes o menos. Con calle cerca suma ${percent(UNIQUES.obelisco.boost)} al turismo de la ciudad, y ${percent(UNIQUES.obelisco.peak)} en verano.` },
+  { id: 'calvario', label: UNIQUES.calvario.label, key: '[', shape: 'anchor', help: `Uno solo por ciudad, de 3×6, en lo alto de una loma de ${UNIQUE_HEIGHT} niveles o más. Con calle cerca suma ${percent(UNIQUES.calvario.boost)} al turismo, y ${percent(UNIQUES.calvario.peak)} en septiembre, cuando sube la peregrinación.` },
+  { id: 'puente', label: UNIQUES.puente.label, key: ']', shape: 'anchor', help: `Uno solo por ciudad, de 2×6, todo sobre el agua con una punta en tierra. Con calle cerca suma ${percent(UNIQUES.puente.boost)} al turismo de la ciudad.` },
+  { id: 'teatro', label: UNIQUES.teatro.label, key: ':', shape: 'anchor', help: `Uno solo por ciudad, de 2×2, en un barrio de valor del suelo ${UNIQUE_TEATRO} o más. Con calle cerca suma ${percent(UNIQUES.teatro.boost)} al turismo, y ${percent(UNIQUES.teatro.peak)} de abril a agosto, la temporada de funciones.` },
+  { id: 'estadio', label: UNIQUES.estadio.label, key: '*', shape: 'anchor', help: `Uno solo por ciudad, de 4×4, con un bulevar a ${UNIQUE_ESTADIO} lotes o menos. Con calle cerca suma ${percent(UNIQUES.estadio.boost)} al turismo, y ${percent(UNIQUES.estadio.peak)} de marzo a noviembre, cuando hay torneo.` },
 ];
 
 export function isServiceTool(tool: ToolId): tool is ServiceKind {
@@ -62,6 +74,10 @@ export function isServiceTool(tool: ToolId): tool is ServiceKind {
 
 export function isCoastTool(tool: ToolId): tool is CoastKind {
   return tool === 'fishing' || tool === 'promenade' || tool === 'port' || tool === 'resort' || tool === 'lighthouse';
+}
+
+export function isUniqueTool(tool: ToolId): tool is UniqueKind {
+  return tool === 'obelisco' || tool === 'calvario' || tool === 'puente' || tool === 'teatro' || tool === 'estadio';
 }
 
 const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
@@ -76,12 +92,17 @@ export function hubKindOfTool(tool: ToolId): HubKind | null {
   return tool === 'airport' || tool === 'harbor' ? tool : null;
 }
 
+/** The unique building a tool raises, or null for any other tool. */
+export function uniqueKindOfTool(tool: ToolId): UniqueKind | null {
+  return isUniqueTool(tool) ? tool : null;
+}
+
 export function toolInfo(id: ToolId): ToolInfo {
   return TOOLS.find((t) => t.id === id)!;
 }
 
 export interface ToolGroup {
-  id: 'query' | 'network' | 'zones' | 'services' | 'plants' | 'coast' | 'transport';
+  id: 'query' | 'network' | 'zones' | 'services' | 'plants' | 'coast' | 'transport' | 'uniques';
   label: string;
   tools: readonly ToolId[];
 }
@@ -95,6 +116,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
   { id: 'coast', label: 'Costa', tools: ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] },
   { id: 'transport', label: 'Transportes', tools: ['bus', 'harbor', 'airport'] },
+  { id: 'uniques', label: 'Únicos', tools: ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'] },
 ];
 
 export function groupOfTool(tool: ToolId): ToolGroup {
@@ -150,11 +172,13 @@ export function dragCells(tool: ToolId, ax: number, ay: number, bx: number, by: 
   return cells;
 }
 
-/** The lots a one-piece tool (a power plant, an airport or a harbour) placed at (x, y) would cover, or null for any other tool. */
+/** The lots a one-piece tool (a power plant, an airport, a harbour or a unique) placed at (x, y) would cover, or null for any other tool. */
 export function footprintOfTool(tool: ToolId, n: number, x: number, y: number): Cell[] | null {
   if (plantKindOfTool(tool)) return plantFootprint(n, x, y);
   const hub = hubKindOfTool(tool);
-  return hub ? hubFootprint(hub, n, x, y) : null;
+  if (hub) return hubFootprint(hub, n, x, y);
+  const unique = uniqueKindOfTool(tool);
+  return unique ? uniqueFootprint(unique, n, x, y) : null;
 }
 
 /** The 2×2 cells a power plant placed at (x, y) would cover, kept inside the map. */
@@ -200,6 +224,14 @@ function isFreeLot(w: World, x: number, y: number): boolean {
   const i = w.idx(x, y);
   const t = w.tiles[i];
   return t === TILE.EMPTY || (zoneOf(t) !== null && w.level[i] === 0);
+}
+
+/**
+ * A lot where a monument may go: empty like any other, or a lot of plaza — the obelisco stands in
+ * the middle of the plaza and takes its place (`UNIQUE_RULES.obelisco` asks for the plaza around it).
+ */
+function isFreeForUnique(w: World, x: number, y: number): boolean {
+  return isFreeLot(w, x, y) || w.tiles[w.idx(x, y)] === TILE.PARK;
 }
 
 const ROUTE_UNTOUCHABLE = 'La ruta provincial no se toca';
@@ -256,6 +288,15 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     const foot = hubFootprint(hubKind, w.n, ax, ay);
     const ok = foot.every(([x, y]) => !w.route[w.idx(x, y)] && isFreeLot(w, x, y)) && hubRefusal(w, hubKind, foot) === null;
     return ok ? { tool, cells: foot, cost: HUBS[hubKind].cost } : { tool, cells: [], cost: 0 };
+  }
+
+  const uniqueKind = uniqueKindOfTool(tool);
+  if (uniqueKind) {
+    const [ax, ay] = cells[0] ?? [-1, -1];
+    const foot = uniqueFootprint(uniqueKind, w.n, ax, ay);
+    const ok =
+      foot.every(([x, y]) => w.inBounds(x, y) && !w.route[w.idx(x, y)] && isFreeForUnique(w, x, y)) && uniqueRefusal(w, uniqueKind, foot) === null;
+    return ok ? { tool, cells: foot, cost: UNIQUES[uniqueKind].cost } : { tool, cells: [], cost: 0 };
   }
 
   for (const [x, y] of cells) {
@@ -320,6 +361,16 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
           if (!p || plantsSeen.has(p)) break;
           plantsSeen.add(p);
           for (const [cx, cy] of hubFootprint(p.kind, w.n, p.x, p.y)) {
+            seen.add(w.idx(cx, cy));
+            out.push([cx, cy]);
+          }
+          cost += COSTS.bulldozePlant;
+        } else if (t === TILE.UNIQUE) {
+          // A monument comes down whole too: nobody tears an obelisco down half way.
+          const u = w.uniqueAt(x, y);
+          if (!u || plantsSeen.has(u)) break;
+          plantsSeen.add(u);
+          for (const [cx, cy] of uniqueFootprint(u.kind, w.n, u.x, u.y)) {
             seen.add(w.idx(cx, cy));
             out.push([cx, cy]);
           }
@@ -411,6 +462,10 @@ export function applyPlan(w: World, plan: Plan): void {
           const piece = w.hubAt(x, y);
           w.hubs = w.hubs.filter((h) => h !== piece);
         }
+        if (w.tiles[i] === TILE.UNIQUE) {
+          const monument = w.uniqueAt(x, y);
+          w.uniques = w.uniques.filter((u) => u !== monument);
+        }
         w.setTile(x, y, TILE.EMPTY);
         w.terrain.trees[i] = 0;
         break;
@@ -420,6 +475,9 @@ export function applyPlan(w: World, plan: Plan): void {
           w.terrain.trees[i] = 0;
         } else if (hubKindOfTool(plan.tool)) {
           w.setTile(x, y, hubTile(hubKindOfTool(plan.tool)!));
+          w.terrain.trees[i] = 0;
+        } else if (uniqueKindOfTool(plan.tool)) {
+          w.setTile(x, y, TILE.UNIQUE);
           w.terrain.trees[i] = 0;
         } else if (isCoastTool(plan.tool)) {
           w.setTile(x, y, coastTile(plan.tool));
@@ -435,6 +493,11 @@ export function applyPlan(w: World, plan: Plan): void {
   if (hubKind) {
     const [x, y] = plan.cells[0];
     w.hubs.push({ x, y, kind: hubKind });
+  }
+  const uniqueKind = uniqueKindOfTool(plan.tool);
+  if (uniqueKind) {
+    const [x, y] = plan.cells[0];
+    w.uniques.push({ x, y, kind: uniqueKind });
   }
   // Zoning or placing a service levels the block it belongs to (see `levelBlocks`).
   if (zone || isServiceTool(plan.tool) || hubKind) levelBlocks(w, plan.cells);

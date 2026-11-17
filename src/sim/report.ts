@@ -21,6 +21,7 @@ import {
   ROAD_TIERS,
   SERVICES,
   TRAFFIC,
+  UNIQUES,
   WIND,
   type CoastKind,
   type ServiceKind,
@@ -30,10 +31,11 @@ import { isUnlocked } from './milestones';
 import { buildingIssues, type Issue } from './warnings';
 import { SEA_LEVEL } from '../world/terrain';
 import { facilityAt } from '../world/hubs';
+import { uniqueWorks } from '../world/uniques';
 import { busColorOf, busNumberOf, streetNear } from '../world/transport';
-import { TILE, World, coastOf, hubOf, serviceOf, zoneOf, type ZoneKind } from '../world/world';
+import { TILE, World, coastOf, hubOf, serviceOf, zoneOf, type Unique, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
-import { dateOf } from './calendar';
+import { MONTHS, dateOf } from './calendar';
 import { coastWorks, seasonOf, tourismFor, type Season } from './coast';
 import { HUMBLE, SERVICE_NEED, TAX_DEMAND_POINTS, isHoldout, levelCap } from './demand';
 import { residentsServed, utilization } from './fields';
@@ -136,8 +138,14 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
   }
   if (water) {
     if (tile === TILE.LINE) return { title: 'Tendido eléctrico sobre el agua', lines: [w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_REACH} lotes a su alrededor`] };
+    // A monument over the water (the puente) gets its own card before the river's.
+    const over = tile === TILE.UNIQUE ? w.uniqueAt(x, y) : undefined;
+    if (over) return describeUnique(w, over);
     return { title: 'Río', lines: ['Agua. Se puede cruzar con calles (puentes) o con tendido eléctrico.'] };
   }
+  // A monument on land (the obelisco, the calvario, the teatro, the estadio).
+  const monument = tile === TILE.UNIQUE ? w.uniqueAt(x, y) : undefined;
+  if (monument) return describeUnique(w, monument);
   if (tile === TILE.PLANT) {
     const p = sim.power;
     const plant = w.plantAt(x, y);
@@ -272,6 +280,26 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
 
   lines.push(height, `Valor del suelo: ${w.landValue[i]}/100`, `Contaminación: ${w.pollution[i]}/100`);
   return { title: w.terrain.trees[i] ? 'Arboleda' : 'Terreno libre', lines };
+}
+
+/** The card of a unique building: what it adds to the tourism of the city and what it asks for. */
+function describeUnique(w: World, u: Unique): CellReport {
+  const info = UNIQUES[u.kind];
+  const share = Math.round(info.boost * 100);
+  const peak = Math.round(info.peak * 100);
+  const upkeep = `Mantenimiento: $${formatNumber(info.upkeep)} por mes`;
+  const size = `${info.w}×${info.h} lotes · uno solo por ciudad`;
+  const season = info.peakMonths.length
+    ? `En temporada suma ${peak} % en vez de ${share} %: ${info.peakMonths.map((m) => MONTHS[m - 1]).join(', ')}`
+    : `Suma ${share} % todo el año`;
+  if (!uniqueWorks(w, u)) {
+    return {
+      title: info.label,
+      lines: [`Sin calle a menos de ${ROAD_REACH} lotes: no lo visita nadie`, size, upkeep],
+      hint: 'Un edificio único suma turismo sólo si una calle llega hasta él: trazá una calle cerca.',
+    };
+  }
+  return { title: info.label, lines: [`Sumando ${share} % al turismo de la ciudad`, season, size, upkeep] };
 }
 
 const SEASON_NAMES: Record<Season, string> = { peak: 'Temporada alta (verano)', shoulder: 'Entretemporada', low: 'Temporada baja' };

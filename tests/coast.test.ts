@@ -116,7 +116,8 @@ describe('the coast tools', () => {
     expect(TILE.BUS).toBe(TILE.LIGHTHOUSE + 1);
     expect(TILE.AIRPORT).toBe(TILE.BUS + 1);
     expect(TILE.HARBOR).toBe(TILE.AIRPORT + 1);
-    expect(MAX_TILE).toBe(TILE.UNIVERSITY);
+    expect(TILE.UNIQUE).toBe(TILE.UNIVERSITY + 1);
+    expect(MAX_TILE).toBe(TILE.UNIQUE);
     for (const k of COAST_TOOLS) expect(coastOf(coastTile(k))).toBe(k);
     expect(coastOf(TILE.FIREHOUSE)).toBeNull();
     expect(coastOf(TILE.EMPTY)).toBeNull();
