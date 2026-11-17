@@ -82,9 +82,32 @@ posterior (S10).
   predio y la plata.
   *Check:* `tests/unicos.test.ts` (guardado y deshacer).
 
-- **S10 — Fuera de este paquete:** los cinco únicos de gobierno (Cabildo, Regimiento, Planetario,
-  Santuario, Sindicato) y sus mecánicas propias. Quedan propuestos en `## Log`, no se implementan
-  acá por pedido explícito ("primero hacé los 5 compartidos").
+- **S10 — Los cinco de gobierno** (Cabildo, Regimiento, Planetario, Santuario, Sindicato): estaban
+  fuera del primer paquete por pedido explícito ("primero hacé los 5 compartidos") y se implementan
+  en S11.
+
+- **S11 — Los cinco de gobierno (verbatim, L14):** "Te gustaria seguir haciendo los edificios unicos
+  de tipo de gobierno? Segui esa logica visual con la que venimos trabajando, si queres toma
+  inspiraciones de cosas reales". Cada gobierno tiene **un** único propio, y sólo ese gobierno lo
+  puede construir: la ciudad fundada como democracia tiene el Cabildo y no el Regimiento. Sigue la
+  misma lógica que los compartidos (uno por ciudad, obra del jugador, con costo y mantenimiento,
+  posición especial, temporada) pero **cada uno hace algo distinto**, que es lo que el pedido
+  original nombraba ("generar turismo o cosas asi, dependiendo del tipo"):
+
+  | Gobierno | Edificio | Lote | Inspiración real | Regla de lugar | Qué hace |
+  |---|---|---|---|---|---|
+  | Democracia | Cabildo | 3×2 | Cabildo de Buenos Aires: arcada de dos pisos, techo de tejas, torre con reloj | 6 lotes de plaza a 3 lotes o menos | **+aprobación** por mes, y el doble en septiembre, el mes de la elección (`ELECTION_MONTH`) |
+  | Dictadura | Regimiento | 4×3 | Regimiento de Campo de Mayo: galpones bajos alrededor de una plaza de armas, mástil y torre | 12 lotes sin zonificar a 4 lotes o menos (descampado) | **baja el delito** alrededor, como las luces del bulevar |
+  | Tecnocracia | Planetario | 3×3 | Planetario Galileo Galilei: esfera sobre un cilindro, en un parque | a 8 lotes de una universidad | **da educación** alrededor: se ve en la capa Educación y destraba el cuarto nivel de las casas |
+  | Teocracia | Santuario | 3×4 | Basílica de Luján: ladrillo, dos torres, rosetón | a 4 lotes del agua | **+favor** por mes, y el doble en abril |
+  | Comunismo | Sindicato | 3×2 | Sindicato de la Carne de Berisso: bloque bajo con salón y cartel | 10 lotes industriales a 4 lotes o menos | **turismo que escala con los puestos de trabajo industriales**, con techo |
+
+  *Criterio:* `UNIQUES[kind].government` dice de quién es cada uno; `uniqueRefusal` rechaza el de
+  otro gobierno nombrando los dos; cada efecto tiene su función pura en `src/world/uniques.ts` y su
+  test de "hace algo" y de "no hace nada si no corresponde"; el de turismo respeta
+  `UNIQUE_BOOST_MAX` junto con los compartidos.
+  *Check:* `tests/unicos.test.ts` (gobierno, reglas, efectos), `tests/fields.test.ts` (delito y
+  educación), `tests/politics.test.ts` (aprobación), `tests/favor.test.ts` (favor).
 
 ## Tasks
 
@@ -103,6 +126,22 @@ posterior (S10).
 - **T5** — Arte y barra: cinco sprites en `src/render/sprites.ts`, rama de dibujo en
   `src/render/mapRenderer.ts`, cinco íconos y la estrella del grupo en `src/ui/icons.ts` y
   `src/ui/toolbar.ts`, ayuda en `src/ui/panels.ts`. · commit `feat(unicos): el arte de los cinco`
+- **T7 ✅** — Datos y reglas de los cinco de gobierno: `UNIQUE_KINDS` (los cinco compartidos),
+  `GOVERNMENT_UNIQUE_KINDS`, `ALL_UNIQUE_KINDS`, `UNIQUES` (lote, costo, gasto, efectos),
+  `UNIQUE_RULES`, `GOVERNMENT_UNIQUES` como interruptor, la puerta por gobierno en `uniqueRefusal`,
+  los predicados de lugar (plaza cerca, descampado, universidad cerca, agua cerca, industria cerca).
+  `isUniqueTool` pasa a leer `ALL_UNIQUE_KINDS`, así que un único de gobierno se planifica, se
+  topadorea y se deshace como cualquier otro. → `tests/unicos.test.ts` · commit
+  `feat(unicos): los cinco de gobierno, datos y reglas`
+- **T8 ✅** — Efectos: aprobación (Cabildo) y favor (Santuario) en el paso del mes, delito
+  (Regimiento) y educación (Planetario) en `src/sim/fields.ts`, turismo por puestos industriales
+  (Sindicato) en `uniqueBoost`. → `tests/unicos.test.ts`, `tests/fields.test.ts` · commit
+  `feat(unicos): lo que hace cada uno de gobierno`
+- **T9 ✅** — Barra, fichas y ayuda: cinco herramientas con teclas propias, íconos, ayuda del panel,
+  ficha de consulta con el efecto, y el hito. → `tests/toolgroups.test.ts`, `tests/unicos.test.ts`
+  · commit `feat(unicos): barra y fichas de los de gobierno`
+- **T10 ✅** — Arte: cinco sprites fieles a su referencia y su altura en `uniqueHeight`, más el tablero
+  `npm run board`. → `tests/unicos.test.ts` (alto) · commit `feat(unicos): el arte de los de gobierno`
 - **T6** — Guardado v20 y cierre: `src/save/save.ts`, `npm test`, `npm run typecheck`, `npm run build`.
   Con T3 y T4 en el commit de la barra.
 
@@ -164,3 +203,24 @@ posterior (S10).
   todos los edificios únicos". Antes entraban repartidos en 1.000, 2.500 y 5.000; ahora los cinco
   comparten el hito `Metrópolis`, que ya existía sin desbloqueos. El test de hitos es genérico
   (`milestoneOfTool` para cada uno), así que sigue valiendo sin tocarlo.
+
+- **L14 (pedido, verbatim):** "Te gustaria seguir haciendo los edificios unicos de tipo de gobierno?
+  Segui esa logica visual con la que venimos trabajando, si queres toma inspiraciones de cosas
+  reales". Se eligen cinco construcciones reales, una por gobierno: Cabildo de Buenos Aires,
+  Regimiento de Campo de Mayo, Planetario Galileo Galilei, Basílica de Luján y Sindicato de la Carne
+  de Berisso.
+- **L15 (decisión, el interruptor):** `GOVERNMENT_UNIQUES` en `src/config.ts` filtra la barra y el
+  hito: apagado, la ciudad vuelve a tener sólo los cinco compartidos sin borrar datos ni tests. Se
+  deja encendido porque el paquete está completo.
+- **L16 (evidencia, teclas y choques):** las originales `; , . ' \` ` chocaban con hospital (`;`),
+  harbor (`.`) y airport (`,`), así que el Cabildo pasa a `{`, el Regimiento a `}` y el Planetario a
+  `?`; el Santuario queda con `'` y el Sindicato con `\` (barra invertida). `tests/coast.test.ts` y
+  `tests/toolgroups.test.ts` siguen pasando.
+- **L17 (evidencia, arte, tres pases):** el primer pase mostró cinco problemas. El Santuario tenía
+  las torres dentro del ancho de la nave y se leían como pilastras: la nave pasa a 1,5 lotes de
+  ancho y las torres van afuera, con campanario, campana, aguja más clara que el techo y cruz. El
+  Planetario tenía el anillo sobre la esfera (parecía Saturno) y la esfera sin luz ni sombra: el
+  anillo baja al ecuador y la esfera pasa a ser una pila de elipses pintadas en dos mitades, clara y
+  oscura. El Cabildo agranda la torre y el reloj y baja el techo. El Sindicato baja el pretil (que se
+  comía la fachada), abre la puerta con marco y escalón y agranda el cartel. La revisión se hizo con
+  el sprite a 4,2× en un tablero temporal y capturas de Chrome sin cabeza.

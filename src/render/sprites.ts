@@ -1853,6 +1853,268 @@ function teatroArt(vw: number, vh: number): Sprite {
   return done(p);
 }
 
+// ---------------------------------------------------------------- the uniques of each government
+
+/**
+ * The cabildo (3x2): the colonial town hall of Buenos Aires. A two-storey arcade of cream stone under
+ * a red tile roof, with the central tower that holds the clock, the way it still stands on the Plaza
+ * de Mayo. The seat of the government faces the plaza, so the front has the arches and the balcony.
+ */
+function cabildoArt(vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, 56);
+  const cream = '#efe6d2';
+  const tile = '#a8503c';
+  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1.2, '#cfc8bb', false);
+  p.box(0.1, 0.14, vw - 0.1, vh - 0.14, 1.2, 1.4, '#dcd5c6', true);
+  const z0 = 2.6;
+  const bodyH = 15;
+  p.box(0.16, 0.2, vw - 0.16, vh - 0.2, z0, bodyH, cream, true);
+  const u0 = 0.16;
+  const u1 = vw - 0.16;
+  const v0 = 0.2;
+  const v1 = vh - 0.2;
+  // The ground floor is the arcade: an arch on each face, dark, at the level of the street.
+  const arches = 4;
+  for (let k = 0; k < arches; k++) {
+    const a = u0 + ((u1 - u0) * (k + 0.28)) / arches;
+    const b = u0 + ((u1 - u0) * (k + 0.72)) / arches;
+    p.left(v1 - 0.005, a, b, z0 + 1.2, z0 + 6.6, '#6b6257');
+    const c = v0 + ((v1 - v0) * (k + 0.28)) / arches;
+    const d = v0 + ((v1 - v0) * (k + 0.72)) / arches;
+    p.right(u1 - 0.005, c, d, z0 + 1.2, z0 + 6.6, '#6b6257');
+  }
+  p.windows(u0, v0, u1, v1, z0 + 8.8, z0 + bodyH - 0.8, 6, '#7a6a52', 4, 2.8);
+  // The balcony and the tile roof, low and wide like the real one.
+  p.box(u0 - 0.05, v0 - 0.05, u1 + 0.05, v1 + 0.05, z0 + 7.4, 0.8, '#e3dac7', true);
+  p.hipRoof(u0 - 0.08, v0 - 0.08, u1 + 0.08, v1 + 0.08, z0 + bodyH, 3.6, tile);
+  // The tower over the middle of the front, with the clock and its little roof.
+  const cu = (u0 + u1) / 2;
+  const cv = (v0 + v1) / 2;
+  const tw = 0.74;
+  p.box(cu - tw, cv - tw, cu + tw, cv + tw, z0 + bodyH, 13, cream, true);
+  const clockZ = z0 + bodyH + 6.4;
+  p.left(cv + tw - 0.01, cu - 0.3, cu + 0.3, clockZ, clockZ + 4, '#f7f2e6');
+  p.right(cu + tw - 0.01, cv - 0.3, cv + 0.3, clockZ, clockZ + 4, '#f7f2e6');
+  const [cx1, cy1] = p.P(cu, cv + tw - 0.02, clockZ + 1.6);
+  const [cx2, cy2] = p.P(cu + tw - 0.02, cv, clockZ + 1.6);
+  p.g.fillStyle = '#3b352e';
+  p.g.fillRect(Math.round(cx1) - 1, Math.round(cy1) - 1, 2, 2);
+  p.g.fillRect(Math.round(cx2) - 1, Math.round(cy2) - 1, 2, 2);
+  p.box(cu - tw - 0.05, cv - tw - 0.05, cu + tw + 0.05, cv + tw + 0.05, z0 + bodyH + 13, 0.8, '#e3dac7', true);
+  p.hipRoof(cu - tw - 0.07, cv - tw - 0.07, cu + tw + 0.07, cv + tw + 0.07, z0 + bodyH + 13.8, 4.4, tile);
+  // The mast with the flag over the tower.
+  p.post(cu, cv, z0 + bodyH + 18.2, '#5d554b');
+  const [fx, fy] = p.P(cu, cv, z0 + bodyH + 18.2);
+  p.g.fillStyle = '#7cb0d8';
+  p.g.fillRect(Math.round(fx), Math.round(fy) - 4, 6, 4);
+  p.g.fillStyle = '#f2efe6';
+  p.g.fillRect(Math.round(fx), Math.round(fy) - 2.4, 6, 1.6);
+  return done(p);
+}
+
+/**
+ * The regimiento (4x3): a regimental barracks, the way Campo de Mayo looks from the road. Low
+ * whitewashed blocks with green roofs around an open parade ground, a watchtower at the corner and
+ * the flag mast in the middle, because the ground is empty on purpose: that is what it is for.
+ */
+function regimientoArt(vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, 42);
+  const wall = '#e2dccb';
+  const roof = '#5d7a54';
+  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1, '#b9a888', false);
+  p.box(0.5, 0.5, vw - 0.5, vh - 0.5, 1, 0.4, '#a89474', false);
+  const block = (u0: number, v0: number, u1: number, v1: number) => {
+    p.box(u0, v0, u1, v1, 1, 12, wall, true);
+    p.hipRoof(u0 - 0.06, v0 - 0.06, u1 + 0.06, v1 + 0.06, 13, 3.2, roof);
+    p.windows(u0, v0, u1, v1, 3, 11, 5, '#5a5348', 4, 3.2);
+  };
+  block(0.34, 0.28, vw - 0.7, 0.9);
+  block(0.28, vh - 0.94, 0.9, vh - 0.32);
+  // The guard post and the watchtower with its lamp, at the corner the camera meets first.
+  p.box(vw - 1.4, vh - 1.35, vw - 0.85, vh - 0.85, 1, 6, wall, true);
+  p.hipRoof(vw - 1.46, vh - 1.41, vw - 0.79, vh - 0.79, 7, 2.2, roof);
+  const tu = vw - 0.95;
+  const tv = vh - 0.9;
+  p.box(tu - 0.17, tv - 0.17, tu + 0.17, tv + 0.17, 1, 19, '#efe9da', true);
+  p.box(tu - 0.25, tv - 0.25, tu + 0.25, tv + 0.25, 20, 1.1, '#cfc7b5', true);
+  p.left(tv + 0.17, tu - 0.11, tu + 0.11, 14.5, 17.5, '#4d463d');
+  p.hipRoof(tu - 0.28, tv - 0.28, tu + 0.28, tv + 0.28, 21.1, 2.8, roof);
+  // The mast in the middle of the ground, with the flag: the one thing that reads from far away.
+  const mu = vw / 2 - 0.15;
+  const mv = vh / 2 + 0.25;
+  p.post(mu, mv, 28, '#8f8b82');
+  const [fx, fy] = p.P(mu, mv, 28);
+  p.g.fillStyle = '#7cb0d8';
+  p.g.fillRect(Math.round(fx) + 1, Math.round(fy) - 5, 8, 5);
+  p.g.fillStyle = '#f4f1e8';
+  p.g.fillRect(Math.round(fx) + 1, Math.round(fy) - 3.4, 8, 2);
+  p.g.fillStyle = '#d9b45c';
+  p.g.fillRect(Math.round(fx) + 4, Math.round(fy) - 4, 2, 2);
+  // Two sandbag nests by the gate and the truck parked next to the block.
+  for (const [su, sv] of [
+    [0.5, vh - 0.5],
+    [0.5, vh - 0.95],
+  ]) {
+    p.box(su - 0.13, sv - 0.11, su + 0.13, sv + 0.11, 1, 2.2, '#b3a888', true);
+  }
+  p.box(1.6, vh - 2.1, 2.5, vh - 1.5, 1, 3, '#6f7d63', true);
+  return done(p);
+}
+
+/**
+ * The planetario (3x3): the Galileo Galilei of Palermo. A white drum in the middle of a plaza and the
+ * sphere on top of it, the dark ring of the gallery at its equator and the little lantern: it is the
+ * only building of the city that is not a box, and that is exactly what makes it read.
+ */
+function planetarioArt(vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, 52);
+  const cu = vw / 2;
+  const cv = vh / 2;
+  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1, '#c9c4b4', false);
+  // The parterre of the park and the steps that climb to the drum.
+  p.poly([p.P(0.08, 0.08, 1.05), p.P(vw - 0.4, 0.08, 1.05), p.P(vw - 0.4, vh - 0.4, 1.05), p.P(0.08, vh - 0.4, 1.05)], '#79a95f');
+  p.box(0.9, 1.2, 2.1, 1.9, 1, 0.9, '#b9b2a4', true);
+  // The drum: a wide white cylinder with its band of windows, and the sphere sitting on it.
+  p.cylinder(cu, cv, 0.56, 1, 15, '#eae4d6');
+  p.cylinder(cu, cv, 0.58, 15, 1.2, '#f4efe3');
+  for (const a of [-0.3, 0.3]) p.left(1.755, cu + a - 0.12, cu + a + 0.12, 5.6, 10.4, '#54707f');
+  const [bx, by] = p.P(cu, cv, 18);
+  const r = 14;
+  // A sphere projects as a ball, not as a stack of ellipses: one circle, and over it three more,
+  // each one smaller and shifted to the side the light comes from. That stepped shading is what
+  // turns a flat disc into a volume without painting a single gradient.
+  const sphere = '#b6ccd6';
+  const disc = (dx: number, dy: number, rad: number, tone: string) => {
+    p.g.beginPath();
+    p.g.ellipse(bx + dx, by + dy, rad, rad, 0, 0, Math.PI * 2);
+    p.g.fillStyle = tone;
+    p.g.fill();
+  };
+  disc(0, 0, r, shade(sphere, 0.7));
+  disc(-r * 0.05, -r * 0.1, r * 0.9, shade(sphere, 0.9));
+  disc(-r * 0.2, -r * 0.3, r * 0.68, shade(sphere, 1.1));
+  disc(-r * 0.32, -r * 0.46, r * 0.4, shade(sphere, 1.3));
+  // The gallery: the walkway that goes round the equator, clipped to the ball so it hugs it.
+  p.g.save();
+  p.g.beginPath();
+  p.g.ellipse(bx, by, r * 0.995, r * 0.995, 0, 0, Math.PI * 2);
+  p.g.clip();
+  p.g.beginPath();
+  p.g.ellipse(bx, by + r * 0.02, r * 1.02, r * 0.32, 0, Math.PI * 0.02, Math.PI * 0.98);
+  p.g.strokeStyle = '#4d5a64';
+  p.g.lineWidth = 1.7;
+  p.g.stroke();
+  p.g.restore();
+  // The lantern on the crown of the ball, with its little cap and the mast of the telescope.
+  p.cylinder(cu, cv, 0.055, 31.4, 2, '#e8e2d4');
+  p.hipRoof(cu - 0.075, cv - 0.075, cu + 0.075, cv + 0.075, 33.4, 1.2, '#b9b2a4');
+  // The trees of the park.
+  p.tree(0.34, vh - 0.34, 1, 0.9);
+  p.tree(vw - 0.36, vh - 0.36, 3, 0.8);
+  p.tree(vw - 0.34, 0.36, 1, 0.85);
+  return done(p);
+}
+
+/**
+ * The santuario (3x4): the basilica of Lujan, in brick, with the two towers of its front and the rose
+ * window between them. The spires are drawn as the pyramids they are, so the building ends in two
+ * points instead of a dome, which is what tells it apart from a church of any other style.
+ */
+function santuarioArt(vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, 66);
+  const brick = '#9c5a44';
+  const brickDark = '#7d4433';
+  const stone = '#e5ddc8';
+  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1, '#c9c2b1', false);
+  p.box(0.14, vh - 0.95, vw - 0.14, vh - 0.1, 1, 1.3, '#ddd6c4', true);
+  const z0 = 2.2;
+  // The nave: a long brick block with its gable roof and the buttresses that hold it.
+
+  for (let k = 0; k < 3; k++) {
+    const v = 1.05 + k * 1.45;
+    p.box(0.64, v, 0.75, v + 0.24, z0, 16, brickDark, true);
+    p.box(vw - 0.75, v, vw - 0.64, v + 0.24, z0, 16, brickDark, true);
+  }
+  // The front: two towers with their belfries and spires, and the gable with the rose window between.
+  // The towers are the shape of the building, so they get the width: narrow ones read as pilasters.
+  const front = vh - 1;
+  const tower = (u: number) => {
+    const tw = 0.36;
+    // The towers are a touch lighter than the nave so their silhouette separates from the roof
+    // behind them: at game size the two bricks otherwise merge into one mass.
+    const towerBrick = '#ab6650';
+    p.box(u - tw, front - 0.7, u + tw, front + 0.08, z0, 30, towerBrick, true);
+    p.box(u - tw - 0.06, front - 0.76, u + tw + 0.06, front + 0.14, z0 + 30, 1, stone, true);
+    p.left(front + 0.075, u - 0.26, u + 0.26, z0 + 23.5, z0 + 28.6, '#2f2b26');
+    p.right(u + tw - 0.005, front - 0.5, front - 0.1, z0 + 23.5, z0 + 28.6, '#2f2b26');
+    // The bell in the belfry, and the spire with its cross: tall and sharp, as Luján's are.
+    p.left(front + 0.07, u - 0.07, u + 0.07, z0 + 25.4, z0 + 27.6, '#c9a24a');
+    p.hipRoof(u - 0.3, front - 0.7, u + 0.3, front + 0.08, z0 + 31, 18, '#a95a44');
+    p.box(u - 0.05, front - 0.34, u + 0.05, front - 0.24, z0 + 48, 3.2, '#5d554b', false);
+    p.box(u - 0.14, front - 0.34, u + 0.14, front - 0.24, z0 + 49.6, 0.8, '#5d554b', false);
+  };
+  // The nave and its front first, and the towers last: drawn after, they stand in front of the
+  // gable the way the two towers of a basilica stand in front of it, and neither one disappears.
+  p.box(0.74, 0.5, vw - 0.74, vh - 1, z0, 19, brick, true);
+  p.gableRoof(0.7, 0.46, vw - 0.7, vh - 0.96, z0 + 19, 4.4, '#8a4a3a', brick);
+  p.box(0.86, front - 0.5, vw - 0.86, front - 0.02, z0, 21, brick, true);
+  p.gableRoof(0.82, front - 0.54, vw - 0.82, front + 0.02, z0 + 21, 3.4, '#7d4433', brick);
+  tower(0.44);
+  tower(vw - 0.44);
+  const [rx, ry] = p.P(vw / 2, front - 0.02, z0 + 15.5);
+  p.g.beginPath();
+  p.g.ellipse(rx, ry, 4, 4.4, 0, 0, Math.PI * 2);
+  p.g.fillStyle = '#3f5a72';
+  p.g.fill();
+  p.g.strokeStyle = stone;
+  p.g.lineWidth = 1;
+  p.g.stroke();
+  // The portal: a thin stone arch over the dark door, the way the basilica opens on its atrium.
+  p.left(front - 0.015, vw / 2 - 0.3, vw / 2 + 0.3, z0 + 0.2, z0 + 8.6, '#3b322b');
+  p.left(front - 0.02, vw / 2 - 0.34, vw / 2 + 0.34, z0 + 8.6, z0 + 9.4, stone);
+  return done(p);
+}
+
+/**
+ * The sindicato (3x2): the union hall of a working town, like the one of the meat workers in Berisso.
+ * A plain concrete block with the big hall behind the wide door, the band of windows of the offices
+ * and the banner over the entrance, because a union building is a building that shows its name.
+ */
+function sindicatoArt(vw: number, vh: number): Sprite {
+  const p = rectPainter(vw, vh, 38);
+  const concrete = '#d8d2c2';
+  const red = '#b23a2e';
+  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1, '#c2bba9', false);
+  const z0 = 1;
+  p.box(0.22, 0.26, vw - 0.22, vh - 0.34, z0, 14, concrete, true);
+  p.box(0.18, 0.22, vw - 0.18, vh - 0.3, z0 + 14, 0.9, '#b8b2a2', true);
+  p.windows(0.22, 0.26, vw - 0.22, vh - 0.34, z0 + 7, z0 + 12.6, 5.6, '#54707f', 3, 4);
+  for (const a of [0.36, 0.86]) p.left(vh - 0.345, a, a + 0.34, z0 + 1.6, z0 + 6, '#54707f');
+  // The hall opens on the street with its wide door, a stone frame and a step, and the banner over it.
+  p.left(vh - 0.33, vw / 2 - 0.56, vw / 2 + 0.56, z0 + 0.2, z0 + 9.4, '#d0c9b8');
+  p.left(vh - 0.335, vw / 2 - 0.46, vw / 2 + 0.46, z0 + 0.2, z0 + 8.6, '#3f3830');
+  p.box(vw / 2 - 0.6, vh - 0.44, vw / 2 + 0.6, vh - 0.06, 1, 0.8, '#cfc8b8', true);
+  p.left(vh - 0.35, vw / 2 - 0.62, vw / 2 + 0.62, z0 + 10.4, z0 + 13.4, red);
+  const [bx, by] = p.P(vw / 2, vh - 0.36, z0 + 11.9);
+  p.g.fillStyle = '#f2efe6';
+  p.g.fillRect(Math.round(bx) - 5, Math.round(by) - 2, 10, 4);
+  p.g.fillStyle = red;
+  p.g.beginPath();
+  p.g.arc(bx, by, 1.5, 0, Math.PI * 2);
+  p.g.fill();
+  // The flag over the door and the tree at the corner.
+  const fu = vw / 2 + 0.62;
+  const fv = vh - 0.5;
+  p.post(fu, fv, 24, '#7d776d');
+  const [fx, fy] = p.P(fu, fv, 24);
+  p.g.fillStyle = red;
+  p.g.fillRect(Math.round(fx) + 1, Math.round(fy) - 5, 7, 5);
+  p.g.fillStyle = '#f2e6b8';
+  p.g.fillRect(Math.round(fx) + 3, Math.round(fy) - 4, 3, 3);
+  p.tree(0.34, vh - 0.34, 3, 0.75);
+  return done(p);
+}
+
 /** The stadium (4×4): the yellow tiers of La Bombonera around the pitch, and the four floodlights. */
 function estadioArt(vw: number, vh: number): Sprite {
   const p = rectPainter(vw, vh, 52);
@@ -1959,6 +2221,16 @@ export function uniqueSprite(kind: UniqueKind, vw: number, vh: number): Sprite {
         return teatroArt(vw, vh);
       case 'estadio':
         return estadioArt(vw, vh);
+      case 'cabildo':
+        return cabildoArt(vw, vh);
+      case 'regimiento':
+        return regimientoArt(vw, vh);
+      case 'planetario':
+        return planetarioArt(vw, vh);
+      case 'santuario':
+        return santuarioArt(vw, vh);
+      case 'sindicato':
+        return sindicatoArt(vw, vh);
     }
   });
 }

@@ -88,8 +88,8 @@ const page = `<!doctype html>
   <body>
     <h1>Edificios unicos</h1>
     <p class="sub">
-      Uno por ciudad, de cualquier gobierno. Multiplican el turismo que ya entra, y cada uno tiene su
-      temporada. Los cinco de abajo ya estan en el juego; los de gobierno esperan su paquete.
+      Uno por ciudad. Los cinco primeros los puede construir cualquier gobierno y multiplican el
+      turismo que ya entra; los cinco de abajo son uno por gobierno y pagan en su propia medida.
     </p>
     <div class="grid">
       <figure>
@@ -127,11 +127,46 @@ const page = `<!doctype html>
           <div class="meta"><span class="size"></span><br />Sobre el agua, con una punta en tierra<br /><span class="tour">Turismo +5 %, todo el ano</span></div>
         </figcaption>
       </figure>
-      <div class="pending">
-        <b>Faltan los cinco de gobierno</b>, uno por forma de gobierno y excluyentes entre si:
-        Cabildo (democracia), Regimiento (dictadura), Planetario (tecnocracia), Santuario (teocracia)
-        y Sindicato (comunismo).
-      </div>
+      <h2>Los de gobierno</h2>
+      <p class="sub">
+        Uno por forma de gobierno: la ciudad fundada como democracia puede construir el Cabildo y no el
+        Regimiento. Cada uno paga en una medida distinta, no en turismo.
+      </p>
+      <figure>
+        <canvas data-kind="cabildo"></canvas>
+        <figcaption>
+          <div class="name">El Cabildo</div>
+          <div class="meta"><span class="size"></span><br />Democracia - plaza enfrente, 6 lotes a 3 o menos<br /><span class="tour">Aprobacion +2 por mes, +4 en septiembre (la eleccion)</span></div>
+        </figcaption>
+      </figure>
+      <figure class="wide">
+        <canvas data-kind="regimiento"></canvas>
+        <figcaption>
+          <div class="name">El Regimiento</div>
+          <div class="meta"><span class="size"></span><br />Dictadura - descampado, 12 lotes libres a 4 o menos<br /><span class="tour">Baja el delito a 7 lotes o menos</span></div>
+        </figcaption>
+      </figure>
+      <figure>
+        <canvas data-kind="planetario"></canvas>
+        <figcaption>
+          <div class="name">El Planetario</div>
+          <div class="meta"><span class="size"></span><br />Tecnocracia - universidad a 8 lotes o menos<br /><span class="tour">Educacion 70 a 9 lotes o menos (capa Edu)</span></div>
+        </figcaption>
+      </figure>
+      <figure class="wide">
+        <canvas data-kind="santuario"></canvas>
+        <figcaption>
+          <div class="name">El Santuario</div>
+          <div class="meta"><span class="size"></span><br />Teocracia - agua a 4 lotes o menos<br /><span class="tour">Favor +2 por mes, +4 en abril (la peregrinacion)</span></div>
+        </figcaption>
+      </figure>
+      <figure>
+        <canvas data-kind="sindicato"></canvas>
+        <figcaption>
+          <div class="name">El Sindicato</div>
+          <div class="meta"><span class="size"></span><br />Comunismo - 10 lotes industriales a 4 o menos<br /><span class="tour">Turismo segun los puestos industriales, hasta +16 %</span></div>
+        </figcaption>
+      </figure>
     </div>
     <script>/*BUNDLE*/</script>
   </body>
