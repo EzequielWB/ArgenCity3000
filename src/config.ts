@@ -285,8 +285,12 @@ export const CAPACITY = {
 /**
  * What the neighbours make of a demolition. Tearing down a home, a shop, a factory or a public
  * work leaves a grudge that costs approval for the following months and then wears off.
- * `weight / max(floor, pop)` turns the people affected into points: a town of 300 notices one
- * house, a metropolis of 200.000 needs a whole avenue.
+ *
+ * The people affected count squared (`gravity * grief² / max(floor, pop)`): throwing one family out
+ * is an annoyance and throwing a whole block out is a scandal, and the paper sells it that way. A
+ * linear count made ten towers in a big city cost about what a shed costs, which is not what the
+ * street says. Part of the points lands the same day (`shock`); the rest is the grudge that keeps
+ * the approval down while it lasts.
  */
 export const DEMOLITION = {
   /** People affected per resident left without a roof. */
@@ -297,12 +301,14 @@ export const DEMOLITION = {
   work: 200,
   /** A power plant torn down. */
   plant: 250,
-  /** Points of approval per affected person, over the population that matters for this. */
-  weight: 250,
+  /** Points of approval per affected person squared, over the population that matters for this. */
+  gravity: 2.2,
   /** Population under which a demolition is felt as if the city had this many people. */
-  floor: 1000,
+  floor: 300,
   /** Most points the grudge can take away at once. */
-  max: 15,
+  max: 35,
+  /** Most of those points that land the same day, before the monthly step: the news breaks today. */
+  shock: 20,
   /** Share of the grudge that survives each month: about three months of bad mood, not a year. */
   keep: 0.5,
 } as const;
@@ -723,8 +729,12 @@ export const UNIQUES: Record<UniqueKind, Unique> = {
 export const UNIQUE_RULES = {
   /** The obelisco wants this many plaza cells within `reach` lots of its footprint (it stands in the plaza). */
   obelisco: { plazaCells: 8, reach: 2 },
-  /** The highest corner of the calvario's footprint, in terrain levels: it goes up on the hill. */
-  calvario: { height: 10 },
+  /**
+   * The calvario goes up on the highest ground of *its own* map: the highest corner of its footprint
+   * has to come within this many terrain levels of the map's top. A fixed height made it impossible
+   * on the low maps; measured this way there is always a range to build in, and it is still the hill.
+   */
+  calvario: { margin: 4 },
   /** The land value the lots around the teatro must already have. */
   teatro: { value: 45, reach: 2 },
   /** The estadio wants a boulevard this near (Manhattan), because the crowd has to get there. */

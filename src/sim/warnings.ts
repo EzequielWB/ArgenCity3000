@@ -48,8 +48,9 @@ export function buildingIssues(w: World, i: number, kinds: Unlocked): Issue[] {
   if (w.jam[i] > TRAFFIC.slowFrom + JAM_MARGIN) out.push('jam');
   if (kinds.crime && zone !== 'I' && w.crime[i] > CRIME_BUBBLE) out.push('crime');
   if (kinds.health && zone === 'R' && w.health[i] < SERVICE_NEED) out.push('health');
-  // Homes and shops do not go past a few floors without a school near.
-  if (kinds.school && zone !== 'I' && w.level[i] >= 3 && w.edu[i] < SERVICE_NEED) out.push('school');
+  // A home does not go past a PH without a school near. A shop asks for something else —educated
+  // people, which the city has or does not (see `levelCap`)— and a school of its own would not fix it.
+  if (kinds.school && zone === 'R' && w.level[i] >= 3 && w.edu[i] < SERVICE_NEED) out.push('school');
   if (zone === 'R' && w.pollution[i] > SMOKE_BUBBLE) out.push('smoke');
   return out;
 }

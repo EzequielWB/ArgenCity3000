@@ -47,6 +47,13 @@ function ringAround(w: World, cells: readonly Cell[], reach: number): number[] {
 }
 
 /** The highest corner of a footprint, in terrain levels: the calvario goes up on the hill. */
+/** The highest corner of the map, in terrain levels: the top the calvario is measured against. */
+function mapTop(w: World): number {
+  let top = 0;
+  for (const h of w.terrain.corners) if (h > top) top = h;
+  return top;
+}
+
 function footprintHeight(w: World, cells: readonly Cell[]): number {
   let high = 0;
   for (const [x, y] of cells) high = Math.max(high, w.minMax(x, y)[1]);
@@ -187,8 +194,12 @@ export function uniqueRefusal(w: World, kind: UniqueKind, cells: readonly Cell[]
       return around >= industryCells ? null : `${label}: tiene que estar entre las fábricas, con ${industryCells} lotes industriales a ${reach} lotes o menos (hay ${around})`;
     }
     case 'calvario': {
+      // Against the map's own top, not a fixed number: on a low map the highest ground is still the
+      // highest ground, and the margin keeps a band of lots to choose from instead of a single summit.
       const high = footprintHeight(w, cells);
-      return high >= UNIQUE_RULES.calvario.height ? null : `${label}: tiene que ir en lo alto de una loma de ${UNIQUE_RULES.calvario.height} niveles o más`;
+      const top = mapTop(w);
+      const need = top - UNIQUE_RULES.calvario.margin;
+      return high >= need ? null : `${label}: va en lo más alto del mapa: la cima está en ${top} niveles, así que necesita ${need} o más, y este lote llega a ${high}`;
     }
     case 'teatro': {
       const { value, reach } = UNIQUE_RULES.teatro;

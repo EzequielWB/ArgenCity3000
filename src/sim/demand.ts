@@ -1,6 +1,6 @@
 import { CAPACITY, DEFAULT_TAX, MAX_LEVEL, type ZoneTaxes } from '../config';
 import { hash2 } from '../core/rng';
-import { World, zoneOf, type ZoneKind } from '../world/world';
+import { TILE, World, zoneOf, type ZoneKind } from '../world/world';
 import { addCoastJobs } from './coast';
 import { hubJobs } from './hubs';
 import { NO_MODS, type RunMods } from './roguelike';
@@ -12,6 +12,23 @@ export interface Totals {
 }
 
 export type Demand = Record<ZoneKind, number>;
+
+/**
+ * Share of the residents (0 to 100) whose home has a school within coverage: the city's educated
+ * people, which is what the shops grow on. It is a number about the whole city, so it is computed
+ * once per fields pass instead of per lot.
+ */
+export function educatedShare(w: World): number {
+  let people = 0;
+  let schooled = 0;
+  for (let i = 0; i < w.tiles.length; i++) {
+    if (w.tiles[i] !== TILE.R || !w.isOccupied(i)) continue;
+    const residents = CAPACITY.R[w.level[i]];
+    people += residents;
+    if (w.edu[i] >= SERVICE_NEED) schooled += residents;
+  }
+  return people === 0 ? 0 : (100 * schooled) / people;
+}
 
 export function cityTotals(w: World, mods: RunMods = NO_MODS): Totals {
   const t: Totals = { pop: 0, cJobs: 0, iJobs: 0 };
@@ -83,6 +100,13 @@ export interface ServiceLevels {
   /** Coverage of the second-level services; missing means all there is (a caller that does not ask for them). */
   hospital?: number;
   university?: number;
+  /**
+   * Share of the city's residents (0 to 100) whose home has a school within coverage. It is what a
+   * shop grows on, instead of the coverage of its own lot: the shop does not need the school next
+   * door, it needs educated customers. Missing means the lot's own coverage, for callers that only
+   * ask about a house.
+   */
+  educated?: number;
 }
 
 /** Coverage a lot needs to reach a level: health for the third, education for the fourth. */
@@ -90,9 +114,9 @@ export const SERVICE_NEED = 40;
 
 /**
  * Highest level a lot can reach given its land value, the city size and the services around:
- * homes need a clinic nearby to go past a chalet and a school to go past a PH; offices need a school.
- * The humble level 1 is never a target: the formula below counts from the casita as 1, and the
- * result is shifted up by one.
+ * homes need a clinic nearby to go past a chalet and a school to go past a PH; shops and factories
+ * need a university. The humble level 1 is never a target: the formula below counts from the casita
+ * as 1, and the result is shifted up by one.
  */
 export function levelCap(zone: ZoneKind, landValue: number, pop: number, services: ServiceLevels = { edu: 100, health: 100 }): number {
   const byValue = (step: number) => 1 + Math.floor((landValue + 15) / step);
@@ -105,7 +129,13 @@ export function levelCap(zone: ZoneKind, landValue: number, pop: number, service
     if (services.edu < SERVICE_NEED) cap = Math.min(cap, 3);
     // The tallest homes ask for a hospital, the tallest shops and factories for a university.
     if ((services.hospital ?? 100) < SERVICE_NEED) cap = Math.min(cap, 3);
-  } else if ((zone === 'C' && services.edu < SERVICE_NEED) || (services.university ?? 100) < SERVICE_NEED) cap = Math.min(cap, 3);
+  } else {
+    // A shop does not ask for a school at its door: it asks for educated people, and that is a fact
+    // about the city as a whole (see `educatedShare`), so a shop in a barrio without a school still
+    // grows while the city has them. The tallest shops and factories do want a university near.
+    const schooled = services.educated ?? services.edu;
+    if ((zone === 'C' && schooled < SERVICE_NEED) || (services.university ?? 100) < SERVICE_NEED) cap = Math.min(cap, 3);
+  }
   return Math.min(MAX_LEVEL, Math.max(1, cap) + 1);
 }
 

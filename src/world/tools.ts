@@ -22,7 +22,6 @@ export interface ToolInfo {
 
 const percent = (share: number): string => `${Math.round(share * 100)} %`;
 const UNIQUE_PLAZA = UNIQUE_RULES.obelisco.plazaCells;
-const UNIQUE_HEIGHT = UNIQUE_RULES.calvario.height;
 const UNIQUE_TEATRO = UNIQUE_RULES.teatro.value;
 const UNIQUE_ESTADIO = UNIQUE_RULES.estadio.boulevard;
 const CABILDO_GOB = GOVERNMENTS.democracia.label.toLowerCase();
@@ -75,7 +74,7 @@ const ALL_TOOLS: readonly ToolInfo[] = [
   { id: 'airport', label: HUBS.airport.label, key: ',', shape: 'anchor', help: 'Una pieza de 3×2 en tierra: un hangar con uno o dos aviones. Funciona con una calle a 3 lotes o menos de alguna pieza y con luz: consume mucha electricidad, más cuanto más grande. Con otra pegada es un aeródromo y con cuatro o más, un aeropuerto internacional. Da empleos y turismo, pero hace ruido: baja el valor del suelo alrededor.' },
   { id: 'lighthouse', label: COAST.lighthouse.label, key: 'f', shape: 'point', help: 'Uno solo por ciudad, a 2 lotes o menos del agua. Con calle cerca y luz suma aprobación y valor del suelo.' },
   { id: 'obelisco', label: UNIQUES.obelisco.label, key: '/', shape: 'anchor', help: `Uno solo por ciudad, de 2×2, en el medio de una plaza: necesita ${UNIQUE_PLAZA} lotes de plaza a 2 lotes o menos. Con calle cerca suma ${percent(UNIQUES.obelisco.boost)} al turismo de la ciudad, y ${percent(UNIQUES.obelisco.peak)} en verano.` },
-  { id: 'calvario', label: UNIQUES.calvario.label, key: '[', shape: 'anchor', help: `Uno solo por ciudad, de 3×6, en lo alto de una loma de ${UNIQUE_HEIGHT} niveles o más. Con calle cerca suma ${percent(UNIQUES.calvario.boost)} al turismo, y ${percent(UNIQUES.calvario.peak)} en septiembre, cuando sube la peregrinación.` },
+  { id: 'calvario', label: UNIQUES.calvario.label, key: '[', shape: 'anchor', help: `Uno solo por ciudad, de 3×6, en lo más alto del mapa: tiene que estar a ${UNIQUE_RULES.calvario.margin} niveles o menos de la cima que tenga este mapa, así que siempre hay un rango donde entra. Con calle cerca suma ${percent(UNIQUES.calvario.boost)} al turismo, y ${percent(UNIQUES.calvario.peak)} en septiembre, cuando sube la peregrinación.` },
   { id: 'puente', label: UNIQUES.puente.label, key: ']', shape: 'anchor', help: `Uno solo por ciudad, de 2×6, todo sobre el agua con una punta en tierra. Con calle cerca suma ${percent(UNIQUES.puente.boost)} al turismo de la ciudad.` },
   { id: 'teatro', label: UNIQUES.teatro.label, key: ':', shape: 'anchor', help: `Uno solo por ciudad, de 3×3, en un barrio de valor del suelo ${UNIQUE_TEATRO} o más. Con calle cerca suma ${percent(UNIQUES.teatro.boost)} al turismo, y ${percent(UNIQUES.teatro.peak)} de abril a agosto, la temporada de funciones.` },
   { id: 'estadio', label: UNIQUES.estadio.label, key: '*', shape: 'anchor', help: `Uno solo por ciudad, de 4×4, con un bulevar a ${UNIQUE_ESTADIO} lotes o menos. Con calle cerca suma ${percent(UNIQUES.estadio.boost)} al turismo, y ${percent(UNIQUES.estadio.peak)} de marzo a noviembre, cuando hay torneo.` },

@@ -33,7 +33,7 @@ import { cumulativeShare, dateLabel, dateOf } from './calendar';
 import { countCoast } from './coast';
 import { computeCongestion, jamGrowthFactor, type CongestionReport } from './congestion';
 import { SMOKE_BUBBLE } from './warnings';
-import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDemand, isHoldout, levelCap, spawnLevel, type Demand, type Totals } from './demand';
+import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDemand, educatedShare, isHoldout, levelCap, spawnLevel, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
 import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, misaHeadline, pollHeadline } from './mayor';
@@ -43,7 +43,7 @@ import { advanceMilestones, nextMilestone, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
 import { uniqueApproval, uniqueFavor } from '../world/uniques';
-import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
+import { APPROVAL, approvalAppetite, computeApproval, demolitionPoints, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, eventOfMonth, type CityEvent } from './events';
@@ -191,6 +191,8 @@ export class Simulation {
   demand: Demand = { R: 0, C: 0, I: 0 };
   power: PowerReport = { capacity: 0, use: 0, shortage: false };
   congestion: CongestionReport = { trips: 0, worst: 0, jammedShare: 0 };
+  /** Share of the residents (0 to 100) living with a school in reach: what the shops grow on. */
+  schooled = 0;
   /** What the city deserves today and why; `state.approval` follows it month by month. */
   approval: ApprovalReport = { target: 50, factors: [] };
   /** Above 1 the city attracts newcomers beyond what its jobs justify (see `updateAppetite`). */
@@ -313,6 +315,8 @@ export class Simulation {
   private updateFields(): void {
     const w = this.world;
     computeServices(w, this.state.funding);
+    // How much of the city lives with a school in reach: the shops grow on this, not on their own lot.
+    this.schooled = educatedShare(w);
     // The plazas are read before the smoke: a plaza eats the smoke that reaches it, so its patch and
     // its care have to be the ones of this pass and not the ones of the pass before.
     computeParks(w, this.state.green);
@@ -503,8 +507,16 @@ export class Simulation {
       const zone = zoneOf(tile)!;
       affected += zone === 'R' ? CAPACITY.R[w.level[i]] * DEMOLITION.resident : CAPACITY[zone][w.level[i]] * DEMOLITION.job;
     }
-    this.state.grief += affected;
-    if (affected > 0) this.approval = this.judge();
+    if (affected > 0) {
+      // The part of the new grudge that lands today: what the neighbours feel on the spot, before
+      // the monthly step has a chance to move the approval one point at a time.
+      const before = demolitionPoints(this.state.grief, this.totals.pop);
+      this.state.grief += affected;
+      const after = demolitionPoints(this.state.grief, this.totals.pop);
+      const shock = Math.min(DEMOLITION.shock, Math.max(0, after - before));
+      if (shock > 0) this.nudgeApproval(-shock);
+      this.approval = this.judge();
+    }
     return affected;
   }
 
@@ -808,7 +820,7 @@ export class Simulation {
         }
       }
       if (!served || this.state.crisis || d <= 0) continue;
-      const cap = levelCap(zone, w.landValue[i], t.pop, { edu: w.edu[i], health: w.health[i], hospital: w.hospital[i], university: w.university[i] });
+      const cap = levelCap(zone, w.landValue[i], t.pop, { edu: w.edu[i], health: w.health[i], hospital: w.hospital[i], university: w.university[i], educated: this.schooled });
       if (level >= cap) {
         if (level > cap && rng.chance(0.002)) this.changeLevel(i, level - 1);
         continue;

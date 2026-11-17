@@ -35,11 +35,12 @@ export const APPROVAL = {
 
 /**
  * How much the neighbours resent the demolitions of the last months, in points of approval. The
- * grudge is counted in people affected and divided by the population: in a village one house is
- * an outrage, in a metropolis it is nothing.
+ * grudge is counted in people affected —squared, see `DEMOLITION`— and divided by the population:
+ * in a village one house is an outrage, and in a metropolis it takes a whole block to be one.
  */
 export function demolitionPoints(grief: number, pop: number): number {
-  return Math.min(DEMOLITION.max, (DEMOLITION.weight * grief) / Math.max(DEMOLITION.floor, pop));
+  if (grief <= 0) return 0;
+  return Math.min(DEMOLITION.max, (DEMOLITION.gravity * grief * grief) / Math.max(DEMOLITION.floor, pop));
 }
 
 export interface ApprovalInputs {

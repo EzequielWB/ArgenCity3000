@@ -422,13 +422,18 @@ function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level:
     }
     return zone === 'R' ? 'No hay demanda de viviendas: hacen falta trabajos (comercio o industria).' : 'No hay demanda: hace falta más población.';
   }
-  const cap = levelCap(zone, w.landValue[i], sim.totals.pop, { edu: w.edu[i], health: w.health[i], hospital: w.hospital[i], university: w.university[i] });
+  const services = { edu: w.edu[i], health: w.health[i], hospital: w.hospital[i], university: w.university[i], educated: sim.schooled };
+  const cap = levelCap(zone, w.landValue[i], sim.totals.pop, services);
   if (level >= cap && level < MAX_LEVEL) {
     if (levelCap(zone, w.landValue[i], sim.totals.pop) > cap) {
       if (zone === 'R' && cap < 4 && w.health[i] < SERVICE_NEED) return 'Para pasar de chalet necesita una salita cerca (con luz).';
       if (zone === 'R' && w.hospital[i] < SERVICE_NEED && w.edu[i] >= SERVICE_NEED) return 'Para llegar al máximo necesita un hospital cerca (con luz).';
-      if (zone !== 'R' && w.university[i] < SERVICE_NEED && (zone === 'I' || w.edu[i] >= SERVICE_NEED)) return 'Para llegar al máximo necesita una universidad cerca (con luz).';
-      return 'Para crecer más necesita una escuela cerca (con luz).';
+      // A shop is not asking for a school next door: it is asking for a city with schools in it.
+      if (zone === 'C' && sim.schooled < SERVICE_NEED) {
+        return `El comercio crece con gente educada, y sólo el ${Math.round(sim.schooled)} % de los vecinos tiene escuela cerca: hay que llevar la escuela a los barrios.`;
+      }
+      if (zone !== 'R' && w.university[i] < SERVICE_NEED) return 'Para llegar al máximo necesita una universidad cerca (con luz).';
+      if (zone === 'R') return 'Para crecer más necesita una escuela cerca (con luz).';
     }
     return zone === 'I' ? 'Para crecer más necesita una ciudad más grande.' : 'Para crecer más necesita más valor del suelo (plazas, agua, menos humo) o más población.';
   }

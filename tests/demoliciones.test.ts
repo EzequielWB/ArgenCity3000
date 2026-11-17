@@ -86,10 +86,49 @@ describe('the grudge in points of approval', () => {
     const avenue = 12 * CAPACITY.R[3]; // 240, twelve homes
     expect(demolitionPoints(oneHome, 300)).toBeGreaterThan(demolitionPoints(oneHome, 50000));
     expect(demolitionPoints(avenue, 5000)).toBeGreaterThan(demolitionPoints(avenue, 50000));
-    // The examples of the design: a village feels one house, a metropolis shrugs.
-    expect(Math.round(demolitionPoints(oneHome, 300))).toBe(5);
-    expect(Math.round(demolitionPoints(avenue, 5000))).toBe(12);
-    expect(Math.round(demolitionPoints(avenue, 50000))).toBe(1);
+    // The examples of the design: a village feels one house, a town of 5.000 feels an avenue, and
+    // the same avenue in a metropolis is noticed but not an outrage.
+    expect(Math.round(demolitionPoints(oneHome, 300))).toBe(3);
+    expect(Math.round(demolitionPoints(avenue, 5000))).toBe(25);
+    expect(Math.round(demolitionPoints(avenue, 50000))).toBe(3);
+  });
+
+  it('counts the people twice over: a block is a scandal, not twelve annoyances', () => {
+    // Cuadrático: doce casas no duelen doce veces más que una, duelen mucho más.
+    const one = demolitionPoints(CAPACITY.R[3], 20000);
+    const twelve = demolitionPoints(12 * CAPACITY.R[3], 20000);
+    expect(twelve).toBeGreaterThan(one * 12);
+    // Y lo que pidió el jugador: sacar a 500 personas de una ciudad media deja la aprobación por el piso.
+    expect(demolitionPoints(500, 30000)).toBeGreaterThan(DEMOLITION.max * 0.5);
+    // Diez torres de departamentos en esa misma ciudad tocan el techo.
+    expect(demolitionPoints(10 * CAPACITY.R[5], 30000)).toBe(DEMOLITION.max);
+  });
+
+  it('lands part of the hit the same day, and never charges the same grudge twice', () => {
+    const { sim } = city();
+    sim.totals.pop = 30000;
+    sim.state.approval = 70;
+    // Una casa sola no mueve la aguja de un día para el otro.
+    sim.noteDemolition([[2, 5]]);
+    expect(sim.state.approval).toBe(70);
+    // Diez torres sí: la aprobación baja en el acto, sin esperar el paso mensual.
+    const towers: [number, number][] = [];
+    for (let y = 5; y < 12; y++) for (let x = 15; x < 22; x++) {
+      const i = sim.world.idx(x, y);
+      sim.world.setTile(x, y, TILE.R);
+      sim.world.level[i] = 5;
+      towers.push([x, y]);
+    }
+    const before = sim.state.approval;
+    sim.noteDemolition(towers.slice(0, 10));
+    expect(sim.state.approval).toBeLessThan(before);
+    expect(before - sim.state.approval).toBeLessThanOrEqual(DEMOLITION.shock);
+    // Y el enojo ya está contado: repetir la misma lista no vuelve a castigar el mismo golpe.
+    const afterFirst = sim.state.approval;
+    const grief = sim.state.grief;
+    sim.noteDemolition([]);
+    expect(sim.state.grief).toBe(grief);
+    expect(sim.state.approval).toBe(afterFirst);
   });
 
   it('never takes more than the cap', () => {

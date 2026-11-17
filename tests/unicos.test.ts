@@ -34,6 +34,18 @@ function channel(n = 32): Terrain {
   return { n, corners, trees: new Uint8Array(n * n) };
 }
 
+/** Three shelves: `low` up to x = 8, `mid` from there, and `top` from x = 16. */
+function shelves(low: number, mid: number, top: number, n = 32): Terrain {
+  const s = n + 1;
+  const corners = new Uint8Array(s * s).fill(low);
+  for (let y = 0; y < s; y++)
+    for (let x = 0; x < s; x++) {
+      if (x >= 16) corners[y * s + x] = top;
+      else if (x >= 8) corners[y * s + x] = mid;
+    }
+  return { n, corners, trees: new Uint8Array(n * n) };
+}
+
 /** A hill: everything west of x = 12 is low, the rest climbs to `top`. */
 function hill(top = 12, n = 32): Terrain {
   const s = n + 1;
@@ -134,11 +146,22 @@ describe('where each one may stand', () => {
     expect(uniqueRefusal(small, 'obelisco', foot)).toMatch(/lotes de plaza/);
   });
 
-  it('puts the calvario up on a hill and nowhere else', () => {
-    const low = city();
-    expect(uniqueRefusal(low, 'calvario', uniqueFootprint('calvario', low.n, 14, 10))).toMatch(/en lo alto de una loma/);
-    const high = city(hill(UNIQUE_RULES.calvario.height));
-    expect(uniqueRefusal(high, 'calvario', uniqueFootprint('calvario', high.n, 14, 10))).toBeNull();
+  it('measures the calvario against the top of its own map', () => {
+    // Con loma: arriba sí y abajo no, y el margen deja una banda donde elegir.
+    const steep = city(hill(12));
+    expect(uniqueRefusal(steep, 'calvario', uniqueFootprint('calvario', steep.n, 14, 10))).toBeNull();
+    const below = uniqueRefusal(steep, 'calvario', uniqueFootprint('calvario', steep.n, 2, 10));
+    expect(below).toMatch(/lo más alto del mapa/);
+    expect(below).toContain(`cima está en 12`); // el número es el del mapa, no el de la regla
+    // Y un mapa sin loma tiene la cima en el llano: el monumento entra, que era el pedido.
+    const flatland = city();
+    expect(uniqueRefusal(flatland, 'calvario', uniqueFootprint('calvario', flatland.n, 14, 10))).toBeNull();
+    // El margen es lo que se promete: a cuatro niveles de la cima entra, a cinco no.
+    const margin = UNIQUE_RULES.calvario.margin;
+    const near = city(shelves(SEA_LEVEL + 1, 12 - margin, 12));
+    expect(uniqueRefusal(near, 'calvario', uniqueFootprint('calvario', near.n, 9, 10))).toBeNull();
+    const oneDown = city(shelves(SEA_LEVEL + 1, 12 - margin - 1, 12));
+    expect(uniqueRefusal(oneDown, 'calvario', uniqueFootprint('calvario', oneDown.n, 9, 10))).toMatch(/lo más alto del mapa/);
   });
 
   it('wants the puente over the water, with one end on land', () => {
