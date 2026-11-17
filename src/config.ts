@@ -21,9 +21,11 @@ export const PLAYABLE_SIZES: readonly MapSizeId[] = ['small', 'medium', 'large']
  * runs `inset` cells in from the border and stops `margin` cells short of both ends of that side.
  * One cell in and reaching both corners, so it reads as the road that passes outside the city.
  * `shoulder` is how many lots beside the strip are graded to the road's own height, on both sides,
- * so the first streets of the city start on level ground instead of on a slope.
+ * so the first streets of the city start on level ground instead of on a slope. `clearance` is how
+ * many lots of dry ground the route wants between the strip and any water: it picks its border by
+ * that distance, so grading the road never has to bend a shore.
  */
-export const ROUTE = { width: 4, inset: 1, margin: 0, shoulder: 1 } as const;
+export const ROUTE = { width: 4, inset: 1, margin: 0, shoulder: 1, clearance: 4 } as const;
 
 /**
  * Forms of government the player picks when founding the city. `termYears` null means there are

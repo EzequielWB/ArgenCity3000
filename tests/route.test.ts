@@ -22,19 +22,24 @@ function terrainWith(n: number, low: (cx: number, cy: number) => boolean = () =>
   return { n, corners, trees: new Uint8Array(n * n) };
 }
 
-/** Water cells in the strip of an edge plus the cell on each side of it, counted without the module under test. */
+/**
+ * Lots of dry ground between the strip of an edge and the nearest water, counted without the module
+ * under test. 0 means water in the strip itself, `ROUTE.clearance + 1` means none within reach.
+ */
 function bandWater(t: Terrain, edge: RouteEdge): number {
   const n = t.n;
-  const lo = Math.max(0, ROUTE.inset - 1);
-  const hi = ROUTE.inset + ROUTE.width;
-  let count = 0;
-  for (let along = ROUTE.margin; along <= n - 1 - ROUTE.margin; along++) {
-    for (let d = lo; d <= hi; d++) {
-      const [x, y] = edge === 'west' ? [d, along] : edge === 'east' ? [n - 1 - d, along] : edge === 'north' ? [along, d] : [along, n - 1 - d];
-      if (isWaterCell(t, x, y)) count++;
+  const last = ROUTE.inset + ROUTE.width - 1;
+  for (let d = 0; d <= ROUTE.clearance; d++) {
+    const ring = d === 0 ? Array.from({ length: ROUTE.width }, (_, k) => ROUTE.inset + k) : [ROUTE.inset - d, last + d];
+    for (let along = ROUTE.margin; along <= n - 1 - ROUTE.margin; along++) {
+      for (const across of ring) {
+        if (across < 0 || across >= n) continue;
+        const [x, y] = edge === 'west' ? [across, along] : edge === 'east' ? [n - 1 - across, along] : edge === 'north' ? [along, across] : [along, n - 1 - across];
+        if (isWaterCell(t, x, y)) return d;
+      }
     }
   }
-  return count;
+  return ROUTE.clearance + 1;
 }
 
 /**
@@ -73,18 +78,31 @@ function streetCellBeside(w: World): [number, number] {
 }
 
 describe('chooseRoute', () => {
-  it('runs along the border with the least water, so a map with a sea exit never has it on the coast', () => {
+  it('runs along the border with the most dry ground between it and the water, so a map with a sea exit never has it on the coast', () => {
     for (const kind of MAP_KINDS.map((k) => k.id)) {
       for (const n of [64, 128]) {
         for (const seed of [1, 2, 3, 4, 5, 6, 7]) {
           const t = generateMap(seed, n, kind as MapKind);
           const { edge } = chooseRoute(t, seed);
           const scores = EDGES.map((e) => bandWater(t, e));
-          expect(bandWater(t, edge), `${kind} ${n} seed ${seed}`).toBe(Math.min(...scores));
+          expect(bandWater(t, edge), `${kind} ${n} seed ${seed}`).toBe(Math.max(...scores));
           if (kind === 'coast') expect(edge, `${kind} ${n} seed ${seed}`).not.toBe('east');
         }
       }
     }
+  });
+
+  it('takes the border that keeps a few lots of dry ground between the strip and the water', () => {
+    // The same amount of water everywhere, but at a different distance from each border: the route
+    // should go where the water is farthest, even when no border has water in its own strip.
+    const t = terrainWith(
+      N,
+      (cx, cy) =>
+        (cx >= 7 && cx <= 10 && cy >= 12 && cy <= 21) || // beside the west strip, a few lots in
+        (cx >= N - 5 && cx <= N - 3 && cy >= 12 && cy <= 21) || // on the east strip
+        (cx >= 10 && cx <= 20 && cy >= 2 && cy <= 4), // on the north strip
+    );
+    for (let seed = 1; seed <= 6; seed++) expect(chooseRoute(t, seed).edge, `seed ${seed}`).toBe('south');
   });
 
   it('is a strip of four lanes flush against the border, along the whole side', () => {

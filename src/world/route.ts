@@ -29,14 +29,34 @@ function edgeCell(n: number, edge: RouteEdge, across: number, along: number): [n
   return [along, n - 1 - across];
 }
 
-/** Water cells in the strip of an edge and in the line of cells on each side of it. */
-function waterNear(t: Terrain, edge: RouteEdge): number {
+/**
+ * How many lots of dry ground an edge can keep between its strip and the nearest water, counting up
+ * to `ROUTE.clearance`: the strip itself is 0, one lot beside it is 1, and a border with no water
+ * within reach is `ROUTE.clearance + 1`. Water in the strip scores 0 because there the road has to
+ * cross on a bridge.
+ */
+function waterClearance(t: Terrain, edge: RouteEdge): number {
+  const last = ROUTE.inset + ROUTE.width - 1;
+  for (let d = 0; d <= ROUTE.clearance; d++) {
+    // The strip at distance 0, then the two lots that sit `d` away from it, one on each side.
+    const ring = d === 0 ? Array.from({ length: ROUTE.width }, (_, k) => ROUTE.inset + k) : [ROUTE.inset - d, last + d];
+    for (let along = ROUTE.margin; along <= t.n - 1 - ROUTE.margin; along++) {
+      for (const across of ring) {
+        if (across < 0 || across >= t.n) continue;
+        const [x, y] = edgeCell(t.n, edge, across, along);
+        if (isWaterCell(t, x, y)) return d;
+      }
+    }
+  }
+  return ROUTE.clearance + 1;
+}
+
+/** Water cells in the strip itself: the stretches the road would cross on a bridge. */
+function stripWater(t: Terrain, edge: RouteEdge): number {
   let count = 0;
-  // A strip flush against the border has no cell on its outer side: `across` never goes negative.
-  const from = Math.max(0, ROUTE.inset - 1);
   for (let along = ROUTE.margin; along <= t.n - 1 - ROUTE.margin; along++) {
-    for (let across = from; across <= ROUTE.inset + ROUTE.width; across++) {
-      const [x, y] = edgeCell(t.n, edge, across, along);
+    for (let k = 0; k < ROUTE.width; k++) {
+      const [x, y] = edgeCell(t.n, edge, ROUTE.inset + k, along);
       if (isWaterCell(t, x, y)) count++;
     }
   }
@@ -44,13 +64,18 @@ function waterNear(t: Terrain, edge: RouteEdge): number {
 }
 
 /**
- * Picks the border for the route: the one with least water in its strip and beside it, so a map
- * with a sea exit never gets the route on the coast. Edges that tie are told apart by the seed.
+ * Picks the border for the route: the one that keeps the most dry ground between its strip and the
+ * water, so a border with a lake three lots away loses against one with the lake four lots away and
+ * grading the road and its shoulder never has to bend a shore. Borders with the same clearance are
+ * told apart by how much water the strip itself would have to cross, which is what keeps the route
+ * off the sea of a coastal map, and then by the seed.
  */
 export function chooseRoute(terrain: Terrain, seed: number): RouteChoice {
-  const scores = EDGES.map((e) => waterNear(terrain, e));
-  const best = Math.min(...scores);
-  const tied = EDGES.filter((_, k) => scores[k] === best);
+  const clear = EDGES.map((e) => waterClearance(terrain, e));
+  const cross = EDGES.map((e) => stripWater(terrain, e));
+  const bestClear = Math.max(...clear);
+  const bestCross = Math.min(...EDGES.map((_, k) => (clear[k] === bestClear ? cross[k] : Infinity)));
+  const tied = EDGES.filter((_, k) => clear[k] === bestClear && cross[k] === bestCross);
   const edge = tied[Math.floor(hash2(17, 29, seed) * tied.length)];
   const cells: [number, number][] = [];
   for (let along = ROUTE.margin; along <= terrain.n - 1 - ROUTE.margin; along++) {
