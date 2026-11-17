@@ -26,10 +26,10 @@ piezas en el tablero `arte.html?solo=costa` y en una manzana del mapa.
 
 | ID | Tarea | Specs | Archivos | Commit |
 |---|---|---|---|---|
-| T1 | `paintPort`, `paintResort`, `paintLighthouse` + `coastPixelSprite(kind, variant)` | S1, S2, S3 | `src/render/pixelArt.ts` | `0e0bf0b` |
-| T2 | El renderer les pasa la máscara de agua y usa el sprite nuevo | S3 | `src/render/mapRenderer.ts` | `0e0bf0b` |
-| T3 | Borrar el canvas de los tres | S6 | `src/render/sprites.ts` | `0e0bf0b` |
-| T4 | Tests y tablero | S2, S4 | `tests/costa-pixel.test.ts`, `scripts/arte-board.ts`, `scripts/board-city.ts` | `0e0bf0b` |
+| T1 | `paintPort`, `paintResort`, `paintLighthouse` + `coastPixelSprite(kind, variant)` | S1, S2, S3 | `src/render/pixelArt.ts` | `1f9ae74` |
+| T2 | El renderer les pasa la máscara de agua y usa el sprite nuevo | S3 | `src/render/mapRenderer.ts` | `1f9ae74` |
+| T3 | Borrar el canvas de los tres | S6 | `src/render/sprites.ts` | `1f9ae74` |
+| T4 | Tests y tablero | S2, S4 | `tests/costa-pixel.test.ts`, `scripts/arte-board.ts`, `scripts/board-city.ts` | `1f9ae74` |
 
 ## Log
 
