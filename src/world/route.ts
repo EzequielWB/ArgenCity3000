@@ -5,7 +5,7 @@
  */
 import { ROUTE } from '../config';
 import { hash2 } from '../core/rng';
-import { liftSlopes } from './leveling';
+import { liftSlopes, routeShoulder } from './leveling';
 import { SEA_LEVEL, constrainSlopes, isWaterCell, type Terrain } from './terrain';
 import { TILE, type World } from './world';
 
@@ -61,10 +61,13 @@ export function chooseRoute(terrain: Terrain, seed: number): RouteChoice {
 
 /**
  * Grades the ground under the route: the whole strip ends up at one height, the average of its
- * corners rounded up, so the roadbed is flat along its length and across its lanes. The terrain
- * around it is filled up or cut down to one level per cell, like an embankment, and the corners
- * under the strip are frozen so those passes cannot undo it. Cells over water are left alone: a
- * bridge crosses the river, it does not fill it.
+ * corners rounded up, so the roadbed is flat along its length and across its lanes. The lots on
+ * both sides of it, `ROUTE.shoulder` of them, are graded to that same height: the city that starts
+ * from the route starts on level ground, with no step to climb at the first street. Past the
+ * shoulder the map goes on as it always did, filled up or cut down to meet the strip like an
+ * embankment, and every corner the grading touched is frozen so those passes cannot undo it.
+ * Cells over water are left alone: a bridge crosses the river, it does not fill it, and a lot that
+ * touches a shore keeps its own height for the same reason.
  */
 export function gradeRoute(w: World, cells: readonly [number, number][]): void {
   const n = w.n;
@@ -73,27 +76,48 @@ export function gradeRoute(w: World, cells: readonly [number, number][]): void {
   const corners: number[] = [];
   const frozen = new Uint8Array(s * s);
   const wet = (x: number, y: number) => isWaterCell(w.terrain, x, y);
-  for (const [x, y] of cells) {
-    const k = [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1];
-    for (const j of k) frozen[j] = 1;
-    if (!wet(x, y)) corners.push(...k);
-  }
+  const cornersOf = (x: number, y: number) => [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1];
   // Corners of any wet cell stay put: grading the road must not fill a lake or raise a shore.
+  const shore = new Uint8Array(s * s);
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
       if (!wet(x, y)) continue;
-      for (const j of [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1]) frozen[j] = 1;
+      for (const j of cornersOf(x, y)) shore[j] = frozen[j] = 1;
     }
+  }
+  const onRoute = new Uint8Array(n * n);
+  for (const [x, y] of cells) {
+    onRoute[y * n + x] = 1;
+    const k = cornersOf(x, y);
+    for (const j of k) frozen[j] = 1;
+    if (!wet(x, y)) corners.push(...k);
   }
   if (corners.length === 0) return;
   let sum = 0;
   for (const j of corners) sum += c[j];
   const target = Math.max(SEA_LEVEL + 1, Math.ceil(sum / corners.length));
   for (const j of corners) c[j] = target;
+  // The shoulder: every dry lot within `ROUTE.shoulder` of a lane, at the height of the roadbed.
+  const band: [number, number][] = [];
+  const shoulder = routeShoulder(w);
+  for (let i = 0; i < n * n; i++) {
+    if (!shoulder[i] || onRoute[i]) continue;
+    const x = i % n;
+    const y = (i - x) / n;
+    const k = cornersOf(x, y);
+    // A lot that reaches the water is left to the embankment: freezing it flat would build a wall on the shore.
+    if (wet(x, y) || k.some((j) => shore[j])) continue;
+    for (const j of k) {
+      c[j] = target;
+      frozen[j] = 1;
+    }
+    band.push([x, y]);
+  }
   // The rest of the map meets the strip at one level per cell: below it is filled, above it is cut.
   liftSlopes(c, s, frozen);
   constrainSlopes(c, s, frozen);
   for (const [x, y] of cells) w.markDirty(w.idx(x, y));
+  for (const [x, y] of band) w.markDirty(w.idx(x, y));
 }
 
 /** Builds the route of a new generated world: road on the strip (a bridge over water), marked as route. */

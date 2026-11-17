@@ -1,5 +1,31 @@
+import { ROUTE } from '../config';
 import { SEA_LEVEL, constrainSlopes } from './terrain';
 import { World, serviceOf, zoneOf } from './world';
+
+/**
+ * 1 on the provincial route and on the `ROUTE.shoulder` lots around it, 0 elsewhere. Those are the
+ * cells whose ground never moves after the map is generated: the roadbed and the strip that meets
+ * it are flat at one height, so the city starts on level ground and stays that way when the player
+ * zones beside the road.
+ */
+export function routeShoulder(w: World): Uint8Array {
+  const n = w.n;
+  const mask = new Uint8Array(n * n);
+  const r = ROUTE.shoulder;
+  for (let i = 0; i < n * n; i++) {
+    if (!w.route[i]) continue;
+    const x = i % n;
+    const y = (i - x) / n;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < n && ny < n) mask[ny * n + nx] = 1;
+      }
+    }
+  }
+  return mask;
+}
 
 /** Most a single levelling may raise or lower a corner, so a block on a hill does not flatten the hill. */
 export const MAX_LEVELING_STEP = 2;
@@ -61,9 +87,10 @@ export function levelBlocks(w: World, cells: readonly [number, number][]): void 
     return [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1];
   };
   const frozen = new Uint8Array(s * s);
+  const fixed = routeShoulder(w);
   for (let i = 0; i < n * n; i++) {
     const k = cornersOf(i);
-    if (w.route[i] || Math.min(c[k[0]], c[k[1]], c[k[2]], c[k[3]]) < SEA_LEVEL) for (const j of k) frozen[j] = 1;
+    if (fixed[i] || Math.min(c[k[0]], c[k[1]], c[k[2]], c[k[3]]) < SEA_LEVEL) for (const j of k) frozen[j] = 1;
   }
 
   const seen = new Uint8Array(n * n);

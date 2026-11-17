@@ -192,6 +192,45 @@ describe('addRoute', () => {
     expect(heights.size).toBe(1);
   });
 
+  it('leaves the lots beside the strip on the road level, so the city starts flush with it', () => {
+    const w = new World(terrainWith(N, () => false, (cx, cy) => (cx + cy) % 6));
+    const route = addRoute(w, 3);
+    const s = N + 1;
+    const c = w.terrain.corners;
+    const level = c[route.cells[0][1] * s + route.cells[0][0]];
+    const inRoute = new Set(route.cells.map(([x, y]) => y * N + x));
+    const near = (x: number, y: number) => route.cells.some(([rx, ry]) => Math.abs(rx - x) <= ROUTE.shoulder && Math.abs(ry - y) <= ROUTE.shoulder);
+    let graded = 0;
+    let flat = 0;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const i = y * N + x;
+        const k = [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1];
+        if (k.every((j) => c[j] === level)) flat++;
+        if (inRoute.has(i) || !near(x, y) || w.isWater(x, y)) continue;
+        for (const j of k) expect(c[j], `${x},${y}`).toBe(level);
+        graded++;
+      }
+    }
+    expect(graded).toBeGreaterThan(100);
+    // The map goes on as it always did: the shoulder is a band, not a flattened world.
+    expect(flat).toBeLessThan((N * N) / 2);
+    expect(new Set(c).size).toBeGreaterThan(2);
+  });
+
+  it('does not fill a lake to grade the lots beside it', () => {
+    const t = terrainWith(
+      N,
+      (cx, cy) => cx === 8 || cy === 8,
+      (cx, cy) => (cx + cy) % 4,
+    );
+    const wet: number[] = [];
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (isWaterCell(t, x, y)) wet.push(y * N + x);
+    expect(wet.length).toBeGreaterThan(0);
+    addRoute(new World(t), 3);
+    for (const i of wet) expect(isWaterCell(t, i % N, (i - (i % N)) / N), `${i}`).toBe(true);
+  });
+
   it('does not fill a lake the strip crosses: the ground under a bridge stays under water', () => {
     const lake = (cx: number, cy: number) => cx === 8 || cy === 8;
     const w = new World(terrainWith(N, lake));
@@ -214,6 +253,28 @@ describe('addRoute', () => {
 });
 
 describe('the route cannot be touched', () => {
+  it('keeps the lots beside it on the road level when a block is levelled there', () => {
+    const w = new World(southTerrain());
+    const route = addRoute(w, SEED);
+    const s = N + 1;
+    const c = w.terrain.corners;
+    const level = c[route.cells[0][1] * s + route.cells[0][0]];
+    // A ridge just outside the shoulder: the block the player zones has an average to reach for,
+    // so levelling it would drag the ground beside the road up with it if nothing held it back.
+    for (let x = 19; x <= 21; x++) for (const j of [24 * s + x, 24 * s + x + 1]) c[j] += 3;
+    const block: [number, number][] = [];
+    for (let y = ROW_NEXT - ROUTE.shoulder - 1; y <= ROW_NEXT; y++) block.push([20, y]);
+    const shoulder = block.slice(ROUTE.shoulder + 1);
+    const before = w.terrain.corners.slice();
+    applyPlan(w, planTool(w, 'zoneR', block));
+    for (const [x, y] of block) expect(w.tileAt(x, y)).not.toBe(TILE.EMPTY);
+    // The block levelling ran (the ground of the block moved) and the shoulder stayed where it was.
+    expect(w.terrain.corners.some((v, j) => v !== before[j])).toBe(true);
+    for (const [x, y] of shoulder) {
+      for (const j of [y * s + x, y * s + x + 1, (y + 1) * s + x, (y + 1) * s + x + 1]) expect(c[j], `${x},${y}`).toBe(level);
+    }
+  });
+
   it('is not demolished by the bulldozer, alone or inside a larger area', () => {
     const w = southWorld();
     const alone = planTool(w, 'bulldoze', [[20, ROW_ROUTE]]);
