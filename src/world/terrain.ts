@@ -94,8 +94,8 @@ export function fbm(x: number, y: number, seed: number, octaves = 4): number {
 }
 
 /**
- * Generates a coastal plain: lomas inland, a wide river along the east edge and a creek
- * winding from the west into it. Corners are constrained so that any two neighbouring
+ * Generates a coastal plain: lomas inland, a wide river along the east edge and a creek that starts
+ * in the middle of the map and winds into it. Corners are constrained so that any two neighbouring
  * corners (diagonals included) differ by at most one level.
  */
 export function generateTerrain(seed: number, n: number): Terrain {
@@ -116,9 +116,11 @@ export function generateTerrain(seed: number, n: number): Terrain {
     }
   }
 
-  // Creek: a meandering channel from the west to the coast.
+  // Creek: a meandering channel from the middle of the map to the coast. It used to start a few lots
+  // in from the west border, and its low banks there sank the ground the provincial route is laid on:
+  // the roadbed ended up four or five levels above the land beside it, which reads as a wall.
   const creekY0 = n * (0.3 + 0.4 * hash2(1, 2, seed));
-  const creekStart = Math.floor(n * 0.08);
+  const creekStart = Math.floor(n * 0.5);
   for (let x = creekStart; x < s; x++) {
     const cy = creekY0 + Math.sin(x * 0.08 + seed) * n * 0.07 + (fbm(x / 15, 9.1, seed + 11) - 0.5) * n * 0.15;
     const width = x < creekStart + 6 ? 0.6 : 1.4;

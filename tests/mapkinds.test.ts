@@ -8,14 +8,17 @@ function checksum(t: Terrain): string {
   return hashString(Array.from(t.corners).join(',') + '|' + Array.from(t.trees).join(',')).toString(16);
 }
 
-/** Checksums of the coast generator before map kinds existed: it must never change. */
+/**
+ * Checksums of the coast generator. It must not change by accident: the last change was deliberate,
+ * the creek now starts in the middle of the map instead of a few lots in from the west border.
+ */
 const COAST_PINS: Record<string, string> = {
-  '1@64': '40e137eb',
-  '7@64': '2465f996',
-  '42@64': '687866a1',
-  '1@128': '3399cc98',
-  '7@128': 'f8b7d2db',
-  '42@128': '9d8cc86b',
+  '1@64': '2ce4e069',
+  '7@64': '8527d555',
+  '42@64': '2c4db96e',
+  '1@128': '2af0d712',
+  '7@128': '85d6c1cf',
+  '42@128': '980c14c7',
 };
 
 const KINDS: MapKind[] = ['coast', 'plain', 'relief', 'sierras'];
