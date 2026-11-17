@@ -126,7 +126,7 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
         'No se puede tocar: la topadora y las demás obras la respetan',
         'No cuesta nada: no paga mantenimiento',
         'Por acá llegan los vecinos nuevos',
-        'La ruta y tres lotes de cada lado están a la misma altura',
+        'La ruta y el lote de cada lado están a la misma altura',
       ],
     };
   }

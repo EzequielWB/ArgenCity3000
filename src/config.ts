@@ -23,7 +23,7 @@ export const PLAYABLE_SIZES: readonly MapSizeId[] = ['small', 'medium', 'large']
  * `shoulder` is how many lots beside the strip are graded to the road's own height, on both sides,
  * so the first streets of the city start on level ground instead of on a slope.
  */
-export const ROUTE = { width: 4, inset: 1, margin: 0, shoulder: 3 } as const;
+export const ROUTE = { width: 4, inset: 1, margin: 0, shoulder: 1 } as const;
 
 /**
  * Forms of government the player picks when founding the city. `termYears` null means there are

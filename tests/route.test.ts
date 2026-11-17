@@ -212,7 +212,8 @@ describe('addRoute', () => {
         graded++;
       }
     }
-    expect(graded).toBeGreaterThan(100);
+    // The two long sides of the strip: one lot deep, or as many rows as the shoulder says.
+    expect(graded).toBeGreaterThanOrEqual(2 * N);
     // The map goes on as it always did: the shoulder is a band, not a flattened world.
     expect(flat).toBeLessThan((N * N) / 2);
     expect(new Set(c).size).toBeGreaterThan(2);
