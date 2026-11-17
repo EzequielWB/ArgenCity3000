@@ -5,8 +5,8 @@
  * the estadio next to a boulevard because the crowd has to get there. A monument pays no fixed rent:
  * it adds a share of the tourism of the whole city, with a season of its own (`uniqueBoost`).
  */
-import { roadRank, UNIQUES, UNIQUE_BOOST_MAX, UNIQUE_RULES, type UniqueKind } from '../config';
-import { TILE, type Unique, type World } from './world';
+import { CAPACITY, GOVERNMENTS, roadRank, UNIQUES, UNIQUE_BOOST_MAX, UNIQUE_RULES, type GovernmentKind, type UniqueKind } from '../config';
+import { TILE, zoneOf, type Unique, type World } from './world';
 import { streetNear } from './transport';
 
 export type Cell = [number, number];
@@ -77,6 +77,56 @@ function qualityStreetNear(w: World, cells: readonly Cell[], want: number, reach
   return false;
 }
 
+/** Plaza cells around a footprint: the square a civic building faces. */
+function plazaAround(w: World, cells: readonly Cell[], reach: number): number {
+  return ringAround(w, cells, reach).filter((i) => w.tiles[i] === TILE.PARK).length;
+}
+
+/** Lots around a footprint with nothing on them: no zone, no service, no plaza, no street, no water. */
+function openAround(w: World, cells: readonly Cell[], reach: number): number {
+  const n = w.n;
+  return ringAround(w, cells, reach).filter((i) => {
+    const x = i % n;
+    const y = (i - x) / n;
+    return w.tiles[i] === TILE.EMPTY && !w.isWater(x, y) && !w.route[i];
+  }).length;
+}
+
+/** True when a university stands within `reach` lots (Manhattan) of the footprint. */
+function universityNear(w: World, cells: readonly Cell[], reach: number): boolean {
+  for (const [cx, cy] of cells) {
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (Math.abs(dx) + Math.abs(dy) > reach) continue;
+        const x = cx + dx;
+        const y = cy + dy;
+        if (w.inBounds(x, y) && w.tiles[w.idx(x, y)] === TILE.UNIVERSITY) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** True when water is within `reach` lots (Manhattan) of the footprint: the pilgrimage comes by the river. */
+function waterNear(w: World, cells: readonly Cell[], reach: number): boolean {
+  for (const [cx, cy] of cells) {
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (Math.abs(dx) + Math.abs(dy) > reach) continue;
+        const x = cx + dx;
+        const y = cy + dy;
+        if (w.inBounds(x, y) && w.isWater(x, y)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Industrial lots around a footprint: the union hall stands among the factories. */
+function industryAround(w: World, cells: readonly Cell[], reach: number): number {
+  return ringAround(w, cells, reach).filter((i) => zoneOf(w.tiles[i]) === 'I').length;
+}
+
 /** True when at least one of the two short ends of the footprint (its piers) reaches dry land. */
 function endOnLand(w: World, kind: UniqueKind, cells: readonly Cell[]): boolean {
   const { w: fw, h: fh } = UNIQUES[kind];
@@ -94,9 +144,13 @@ function endOnLand(w: World, kind: UniqueKind, cells: readonly Cell[]): boolean 
  * Why the monument cannot stand on these lots, in words for the player, or null when the place is
  * right. Lots that are merely taken are not a reason given here.
  */
-export function uniqueRefusal(w: World, kind: UniqueKind, cells: readonly Cell[]): string | null {
+export function uniqueRefusal(w: World, kind: UniqueKind, cells: readonly Cell[], government?: GovernmentKind): string | null {
   const { label } = UNIQUES[kind];
   if (uniquesOf(w, kind).length > 0) return `${label}: ya hay uno en la ciudad, y no puede haber más`;
+  const own = UNIQUES[kind].government;
+  if (own && government && own !== government) {
+    return `${label}: es el único de ${GOVERNMENTS[own].label.toLowerCase()}, y esta ciudad es ${GOVERNMENTS[government].label.toLowerCase()}`;
+  }
   if (kind === 'puente') {
     if (!cells.every(([x, y]) => w.isWater(x, y))) return `${label}: tiene que ir sobre el agua, de orilla a orilla`;
     if (!endOnLand(w, kind, cells)) return `${label}: una de las dos puntas tiene que llegar a tierra`;
@@ -106,8 +160,31 @@ export function uniqueRefusal(w: World, kind: UniqueKind, cells: readonly Cell[]
   switch (kind) {
     case 'obelisco': {
       const { plazaCells, reach } = UNIQUE_RULES.obelisco;
-      const around = ringAround(w, cells, reach).filter((i) => w.tiles[i] === TILE.PARK).length;
+      const around = plazaAround(w, cells, reach);
       return around >= plazaCells ? null : `${label}: necesita ${plazaCells} lotes de plaza a ${reach} lotes o menos (hay ${around})`;
+    }
+    case 'cabildo': {
+      const { plazaCells, reach } = UNIQUE_RULES.cabildo;
+      const around = plazaAround(w, cells, reach);
+      return around >= plazaCells ? null : `${label}: necesita una plaza enfrente, con ${plazaCells} lotes a ${reach} lotes o menos (hay ${around})`;
+    }
+    case 'regimiento': {
+      const { openCells, reach } = UNIQUE_RULES.regimiento;
+      const around = openAround(w, cells, reach);
+      return around >= openCells ? null : `${label}: necesita descampado para desfilar, con ${openCells} lotes libres a ${reach} lotes o menos (hay ${around})`;
+    }
+    case 'planetario': {
+      const { reach } = UNIQUE_RULES.planetario;
+      return universityNear(w, cells, reach) ? null : `${label}: tiene que estar a ${reach} lotes o menos de una universidad`;
+    }
+    case 'santuario': {
+      const { water } = UNIQUE_RULES.santuario;
+      return waterNear(w, cells, water) ? null : `${label}: la peregrinación llega por el agua, así que tiene que estar a ${water} lotes o menos de la costa`;
+    }
+    case 'sindicato': {
+      const { industryCells, reach } = UNIQUE_RULES.sindicato;
+      const around = industryAround(w, cells, reach);
+      return around >= industryCells ? null : `${label}: tiene que estar entre las fábricas, con ${industryCells} lotes industriales a ${reach} lotes o menos (hay ${around})`;
     }
     case 'calvario': {
       const high = footprintHeight(w, cells);
@@ -143,11 +220,18 @@ export function uniqueWorks(w: World, u: Unique): boolean {
  */
 export function uniqueBoost(w: World, month?: number): number {
   let boost = 0;
+  let jobs = -1;
   for (const u of w.uniques) {
     if (!uniqueWorks(w, u)) continue;
     const info = UNIQUES[u.kind];
     const inSeason = month !== undefined && info.peakMonths.includes(month);
     boost += inSeason ? info.peak : info.boost;
+    if (info.jobs) {
+      // The sindicato brings visitors in proportion to the factories that work: it is not a fixed
+      // rent, so a city that closes its industry loses the tours with it.
+      jobs = jobs < 0 ? industrialJobs(w) : jobs;
+      boost += Math.min(info.jobs.max, jobs * info.jobs.perJob);
+    }
   }
   return Math.min(UNIQUE_BOOST_MAX, boost);
 }
@@ -155,6 +239,51 @@ export function uniqueBoost(w: World, month?: number): number {
 /** Monthly upkeep of every unique standing in the city, working or not: what is built is kept. */
 export function uniqueUpkeep(w: World): number {
   return w.uniques.reduce((sum, u) => sum + UNIQUES[u.kind].upkeep, 0);
+}
+
+/**
+ * The footprints of the uniques of a kind that work: the services that reach around a unique (the
+ * regimiento's patrols, the planetario's classes) ask for them.
+ */
+export function uniqueSources(w: World, kind: UniqueKind): Cell[][] {
+  return w.uniques.filter((u) => u.kind === kind && uniqueWorks(w, u)).map((u) => uniqueFootprint(kind, w.n, u.x, u.y));
+}
+
+/** Points of approval the cabildos add this month: `peak` in the months of their season (the election). */
+export function uniqueApproval(w: World, month?: number): number {
+  let total = 0;
+  for (const u of w.uniques) {
+    const info = UNIQUES[u.kind].approval;
+    if (!info || !uniqueWorks(w, u)) continue;
+    const peak = month !== undefined && UNIQUES[u.kind].peakMonths.includes(month);
+    total += peak ? info.peak : info.perMonth;
+  }
+  return total;
+}
+
+/** Points of favor the santuarios add this month: `peak` in the months of their season (the pilgrimage). */
+export function uniqueFavor(w: World, month?: number): number {
+  let total = 0;
+  for (const u of w.uniques) {
+    const info = UNIQUES[u.kind].favor;
+    if (!info || !uniqueWorks(w, u)) continue;
+    const peak = month !== undefined && UNIQUES[u.kind].peakMonths.includes(month);
+    total += peak ? info.peak : info.perMonth;
+  }
+  return total;
+}
+
+/**
+ * Industrial jobs of the city: what the factories of zone I hold at their level. The sindicato turns
+ * them into tourism, so it grows with the working city instead of with the calendar.
+ */
+export function industrialJobs(w: World): number {
+  let jobs = 0;
+  for (let i = 0; i < w.n * w.n; i++) {
+    if (zoneOf(w.tiles[i]) !== 'I' || w.abandoned[i]) continue;
+    jobs += CAPACITY.I[w.level[i]] ?? 0;
+  }
+  return jobs;
 }
 
 /** How many uniques stand in the city, and how many of them work. */

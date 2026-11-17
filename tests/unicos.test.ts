@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { ROAD_TIERS, UNIQUES, UNIQUE_BOOST_MAX, UNIQUE_KINDS, UNIQUE_RULES, UPKEEP } from '../src/config';
+import { GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, ROAD_TIERS, UNIQUES, UNIQUE_BOOST_MAX, UNIQUE_KINDS, UNIQUE_RULES, UPKEEP } from '../src/config';
 import { deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { isUnlocked, milestoneOfTool } from '../src/sim/milestones';
 import { describeCell } from '../src/sim/report';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
+import { computeCrime, computeServices } from '../src/sim/fields';
+import { zoneTile } from '../src/world/world';
 import { UndoHistory } from '../src/world/history';
 import { applyPlan, groupOfTool, planTool, footprintOfTool, isUniqueTool, uniqueKindOfTool, type ToolId } from '../src/world/tools';
-import { countUniques, uniqueBoost, uniqueFootprint, uniqueRefusal, uniqueUpkeep, uniqueWorks } from '../src/world/uniques';
+import { countUniques, industrialJobs, uniqueApproval, uniqueBoost, uniqueFavor, uniqueFootprint, uniqueRefusal, uniqueUpkeep, uniqueWorks } from '../src/world/uniques';
 import { TILE, World } from '../src/world/world';
 
 /** Flat land at `height`, with a street along y = 4 from x = 0 to x = n - 1. */
@@ -249,8 +251,9 @@ describe('the card of a monument', () => {
     sim.refresh();
     const card = describeCell(w, sim, 3, 7);
     expect(card.title).toBe('Obelisco');
-    expect(card.lines.join(' ')).toMatch(/Sumando 6 % al turismo/);
+    expect(card.lines.join(' ')).toMatch(/Suma 6 % al turismo/);
     expect(card.lines.join(' ')).toMatch(/uno solo por ciudad/);
+    expect(card.lines.join(' ')).toMatch(/cualquier gobierno/);
   });
 
   it('says so when no street reaches it', () => {
@@ -316,5 +319,153 @@ describe('milestones, saving and undo', () => {
     expect(undone?.refund).toBe(plan.cost);
     expect(w.uniques).toHaveLength(0);
     expect(w.tileAt(3, 7)).toBe(TILE.PARK);
+  });
+});
+
+describe('the uniques of each government', () => {
+  it('gives every government exactly one, and only that government may build it', () => {
+    const owners = GOVERNMENT_UNIQUE_KINDS.map((kind) => UNIQUES[kind].government);
+    expect(owners).toEqual(['democracia', 'dictadura', 'tecnocracia', 'teocracia', 'comunismo']);
+    for (const kind of UNIQUE_KINDS) expect(UNIQUES[kind].government).toBeUndefined();
+    const w = city();
+    for (const kind of GOVERNMENT_UNIQUE_KINDS) {
+      const foot = uniqueFootprint(kind, w.n, 3, 7);
+      const own = UNIQUES[kind].government!;
+      const other = own === 'democracia' ? 'dictadura' : 'democracia';
+      expect(uniqueRefusal(w, kind, foot, own) ?? '').not.toMatch(/es el único de/);
+      expect(uniqueRefusal(w, kind, foot, other)).toMatch(new RegExp(`es el único de ${GOVERNMENTS[own].label.toLowerCase()}`));
+      // Without a government to compare against (a plan built by hand) the rule does not guess.
+      expect(uniqueRefusal(w, kind, foot) ?? '').not.toMatch(/es el único de/);
+    }
+  });
+
+  it('asks the cabildo for a plaza, and refuses it on bare ground', () => {
+    const bare = city();
+    expect(uniqueRefusal(bare, 'cabildo', uniqueFootprint('cabildo', 32, 3, 7), 'democracia')).toMatch(/plaza enfrente/);
+    const withSquare = withPlaza(city());
+    expect(uniqueRefusal(withSquare, 'cabildo', uniqueFootprint('cabildo', 32, 3, 7), 'democracia')).toBeNull();
+  });
+
+  it('asks the regimiento for open ground, and refuses it in a built block', () => {
+    const open = city();
+    expect(uniqueRefusal(open, 'regimiento', uniqueFootprint('regimiento', 32, 6, 8), 'dictadura')).toBeNull();
+    const built = city();
+    // The whole block around is zoned, so there is no open ground left for the parade.
+    for (let y = 5; y <= 18; y++) for (let x = 1; x <= 20; x++) built.setTile(x, y, zoneTile('R'));
+    expect(uniqueRefusal(built, 'regimiento', uniqueFootprint('regimiento', 32, 6, 8), 'dictadura')).toMatch(/descampado/);
+  });
+
+  it('asks the planetario for a university near, and the santuario for water', () => {
+    const w = city();
+    expect(uniqueRefusal(w, 'planetario', uniqueFootprint('planetario', 32, 3, 7), 'tecnocracia')).toMatch(/universidad/);
+    w.setTile(9, 9, TILE.UNIVERSITY);
+    expect(uniqueRefusal(w, 'planetario', uniqueFootprint('planetario', 32, 3, 7), 'tecnocracia')).toBeNull();
+    expect(uniqueRefusal(w, 'santuario', uniqueFootprint('santuario', 32, 3, 7), 'teocracia')).toMatch(/agua|costa/);
+    const shore = new World(channel());
+    expect(uniqueRefusal(shore, 'santuario', uniqueFootprint('santuario', 32, 6, 12), 'teocracia')).toBeNull();
+  });
+
+  it('asks the sindicato for factories around, and refuses it among houses', () => {
+    const houses = city();
+    for (let y = 5; y <= 14; y++) for (let x = 5; x <= 15; x++) houses.setTile(x, y, zoneTile('R'));
+    expect(uniqueRefusal(houses, 'sindicato', uniqueFootprint('sindicato', 32, 6, 8), 'comunismo')).toMatch(/fábricas/);
+    const works = city();
+    for (let y = 5; y <= 14; y++) for (let x = 5; x <= 15; x++) works.setTile(x, y, zoneTile('I'));
+    expect(uniqueRefusal(works, 'sindicato', uniqueFootprint('sindicato', 32, 6, 8), 'comunismo')).toBeNull();
+  });
+
+  it('pays approval with the cabildo, and doubles it in the month of the election', () => {
+    const w = withPlaza(city());
+    put(w, 'cabildo', 3, 7);
+    expect(w.uniques).toHaveLength(1);
+    expect(uniqueApproval(w, 3)).toBe(UNIQUES.cabildo.approval!.perMonth);
+    expect(uniqueApproval(w, 9)).toBe(UNIQUES.cabildo.approval!.peak);
+    // Without a street it does not work, so it pays nothing.
+    const far = withPlaza(new World(flat()));
+    far.powered.fill(1);
+    put(far, 'cabildo', 3, 7);
+    expect(far.uniques).toHaveLength(1);
+    expect(uniqueWorks(far, far.uniques[0])).toBe(false);
+    expect(uniqueApproval(far, 3)).toBe(0);
+  });
+
+  it('pays favor with the santuario, and more in April', () => {
+    const w = new World(channel());
+    w.powered.fill(1);
+    for (let x = 0; x < w.n; x++) {
+      w.setTile(x, 4, TILE.ROAD);
+      w.setTile(x, 11, TILE.ROAD);
+    }
+    put(w, 'santuario', 6, 12);
+    expect(w.uniques).toHaveLength(1);
+    expect(uniqueFavor(w, 7)).toBe(UNIQUES.santuario.favor!.perMonth);
+    expect(uniqueFavor(w, 4)).toBe(UNIQUES.santuario.favor!.peak);
+  });
+
+  it('takes crime out of the neighbourhood with the regimiento', () => {
+    const info = UNIQUES.regimiento.crime!;
+    const crime = (withGarrison: boolean): number => {
+      const w = city();
+      // The post goes first (it wants open ground round it), then the dense commerce grows next to it.
+      if (withGarrison) put(w, 'regimiento', 2, 6);
+      for (let y = 5; y <= 12; y++) {
+        for (let x = 1; x <= 12; x++) {
+          if (w.tiles[w.idx(x, y)] === TILE.UNIQUE) continue;
+          w.setTile(x, y, zoneTile('C'));
+          w.level[w.idx(x, y)] = 4;
+        }
+      }
+      w.safety.fill(0);
+      computeCrime(w, 5000);
+      return w.crime[w.idx(6, 9)];
+    };
+    expect(crime(true)).toBeLessThan(crime(false) - info.shade / 2);
+  });
+
+  it('teaches around the planetario, as a school does', () => {
+    // The sample lot is far from the campus on purpose, so what it reads is the planetario and not
+    // the university that justified it.
+    const edu = (withDome: boolean): number => {
+      const w = city();
+      w.setTile(9, 9, TILE.UNIVERSITY);
+      if (withDome) put(w, 'planetario', 2, 6);
+      computeServices(w);
+      return w.edu[w.idx(1, 11)];
+    };
+    expect(edu(true)).toBeGreaterThan(edu(false));
+  });
+
+  it('brings tourists to the sindicato in proportion to the factories that work', () => {
+    const w = city();
+    // The factories have to be there for the union hall to be allowed in: that is its whole rule.
+    const I = zoneTile('I');
+    for (let y = 5; y <= 15; y++) {
+      for (let x = 1; x <= 16; x++) {
+        const inFoot = x >= 6 && x <= 8 && y >= 5 && y <= 6;
+        if (inFoot) continue;
+        w.setTile(x, y, I);
+        w.level[w.idx(x, y)] = 3;
+      }
+    }
+    put(w, 'sindicato', 6, 5);
+    expect(w.uniques).toHaveLength(1);
+    const jobs = industrialJobs(w);
+    expect(jobs).toBeGreaterThan(0);
+    expect(uniqueBoost(w, 6)).toBeCloseTo(Math.min(UNIQUES.sindicato.jobs!.max, jobs * UNIQUES.sindicato.jobs!.perJob), 6);
+    // A city that grows past the ceiling does not add more than the monument is worth.
+    w.level.fill(5);
+    expect(industrialJobs(w)).toBeGreaterThan(jobs);
+    expect(uniqueBoost(w, 6)).toBeCloseTo(UNIQUES.sindicato.jobs!.max, 6);
+  });
+
+  it('names the effect in its card', () => {
+    const w = withPlaza(city());
+    put(w, 'cabildo', 3, 7);
+    expect(w.uniques).toHaveLength(1);
+    const sim = new Simulation(w, newSimState(1, 'democracia'), 'X');
+    const card = describeCell(w, sim, 3, 7);
+    expect(card.title).toBe('El Cabildo');
+    expect(card.lines.join(' ')).toMatch(/aprobación/);
+    expect(card.lines.join(' ')).toMatch(/El único de democracia/);
   });
 });

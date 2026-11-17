@@ -536,7 +536,7 @@ export class Game implements PointerTarget {
     const unique = uniqueKindOfTool(this.tool);
     if (unique) {
       const foot = uniqueFootprint(unique, this.world.n, cell[0], cell[1]);
-      return routeRefusal(this.world, this.tool, cell[0], cell[1]) ?? uniqueRefusal(this.world, unique, foot);
+      return routeRefusal(this.world, this.tool, cell[0], cell[1]) ?? uniqueRefusal(this.world, unique, foot, this.sim.state.government);
     }
     return routeRefusal(this.world, this.tool, cell[0], cell[1]) ?? (isCoastTool(this.tool) ? coastRefusal(this.world, this.tool, cell[0], cell[1]) : this.tool === 'bus' ? busRefusal(this.world, cell[0], cell[1]) : null);
   }

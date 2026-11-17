@@ -12,6 +12,7 @@ import {
   DEFAULT_TAX,
   FIRE_SAFE_COVER,
   FISHING_SALES,
+  GOVERNMENTS,
   LINE_REACH,
   PARK,
   PLANTS,
@@ -25,6 +26,7 @@ import {
   WIND,
   type CoastKind,
   type ServiceKind,
+  type UniqueKind,
 } from '../config';
 import { formatNumber } from '../core/format';
 import { isUnlocked } from './milestones';
@@ -288,23 +290,32 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
 }
 
 /** The card of a unique building: what it adds to the tourism of the city and what it asks for. */
-function describeUnique(w: World, u: Unique): CellReport {
-  const info = UNIQUES[u.kind];
+/** What the monument does, in one line: the shared five add tourism, the government ones their own measure. */
+function uniqueEffect(kind: UniqueKind): string {
+  const info = UNIQUES[kind];
   const share = Math.round(info.boost * 100);
   const peak = Math.round(info.peak * 100);
+  if (info.approval) return `Suma ${info.approval.perMonth} puntos de aprobación por mes, y ${info.approval.peak} en ${info.peakMonths.map((m) => MONTHS[m - 1]).join(', ')}`;
+  if (info.crime) return `Baja el delito de los lotes a ${info.crime.radius} lotes o menos`;
+  if (info.edu) return `Da educación a los lotes a ${info.edu.radius} lotes o menos, como una escuela`;
+  if (info.favor) return `Suma ${info.favor.perMonth} puntos de favor por mes, y ${info.favor.peak} en ${info.peakMonths.map((m) => MONTHS[m - 1]).join(', ')}`;
+  if (info.jobs) return `Suma turismo en proporción a los puestos de trabajo industriales, hasta ${Math.round(info.jobs.max * 100)} %`;
+  return info.peakMonths.length ? `Suma ${share} % al turismo, y ${peak} % en ${info.peakMonths.map((m) => MONTHS[m - 1]).join(', ')}` : `Suma ${share} % al turismo de la ciudad`;
+}
+
+function describeUnique(w: World, u: Unique): CellReport {
+  const info = UNIQUES[u.kind];
   const upkeep = `Mantenimiento: $${formatNumber(info.upkeep)} por mes`;
   const size = `${info.w}×${info.h} lotes · uno solo por ciudad`;
-  const season = info.peakMonths.length
-    ? `En temporada suma ${peak} % en vez de ${share} %: ${info.peakMonths.map((m) => MONTHS[m - 1]).join(', ')}`
-    : `Suma ${share} % todo el año`;
+  const owner = info.government ? `El único de ${GOVERNMENTS[info.government].label.toLowerCase()}` : 'Lo puede construir cualquier gobierno';
   if (!uniqueWorks(w, u)) {
     return {
       title: info.label,
       lines: [`Sin calle a menos de ${ROAD_REACH} lotes: no lo visita nadie`, size, upkeep],
-      hint: 'Un edificio único suma turismo sólo si una calle llega hasta él: trazá una calle cerca.',
+      hint: 'Un edificio único sólo rinde si una calle llega hasta él: trazá una calle cerca.',
     };
   }
-  return { title: info.label, lines: [`Sumando ${share} % al turismo de la ciudad`, season, size, upkeep] };
+  return { title: info.label, lines: [uniqueEffect(u.kind), owner, size, upkeep] };
 }
 
 const SEASON_NAMES: Record<Season, string> = { peak: 'Temporada alta (verano)', shoulder: 'Entretemporada', low: 'Temporada baja' };

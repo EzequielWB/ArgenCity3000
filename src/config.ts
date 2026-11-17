@@ -570,30 +570,115 @@ export const COAST_APPROVAL = { promenadeLots: 8, promenadeMax: 5, lighthouse: 3
  * of `odd/tasks/edificios-unicos.md`: five of them at their peak are a third of the tourism of a
  * mature city and cost about three years of upkeep to pay for themselves, like a full airport.
  */
-export type UniqueKind = 'obelisco' | 'calvario' | 'puente' | 'teatro' | 'estadio';
-export const UNIQUE_KINDS: readonly UniqueKind[] = ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'];
+/**
+ * Switch of the package of government uniques (see `odd/tasks/edificios-unicos.md`, S11). With it at
+ * false the five tools are out of `TOOLS` and out of the milestones, so the package can be taken out
+ * of the game without touching anything else: nothing left behind is drawn, because nobody can build
+ * them. Set it back to true and they come in again, art included.
+ */
+export const GOVERNMENT_UNIQUES = true;
 
-export const UNIQUES: Record<
-  UniqueKind,
-  {
-    label: string;
-    /** Footprint in lots, anchored at its top-left cell and never rotated, like an airport. */
-    w: number;
-    h: number;
-    cost: number;
-    upkeep: number;
-    /** Share of the tourism of the city this one adds. */
-    boost: number;
-    /** Share it adds instead of `boost` in the months of `peakMonths`. */
-    peak: number;
-    peakMonths: readonly number[];
-  }
-> = {
+export type UniqueKind = 'obelisco' | 'calvario' | 'puente' | 'teatro' | 'estadio' | 'cabildo' | 'regimiento' | 'planetario' | 'santuario' | 'sindicato';
+/** The five any government may build, then the one each government owns (see `UNIQUES[kind].government`). */
+export const UNIQUE_KINDS: readonly UniqueKind[] = ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'];
+export const GOVERNMENT_UNIQUE_KINDS: readonly UniqueKind[] = ['cabildo', 'regimiento', 'planetario', 'santuario', 'sindicato'];
+export const ALL_UNIQUE_KINDS: readonly UniqueKind[] = [...UNIQUE_KINDS, ...GOVERNMENT_UNIQUE_KINDS];
+
+export interface Unique {
+  label: string;
+  /** Footprint in lots, anchored at its top-left cell and never rotated, like an airport. */
+  w: number;
+  h: number;
+  cost: number;
+  upkeep: number;
+  /** The only government that may build it. Absent on the five shared ones. */
+  government?: GovernmentKind;
+  /** Share of the tourism of the city this one adds. */
+  boost: number;
+  /** Share it adds instead of `boost` in the months of `peakMonths`. */
+  peak: number;
+  peakMonths: readonly number[];
+  /** Points of approval it adds to the city each month, `peak` instead in its months (the cabildo). */
+  approval?: { perMonth: number; peak: number };
+  /** Crime it takes out of the lots around its footprint (the regimiento). */
+  crime?: { radius: number; shade: number };
+  /** Education it gives to the lots around its footprint, 0-100, like a school (the planetario). */
+  edu?: { radius: number; strength: number };
+  /** Points of favor it adds each month, `peak` instead in its months (the santuario). */
+  favor?: { perMonth: number; peak: number };
+  /** Tourism it adds for each industrial job of the city, up to `max` (the sindicato). */
+  jobs?: { perJob: number; max: number };
+}
+
+export const UNIQUES: Record<UniqueKind, Unique> = {
   obelisco: { label: 'Obelisco', w: 2, h: 2, cost: 9000, upkeep: 180, boost: 0.06, peak: 0.08, peakMonths: [12, 1] },
   calvario: { label: 'El Calvario', w: 3, h: 6, cost: 12000, upkeep: 220, boost: 0.02, peak: 0.18, peakMonths: [9] },
   puente: { label: 'Puente Transbordador', w: 2, h: 6, cost: 14000, upkeep: 300, boost: 0.05, peak: 0.05, peakMonths: [] },
   teatro: { label: 'Teatro', w: 3, h: 3, cost: 16000, upkeep: 340, boost: 0.05, peak: 0.1, peakMonths: [4, 5, 6, 7, 8] },
   estadio: { label: 'Estadio', w: 4, h: 4, cost: 18000, upkeep: 420, boost: 0.08, peak: 0.12, peakMonths: [3, 4, 5, 6, 7, 8, 9, 10, 11] },
+  // The one unique of each government. They cost less than the shared ones and pay in a measure of
+  // their own: the cabildo in approval, the regimiento in quiet, the planetario in education, the
+  // santuario in favor and the sindicato in the tourism its workers bring.
+  cabildo: {
+    label: 'El Cabildo',
+    w: 3,
+    h: 2,
+    cost: 12000,
+    upkeep: 300,
+    government: 'democracia',
+    boost: 0,
+    peak: 0,
+    peakMonths: [9],
+    approval: { perMonth: 2, peak: 4 },
+  },
+  regimiento: {
+    label: 'El Regimiento',
+    w: 4,
+    h: 3,
+    cost: 9000,
+    upkeep: 260,
+    government: 'dictadura',
+    boost: 0,
+    peak: 0,
+    peakMonths: [],
+    crime: { radius: 7, shade: 22 },
+  },
+  planetario: {
+    label: 'El Planetario',
+    w: 3,
+    h: 3,
+    cost: 14000,
+    upkeep: 320,
+    government: 'tecnocracia',
+    boost: 0,
+    peak: 0,
+    peakMonths: [],
+    edu: { radius: 9, strength: 70 },
+  },
+  santuario: {
+    label: 'El Santuario',
+    w: 3,
+    h: 4,
+    cost: 13000,
+    upkeep: 300,
+    government: 'teocracia',
+    boost: 0,
+    peak: 0,
+    peakMonths: [4],
+    favor: { perMonth: 2, peak: 4 },
+  },
+  sindicato: {
+    label: 'El Sindicato',
+    w: 3,
+    h: 2,
+    cost: 11000,
+    upkeep: 280,
+    government: 'comunismo',
+    boost: 0,
+    peak: 0,
+    peakMonths: [],
+    jobs: { perJob: 0.00025, max: 0.16 },
+  },
 };
 
 /**
@@ -609,6 +694,16 @@ export const UNIQUE_RULES = {
   teatro: { value: 45, reach: 2 },
   /** The estadio wants a boulevard this near (Manhattan), because the crowd has to get there. */
   estadio: { boulevard: 6 },
+  /** The cabildo is the seat of the government: it faces the plaza, so it wants a share of one near. */
+  cabildo: { plazaCells: 6, reach: 3 },
+  /** The regimiento wants open ground for the parade: this many lots with nothing built or zoned. */
+  regimiento: { openCells: 12, reach: 4 },
+  /** The planetario belongs to the university: it wants one within this many lots (Manhattan). */
+  planetario: { reach: 8 },
+  /** The santuario is a pilgrimage: it wants the water within this many lots. */
+  santuario: { water: 4 },
+  /** The sindicato stands with its workers: this many industrial lots within `reach`. */
+  sindicato: { industryCells: 10, reach: 4 },
 } as const;
 
 /** Ceiling of what all the uniques together may add to tourism, so the shares can never run away. */

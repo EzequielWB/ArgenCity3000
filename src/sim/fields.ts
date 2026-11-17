@@ -1,7 +1,8 @@
-import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, HUBS, PARK, PLANTS, ROAD_REACH, TREE_CLEAN, SERVICES, TRAFFIC, type ServiceFunding, type ServiceKind } from '../config';
+import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, HUBS, PARK, PLANTS, ROAD_REACH, TREE_CLEAN, SERVICES, TRAFFIC, UNIQUES, type ServiceFunding, type ServiceKind } from '../config';
 import { SEA_LEVEL } from '../world/terrain';
 import { hubFacilities } from '../world/hubs';
 import { TILE, World, serviceOf } from '../world/world';
+import { uniqueSources } from '../world/uniques';
 import { coastWorks } from './coast';
 
 const clamp100 = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
@@ -32,6 +33,24 @@ export function computeRoadAccess(w: World): void {
     }
   }
   for (let i = 0; i < n * n; i++) w.roadAccess[i] = dist[i] >= 0 ? 1 : 0;
+}
+
+/**
+ * How much the patrols of the regimientos reach each cell, in points of crime taken away, fading
+ * towards the edge of their radius. A military post keeps the neighbourhood quiet, which is what a
+ * dictatorship is selling.
+ */
+function garrisonField(w: World): Float32Array {
+  const n = w.n;
+  const out = new Float32Array(n * n);
+  const info = UNIQUES.regimiento.crime;
+  if (!info) return out;
+  for (const cells of uniqueSources(w, 'regimiento')) {
+    const cx = Math.round(cells.reduce((sum, [x]) => sum + x, 0) / cells.length);
+    const cy = Math.round(cells.reduce((sum, [, y]) => sum + y, 0) / cells.length);
+    splat(out, n, cx, cy, info.radius, info.shade);
+  }
+  return out;
 }
 
 /**
@@ -248,6 +267,18 @@ export function computeServices(w: World, funding: Readonly<ServiceFunding> = DE
       }
     }
   }
+  // The planetario teaches as a school does, and it needs nobody to fund it: it is a monument of the
+  // government, not a service with a budget.
+  const planetario = UNIQUES.planetario.edu;
+  if (planetario) {
+    const reach = new Float32Array(n * n);
+    for (const cells of uniqueSources(w, 'planetario')) {
+      const cx = Math.round(cells.reduce((sum, [x]) => sum + x, 0) / cells.length);
+      const cy = Math.round(cells.reduce((sum, [, y]) => sum + y, 0) / cells.length);
+      splat(reach, n, cx, cy, planetario.radius, planetario.strength);
+    }
+    for (let i = 0; i < n * n; i++) if (reach[i] > 0) w.edu[i] = Math.min(100, w.edu[i] + Math.round(reach[i]));
+  }
 }
 
 /**
@@ -257,6 +288,7 @@ export function computeServices(w: World, funding: Readonly<ServiceFunding> = DE
 export function computeCrime(w: World, pop: number): void {
   const n = w.n;
   const lamps = lampField(w);
+  const garrison = garrisonField(w);
   const cityFactor = Math.min(1, pop / 2500);
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
@@ -274,7 +306,7 @@ export function computeCrime(w: World, pop: number): void {
       }
       const i = y * n + x;
       const raw = density * cityFactor;
-      const shade = BOULEVARD.crime * Math.min(1, lamps[i]);
+      const shade = BOULEVARD.crime * Math.min(1, lamps[i]) + garrison[i];
       w.crime[i] = clamp100(Math.max(0, raw * (1 - (0.85 * w.safety[i]) / 100) - shade));
     }
   }

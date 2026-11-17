@@ -32,7 +32,7 @@ import type { SimState } from '../sim/simulation';
 import { MAX_HEIGHT } from '../world/terrain';
 import { busLineProblem, busStations } from '../world/transport';
 import { MAX_TILE, TILE, World, hubOf, hubTile, zoneOf } from '../world/world';
-import { UNIQUE_KINDS, UNIQUES, type UniqueKind } from '../config';
+import { ALL_UNIQUE_KINDS, UNIQUES, type UniqueKind } from '../config';
 
 export const SAVE_VERSION = 20;
 /**
@@ -225,7 +225,7 @@ export function deserialize(text: string): SaveData {
     const seenKinds = new Set<UniqueKind>();
     for (const u of data.uniques as unknown[]) {
       const { x, y, kind } = (u ?? {}) as { x?: unknown; y?: unknown; kind?: unknown };
-      need(UNIQUE_KINDS.includes(kind as UniqueKind), 'Hay un edificio único de un tipo desconocido');
+      need(ALL_UNIQUE_KINDS.includes(kind as UniqueKind), 'Hay un edificio único de un tipo desconocido');
       const known = kind as UniqueKind;
       need(!seenKinds.has(known), 'Hay dos edificios únicos iguales');
       seenKinds.add(known);

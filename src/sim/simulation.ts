@@ -42,6 +42,7 @@ import { PLAN, newPlan, planPremium, type FivePlan } from './plan';
 import { advanceMilestones, nextMilestone, unlockNames } from './milestones';
 import { FILLERS, headlinesFor, paperCanOpen, type CitySnapshot, type NewsItem } from './news';
 import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './outlook';
+import { uniqueApproval, uniqueFavor } from '../world/uniques';
 import { APPROVAL, approvalAppetite, computeApproval, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
@@ -576,7 +577,11 @@ export class Simulation {
   /** Moves the favor of God towards what the city deserves and, when He is far from calm, rolls what falls from above. */
   private judgement(): void {
     const s = this.state;
+    const month = dateOf(s.tick - 1).month;
     s.favor = stepFavor(s.favor, this.favorReport().target);
+    // A santuario keeps a pilgrimage going all year, and fills the basilica in April.
+    const santuario = uniqueFavor(this.world, month);
+    if (santuario > 0) s.favor = Math.min(100, s.favor + santuario);
     if (this.totals.pop < 100 || !this.rng.chance(judgementChance(s.favor))) return;
     if (moodOf(s.favor) === 'wrath') this.catastrophe((FAVOR.wrath - s.favor) / FAVOR.wrath);
     else this.miracle();
@@ -992,7 +997,8 @@ export class Simulation {
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, dateOf(s.tick - 1).month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods);
+    const month = dateOf(s.tick - 1).month;
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods);
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
@@ -1009,6 +1015,9 @@ export class Simulation {
     this.reachRunMarks();
     this.approval = this.judge();
     s.approval = stepApproval(s.approval, this.approval.target, s.government);
+    // The cabildo works the neighbourhoods all year, and doubles its effort in the month of the election.
+    const cabildo = uniqueApproval(w, month);
+    if (cabildo > 0) s.approval = Math.min(GOVERNMENTS[s.government].approvalCap, Math.round(s.approval + cabildo));
     if (s.government === 'teocracia') this.judgement();
     const planLine = s.government === 'comunismo' ? this.settlePlan() : null;
     // The promise comes first: it is what the neighbours were waiting for all month.
