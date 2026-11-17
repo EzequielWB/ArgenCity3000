@@ -17,6 +17,7 @@ const entry = `
 import './scripts/board-city';
 import { buildingSprite } from './src/render/sprites';
 import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite } from './src/render/pixelArt';
+import { carPixelSprite } from './src/render/vehicleArt';
 import type { HubKind, ServiceKind } from './src/config';
 
 const NEW = { R: residentialPixelSprite, C: commercialPixelSprite, I: industrialPixelSprite };
@@ -165,6 +166,19 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-pole]'))) {
   const [tier, variant] = String(el.dataset.pole || '0:0').split(':').map(Number);
   const k = Number(el.dataset.k || 4);
   const sprite = polePixelSprite(tier, variant);
+  el.width = sprite.canvas.width * k;
+  el.height = sprite.canvas.height * k;
+  el.style.width = el.width + 'px';
+  el.style.height = el.height + 'px';
+  const g = el.getContext('2d');
+  g.clearRect(0, 0, el.width, el.height);
+  place(g, sprite, el.width / 2, sprite.ay * k, k);
+}
+
+for (const el of Array.from(document.querySelectorAll('canvas[data-veh]'))) {
+  const [kind, color, dir] = String(el.dataset.veh || 'car:0:0').split(':');
+  const k = Number(el.dataset.k || 8);
+  const sprite = carPixelSprite(kind as 'car' | 'taxi' | 'bus', Number(color), Number(dir) as 0 | 1 | 2 | 3);
   el.width = sprite.canvas.width * k;
   el.height = sprite.canvas.height * k;
   el.style.width = el.width + 'px';
@@ -576,6 +590,32 @@ const page = `<!doctype html>
           <figure>
             <canvas data-tree="${kind}:2" data-k="3"></canvas>
             <figcaption>${name}, variante</figcaption>
+          </figure>`,
+          )
+          .join('')}
+      </div>
+    </section>
+    <section id="vehiculos">
+      <h2>Vehículos</h2>
+      <p class="note">
+        Lo último que quedaba en canvas, y lo que más cantaba: un auto son <b>4 x 2 píxeles</b> al lado de
+        un lote de 32, y estaba dibujado con trazos suaves en una ciudad de píxel duro. Acá va con el mismo
+        taller que todo lo demás, <b>en unidades de lote</b>, con el techo iluminado, el lateral en sombra,
+        la banda de ventanillas, las ruedas y su sombra en el piso. Cada vehículo tiene sus <b>cuatro
+        rumbos dibujados</b> —no rotados—, de izquierda a derecha: al frente y la cola cambia con el rumbo,
+        así que el que se va muestra las luces traseras en la cara que la cámara ve.
+      </p>
+      <div class="row">
+        ${['car', 'taxi', 'bus']
+          .map(
+            (kind) => `
+          <figure class="veh">
+            ${[0, 1, 2, 3]
+              .map(
+                (dir) => `<canvas data-veh="${kind}:2:${dir}" data-k="8"></canvas>`,
+              )
+              .join('')}
+            <figcaption>${kind === 'car' ? 'auto' : kind === 'taxi' ? 'taxi' : 'colectivo'}</figcaption>
           </figure>`,
           )
           .join('')}

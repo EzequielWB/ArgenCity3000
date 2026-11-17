@@ -1,10 +1,12 @@
-import { BUS, BUS_COLORS, ROAD_REACH } from '../config';
+import { BUS, BUS_COLORS, CAR_COLORS, ROAD_REACH } from '../config';
 import { project, rotateDir, toView, type Rotation } from '../core/iso';
 import { Rng } from '../core/rng';
 import { busStations, streetNear } from '../world/transport';
 import { TILE, World } from '../world/world';
 import { surfaceHeights, type Pt } from './geometry';
 import type { MapRenderer, PlacedSprite } from './mapRenderer';
+import { pixelArt } from './artSwitch';
+import { carPixelSprite, headingOf, type Heading } from './vehicleArt';
 
 /** Cars per street cell (0–3), from the buildings around it. Purely visual. */
 export function computeTraffic(w: World, out: Uint8Array): void {
@@ -230,7 +232,6 @@ export class Traffic {
   }
 }
 
-const CAR_COLORS = ['#c8392f', '#f4f0e6', '#2f63a6', '#3c8d4a', '#7d7f86', '#e0a526', '#6b3fa0'];
 
 /** Where a car is: its view cell (for the drawing order) and its position on the screen. */
 export interface CarSpot {
@@ -322,7 +323,7 @@ export function drawTraffic(g: CanvasRenderingContext2D, traffic: Traffic, map: 
   const n = w.n;
   const rot = map.rot;
   const [x0, y0, x1, y1] = visible;
-  const spots: (CarSpot & { ref: Car; sdx: number; sdy: number })[] = [];
+  const spots: (CarSpot & { ref: Car; sdx: number; sdy: number; dir: Heading })[] = [];
 
   for (const c of traffic.cars) {
     const [px, py] = traffic.position(c);
@@ -335,7 +336,7 @@ export function drawTraffic(g: CanvasRenderingContext2D, traffic: Traffic, map: 
     const sy = oy + map.originY;
     if (sx < x0 - 10 || sx > x1 + 10 || sy < y0 - 10 || sy > y1 + 10) continue;
     const [rdx, rdy] = rotateDir(c.dx, c.dy, rot);
-    spots.push({ id: c.id, vx: cvx, vy: cvy, sx, sy, ref: c, sdx: rdx - rdy, sdy: (rdx + rdy) / 2 });
+    spots.push({ id: c.id, vx: cvx, vy: cvy, sx, sy, ref: c, sdx: rdx - rdy, sdy: (rdx + rdy) / 2, dir: headingOf(rdx, rdy) });
   }
 
   const ops = planOverdraw(spots, map, n);
@@ -393,7 +394,15 @@ function layerContext(w: number, h: number): CanvasRenderingContext2D {
   return layerCtx;
 }
 
-function drawCar(g: CanvasRenderingContext2D, c: Car, s: { sx: number; sy: number; sdx: number; sdy: number }, alpha: number): void {
+function drawCar(g: CanvasRenderingContext2D, c: Car, s: { sx: number; sy: number; sdx: number; sdy: number; dir: Heading }, alpha: number): void {
+  if (pixelArt('vehiculos')) {
+    // The pixel sprite, anchored on the ground point and snapped to whole pixels so it does not blur.
+    const sprite = carPixelSprite(c.kind, c.color, s.dir);
+    g.globalAlpha = alpha;
+    g.drawImage(sprite.canvas, Math.round(s.sx - sprite.ax), Math.round(s.sy - sprite.ay));
+    g.globalAlpha = 1;
+    return;
+  }
   // The bus of a line is longer and taller than a car, so it reads at a glance, with a row of windows.
   const bus = c.kind === 'bus';
   const len = bus ? 5.4 : 2.1;

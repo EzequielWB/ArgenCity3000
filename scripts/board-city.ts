@@ -8,6 +8,7 @@ import { CHUNK_PAD } from '../src/render/chunks';
 import { MapRenderer } from '../src/render/mapRenderer';
 import { generateTerrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
+import { Traffic, drawTraffic } from '../src/render/traffic';
 import { TILE, World } from '../src/world/world';
 
 declare const document: any;
@@ -115,4 +116,32 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-city]')) as a
   map.forEachChunk(view, (canvas: any, x0: number, y0: number) => {
     g.drawImage(canvas, x0 - CHUNK_PAD, y0 - CHUNK_PAD);
   });
+  // The vehicles on the street, with the renderer's own traffic pass: this is the sheet where they are
+  // judged, because a car alone at 8x says little about how it reads among the buildings.
+  const traffic = new Traffic(world, 7);
+  const street: [number, number, number, number][] = [
+    // [cell x, cell y, dx, dy]: a car parked on each heading of the two streets of the block.
+    [4, 5, 1, 0],
+    [9, 5, -1, 0],
+    [12, 5, 1, 0],
+    [6, 10, 0, 1],
+    [11, 10, 0, -1],
+    [3, 10, 1, 0],
+  ];
+  street.forEach(([x, y, dx, dy], i) => {
+    traffic.cars.push({
+      id: i,
+      x,
+      y,
+      dx,
+      dy,
+      t: 0.35 + (i % 3) * 0.2,
+      speed: 1,
+      kind: i === 2 ? 'taxi' : 'car',
+      color: i % 7,
+      age: 100,
+      life: 200,
+    });
+  });
+  drawTraffic(g, traffic, map, [view.x0, view.y0, view.x1, view.y1]);
 }

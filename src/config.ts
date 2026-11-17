@@ -522,6 +522,9 @@ export const HUBS: Record<
 /** Pieces side by side that a facility needs to reach level 1, 2 and 3. */
 export const HUB_LEVELS: Record<HubKind, readonly number[]> = { airport: [1, 2, 4], harbor: [1, 2, 3] };
 
+/** The seven colours of the cars of the street, the usual ones of a city street. */
+export const CAR_COLORS = ['#c8392f', '#f4f0e6', '#2f63a6', '#3c8d4a', '#7d7f86', '#e0a526', '#6b3fa0'] as const;
+
 /** Lines are told apart by a number of up to three digits, which no other line of the city has. */
 export const MAX_BUS_NUMBER = 999;
 /** The ten colours a line can wear, the usual ones of the buses. */

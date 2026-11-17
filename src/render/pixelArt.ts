@@ -19,8 +19,8 @@ const LEFT = 0.69;
 const RIGHT = 0.59;
 
 /** A material as its three visible values: the top, the left face and the right face. */
-type Ramp = [RGB, RGB, RGB];
-const ramp = (c: string): Ramp => tone(hex(c));
+export type Ramp = [RGB, RGB, RGB];
+export const ramp = (c: string): Ramp => tone(hex(c));
 /** The same, from a colour that is already resolved. */
 const tone = (c: RGB): Ramp => [c, shade(c, LEFT), shade(c, RIGHT)];
 
@@ -130,7 +130,7 @@ const shutter = (t: number, k: number, w = 3, h = 6): Patch => ({ t0: t, t1: t +
 const reja = (t: number, k: number, w = 3, h = 6): Patch[] =>
   Array.from({ length: Math.ceil(w / 2) }, (_, i) => ({ t0: t + i * 2, t1: t + i * 2 + 1, k0: k, k1: k + h, c: LEG }));
 
-class Pen {
+export class Pen {
   /** Chimney mouths, relative to the anchor, that the renderer turns into smoke. */
   readonly smoke: [number, number][] = [];
 
@@ -392,7 +392,7 @@ class Pen {
 }
 
 /** A pen whose anchor leaves room for a building `maxZ` px tall on a 1 x 1 lot, and for its shadow. */
-function pen(maxZ: number): Pen {
+export function pen(maxZ: number): Pen {
   return new Pen(new Pixels(40, maxZ + 24), 20, maxZ + 4);
 }
 
@@ -3276,7 +3276,7 @@ export function treePixelSprite(kind: number, variant: number): Sprite {
 }
 
 /** The same lot as a sprite the map can blit. Needs a DOM: call it from the game, not a test. */
-function spriteOf(painted: { px: Pixels; ax: number; ay: number; smoke?: [number, number][]; attach?: [number, number] }): Sprite {
+export function spriteOf(painted: { px: Pixels; ax: number; ay: number; smoke?: [number, number][]; attach?: [number, number] }): Sprite {
   return { canvas: painted.px.toCanvas(1), ax: painted.ax, ay: painted.ay, smoke: painted.smoke ?? [], attach: painted.attach };
 }
 

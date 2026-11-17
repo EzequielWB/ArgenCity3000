@@ -5,7 +5,7 @@
  * switch stays a query parameter instead of a code edit, so both looks can be compared on the same
  * build: `?pixel=off` goes back to the art of always, and `?pixel=residencial`, `?pixel=comercial`,
  * `?pixel=industrial`, `?pixel=plazas`, `?pixel=calles`, `?pixel=tierra`, `?pixel=costa`, `?pixel=transporte`,
- * `?pixel=energia`, `?pixel=servicios`, `?pixel=arboles` or
+ * `?pixel=energia`, `?pixel=servicios`, `?pixel=arboles`, `?pixel=vehiculos` or
  * `?pixel=todo` draw only the families named, so one piece can be judged on its own. Families can be
  * combined with commas.
  *
@@ -22,7 +22,8 @@ export type ArtFamily =
   | 'transporte'
   | 'energia'
   | 'servicios'
-  | 'arboles';
+  | 'arboles'
+  | 'vehiculos';
 
 const PARAM = 'pixel';
 
