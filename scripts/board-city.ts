@@ -1,7 +1,7 @@
 /**
  * Renders a piece of a real city through the game's own renderer, so the street and the plaza can be
  * judged where they live and not only as loose sprites. The board asks for the families it wants
- * with the same query parameter the game reads: open `arte.html?pixel=todo`.
+ * from the map renderer itself, so the sheet shows what the game draws: open `arte.html`.
  */
 import { DIRT } from '../src/config';
 import { CHUNK_PAD } from '../src/render/chunks';

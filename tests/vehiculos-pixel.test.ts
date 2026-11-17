@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { pixelArt } from '../src/render/artSwitch';
 import type { Pixels } from '../src/render/pixel';
 import { boatArt, headingOf, planeArt, roadVehicle } from '../src/render/vehicleArt';
 
@@ -21,10 +20,6 @@ describe('the heading of a vehicle', () => {
 });
 
 describe('the road vehicles in pixel', () => {
-  it('is a family of the switch, off outside the browser like the rest', () => {
-    expect(pixelArt('vehiculos')).toBe(false);
-  });
-
   it('draws a different vehicle for each heading instead of rotating one', () => {
     for (const kind of ['car', 'taxi', 'bus'] as const) {
       const drawn = [0, 1, 2, 3].map((dir) => Array.from(painted(kind, 0, dir as 0 | 1 | 2 | 3).data).join(','));

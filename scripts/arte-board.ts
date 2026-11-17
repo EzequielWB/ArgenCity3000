@@ -15,7 +15,6 @@ declare const process: { cwd(): string };
 
 const entry = `
 import './scripts/board-city';
-import { buildingSprite } from './src/render/sprites';
 import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, promenadePixelSprite, fishingPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite } from './src/render/pixelArt';
 import { boatPixelSprite, carPixelSprite, planePixelSprite } from './src/render/vehicleArt';
 import type { HubKind, ServiceKind } from './src/config';
@@ -222,18 +221,12 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-sheet]'))) {
   const CH = 172;
   const SG = 138;
   el.width = CW * 5;
-  el.height = CH * 2;
+  el.height = CH;
   const g = el.getContext('2d');
   for (let i = 0; i < 5; i++) {
-    for (const [row, kind] of [
-      [0, 'new'],
-      [1, 'old'],
-    ]) {
-      const cx = i * CW + CW / 2;
-      const ground = row * CH + SG;
-      lot(g, cx, ground, 2);
-      place(g, kind === 'new' ? NEW[zone](i + 1, 0) : buildingSprite(zone, i + 1, 0), cx, ground, 2);
-    }
+    const cx = i * CW + CW / 2;
+    lot(g, cx, SG, 2);
+    place(g, NEW[zone](i + 1, 0), cx, SG, 2);
   }
 }
 
@@ -241,14 +234,12 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-level]'))) {
   const zone = el.dataset.zone;
   const level = Number(el.dataset.level);
   const variant = Number(el.dataset.variant);
-  el.width = W;
+  el.width = 112;
   el.height = H;
   const g = el.getContext('2d');
-  g.clearRect(0, 0, W, H);
+  g.clearRect(0, 0, 112, H);
   lot(g, 56, GROUND, K);
-  lot(g, 164, GROUND, K);
   place(g, NEW[zone](level, variant), 56, GROUND, K);
-  place(g, buildingSprite(zone, level, variant), 164, GROUND, K);
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-lot]'))) {
@@ -382,7 +373,7 @@ const sections = FAMILIES.map(
         <p class="note">${f.intro}</p>
         <div class="sheet">
           <canvas data-sheet="${f.zone}"></canvas>
-          <p class="legend">Arriba el arte nuevo, abajo el actual · de nivel 1 a 5</p>
+          <p class="legend">De nivel 1 a 5, el mismo lote</p>
         </div>
         ${f.levels
           .map(
@@ -447,16 +438,10 @@ const page = `<!doctype html>
   <body>
     <h1>Arte de las zonas</h1>
     <p class="sub">
-      Cada familia completa, nivel por nivel. Las tarjetas muestran las dos versiones sobre el mismo
-      lote: el arte nuevo y, al lado, el que dibuja el juego hoy.
+      Cada familia completa, nivel por nivel, sobre el mismo lote: es el arte que pinta el juego.
     </p>
-    <p class="legend"><b>Izquierda:</b> pixel nuevo &nbsp;·&nbsp; <b>Derecha:</b> el actual</p>
     <p class="sub">
-      No cambia nada del juego hasta que se pide: <code>?pixel=residencial</code>,
-      <code>?pixel=comercial</code>, <code>?pixel=industrial</code>, <code>?pixel=plazas</code>,
-      <code>?pixel=calles</code>, <code>?pixel=tierra</code>, <code>?pixel=costa</code>,
-      <code>?pixel=energia</code>, <code>?pixel=transporte</code>, <code>?pixel=servicios</code> o
-      <code>?pixel=todo</code> al final de la dirección. Sin eso vuelve solo al arte de siempre.
+      Es el arte del juego: lo que pinta el mapa es exactamente esto.
     </p>
     ${sections}
     <section id="energia">
@@ -757,10 +742,9 @@ const page = `<!doctype html>
     <section id="calle">
       <h2>La calle y la plaza, en el renderer de verdad</h2>
       <p class="note">
-        Una manzana dibujada por el juego, no un sprite suelto. Con <code>?pixel=todo</code> al final
-        de la dirección se ven el piso de plaza nuevo y el detalle de píxel de la calle: cordón,
-        juntas de la vereda, sumideros y grano del asfalto. Sin el parámetro, la misma manzana con el
-        arte de siempre, para comparar.
+        Una manzana dibujada por el juego, no un sprite suelto: el piso de la plaza y el detalle de
+        píxel de la calle —cordón, juntas de la vereda, sumideros y grano del asfalto—, tal como se
+        ven en el mapa.
       </p>
       <div class="row">
         <figure>

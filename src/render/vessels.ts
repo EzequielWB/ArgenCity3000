@@ -10,7 +10,6 @@ import { Rng } from '../core/rng';
 import { hubFacilities, hubFootprint, type HubFacility } from '../world/hubs';
 import { TILE, type World } from '../world/world';
 import { coastWorks } from '../sim/coast';
-import { pixelArt } from './artSwitch';
 import type { Pt } from './geometry';
 import type { MapRenderer } from './mapRenderer';
 import { heightAt } from './traffic';
@@ -283,59 +282,9 @@ export function drawBoats(g: CanvasRenderingContext2D, v: Vessels, map: MapRende
     const { sx, sy } = screenOf(v.world, map, px, py);
     if (sx < x0 - 20 || sx > x1 + 20 || sy < y0 - 20 || sy > y1 + 20) continue;
     const [rdx, rdy] = rotateDir(b.dx, b.dy, map.rot);
-    const ux = rdx - rdy;
-    const uy = (rdx + rdy) / 2;
-    if (pixelArt('vehiculos')) {
-      // The painted boat, anchored on the water and snapped to whole pixels, like the cars.
-      const sprite = boatPixelSprite(b.kind, headingOf(rdx, rdy));
-      g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
-      continue;
-    }
-    const cruise = b.kind === 'cruise';
-    const fishing = b.kind === 'fishing';
-    const len = cruise ? 8.5 : fishing ? 3.8 : 4.5;
-    const dx = ux * len;
-    const dy = uy * len;
-    // The wake behind it.
-    g.globalAlpha = 0.45;
-    g.strokeStyle = '#e8f2f6';
-    g.lineWidth = 0.8;
-    g.beginPath();
-    g.moveTo(sx - dx * 1.1, sy - dy * 1.1);
-    g.lineTo(sx - dx * 2.1, sy - dy * 2.1);
-    g.stroke();
-    g.globalAlpha = 1;
-    // The hull, dark below and white above, then what stands on it.
-    const hull = (h0: number, h1: number, color: string, k = 1) => {
-      g.fillStyle = color;
-      g.beginPath();
-      g.moveTo(sx - dx * k, sy - dy * k - h1);
-      g.lineTo(sx + dx * k, sy + dy * k - h1);
-      g.lineTo(sx + dx * k, sy + dy * k - h0);
-      g.lineTo(sx - dx * k, sy - dy * k - h0);
-      g.closePath();
-      g.fill();
-    };
-    hull(0, 1.2, fishing ? '#24405f' : '#3c3b42');
-    hull(1.2, cruise ? 3 : 2.4, fishing ? '#2f63a6' : '#f4f0e6');
-    if (fishing) {
-      // A little white wheelhouse at the back, a mast with a yellow flag and a red band along the hull.
-      hull(1.8, 2, '#c8392f');
-      g.fillStyle = '#f4f0e6';
-      g.fillRect(sx - ux * 2.2 - 1.2, sy - uy * 2.2 - 4.4, 2.4, 2.4);
-      g.fillStyle = '#4a4440';
-      g.fillRect(sx + ux * 0.6 - 0.4, sy + uy * 0.6 - 7, 0.8, 5);
-      g.fillStyle = '#f2c230';
-      g.fillRect(sx + ux * 0.6 + 0.4, sy + uy * 0.6 - 7, 1.8, 1.2);
-    } else if (cruise) {
-      hull(3, 5, '#f4f0e6', 0.7);
-      hull(3.6, 4, '#2f63a6', 0.7);
-      g.fillStyle = '#c8392f';
-      g.fillRect(sx - 0.8, sy - 8, 1.6, 3.2);
-    } else {
-      g.fillStyle = '#c8392f';
-      g.fillRect(sx - 1, sy - 4.6, 2, 2.2);
-    }
+    // The painted boat, anchored on the water and snapped to whole pixels, like the cars.
+    const sprite = boatPixelSprite(b.kind, headingOf(rdx, rdy));
+    g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
   }
 }
 
@@ -350,53 +299,12 @@ export function drawPlanes(g: CanvasRenderingContext2D, v: Vessels, map: MapRend
     const sy = ground - 2.2; // the runway is a little above the ground
     if (sx < x0 - 30 || sx > x1 + 30 || sy < y0 - 60 || sy > y1 + 30) continue;
     const [rdx, rdy] = rotateDir(p.dir, 0, map.rot);
-    const ux = rdx - rdy;
-    const uy = (rdx + rdy) / 2;
-    if (pixelArt('vehiculos')) {
-      // The body goes up with the altitude and its shadow stays on the runway, as before.
-      const sprite = planePixelSprite(p.level, headingOf(rdx, rdy));
-      const shadow = planePixelSprite(p.level, headingOf(rdx, rdy));
-      g.globalAlpha = at.alpha * 0.22;
-      g.drawImage(shadow.canvas, Math.round(sx - shadow.ax), Math.round(sy - shadow.ay));
-      g.globalAlpha = at.alpha;
-      g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - at.altitude - sprite.ay));
-      g.globalAlpha = 1;
-      continue;
-    }
-    const size = 3.4 + p.level * 1.1;
-    const cy = sy - at.altitude;
-    // Its shadow stays on the ground.
-    g.globalAlpha = at.alpha * 0.25;
-    g.fillStyle = '#000';
-    g.beginPath();
-    g.moveTo(sx - ux * size, sy - uy * size);
-    g.lineTo(sx + ux * size, sy + uy * size);
-    g.lineTo(sx + ux * size, sy + uy * size + 1.2);
-    g.lineTo(sx - ux * size, sy - uy * size + 1.2);
-    g.closePath();
-    g.fill();
-    // The body, the wings across it and the tail.
+    // The body goes up with the altitude and its shadow stays on the runway, as before.
+    const sprite = planePixelSprite(p.level, headingOf(rdx, rdy));
+    g.globalAlpha = at.alpha * 0.22;
+    g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
     g.globalAlpha = at.alpha;
-    g.fillStyle = '#f4f0e6';
-    g.beginPath();
-    g.moveTo(sx - ux * size, cy - uy * size - 1.4);
-    g.lineTo(sx + ux * size, cy + uy * size - 1.4);
-    g.lineTo(sx + ux * size, cy + uy * size + 0.4);
-    g.lineTo(sx - ux * size, cy - uy * size + 0.4);
-    g.closePath();
-    g.fill();
-    g.fillStyle = '#c9ccd1';
-    const wx = -uy * size * 1.1;
-    const wy = (ux * size * 1.1) / 2;
-    g.beginPath();
-    g.moveTo(sx - wx, cy - wy - 0.6);
-    g.lineTo(sx + wx, cy + wy - 0.6);
-    g.lineTo(sx + wx * 0.8 - ux * 1.2, cy + wy * 0.8 - uy * 1.2 + 0.4);
-    g.lineTo(sx - wx * 0.8 - ux * 1.2, cy - wy * 0.8 - uy * 1.2 + 0.4);
-    g.closePath();
-    g.fill();
-    g.fillStyle = '#2f63a6';
-    g.fillRect(sx - ux * size - 0.5, cy - uy * size - 3.2, 1.2, 2.4);
+    g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - at.altitude - sprite.ay));
     g.globalAlpha = 1;
   }
 }

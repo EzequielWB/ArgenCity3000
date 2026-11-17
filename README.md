@@ -62,8 +62,8 @@ src/
   world/             terreno procedural, grilla de la ciudad, herramientas (planificar y aplicar)
   sim/               energía, campos (calles, contaminación, valor), demanda, presupuesto,
                      créditos, calendario, diario, ficha de consulta y el bucle de simulación
-  render/            sprites procedurales, cache isométrica del mapa, vista, minimapa, tránsito,
-                     pintor de pixeles para los ornamentos
+  render/            pixel art del mapa (pixelArt.ts), cache isométrica, vista, minimapa, tránsito,
+                     y los pocos sprites que siguen en canvas (sprites.ts)
   save/              serialización validada y ranuras en localStorage
   input/             mouse, rueda y touch
   ui/                estilos, íconos, barra de herramientas por categorías, ornamentos fileteados,

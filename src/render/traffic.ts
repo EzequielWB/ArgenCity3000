@@ -5,7 +5,6 @@ import { busStations, streetNear } from '../world/transport';
 import { TILE, World } from '../world/world';
 import { surfaceHeights, type Pt } from './geometry';
 import type { MapRenderer, PlacedSprite } from './mapRenderer';
-import { pixelArt } from './artSwitch';
 import { carPixelSprite, headingOf, type Heading } from './vehicleArt';
 
 /** Cars per street cell (0–3), from the buildings around it. Purely visual. */
@@ -395,14 +394,12 @@ function layerContext(w: number, h: number): CanvasRenderingContext2D {
 }
 
 function drawCar(g: CanvasRenderingContext2D, c: Car, s: { sx: number; sy: number; sdx: number; sdy: number; dir: Heading }, alpha: number): void {
-  if (pixelArt('vehiculos')) {
-    // The pixel sprite, anchored on the ground point and snapped to whole pixels so it does not blur.
-    const sprite = carPixelSprite(c.kind, c.color, s.dir);
-    g.globalAlpha = alpha;
-    g.drawImage(sprite.canvas, Math.round(s.sx - sprite.ax), Math.round(s.sy - sprite.ay));
-    g.globalAlpha = 1;
-    return;
-  }
+  // The pixel sprite, anchored on the ground point and snapped to whole pixels so it does not blur.
+  const sprite = carPixelSprite(c.kind, c.color, s.dir);
+  g.globalAlpha = alpha;
+  g.drawImage(sprite.canvas, Math.round(s.sx - sprite.ax), Math.round(s.sy - sprite.ay));
+  g.globalAlpha = 1;
+  return;
   // The bus of a line is longer and taller than a car, so it reads at a glance, with a row of windows.
   const bus = c.kind === 'bus';
   const len = bus ? 5.4 : 2.1;

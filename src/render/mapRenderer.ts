@@ -33,24 +33,8 @@ import {
 } from './chunks';
 import { PAL, mix, rgb, toRgb } from './color';
 import { hubHeight, isPlatform, surfaceHeights, uniqueHeight, viewCornerHeights, plantHeight, type Pt } from './geometry';
-import {
-  abandonedBuildingSprite,
-  buildingSprite,
-  burningBuildingSprite,
-  busDepotSprite,
-  coastSprite,
-  hubSprite,
-  parkSpriteFor,
-  plantSprite,
-  poleSpriteFor,
-  routeSignSpriteFor,
-  serviceSprite,
-  treeSpriteFor,
-  uniqueSprite,
-  type Sprite,
-} from './sprites';
+import { abandonedBuildingSprite, buildingSprite, burningBuildingSprite, coastSprite, routeSignSpriteFor, uniqueSprite, type Sprite } from './sprites';
 import { parkTreeHere } from './park';
-import { pixelArt } from './artSwitch';
 import { busDepotPixelSprite, poleAttach, polePixelSprite, treePixelSprite, fishingPixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, promenadePixelSprite, servicePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
@@ -558,8 +542,7 @@ export class MapRenderer {
       }
       if (vx !== fx || vy !== fy) return null;
       const [ax, ay] = this.toCache(fx - (PLANT_SIZE - 1), fy - (PLANT_SIZE - 1), plantHeight(w, p.x, p.y));
-      if (pixelArt('energia')) return { sprite: plantPixelSprite(p.kind), ax, ay };
-      return { sprite: plantSprite(p.kind), ax, ay };
+      return { sprite: plantPixelSprite(p.kind), ax, ay };
     }
     if (hubOf(tile)) {
       // A piece of an airport or a harbour is drawn once, at the cell in front of its footprint (as seen from the camera).
@@ -572,8 +555,6 @@ export class MapRenderer {
       const { w: fw, h: fh } = HUBS[piece.kind];
       const [ax, ay] = this.toCache(minVx, minVy, hubHeight(w, piece.x, piece.y, fw, fh));
       const level = facilityAt(w, x, y)?.level ?? 1;
-      const side = this.hubWaterSide(foot);
-      if (!pixelArt('transporte')) return { sprite: hubSprite(piece.kind, level, maxVx - minVx + 1, maxVy - minVy + 1, side), ax, ay };
       // The pixel pass paints the whole facility once and gives each piece the window it owns, so two
       // pieces side by side join at the pixel instead of stacking two whole buildings. The water side
       // is the side of the whole facility, not of this piece: two pieces of one harbour cannot look at
@@ -606,8 +587,7 @@ export class MapRenderer {
       const size = SERVICE_SIZE[service];
       if (size === 1) {
         const [ax, ay] = this.toCache(vx, vy, hs[0]);
-        if (pixelArt('servicios')) return { sprite: servicePixelSprite(service), ax, ay };
-        return { sprite: serviceSprite(service), ax, ay };
+        return { sprite: servicePixelSprite(service), ax, ay };
       }
       // The hospital and the university take several lots and are one building: drawn once, at the lot in
       // front of the block, anchored at its back corner with the height of the whole footprint (the rule
@@ -621,18 +601,17 @@ export class MapRenderer {
       const maxVy = Math.max(...foot.map((c) => c[1]));
       if (vx !== maxVx || vy !== maxVy) return null;
       const [ax, ay] = this.toCache(minVx, minVy, hubHeight(w, block.x, block.y, size, size));
-      if (pixelArt('servicios')) return { sprite: servicePixelSprite(block.kind), ax, ay };
-      return { sprite: serviceSprite(block.kind), ax, ay };
+      return { sprite: servicePixelSprite(block.kind), ax, ay };
     }
     const [ax, ay] = this.toCache(vx, vy, avg(hs));
     const coast = coastOf(tile);
     if (coast) {
       const variant = this.coastVariant(coast, vx, vy, x, y);
-      if (pixelArt('costa')) {
-        if (coast === 'promenade') return { sprite: promenadePixelSprite(variant), ax, ay };
-        if (coast === 'fishing') return { sprite: fishingPixelSprite(variant), ax, ay };
-      }
-      return { sprite: coastSprite(coast, variant), ax, ay };
+      // The promenade and the pier are sprites; the port, the resort and the lighthouse are unique
+      // buildings and stay in canvas until their own pass.
+      if (coast === 'promenade') return { sprite: promenadePixelSprite(variant), ax, ay };
+      if (coast === 'fishing') return { sprite: fishingPixelSprite(variant), ax, ay };
+      return { sprite: coastSprite(coast), ax, ay };
     }
     if (tile === TILE.BUS) {
       // A depot is a block drawn once, at the cell in front of its footprint, like a plant.
@@ -644,8 +623,7 @@ export class MapRenderer {
       if (vx !== maxVx || vy !== maxVy) return null;
       const [ax2, ay2] = this.toCache(minVx, minVy, hubHeight(w, depot.x, depot.y, BUS.size, BUS.size));
       const color = busColorOf(depot.line);
-      if (pixelArt('transporte')) return { sprite: busDepotPixelSprite(color), ax: ax2, ay: ay2 };
-      return { sprite: busDepotSprite(color), ax: ax2, ay: ay2 };
+      return { sprite: busDepotPixelSprite(color), ax: ax2, ay: ay2 };
     }
     if (tile === TILE.PARK) {
       // A plaza nobody keeps loses its trees and shows dry ground, so the city tells you at a glance.
@@ -653,26 +631,22 @@ export class MapRenderer {
       const tree =
         !neglected && parkTreeHere(x, y, (cx, cy) => cx >= 0 && cy >= 0 && cx < n && cy < n && w.tiles[w.idx(cx, cy)] === TILE.PARK);
       const look = neglected ? 'neglected' : tree ? 'tree' : 'bare';
-      if (pixelArt('plazas')) {
-        // Which sides touch another plaza, in the order back-right, front-right, front-left, back-left:
-        // the pixel floor runs its walks out along those sides, so a block reads as one garden.
-        let mask = 0;
-        for (const [k, [nx, ny]] of (
-          [
-            [vx, vy - 1],
-            [vx + 1, vy],
-            [vx, vy + 1],
-            [vx - 1, vy],
-          ] as const
-        ).entries())
-          if (this.isParkView(nx, ny)) mask |= 1 << k;
-        return { sprite: plazaPixelSprite(w.variant[i], look, mask), ax, ay };
-      }
-      return { sprite: parkSpriteFor(w.variant[i], look), ax, ay };
+      // Which sides touch another plaza, in the order back-right, front-right, front-left, back-left:
+      // the pixel floor runs its walks out along those sides, so a block reads as one garden.
+      let mask = 0;
+      for (const [k, [nx, ny]] of (
+        [
+          [vx, vy - 1],
+          [vx + 1, vy],
+          [vx, vy + 1],
+          [vx - 1, vy],
+        ] as const
+      ).entries())
+        if (this.isParkView(nx, ny)) mask |= 1 << k;
+      return { sprite: plazaPixelSprite(w.variant[i], look, mask), ax, ay };
     }
     if (tile === TILE.LINE) {
-      if (pixelArt('energia')) return { sprite: polePixelSprite(w.lineTier[i], w.variant[i]), ax, ay };
-      return { sprite: poleSpriteFor(), ax, ay };
+      return { sprite: polePixelSprite(w.lineTier[i], w.variant[i]), ax, ay };
     }
     const sign = tile === TILE.ROAD && !w.isWater(x, y) ? this.signs.get(i) : undefined;
     if (sign) {
@@ -682,8 +656,7 @@ export class MapRenderer {
       return { sprite: routeSignSpriteFor(qx - px, qy - py), ax, ay };
     }
     if (w.terrain.trees[i] && !w.isWater(x, y) && tile !== TILE.ROAD) {
-      if (pixelArt('arboles')) return { sprite: treePixelSprite(w.terrain.trees[i], w.variant[i]), ax, ay };
-      return { sprite: treeSpriteFor(w.terrain.trees[i], w.variant[i]), ax, ay };
+      return { sprite: treePixelSprite(w.terrain.trees[i], w.variant[i]), ax, ay };
     }
     return null;
   }
@@ -944,7 +917,7 @@ export class MapRenderer {
     // The route has no pavement strip: its asphalt runs to the edge of the cell.
     if (!this.routeBands || !this.world.route[i]) this.poly(pts, PAL.sidewalk);
     this.drawAsphalt(vx, vy, pts, i);
-    if (pixelArt('calles') && !(this.routeBands && this.world.route[i])) this.drawStreetDetail(vx, vy, pts, i);
+    if (!(this.routeBands && this.world.route[i])) this.drawStreetDetail(vx, vy, pts, i);
   }
 
   /**
@@ -960,7 +933,7 @@ export class MapRenderer {
     const code = this.bands[i];
     if (tierOf(code) === DIRT) {
       this.drawDirt(vx, vy, pts);
-      if (pixelArt('tierra')) this.drawDirtDetail(vx, vy, pts);
+      this.drawDirtDetail(vx, vy, pts);
       return;
     }
     if (kindOf(code) > KIND.PLAIN) {
@@ -1528,7 +1501,6 @@ export class MapRenderer {
     const g = this.g;
     const world = this.world;
     const n = world.n;
-    const hard = pixelArt('energia');
     const [ownX, ownY] = fromView(vx, vy, this.rot, n);
     // The reach is the one of the pole's own quality: the concrete line spans five cells, the wooden three.
     const reach = lineReach(world.lineTier[world.idx(ownX, ownY)]);
@@ -1550,7 +1522,7 @@ export class MapRenderer {
       // Each end hangs from its own pole: a mixed run has a wooden pole at one end and a concrete one at
       // the other, and the cables have to arrive at both.
       const [tx, ty] = fromView(target.vx, target.vy, this.rot, n);
-      const [ax0, ay0] = hard ? poleAttach(world.lineTier[world.idx(tx, ty)]) : s.attach!;
+      const [ax0, ay0] = poleAttach(world.lineTier[world.idx(tx, ty)]);
       const other: Pt = [bx + ax0, by + ay0];
       // The two cables of the line, one on each side of the running cable, and a sag that grows
       // with the span so a long run dips properly. The offset is perpendicular, so a horizontal or
@@ -1562,14 +1534,7 @@ export class MapRenderer {
       for (const side of [-1, 1]) {
         const ox = nx * side;
         const oy = ny * side;
-        if (pixelArt('energia')) {
-          this.wirePixels(top[0] + ox, top[1] + oy, other[0] + ox, other[1] + oy, sag);
-          continue;
-        }
-        g.beginPath();
-        g.moveTo(top[0] + ox, top[1] + oy);
-        g.quadraticCurveTo((top[0] + other[0]) / 2 + ox, (top[1] + other[1]) / 2 + sag + oy, other[0] + ox, other[1] + oy);
-        g.stroke();
+        this.wirePixels(top[0] + ox, top[1] + oy, other[0] + ox, other[1] + oy, sag);
       }
     }
   }

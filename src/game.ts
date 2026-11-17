@@ -4,7 +4,6 @@ import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
 import { attachPointer, type PointerTarget } from './input/controls';
 import { bubbleIcon } from './render/bubbles';
-import { pixelLayerOn, togglePixelLayer } from './render/artSwitch';
 import { pickCell } from './render/geometry';
 import { MapRenderer } from './render/mapRenderer';
 import { Minimap } from './render/minimap';
@@ -283,26 +282,6 @@ export class Game implements PointerTarget {
   refreshTraffic(): void {
     this.view.traffic.busesPerLine = transitBuses(this.sim.state.transport);
     this.view.refreshTraffic();
-  }
-
-  /**
-   * Takes the pixel layer out, or puts it back, and draws the map again whole: every chunk of the
-   * other look has to go, because a chunk keeps whatever it was drawn with. The city is untouched:
-   * this only changes how it is painted.
-   */
-  togglePixelLayer(): boolean {
-    const on = togglePixelLayer();
-    this.map.redrawAll();
-    this.view.invalidateLayer();
-    this.refreshTraffic();
-    this.minimapDirty = true;
-    this.updateHud(true);
-    return on;
-  }
-
-  /** Whether the pixel layer is being drawn, for the button that switches it. */
-  get pixelLayer(): boolean {
-    return pixelLayerOn();
   }
 
   private onNewMonth(): void {

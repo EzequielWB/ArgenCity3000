@@ -1,9 +1,10 @@
 /**
- * Pixel art for the zone buildings, painted at 1x with hard pixels and a closed palette.
+ * Pixel art for the city, painted at 1x with hard pixels and a closed palette: the zone buildings
+ * and the multi-lot kinds, the plazas, the coast promenade and pier, the depots, the plants, the
+ * services, the poles and the trees, the airports and harbours piece by piece, and the vehicles.
  *
- * This module is additive on purpose: nothing in the game uses it until `ART.residential` is on
- * (see `artSwitch.ts`), so the pixel pass can be shown and withdrawn without touching the rest of
- * the sprites, which are still being worked on in parallel.
+ * The map draws with these painters, always. What is still in canvas lives in `sprites.ts`: the ten
+ * unique buildings and the port, the resort and the lighthouse of the coast.
  *
  * The tone ramps come from the reference measured in `odd/tasks/estetica.md`: a cream wall shows
  * its two visible faces at 0.69 and 0.59 of its base colour. Footprints are the game's 32 x 16 px
