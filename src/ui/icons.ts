@@ -100,7 +100,21 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   teatro: svg(
     '<path d="M3 22l13-6.5L29 22l-13 6.5z" fill="#c9b48a"/><path d="M6 22v-7l10-5 10 5v7l-10 5z" fill="#f1e3c6" stroke="#5a3a22" stroke-width="1"/><path d="M10 22v-4.5l6-3 6 3V22" fill="#efe6d8"/><path d="M12 22v-4M16 22v-4.5M20 22v-4" stroke="#b9a98a" stroke-width="1.4"/><path d="M6 15l10-5 10 5-10 2z" fill="#7a2f3a"/><path d="M16 4c3.5 0 5 2 5 4.5h-10C11 6 12.5 4 16 4z" fill="#8a9a86" stroke="#5a5560" stroke-width=".8"/><path d="M16 2v2" stroke="#e0a526" stroke-width="1.4"/><circle cx="8" cy="10" r="1.4" fill="#ffd84a"/><circle cx="24" cy="10" r="1.4" fill="#ffd84a"/>',
   ),
-  estadio: svg(
+  cabildo: svg(
+    '<path d="M2 24l14-7 14 7-14 7z" fill="#8fbf6a"/><path d="M4 23v-8l12-6 12 6v8l-12 6z" fill="#efe6d2" stroke="#6b6459" stroke-width="1"/><path d="M4 15l12-6 12 6-12 3z" fill="#a8503c"/><path d="M6 18h2.4v4.4H6zM10 18h2.4v4.4H10zM14 18h2.4v4.4H14zM18 18h2.4v4.4H18zM22 18h2.4v4.4H22z" fill="#6b6257"/><path d="M13 13h6v10h-6z" fill="#f7f2e6" stroke="#6b6459" stroke-width=".8"/><path d="M16 9l4 4h-8z" fill="#a8503c"/><circle cx="16" cy="17" r="1.4" fill="#3b352e"/><path d="M16 6v2" stroke="#5d554b" stroke-width="1"/><path d="M16.5 5h3v2h-3z" fill="#7cb0d8"/>',
+  ),
+  regimiento: svg(
+    '<path d="M2 24l14-7 14 7-14 7z" fill="#b9a888"/><path d="M4 22v-5l9-4.5 9 4.5v5l-9 4.5z" fill="#e2dccb" stroke="#6b6459" stroke-width="1"/><path d="M4 17l9-4.5 9 4.5-9 2z" fill="#5d7a54"/><path d="M7 19h1.8v2.6H7zM11 19h1.8v2.6H11zM15 19h1.8v2.6H15z" fill="#5a5348"/><path d="M23 12v12" stroke="#8f8b82" stroke-width="1.4"/><path d="M23 6v6" stroke="#8f8b82" stroke-width="1.2"/><path d="M24 5h6v4h-6z" fill="#7cb0d8"/><path d="M24 6.6h6v1.6h-6z" fill="#f4f1e8"/><path d="M25 11h3v9h-3z" fill="#efe9da" stroke="#6b6459" stroke-width=".8"/><path d="M25 8.6l1.5-1.6 1.5 1.6z" fill="#5d7a54"/>',
+  ),
+  planetario: svg(
+    '<path d="M2 25l14-7 14 7-14 7z" fill="#c9c4b4"/><path d="M6 24l10-5 10 5-10 5z" fill="#79a95f"/><path d="M12 22v-5h8v5z" fill="#eae4d6" stroke="#8f8b82" stroke-width=".8"/><circle cx="16" cy="12" r="7.5" fill="#dfe7ea" stroke="#8f8b82" stroke-width=".8"/><path d="M8.8 12.6a7.5 4 0 0014.4 0" stroke="#4a5560" stroke-width="1.6" fill="none"/><path d="M15 4.6h2v3h-2z" fill="#e8e2d4"/><path d="M13.6 4.6h4.8l-2.4-2.2z" fill="#b9b2a4"/><circle cx="11" cy="8" r="1.6" fill="#4f8a3c"/><circle cx="21" cy="20" r="1.4" fill="#4f8a3c"/>',
+  ),
+  santuario: svg(
+    '<path d="M2 25l14-7 14 7-14 7z" fill="#c9c2b1"/><path d="M6 24v-11l10-5 10 5v11l-10 5z" fill="#9c5a44" stroke="#5a3228" stroke-width="1"/><path d="M6 13l10-5 10 5-10 2.4z" fill="#7d4433"/><path d="M7 20v-6l3-1.5 3 1.5v6l-3 1.5z" fill="#7d4433"/><path d="M19 20v-6l3-1.5 3 1.5v6l-3 1.5z" fill="#7d4433"/><path d="M13.6 21v-6l2.4-1.2 2.4 1.2v6l-2.4 1.2z" fill="#b06a4e"/><circle cx="16" cy="15" r="2" fill="#3f5a72" stroke="#e5ddc8" stroke-width=".7"/><path d="M10 8l3 3h-6z" fill="#8a4a3a"/><path d="M22 8l3 3h-6z" fill="#8a4a3a"/><path d="M10 5v3M22 5v3" stroke="#5d554b" stroke-width=".9"/>',
+  ),
+  sindicato: svg(
+    '<path d="M2 24l14-7 14 7-14 7z" fill="#c2bba9"/><path d="M4 23v-10l12-6 12 6v10l-12 6z" fill="#d8d2c2" stroke="#6b6459" stroke-width="1"/><path d="M4 13l12-6 12 6-12 2.6z" fill="#e6e0d0"/><path d="M7 17h18v3H7z" fill="#54707f"/><path d="M12 21h8v5h-8z" fill="#4a423a"/><path d="M6 19.4h20v2.4H6z" fill="#b23a2e" transform="translate(0,1)"/><circle cx="16" cy="21.8" r="1.2" fill="#f2efe6"/><path d="M23 8v11" stroke="#7d776d" stroke-width="1.2"/><path d="M24 7h4v3h-4z" fill="#b23a2e"/>',
+  ),  estadio: svg(
     '<path d="M2 22l14-7 14 7-14 7z" fill="#b9b2a4"/><path d="M16 12l13 6.5-13 6.5-13-6.5z" fill="#8a8b90" stroke="#4a4a52" stroke-width="1"/><path d="M16 15l8 4-8 4-8-4z" fill="#3f8f4a"/><path d="M16 15l8 4-8 4-8-4z" stroke="#f4f0e6" stroke-width=".8" fill="none"/><path d="M16 15v8M8 19h16" stroke="#e8f0e0" stroke-width=".7"/><path d="M5 12V4M27 12V4" stroke="#5a5560" stroke-width="1.6"/><rect x="3.5" y="2.5" width="3" height="2" fill="#ffd84a"/><rect x="25.5" y="2.5" width="3" height="2" fill="#ffd84a"/><path d="M6.5 4h19" stroke="#5a5560" stroke-width=".8" opacity=".6"/>',
   ),
 };

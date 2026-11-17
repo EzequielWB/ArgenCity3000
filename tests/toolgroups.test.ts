@@ -19,7 +19,7 @@ describe('tool groups', () => {
       ['Usinas', ['plant', 'plantGas', 'plantWind']],
       ['Costa', ['fishing', 'promenade', 'port', 'resort', 'lighthouse']],
       ['Transportes', ['bus', 'harbor', 'airport']],
-      ['Únicos', ['obelisco', 'calvario', 'puente', 'teatro', 'estadio']],
+      ['Únicos', ['obelisco', 'calvario', 'puente', 'teatro', 'estadio', 'cabildo', 'regimiento', 'planetario', 'santuario', 'sindicato']],
     ]);
   });
 

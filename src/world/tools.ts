@@ -1,4 +1,4 @@
-import { ASPHALT, BUS, COAST, COSTS, DIRT, HUBS, LINE_REACH, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, roadRank, type CoastKind, type HubKind, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
+import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES, GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, HUBS, LINE_REACH, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, roadRank, type CoastKind, type HubKind, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
@@ -24,8 +24,19 @@ const UNIQUE_PLAZA = UNIQUE_RULES.obelisco.plazaCells;
 const UNIQUE_HEIGHT = UNIQUE_RULES.calvario.height;
 const UNIQUE_TEATRO = UNIQUE_RULES.teatro.value;
 const UNIQUE_ESTADIO = UNIQUE_RULES.estadio.boulevard;
+const CABILDO_GOB = GOVERNMENTS.democracia.label.toLowerCase();
+const REGIMIENTO_GOB = GOVERNMENTS.dictadura.label.toLowerCase();
+const PLANETARIO_GOB = GOVERNMENTS.tecnocracia.label.toLowerCase();
+const SANTUARIO_GOB = GOVERNMENTS.teocracia.label.toLowerCase();
+const SINDICATO_GOB = GOVERNMENTS.comunismo.label.toLowerCase();
+const SANTUARIO_RULE = UNIQUE_RULES.santuario.water;
+const REGIMIENTO_RULE = UNIQUE_RULES.regimiento.openCells;
+const SINDICATO_RULE = UNIQUE_RULES.sindicato.industryCells;
+const PLANETARIO_RULE = UNIQUE_RULES.planetario.reach;
+const CABILDO_RULE = UNIQUE_RULES.cabildo.plazaCells;
 
-export const TOOLS: readonly ToolInfo[] = [
+/** Every tool of the game, government uniques included: what `TOOLS` shows depends on `GOVERNMENT_UNIQUES`. */
+const ALL_TOOLS: readonly ToolInfo[] = [
   { id: 'query', label: 'Consulta', key: '1', shape: 'point', help: 'Clic en el mapa para ver la ficha del lote.' },
   { id: 'bulldoze', label: 'Topadora', key: '2', shape: 'rect', help: 'Arrastrá para demoler. Se paga por lote.' },
   { id: 'roadDirt', label: 'Calle de tierra', key: '0', shape: 'line', help: 'La calle más barata y la peor de todas: aguanta la mitad del tránsito que el asfalto y no se puede hacer sobre el agua. Arrastrá asfalto encima para mejorarla pagando la diferencia.' },
@@ -66,6 +77,11 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'puente', label: UNIQUES.puente.label, key: ']', shape: 'anchor', help: `Uno solo por ciudad, de 2×6, todo sobre el agua con una punta en tierra. Con calle cerca suma ${percent(UNIQUES.puente.boost)} al turismo de la ciudad.` },
   { id: 'teatro', label: UNIQUES.teatro.label, key: ':', shape: 'anchor', help: `Uno solo por ciudad, de 3×3, en un barrio de valor del suelo ${UNIQUE_TEATRO} o más. Con calle cerca suma ${percent(UNIQUES.teatro.boost)} al turismo, y ${percent(UNIQUES.teatro.peak)} de abril a agosto, la temporada de funciones.` },
   { id: 'estadio', label: UNIQUES.estadio.label, key: '*', shape: 'anchor', help: `Uno solo por ciudad, de 4×4, con un bulevar a ${UNIQUE_ESTADIO} lotes o menos. Con calle cerca suma ${percent(UNIQUES.estadio.boost)} al turismo, y ${percent(UNIQUES.estadio.peak)} de marzo a noviembre, cuando hay torneo.` },
+  { id: 'cabildo', label: UNIQUES.cabildo.label, key: '{', shape: 'anchor', help: `El único de ${CABILDO_GOB}, de 3×2, con una plaza enfrente: ${CABILDO_RULE} lotes de plaza a ${UNIQUE_RULES.cabildo.reach} lotes o menos. Con calle cerca suma ${UNIQUES.cabildo.approval!.perMonth} puntos de aprobación por mes, y ${UNIQUES.cabildo.approval!.peak} en septiembre, el mes de la elección.` },
+  { id: 'regimiento', label: UNIQUES.regimiento.label, key: '}', shape: 'anchor', help: `El único de ${REGIMIENTO_GOB}, de 4×3, en descampado: ${REGIMIENTO_RULE} lotes libres a ${UNIQUE_RULES.regimiento.reach} lotes o menos. Con calle cerca baja el delito de los lotes de alrededor.` },
+  { id: 'planetario', label: UNIQUES.planetario.label, key: '?', shape: 'anchor', help: `El único de ${PLANETARIO_GOB}, de 3×3, a ${PLANETARIO_RULE} lotes o menos de una universidad. Con calle cerca da educación a los lotes de alrededor, como una escuela.` },
+  { id: 'santuario', label: UNIQUES.santuario.label, key: "'", shape: 'anchor', help: `El único de ${SANTUARIO_GOB}, de 3×4, a ${SANTUARIO_RULE} lotes o menos del agua. Con calle cerca suma ${UNIQUES.santuario.favor!.perMonth} puntos de favor por mes, y ${UNIQUES.santuario.favor!.peak} en abril, la peregrinación.` },
+  { id: 'sindicato', label: UNIQUES.sindicato.label, key: '\\', shape: 'anchor', help: `El único de ${SINDICATO_GOB}, de 3×2, entre las fábricas: ${SINDICATO_RULE} lotes industriales a ${UNIQUE_RULES.sindicato.reach} lotes o menos. Con calle cerca suma turismo en proporción a los puestos de trabajo industriales de la ciudad.` },
 ];
 
 export function isServiceTool(tool: ToolId): tool is ServiceKind {
@@ -77,7 +93,7 @@ export function isCoastTool(tool: ToolId): tool is CoastKind {
 }
 
 export function isUniqueTool(tool: ToolId): tool is UniqueKind {
-  return tool === 'obelisco' || tool === 'calvario' || tool === 'puente' || tool === 'teatro' || tool === 'estadio';
+  return (ALL_UNIQUE_KINDS as readonly string[]).includes(tool);
 }
 
 const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
@@ -108,6 +124,11 @@ export interface ToolGroup {
 }
 
 /** The toolbar's categories: every tool belongs to exactly one, in the order it is listed. */
+const isGovernmentUniqueTool = (tool: ToolId): boolean => GOVERNMENT_UNIQUE_KINDS.includes(tool as UniqueKind);
+
+/** The tools the game offers: the government uniques only when the package is switched on. */
+export const TOOLS: readonly ToolInfo[] = GOVERNMENT_UNIQUES ? ALL_TOOLS : ALL_TOOLS.filter((t) => !isGovernmentUniqueTool(t.id));
+
 export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'query', label: 'Consulta', tools: ['query', 'bulldoze'] },
   { id: 'network', label: 'Calles y luz', tools: ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line'] },
@@ -116,7 +137,13 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
   { id: 'coast', label: 'Costa', tools: ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] },
   { id: 'transport', label: 'Transportes', tools: ['bus', 'harbor', 'airport'] },
-  { id: 'uniques', label: 'Únicos', tools: ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'] },
+  {
+    id: 'uniques',
+    label: 'Únicos',
+    tools: GOVERNMENT_UNIQUES
+      ? ['obelisco', 'calvario', 'puente', 'teatro', 'estadio', 'cabildo', 'regimiento', 'planetario', 'santuario', 'sindicato']
+      : ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'],
+  },
 ];
 
 export function groupOfTool(tool: ToolId): ToolGroup {

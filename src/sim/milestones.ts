@@ -2,6 +2,7 @@
  * Milestones: population goals that unlock tools and bring a grant from the Province. A milestone
  * once reached is never lost, even if the city shrinks.
  */
+import { GOVERNMENT_UNIQUES } from '../config';
 import type { ToolId } from '../world/tools';
 
 export interface Milestone {
@@ -20,7 +21,14 @@ export const MILESTONES: readonly Milestone[] = [
   { pop: 1000, name: 'Ciudad', grant: 5000, unlocks: ['plantGas', 'port', 'resort', 'bus'] },
   { pop: 2500, name: 'Ciudad pujante', grant: 8000, unlocks: ['plantWind', 'harbor', 'hospital', 'university'] },
   { pop: 5000, name: 'Gran ciudad', grant: 12000, unlocks: ['lighthouse', 'airport'] },
-  { pop: 25000, name: 'Metrópolis', grant: 30000, unlocks: ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'] },
+  {
+    pop: 25000,
+    name: 'Metrópolis',
+    grant: 30000,
+    unlocks: GOVERNMENT_UNIQUES
+      ? ['obelisco', 'calvario', 'puente', 'teatro', 'estadio', 'cabildo', 'regimiento', 'planetario', 'santuario', 'sindicato']
+      : ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'],
+  },
   { pop: 50000, name: 'Gran metrópolis', grant: 50000, unlocks: [] },
   { pop: 100000, name: 'Megaciudad', grant: 80000, unlocks: [] },
   { pop: 200000, name: 'Área metropolitana', grant: 120000, unlocks: [] },
