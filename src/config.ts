@@ -473,13 +473,14 @@ export const ANGER = {
 export const ROAD_REACH = 3;
 
 /**
- * Public transport. A bus line is a depot on one lot that takes load off the streets around it:
- * every street within `radius` lots (Manhattan distance) carries `relief` less, and several lines
- * add up, never past `maxRelief`. It needs a street within ROAD_REACH to be built. `buses` of the
- * line run on the streets of its area.
+ * Public transport. A bus line is a depot on one lot whose buses take `trips` commuters off the
+ * streets within `radius` lots (Manhattan distance), spread over them in proportion to what each
+ * one carries. It is a number of people, not a percentage: five lines together carry five times
+ * that, which is a lot but is still a number, so an avenue loaded above it stays loaded. It needs a
+ * street within ROAD_REACH to work, and `buses` of the line run on it.
  */
 export const BUS_SIZE = 2;
-export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 9, relief: 0.35, maxRelief: 0.6, buses: 3 } as const;
+export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 9, trips: 500, buses: 3 } as const;
 /**
  * The commercial hubs of the transport category: an airport and a harbour for walks and cruises. A
  * piece takes `w`×`h` lots, always the same way round, and pieces that share an edge are one

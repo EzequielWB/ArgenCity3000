@@ -3,13 +3,13 @@
  * commerce and the nearest industry along the streets (split by each one's share of the city's
  * jobs), and what passes over a street is compared with what the street can carry. Streets laid
  * side by side form an avenue, which carries as many times more as it has lanes. The bus lines
- * take a share of the load off the streets of their area (see `transit.ts`).
+ * carry a number of commuters out of the streets of their area (see `transit.ts`).
  */
 import { fundingCondition } from './condition';
 import { CAPACITY, COAST, ROAD_REACH, ROAD_TIERS, TRAFFIC, weakerRoad, type RoadTier } from '../config';
 import { TILE, type World } from '../world/world';
 import { coastWorks } from './coast';
-import { transitRelief } from './transit';
+import { applyTransit } from './transit';
 
 export interface CongestionReport {
   /** Residents who commute: those whose home opens onto a street, in a city with jobs. */
@@ -135,9 +135,8 @@ export function computeCongestion(w: World, transport = 100, roads = 100): Conge
   const routes = [route(w, sources, sinksC, cJobs / jobs), route(w, sources, sinksI, iJobs / jobs)];
   const raw = new Float32Array(size);
   for (const r of routes) for (let i = 0; i < size; i++) raw[i] += r.load[i];
-  // The buses of the lines take part of the load off the streets of their area.
-  const relief = transitRelief(w, transport);
-  for (let i = 0; i < size; i++) raw[i] *= 1 - relief[i];
+  // The buses of the lines take their trips off the streets of their area, in place.
+  applyTransit(w, raw, transport);
 
   const condition = roadCondition(roads);
   // Capacity: the lanes of the avenue a cell belongs to, each one carrying what its quality says.
