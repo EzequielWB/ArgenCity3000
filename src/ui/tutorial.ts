@@ -22,7 +22,7 @@ export const TUTORIAL_HELP = 'Si te queda alguna duda, en cualquier momento ten�
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     title: '1. Empezá por una calle',
-    text: 'Trazá una calle arrastrando desde la ruta provincial. Tiene que salir de la ruta: por ahí llegan los vecinos nuevos.',
+    text: 'Trazá una calle arrastrando desde la ruta provincial. Tiene que salir de la ruta o de otra calle que ya esté conectada: por ahí llegan los vecinos nuevos.',
     image: 'calle.webp',
     alt: 'Una calle que se traza arrastrando desde el borde de la ruta provincial, con su costo.',
   },
@@ -34,7 +34,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     title: '3. Zonificá',
-    text: 'Marcá zonas pegadas a la calle: residencial para las casas, comercial para los negocios e industrial para las fábricas. Los edificios aparecen solos, empiezan humildes y mejoran con los años. Con la herramienta Consulta tocá cualquier edificio y ves sus detalles y qué le pasa: por qué no crece, o qué significa el globito que tiene arriba.',
+    text: 'Marcá zonas pegadas a la calle: residencial para las casas, comercial para los negocios e industrial para las fábricas. Los edificios aparecen solos, empiezan humildes y mejoran con los años. Con la herramienta "Consulta" tocá cualquier edificio y ves sus detalles y qué le pasa: por qué no crece, o qué significa el globito que tiene arriba.',
     image: 'zonas.webp',
     alt: 'Tres zonas junto a una calle, marcadas R, C e I, con casas, comercios y tinglados que ya aparecieron.',
   },

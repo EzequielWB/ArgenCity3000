@@ -393,7 +393,7 @@ describe('streets can only start from the route', () => {
     const apart = planTool(w, 'road', [[20, 20]]);
     expect(apart.cells).toEqual([]);
     expect(apart.cost).toBe(0);
-    expect(routeRefusal(w, 'road', 20, 20)).toBe('Las calles tienen que salir de la ruta');
+    expect(routeRefusal(w, 'road', 20, 20)).toBe('La calle tiene que salir de la ruta o de otra calle');
     expect(routeRefusal(w, 'road', 20, ROW_NEXT)).toBeNull();
   });
 

@@ -1,5 +1,5 @@
 /**
- * The roguelike run: a separate game whose goal is a million residents. The city plays as always;
+ * The roguelike run: a separate game whose goal is half a million residents. The city plays as always;
  * what changes is the goal, the run's own marks and the upgrades the player drafts at each one.
  * Every upgrade moves one of the knobs in `RunMods`, and the systems that already own each number
  * read those knobs instead of a second set of rules.
@@ -8,10 +8,13 @@ import { TICKS_PER_MONTH } from '../config';
 import { Rng } from '../core/rng';
 
 /** Residents that win the run. */
-export const RUN_GOAL = 1_000_000;
+export const RUN_GOAL = 500_000;
 
-/** Population marks where the player drafts. The goal itself is the win, not a pick. */
-export const RUN_MARKS: readonly number[] = [500, 2000, 5000, 10000, 25000, 50000, 100000, 200000, 350000, 500000, 700000];
+/**
+ * Population marks where the player drafts. The goal itself is the win, not a pick, so the last mark
+ * stays a good stretch below it: the last card is taken with the city still having room to grow.
+ */
+export const RUN_MARKS: readonly number[] = [500, 2000, 5000, 10000, 25000, 50000, 100000, 200000, 350000];
 
 /** Drafts a run gets: one before founding the city, and one at each mark. */
 export const RUN_PICKS = RUN_MARKS.length + 1;

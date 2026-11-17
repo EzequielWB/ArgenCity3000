@@ -1,9 +1,8 @@
 /** The roguelike windows: the three cards on the table, and the end of the run. */
-import { formatMoney, formatNumber } from '../core/format';
+import { formatNumber } from '../core/format';
 import type { Game } from '../game';
 import { dateLabel } from '../sim/calendar';
 import { RUN_PICKS, markOf, pickedUpgrades, upgradeById, type RunState, type Upgrade } from '../sim/roguelike';
-import type { Simulation } from '../sim/simulation';
 import { escapeHtml } from './dom';
 import { closeModal, lockModal, openModal } from './panels';
 
@@ -11,26 +10,43 @@ import { closeModal, lockModal, openModal } from './panels';
 const ADMIN_KNOBS = new Set(['admin', 'adminCurve']);
 
 /**
- * The line a card gets when it moves the administration: what that line is, and what it costs today.
- * Without it, "la administración crece con la ciudad" is a number with no face.
+ * What the administration is, said every time a card talks about it: sueldos, oficinas y trámites, o
+ * sea lo que cuesta hacer andar la Municipalidad, y que crece con la ciudad. Va sin el número de
+ * hoy: el número cambia solo y una explicación que envejece no sirve para decidir.
  */
-function noteFor(upgrade: Upgrade, sim: Simulation): string | null {
-  const admin = upgrade.stages.some((stage) => Object.keys(stage.mods).some((key) => ADMIN_KNOBS.has(key)));
-  const cost = sim.state.lastBudget?.services ?? 0;
-  if (!admin || cost <= 0) return null;
-  return `La administración (sueldos, oficinas y trámites) te cuesta hoy ${formatMoney(cost)} por mes, y cada habitante nuevo sale más caro que el anterior.`;
+const ADMIN_NOTE =
+  'La administración es lo que cuesta hacer andar la Municipalidad: los sueldos, las oficinas y los trámites. No es una obra ni un servicio de la ciudad, y cada habitante nuevo la encarece un poco.';
+
+/** Whether a card touches the administration, by its knobs or by its text. */
+function speaksOfAdmin(upgrade: Upgrade): boolean {
+  if (/administraci/i.test(upgrade.blurb)) return true;
+  return upgrade.stages.some((stage) => Object.keys(stage.mods).some((key) => ADMIN_KNOBS.has(key)));
 }
 
-/** The three cards of a draft, as markup: the name, what it does, and the line in today's pesos. */
-export function upgradeCardsHtml(offer: readonly string[], sim: Simulation): string {
+/** The line a card gets when it moves the administration: always the same explanation, never a price. */
+function noteFor(upgrade: Upgrade): string | null {
+  return speaksOfAdmin(upgrade) ? ADMIN_NOTE : null;
+}
+
+/** The three cards of a draft, as markup: the name, what it does, and the note when it is about the administration. */
+export function upgradeCardsHtml(offer: readonly string[]): string {
   return offer
     .map((id) => {
       const u = upgradeById(id);
       if (!u) return '';
-      const note = noteFor(u, sim);
+      const note = noteFor(u);
       return `<button type="button" data-upgrade="${u.id}"><b>${escapeHtml(u.label)}</b><span>${escapeHtml(u.blurb)}</span>${note ? `<span class="up-note">${escapeHtml(note)}</span>` : ''}</button>`;
     })
     .join('');
+}
+
+/** What was already taken, oldest first: the run's own diary, so a card can be judged against it. */
+function chosenHtml(run: RunState): string {
+  if (run.picks.length === 0) return '';
+  const picks = pickedUpgrades(run);
+  return `<div class="run-chosen"><h3>Lo que ya elegiste</h3><ul class="run-picks">${picks
+    .map((p) => `<li>${escapeHtml(p.label)}${p.outcome ? ` — ${escapeHtml(p.outcome)}` : ''}</li>`)
+    .join('')}</ul></div>`;
 }
 
 /** The draft of a mark: one of three cards, and no way out without choosing. */
@@ -46,7 +62,8 @@ export function openUpgrades(game: Game): void {
         ? 'La ciudad cruzó la marca. Elegí una mejora: la que dejes vuelve al mazo y puede salir más adelante.'
         : 'La ciudad arranca con una mejora a mano. Elegí una: la que dejes vuelve al mazo y puede salir más adelante.'
     }</p>
-    <div class="event-options">${upgradeCardsHtml(run.offer, game.sim)}</div>
+    <div class="event-options">${upgradeCardsHtml(run.offer)}</div>
+    ${chosenHtml(run)}
     <p><small>El tiempo está en pausa hasta que elijas.</small></p>`,
     undefined,
     'mejora',

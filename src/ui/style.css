@@ -627,14 +627,6 @@ button.chapa:focus-visible {
   shape-rendering: crispEdges;
 }
 
-/* The category of the tool in use. */
-.cat.current {
-  background: var(--gold);
-  border-color: var(--gold-light);
-  color: var(--ink);
-  font-weight: 700;
-}
-
 /* The category whose tools are showing. */
 #toolbar [aria-expanded='true'] {
   border-color: #fff;
@@ -717,8 +709,13 @@ button.chapa:focus-visible {
   height: 28px;
 }
 
-.fly .tool:hover {
-  border-color: var(--gold);
+/*
+ * Nothing in the bar or in a tool list changes its fill on hover or when chosen: the icon is the
+ * thing to read, and a green flash on the way to the gold one hid it. The state is a border.
+ */
+.fly .tool:hover,
+#toolbar button:hover {
+  border-color: var(--gold-light);
   background: var(--raised);
 }
 
@@ -726,9 +723,12 @@ button.chapa:focus-visible {
   background: var(--deep);
 }
 
-.fly .tool[aria-pressed='true'] {
-  background: var(--gold);
+.fly .tool[aria-pressed='true'],
+#toolbar .cat.current {
+  background: var(--raised);
   border-color: var(--gold-light);
+  box-shadow: inset 0 0 0 1px var(--gold-light), var(--bevel);
+  font-weight: 700;
 }
 
 .fly .tool kbd {
@@ -755,7 +755,7 @@ button.chapa:focus-visible {
 }
 
 .fly .tool[aria-pressed='true'] .price {
-  color: var(--ink);
+  color: var(--gold-light);
 }
 
 /* A tool the city has not earned yet (see sim/milestones.ts): the price gives way to the milestone that opens it. */

@@ -1,4 +1,5 @@
 import './ui/style.css';
+import { pixelLayerOn } from './render/artSwitch';
 import { Sound, browserAudio, browserStorage } from './audio/sound';
 import { MAP_SIZES, PLAYABLE_SIZES, type MapSizeId } from './config';
 import { hashString } from './core/rng';
@@ -249,6 +250,38 @@ function toggleSound(): void {
 }
 $('#btnSound').addEventListener('click', toggleSound);
 showSound();
+
+/**
+ * The pixel layer, on or off, with its one button. The menu is the way in on a phone and with the
+ * keyboard; the switch itself lives with the art, so `?pixel=` still decides how the page opens.
+ */
+function showPixelLayer(): void {
+  const on = pixelLayerOn();
+  const b = $('#btnPixel');
+  b.textContent = on ? 'Píxel: sí' : 'Píxel: no';
+  b.setAttribute('aria-pressed', String(on));
+}
+$('#btnPixel').addEventListener('click', () => {
+  if (!game) return;
+  const on = game.togglePixelLayer();
+  showPixelLayer();
+  toast(on ? 'Capa de píxel puesta' : 'Capa de píxel sacada');
+});
+showPixelLayer();
+/*
+ * The right button does nothing in this game: the map pans with it (see input/controls.ts), and the
+ * browser menu over the panels would stop the city in the middle of a drag. The fields where the
+ * player types are the exception: there the menu is how they paste.
+ */
+window.addEventListener(
+  'contextmenu',
+  (e) => {
+    const target = e.target instanceof HTMLElement ? e.target : null;
+    if (target && target.closest('input, textarea, [contenteditable="true"]')) return;
+    e.preventDefault();
+  },
+  { capture: true },
+);
 // Browsers only start audio after a gesture: the first click or key does it.
 for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(type, () => sound.unlock(), { capture: true });
 $('#btnMenu').addEventListener('click', () => {

@@ -282,7 +282,7 @@ function isFreeForUnique(w: World, x: number, y: number): boolean {
 }
 
 const ROUTE_UNTOUCHABLE = 'La ruta provincial no se toca';
-const STREETS_FROM_ROUTE = 'Las calles tienen que salir de la ruta';
+const STREETS_FROM_ROUTE = 'La calle tiene que salir de la ruta o de otra calle';
 
 /** Cells whose side touches (x, y). */
 function sideNeighbours(w: World, x: number, y: number): number[] {

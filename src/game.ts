@@ -4,6 +4,7 @@ import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
 import { attachPointer, type PointerTarget } from './input/controls';
 import { bubbleIcon } from './render/bubbles';
+import { pixelLayerOn, togglePixelLayer } from './render/artSwitch';
 import { pickCell } from './render/geometry';
 import { MapRenderer } from './render/mapRenderer';
 import { Minimap } from './render/minimap';
@@ -160,6 +161,11 @@ export class Game implements PointerTarget {
     this.view = new View($<HTMLCanvasElement>('#game'), this.map, this.world);
     this.minimap = new Minimap($<HTMLCanvasElement>('#minimap'), this.world);
     this.detach = attachPointer(this.view.canvas, this);
+    // The cross of the card is heard on the card itself, which is never replaced, only redrawn.
+    $('#info').addEventListener('click', (e) => {
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.closest('.close')) this.closeInfo();
+    });
     this.toolbar = new Toolbar($('#toolbar'), $('#flyout'), LAYERS, {
       setTool: (tool) => this.setTool(tool),
       setLayer: (layer) => this.setLayer(layer),
@@ -277,6 +283,26 @@ export class Game implements PointerTarget {
   refreshTraffic(): void {
     this.view.traffic.busesPerLine = transitBuses(this.sim.state.transport);
     this.view.refreshTraffic();
+  }
+
+  /**
+   * Takes the pixel layer out, or puts it back, and draws the map again whole: every chunk of the
+   * other look has to go, because a chunk keeps whatever it was drawn with. The city is untouched:
+   * this only changes how it is painted.
+   */
+  togglePixelLayer(): boolean {
+    const on = togglePixelLayer();
+    this.map.redrawAll();
+    this.view.invalidateLayer();
+    this.refreshTraffic();
+    this.minimapDirty = true;
+    this.updateHud(true);
+    return on;
+  }
+
+  /** Whether the pixel layer is being drawn, for the button that switches it. */
+  get pixelLayer(): boolean {
+    return pixelLayerOn();
   }
 
   private onNewMonth(): void {
@@ -735,7 +761,7 @@ ${stalled}` : ''}`;
     const run = s.run;
     if (!run) return;
     const goal = $('#goal');
-    goal.innerHTML = `→ <span class="goal-name">Un millón: </span>${formatNumber(RUN_GOAL)}${run.dry > 0 ? ` · <span class="tone-bad">rojo ${run.dry}/${RUN_DRY_MONTHS}</span>` : ''}`;
+    goal.innerHTML = `→ <span class="goal-name">La meta: </span>${formatNumber(RUN_GOAL)}${run.dry > 0 ? ` · <span class="tone-bad">rojo ${run.dry}/${RUN_DRY_MONTHS}</span>` : ''}`;
     goal.title = `Modo roguelike: ganás con ${formatNumber(RUN_GOAL)} habitantes. Mejoras elegidas: ${run.picks.length} de ${RUN_PICKS}.`;
     const over = runOver(s);
     if (over) {
@@ -809,16 +835,24 @@ ${stalled}` : ''}`;
     $('#balance').title = o.tooltip;
   }
 
+  /**
+   * The card of the queried lot. It is rebuilt only when the lot or its text changes: the HUD is
+   * refreshed on every month and every edit, and swapping the card's markup under the pointer ate
+   * the click on the cross, so closing it took several tries.
+   */
   private renderInfo(): void {
     if (!this.queried) return;
     const [x, y] = this.queried;
     const r = describeCell(this.world, this.sim, x, y);
     const card = $('#info');
-    card.classList.remove('hidden');
-    card.innerHTML = `<button class="close" aria-label="Cerrar">✕</button><h3>${escapeHtml(r.title)}</h3><ul>${r.lines
+    const html = `<button class="close" aria-label="Cerrar">✕</button><h3>${escapeHtml(r.title)}</h3><ul>${r.lines
       .map((l) => `<li>${escapeHtml(l)}</li>`)
       .join('')}</ul>${(r.issues ?? []).map((m) => `<p class="issue"><img src="${bubbleIcon(m.issue)}" alt="" width="26" height="30">${escapeHtml(m.text)}</p>`).join('')}${r.hint ? `<p class="hint">${escapeHtml(r.hint)}</p>` : ''}`;
-    card.querySelector('.close')!.addEventListener('click', () => this.closeInfo());
+    card.classList.remove('hidden');
+    if (card.dataset.card !== html) {
+      card.dataset.card = html;
+      card.innerHTML = html;
+    }
   }
 
   /** Screen position (CSS px, relative to the canvas) of the centre of a world cell. */
@@ -831,6 +865,8 @@ ${stalled}` : ''}`;
 
   closeInfo(): void {
     this.queried = null;
-    $('#info').classList.add('hidden');
+    const card = $('#info');
+    card.classList.add('hidden');
+    delete card.dataset.card;
   }
 }

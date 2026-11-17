@@ -42,9 +42,38 @@ function requested(): Set<string> | null {
 
 const asked = requested();
 
+/**
+ * `off` on the page is not a list of families but the master switch already down: the families are
+ * then all of them, waiting, so the button that brings the layer back does not have to choose.
+ */
+const switchedOff = asked !== null && (asked.has('off') || asked.has('nada'));
+const families = switchedOff ? null : asked;
+
+/**
+ * The master switch of the whole layer: the button of the menu turns it off and on without a
+ * reload, because reloading would throw away the city that is not saved. It starts from the page,
+ * so `?pixel=off` opens with the layer already out, and the button brings it back from there.
+ */
+let master = !switchedOff;
+
+/** Whether the layer is being drawn right now. */
+export function pixelLayerOn(): boolean {
+  return master;
+}
+
+export function setPixelLayer(on: boolean): void {
+  master = on;
+}
+
+/** Takes the layer out, or puts it back. Returns the new state, for the button that calls it. */
+export function togglePixelLayer(): boolean {
+  master = !master;
+  return master;
+}
+
 /** `true` when this family is drawn with the new pixel art. */
 export function pixelArt(family: ArtFamily): boolean {
-  if (asked === null) return true;
-  if (asked.has('off') || asked.has('nada')) return false;
-  return asked.has(family) || asked.has('todo') || asked.has('all');
+  if (!master) return false;
+  if (families === null) return true;
+  return families.has(family) || families.has('todo') || families.has('all');
 }

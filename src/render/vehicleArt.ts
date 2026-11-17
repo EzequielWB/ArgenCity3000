@@ -84,9 +84,7 @@ const GLASS_DARK: RGB = hex('#2b3a4a');
 const HEADLIGHT: RGB = hex('#f7e6a8');
 const TAILLIGHT: RGB = hex('#c8392f');
 const HULL_DARK: RGB = hex('#243044');
-const HULL_TOP: RGB = hex('#e8e2d2');
 const DECK: RGB = hex('#d8cfb8');
-const WATER_LINE: RGB = hex('#7fb6cb');
 const RED_BAND: RGB = hex('#c8392f');
 const WHITE: RGB = hex('#f4f0e6');
 const MAST: RGB = hex('#4a4440');
@@ -127,14 +125,14 @@ export function roadVehicle(kind: 'car' | 'taxi' | 'bus', color: number, dir: He
   // The side: the skirt in shade, the band of windows, and the wheels at the bottom.
   // A bus carries its windows in the body itself; a car is a platform with a cabin on top, so its body is
   // all paint and the glass comes later. That cabin is what makes the car read at six pixels long.
-  const sidePaint: WallPaint = (t, k) => (k === 0 ? shade(body[1], 0.72) : bus && k === h - 1 ? body[1] : bus ? GLASS_DARK : body[1]);
+  const sidePaint: WallPaint = (_t, k) => (k === 0 ? shade(body[1], 0.72) : bus && k === h - 1 ? body[1] : bus ? GLASS_DARK : body[1]);
   p.px.wall(side[0], side[1], h, sidePaint);
   for (const t of [0.14, 0.86]) {
     const [x, y] = along(side, t);
     p.px.rect(Math.round(x), Math.round(y) - 1, 1, 1, TYRE);
   }
   // The cap: the skirt at the bottom, the windshield above it, and a light at each end of the skirt.
-  const capPaint: WallPaint = (t, k) => (k === 0 ? body[2] : bus && faces.nose ? GLASS_DARK : body[1]);
+  const capPaint: WallPaint = (_t, k) => (k === 0 ? body[2] : bus && faces.nose ? GLASS_DARK : body[1]);
   p.px.wall(cap[0], cap[1], h, capPaint);
   // A light at each end of the skirt, inset so it never lands past the face: one pixel of car is a lot.
   for (const t of [0.06, 0.94]) {
@@ -217,7 +215,7 @@ function paintBoat(kind: 'tour' | 'fishing' | 'cruise', dir: Heading): { px: Pix
   // The hull: the work below the waterline dark, the freeboard white, and the deck on top.
   const cap = foot(faces.capIsU ? faces.u : faces.v);
   const side = foot(faces.capIsU ? faces.v : faces.u);
-  const hull: WallPaint = (t, k) => (k === 0 ? HULL_DARK : fishing && k === 1 ? RED_BAND : WHITE);
+  const hull: WallPaint = (_t, k) => (k === 0 ? HULL_DARK : fishing && k === 1 ? RED_BAND : WHITE);
   p.px.wall(side[0], side[1], hullH, hull);
   p.px.wall(cap[0], cap[1], hullH, hull);
   if (cruise) {
@@ -235,8 +233,6 @@ function paintBoat(kind: 'tour' | 'fishing' | 'cruise', dir: Heading): { px: Pix
   const houseLen = cruise ? len * 0.7 : fishing ? wid * 1.4 : len * 0.5;
   const houseWid = cruise ? wid * 0.72 : wid * 0.8;
   const house = footprint(dir, houseLen, houseWid);
-  const hAt = (q: Pt): Pt => at(q, hullH);
-  const hFace = (face: [Pt, Pt]): [Pt, Pt] => [hAt(face[0]), hAt(face[1])];
   if (fishing) {
     // The wheelhouse at the stern, a mast with its yellow flag, and a red band along the hull.
     const wf = footprint(dir, houseLen, houseWid);
@@ -256,7 +252,7 @@ function paintBoat(kind: 'tour' | 'fishing' | 'cruise', dir: Heading): { px: Pix
       const z = hullH + d * 2;
       const inset = cruise ? footprint(dir, houseLen * (d === 0 ? 1 : 0.82), houseWid * (d === 0 ? 1 : 0.8)) : house;
       const zAt = (q: Pt): Pt => at(q, z);
-      const glassRow: WallPaint = (t, k) => (k === 0 ? WHITE : k === 1 ? GLASS_DARK : WHITE);
+      const glassRow: WallPaint = (_t, k) => (k === 0 ? WHITE : k === 1 ? GLASS_DARK : WHITE);
       const iu = inset.faces.u.map(zAt);
       const iv = inset.faces.v.map(zAt);
       p.px.wall(iu[0], iu[1], 2, glassRow);
@@ -299,7 +295,7 @@ function paintPlane(level: number, dir: Heading): { px: Pixels; ax: number; ay: 
   // The fuselage, white with a dark belly, and the cockpit at the nose.
   const cap = foot(faces.capIsU ? faces.u : faces.v);
   const side = foot(faces.capIsU ? faces.v : faces.u);
-  p.px.wall(side[0], side[1], 2, (t, k) => (k === 0 ? shade(WHITE, 0.7) : WHITE));
+  p.px.wall(side[0], side[1], 2, (_t, k) => (k === 0 ? shade(WHITE, 0.7) : WHITE));
   p.px.wall(cap[0], cap[1], 2, () => GLASS_DARK);
   p.px.poly(
     corners.map((q) => at(q, 2)),

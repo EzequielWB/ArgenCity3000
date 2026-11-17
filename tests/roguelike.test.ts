@@ -5,7 +5,6 @@ import { monthlyBudget } from '../src/sim/budget';
 import { addBuilding, cityTotals } from '../src/sim/demand';
 import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, RUN_PICKS, markOf, type RunMods, UPGRADES, dueMark, newRun, openOffer, runMods, runOver, takeUpgrade, upgradeById } from '../src/sim/roguelike';
 import { Simulation, newSimState } from '../src/sim/simulation';
-import { formatMoney } from '../src/core/format';
 import { upgradeCardsHtml } from '../src/ui/upgrades';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { TILE, World } from '../src/world/world';
@@ -79,26 +78,23 @@ describe('roguelike', () => {
     expect(new Set(a.offer!.map((id) => upgradeById(id)!.kind)).size).toBe(3);
   });
 
-  it('una carta que declinás vuelve a la mesa antes de que se repita cualquiera', () => {
-    // El reparto es un mazo: lo que se ofreció y no se tomó queda abajo, no se pierde. Sin esto, el
-    // 38 % de las cartas declinadas no volvía a aparecer en toda la run.
-    let nuncaVolvieron = 0;
+  it('el mazo da la vuelta: ninguna carta queda enterrada y ninguna se repite sola', () => {
+    // Lo que se ofrece y no se toma va al fondo del mazo, no se pierde: en ocho sorteos de tres
+    // (veinticuatro lugares para veintidós cartas) el mazo tiene que haber pasado entero.
     for (let seed = 1; seed <= 20; seed++) {
       const run = newRun(seed);
-      const offers: string[][] = [];
-      for (let k = 0; k < RUN_PICKS; k++) {
-        offers.push([...run.offer!]);
-        takeUpgrade(run, run.offer![0], 0);
-        if (k < RUN_PICKS - 1) openOffer(run);
+      const shown = new Set<string>(run.offer!);
+      const declined = run.offer!.slice(1);
+      let cameBack = 0;
+      for (let k = 0; k < 12; k++) {
+        openOffer(run);
+        for (const id of run.offer!) shown.add(id);
+        if (run.offer!.some((id) => declined.includes(id))) cameBack++;
       }
-      // Lo que declinó en los primeros sorteos vuelve antes de que el mazo dé la vuelta entera.
-      for (let k = 0; k <= 3; k++) {
-        for (const id of offers[k].slice(1)) if (!offers.slice(k + 1).some((o) => o.includes(id))) nuncaVolvieron++;
-      }
-      expect(run.seen.length).toBeLessThanOrEqual(UPGRADES.length);
+      expect(shown.size).toBe(UPGRADES.length); // todas salieron: ninguna quedó abajo para siempre
       expect(new Set(run.seen).size).toBe(run.seen.length); // el mazo no se repite a sí mismo
+      expect(cameBack).toBeGreaterThan(0); // y lo que declinaste volvió
     }
-    expect(nuncaVolvieron).toBe(0);
   });
 
   it('ninguna carta es gratis: todas dan algo y todas cobran algo', () => {
@@ -207,7 +203,7 @@ describe('roguelike', () => {
     expect(runOver({ run: null, lostElection: true })).toBeNull();
   });
 
-  it('se gana al llegar al millón', () => {
+  it('se gana al llegar a la meta', () => {
     const w = cityOf(RUN_GOAL);
     const sim = new Simulation(w, newSimState(1, 'democracia', '', newRun(1)), 'Villa Millón');
     expect(sim.totals.pop).toBe(RUN_GOAL);
@@ -235,7 +231,7 @@ describe('roguelike', () => {
     expect(run.offer).not.toEqual(opening);
   });
 
-  it('el millón cierra la cuenta con el stack de mejoras', () => {
+  it('la meta cierra la cuenta con el stack de mejoras', () => {
     const w = cityOf(RUN_GOAL);
     const sim = new Simulation(w, newSimState(1, 'democracia', '', newRun(1)), 'Villa Millón');
     // Las cuatro reformas administrativas del pool (0,5 × 0,55 × 0,5 × 0,45) y lo que las acompaña.
@@ -243,7 +239,7 @@ describe('roguelike', () => {
     const b = budgetWith(w, 12, stack);
     expect(sim.totals.pop).toBe(RUN_GOAL);
     expect(b.balance).toBeGreaterThan(0);
-    // Y sin las reformas, el mismo millón no se paga: la meta es de las mejoras, no del mapa.
+    // Y sin las reformas, la misma población no se paga: la meta es de las mejoras, no del mapa.
     expect(budgetWith(w, 12, NO_MODS).balance).toBeLessThan(0);
   });
 
@@ -354,21 +350,21 @@ describe('roguelike', () => {
   });
 
   it('cada carta dice su nombre y qué hace, sin contarte de qué clase es', () => {
-    const sim = new Simulation(cityOf(5000, 64), newSimState(1, 'democracia', '', newRun(1)), 'Villa Carta');
-    const html = upgradeCardsHtml(['torres', 'altura', 'zona-franca', 'no-existe'], sim);
+    const html = upgradeCardsHtml(['torres', 'altura', 'zona-franca', 'no-existe']);
     expect(html.match(/data-upgrade=/g)).toHaveLength(3);
     expect(html).toContain('Torres de propiedad horizontal');
     for (const label of ['Solo buena', 'Con costo', 'A futuro']) expect(html).not.toContain(label);
     expect(html).not.toContain('no-existe');
   });
 
-  it('la administración se explica con el número de hoy', () => {
-    const sim = new Simulation(cityOf(5000, 64), newSimState(1, 'democracia', '', newRun(1)), 'Villa Carta');
-    sim.state.lastBudget = monthlyBudget(sim.world, 7, DEFAULT_FUNDING, null, 6);
-    const html = upgradeCardsHtml(['descentralizacion', 'torres'], sim);
-    expect(html).toContain('La administración (sueldos, oficinas y trámites)');
-    expect(html).toContain(formatMoney(sim.state.lastBudget.services));
-    expect(html.match(/up-note/g)).toHaveLength(1); // la que no toca la administración no la lleva
+  it('la administración se explica siempre, y nunca con el costo de hoy', () => {
+    // Cada carta que habla de la administración la explica, en sus dos formas: por lo que mueve
+    // (`red`, `ramal`) y por lo que dice (`descentralizacion`). El precio de hoy no va: cambia solo.
+    const html = upgradeCardsHtml(['descentralizacion', 'red', 'ramal', 'torres']);
+    expect(html.match(/up-note/g)).toHaveLength(3); // las tres que la tocan, y sólo ellas
+    expect(html).toContain('los sueldos, las oficinas y los trámites');
+    expect(html).not.toMatch(/\$/); // ni un solo importe: la explicación no envejece
+    expect(html).not.toContain('te cuesta hoy');
   });
 
   it('el pool es coherente: ids únicos y toda clase tiene cartas', () => {
