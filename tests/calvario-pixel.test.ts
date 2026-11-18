@@ -77,8 +77,10 @@ describe('el Calvario en píxel', () => {
     expect(b.ay).toBe(a.ay);
     // Y el dibujo no es el mismo espejado sin más: la loma se pinta para cada orientación.
     expect(drawing(a)).not.toBe(drawing(b));
-    expect(rises(a)).toBeGreaterThan(40);
-    expect(rises(b)).toBeGreaterThan(40);
+    // La loma más la cruz levantan el dibujo más de treinta píxeles sobre la esquina del lote: la cresta
+    // está al fondo, así que buena parte de esa altura se va en bajar por el rombo.
+    expect(rises(a)).toBeGreaterThan(30);
+    expect(rises(b)).toBeGreaterThan(30);
   });
 
   it('la loma ocupa el lote y el monte la cubre', () => {
@@ -99,7 +101,7 @@ describe('el Calvario en píxel', () => {
     const rows: number[] = [];
     for (let y = 0; y < a.px.h; y++) if (countish(a, stone, y, y + 1) > 0) rows.push(y);
     expect(rows.length).toBeGreaterThan(10);
-    expect(rows[rows.length - 1] - rows[0]).toBeGreaterThan(40);
+    expect(rows[rows.length - 1] - rows[0]).toBeGreaterThan(30);
   });
 
   it('las tres cruces están en la cresta, por encima de la loma', () => {

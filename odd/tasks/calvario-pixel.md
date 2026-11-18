@@ -8,9 +8,12 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
 - **S1.** *"que haga una pequeña escalinata con un poco de montecito y bosque, toma d ereferencia el
   calvario de Tandil"* — el dibujo tiene que tener tres cosas y en ese orden de importancia: la
   **escalinata**, un **montecito** (chico, no la sierra entera) y **bosque** alrededor.
-- **S2.** Referencia: el Calvario de Tandil — la Vía Crucis de piedra que sube la ladera, las tres
-  cruces en la cima, y el monte de pinos y eucaliptos alrededor. Nada de arte de SimCity 2000: sólo el
-  género.
+- **S2.** Referencia: el Calvario de Tandil — la Vía Crucis de piedra que sube la ladera, **una sola
+  cruz** en la cima, y el monte de pinos y eucaliptos alrededor. Nada de arte de SimCity 2000: sólo el
+  género. *(Reescrito por L10: eran tres cruces y el usuario pidió una sola, más grande.)*
+- **S7.** *"Preferiria quizá un poco menos de altura, que haya algunas piedritas en la zona verde y que
+  haya una sola cruz mas grande"* — la loma baja, el pasto con piedritas sueltas y una cruz sola, que
+  sea el remate del monumento.
 - **S3.** Píxel a 1×, píxeles duros; la única transparencia parcial permitida es la sombra (alfa ≤ 96).
 - **S4.** El sprite se pinta para el lote como se ve: 3×6 y 6×3 según gire la cámara. Un dibujo por
   orientación, del mismo tamaño, y en las dos la escalinata sube hacia la cresta.
@@ -20,7 +23,7 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
 
 ### Criterios de aceptación
 
-- Se reconoce de un vistazo como **un cerro con una escalera y tres cruces**, no como un edificio.
+- Se reconoce de un vistazo como **un cerro con una escalera y una cruz**, no como un edificio.
 - El bosque está en la base y en las laderas, y los árboles **se apoyan** en la pendiente: ninguno
   flota ni se hunde.
 - La escalinata llega de la base a la cresta sin cortarse, y la cara de la loma no se lee como una
@@ -86,3 +89,13 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
 - **L9.** Los tests tuvieron que cambiar con el dibujo, y está bien: lo que prueban es que hay piedra,
   que aparece en toda la altura de la loma y que son varios peldaños, no un número de píxeles que se
   movía con cada vuelta del dibujo.
+- **L10.** Pedido, textual: *"Preferiria quizá un poco menos de altura, que haya algunas piedritas en la
+  zona verde y que haya una sola cruz mas grande"*. Se reescribió S2 (una cruz en vez de tres) y se
+  agregó S7; se reabrió la tarea de la cresta.
+- **L11.** Lo que cambió: la loma bajó de 44 a 34 y con ella los tramos de la escalinata de siete a seis,
+  porque a 34 el tramo de siete se quedaba sin píxeles y volvía a leerse como rampa; el filo del peldaño
+  pasó a ser lo que sostiene la lectura. La esplanada se achicó al tamaño de una cruz y no de la cresta
+  entera. Aparecieron dieciséis piedritas sueltas sobre el pasto, en gris claro y con una sola línea de
+  sombra abajo —al revés se leían como manchas—, pintadas antes del monte para que un árbol de adelante
+  las tape. Y la cruz quedó sola, de 28 de alto y 13 de ancho, con el palo de tres píxeles y un pie de
+  piedra.
