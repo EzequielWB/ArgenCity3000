@@ -45,15 +45,18 @@ function topRow(a: Art): number {
 /** Pixels the building rises above its anchor, so taller levels compare as taller. */
 const rises = (a: Art) => a.ay - topRow(a);
 
-/** Distinct colours, ignoring the transparent pixels. */
-function tones(a: Art): number {
+/** Every colour a drawing paints, ignoring the transparent pixels. */
+function palette(a: Art): Set<number> {
   const set = new Set<number>();
   for (let i = 0; i < a.px.data.length; i += 4) {
     if (!a.px.data[i + 3]) continue;
     set.add((a.px.data[i] << 16) | (a.px.data[i + 1] << 8) | a.px.data[i + 2]);
   }
-  return set.size;
+  return set;
 }
+
+/** Distinct colours, ignoring the transparent pixels. */
+const tones = (a: Art) => palette(a).size;
 
 /** Pixels painted at all: how much of the canvas a drawing uses. */
 function countOpaque(a: Art): number {
@@ -146,6 +149,17 @@ for (const [family, paint] of FAMILIES) {
     });
   });
 }
+
+describe('the towers of the last level', () => {
+  it('come in more than one facade colour, so a skyline of them is not one grey mass', () => {
+    const grey = palette(paintResidential(5, 0));
+    const extra = new Set<number>();
+    for (let variant = 1; variant < 8; variant++)
+      for (const c of palette(paintResidential(5, variant))) if (!grey.has(c)) extra.add(c);
+    // Four new colours is a little over one facade ramp: the variants are not the same wall repainted.
+    expect(extra.size).toBeGreaterThan(3);
+  });
+});
 
 /**
  * The lots of 2 x 2: the same pixel discipline, but on a 64 x 32 diamond, because these businesses

@@ -35,6 +35,8 @@ const CONCRETE = ramp('#a9a395');
 const ROOFTOP = hex('#b9b6ad');
 const PERGOLA = ramp('#2f7a4a');
 const TOWER_WALL = ramp('#c3cfd4');
+/** The facades of the tall blocks: the grey of the first ones, white, cream, sand, celadon and dusty rose. */
+const TOWER_WALLS = ['#c3cfd4', '#ece4d6', '#e2cdaa', '#c8d5c2', '#d9c2b8', '#e8dfc4'].map(ramp);
 /** The dark inside of a shop, and the warm light of the ones that are open. */
 const INSIDE = hex('#2e2620');
 const WARM = hex('#d8a24a');
@@ -504,6 +506,8 @@ function block(p: Pen, v: number): void {
 /** Level 5: the tower, on a wider podium, with glass bands and a machine room on top. */
 function tower(p: Pen, v: number): void {
   const h = 46 + (v % 3) * 6;
+  // A skyline painted in one tone reads as a single grey mass, so each variant brings its own facade.
+  const wall = TOWER_WALLS[v % TOWER_WALLS.length];
   p.shadow(0.06, 0.08, 0.94, 0.92);
   // The podium: two floors at street level, wider than the tower, so the silhouette steps in.
   p.box(0.06, 0.08, 0.94, 0.92, 0, 10, CONCRETE, 'plain', [door(4, 4, 8), pane(10, 2, 4, 6, GLASS)], [pane(4, 2, 4, 6, GLASS)], ROOFTOP);
@@ -518,7 +522,7 @@ function tower(p: Pen, v: number): void {
     front.push(...ribbon(1, 14, z, 3));
     side.push(...ribbon(2, 13, z, 3));
   }
-  p.box(u0, v0, u1, v1, 10, h - 10, TOWER_WALL, 'plain', front, side, ROOFTOP);
+  p.box(u0, v0, u1, v1, 10, h - 10, wall, 'plain', front, side, ROOFTOP);
   p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
   p.box(0.32, 0.34, 0.6, 0.6, h + 2, 5, CONCRETE, 'plain');
   p.tank(0.66, 0.26, h + 2);
