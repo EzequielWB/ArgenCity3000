@@ -719,11 +719,21 @@ button.chapa:focus-visible {
   height: 28px;
 }
 
+/* The unique of the city's own form of government: first in the list, framed in gold and nothing else. */
+.fly .tool.gov-unique {
+  border-color: rgba(224, 165, 38, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 224, 138, 0.18);
+}
+
+/* The uniques of the other forms of government are not options: `display: grid` would undo `hidden`. */
+.fly .tool[hidden] {
+  display: none;
+}
+
 /*
  * Nothing in the bar or in a tool list changes its fill on hover or when chosen: the icon is the
  * thing to read, and a green flash on the way to the gold one hid it. The state is a border.
- */
-.fly .tool:hover,
+ */.fly .tool:hover,
 #toolbar button:hover {
   border-color: var(--gold-light);
   background: var(--raised);

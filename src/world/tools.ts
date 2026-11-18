@@ -1,4 +1,4 @@
-import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES, GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, HUBS, LINE_TIERS, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, lineRank, roadRank, type CoastKind, type HubKind, type LineTier, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
+import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES, GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, HUBS, LINE_TIERS, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, lineRank, roadRank, type CoastKind, type GovernmentKind, type HubKind, type LineTier, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
@@ -95,6 +95,14 @@ export function isCoastTool(tool: ToolId): tool is CoastKind {
 
 export function isUniqueTool(tool: ToolId): tool is UniqueKind {
   return (ALL_UNIQUE_KINDS as readonly string[]).includes(tool);
+}
+
+/** True when the tool is the unique of another form of government: it is not an option in this city. */
+export function isForeignUnique(tool: ToolId, government: GovernmentKind): boolean {
+  const kind = uniqueKindOfTool(tool);
+  if (!kind) return false;
+  const own = UNIQUES[kind].government;
+  return own !== undefined && own !== government;
 }
 
 const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };

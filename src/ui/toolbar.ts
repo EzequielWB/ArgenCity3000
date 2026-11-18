@@ -2,7 +2,7 @@
  * The toolbar: the categories that open a flyout with their tools, plus undo, the
  * layers and the view controls. It only draws and reports clicks; the game decides what happens.
  */
-import { BUS, COAST, COSTS, HUBS, LINE_TIERS, PLANTS, ROAD_TIERS, SERVICES, UNIQUES } from '../config';
+import { BUS, COAST, COSTS, GOVERNMENT_UNIQUE_KINDS, HUBS, LINE_TIERS, PLANTS, ROAD_TIERS, SERVICES, UNIQUES, type UniqueKind } from '../config';
 import { formatMoney, formatNumber } from '../core/format';
 import type { Layer } from '../render/view';
 import { MILESTONES, isUnlocked, milestoneOfTool } from '../sim/milestones';
@@ -139,6 +139,24 @@ export class Toolbar {
   showLayer(layer: Layer): void {
     this.flyout.querySelectorAll<HTMLElement>('[data-layer]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layer === layer)));
     this.bar.querySelector('#layerName')!.textContent = this.layers.find((l) => l.id === layer)?.label ?? '';
+  }
+
+  /**
+   * Leaves only the uniques this city may raise: its own government's, framed in gold and first in
+   * the list, and the five shared by every city. The uniques of other governments are not options.
+   */
+  showGovernmentUnique(kind: UniqueKind | null): void {
+    const panel = this.flyout.querySelector<HTMLElement>('[data-panel="uniques"]');
+    if (!panel) return;
+    const rows = [...panel.querySelectorAll<HTMLElement>('[data-tool]')];
+    for (const b of rows) {
+      const tool = b.dataset.tool as UniqueKind;
+      const foreign = GOVERNMENT_UNIQUE_KINDS.includes(tool) && tool !== kind;
+      b.hidden = foreign;
+      b.classList.toggle('gov-unique', tool === kind);
+    }
+    const own = rows.find((b) => b.classList.contains('gov-unique'));
+    if (own && own !== rows[0]) panel.insertBefore(own, rows[0]);
   }
 
   /** Greys the tools the city has not earned yet and says when each one opens. */

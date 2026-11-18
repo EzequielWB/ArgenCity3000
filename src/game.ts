@@ -29,7 +29,7 @@ import { openRunOver, openUpgrades } from './ui/upgrades';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
 import { applyPlan, dragCells, footprintOfTool, isCoastTool, planTool, plantKindOfTool, routeRefusal, toolInfo, uniqueKindOfTool, type Plan, type ToolId } from './world/tools';
-import { uniqueFootprint, uniqueRefusal } from './world/uniques';
+import { uniqueFootprint, uniqueOfGovernment, uniqueRefusal } from './world/uniques';
 import { busArea, busRefusal, busLineProblem } from './world/transport';
 import { openBusLine } from './ui/busline';
 import { UndoHistory } from './world/history';
@@ -174,6 +174,7 @@ export class Game implements PointerTarget {
     });
     this.toolbar.showTool(this.tool);
     this.toolbar.showLayer(this.view.layer);
+    this.toolbar.showGovernmentUnique(uniqueOfGovernment(this.sim.state.government));
     this.buildSpeed();
     this.startCamera();
     this.updateHud(true);
@@ -351,6 +352,7 @@ export class Game implements PointerTarget {
   /** Signs the founding papers: the party, the form of government, and the city's first headline. */
   found(government: GovernmentKind, party: string): void {
     this.sim.found(government, party);
+    this.toolbar.showGovernmentUnique(uniqueOfGovernment(government));
     this.updateHud(true);
   }
 

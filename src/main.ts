@@ -15,7 +15,7 @@ import { closeModal, dismissModal, initModal, isModalOpen, openBudget, openGover
 import { openTutorialAsk } from './ui/tutorial';
 import { MAP_KINDS, generateMap, type MapKind } from './world/mapkinds';
 import type { Terrain } from './world/terrain';
-import { TOOLS } from './world/tools';
+import { TOOLS, isForeignUnique } from './world/tools';
 import { PRESETS, loadPreset, worldFromPreset, type MapPreset } from './world/presets';
 import { addRoute } from './world/route';
 import { World } from './world/world';
@@ -341,7 +341,7 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   const tool = TOOLS.find((t) => t.key === key);
-  if (tool) return game.setTool(tool.id);
+  if (tool && !isForeignUnique(tool.id, game.sim.state.government)) return game.setTool(tool.id);
   switch (key) {
     case 'q':
       game.rotate(-1);

@@ -5,7 +5,7 @@
  * the estadio next to a boulevard because the crowd has to get there. A monument pays no fixed rent:
  * it adds a share of the tourism of the whole city, with a season of its own (`uniqueBoost`).
  */
-import { CAPACITY, GOVERNMENTS, roadRank, UNIQUES, UNIQUE_BOOST_MAX, UNIQUE_RULES, type GovernmentKind, type UniqueKind } from '../config';
+import { CAPACITY, GOVERNMENTS, GOVERNMENT_UNIQUE_KINDS, roadRank, UNIQUES, UNIQUE_BOOST_MAX, UNIQUE_LIMIT, UNIQUE_RULES, type GovernmentKind, type UniqueKind } from '../config';
 import { TILE, zoneOf, type Unique, type World } from './world';
 import { streetNear } from './transport';
 
@@ -154,6 +154,7 @@ function endOnLand(w: World, kind: UniqueKind, cells: readonly Cell[]): boolean 
 export function uniqueRefusal(w: World, kind: UniqueKind, cells: readonly Cell[], government?: GovernmentKind): string | null {
   const { label } = UNIQUES[kind];
   if (uniquesOf(w, kind).length > 0) return `${label}: ya hay uno en la ciudad, y no puede haber más`;
+  if (w.uniques.length >= UNIQUE_LIMIT) return `${label}: la ciudad ya tiene sus ${UNIQUE_LIMIT} edificios únicos, y no entra otro`;
   const own = UNIQUES[kind].government;
   if (own && government && own !== government) {
     return `${label}: es el único de ${GOVERNMENTS[own].label.toLowerCase()}, y esta ciudad es ${GOVERNMENTS[government].label.toLowerCase()}`;
@@ -217,11 +218,17 @@ export function uniqueRefusal(w: World, kind: UniqueKind, cells: readonly Cell[]
 }
 
 /**
- * Whether a monument is worth visiting: a street has to reach it, or nobody gets there. It asks for
- * no light and gives none: it is a building of stone and steel, not a service.
+ * Whether a monument is worth visiting: a street has to reach it and it has to have light, like every
+ * other building. The light is read on the lot it is anchored on, the same one the services read.
  */
 export function uniqueWorks(w: World, u: Unique): boolean {
+  if (w.powered[w.idx(u.x, u.y)] !== 1) return false;
   return uniqueFootprint(u.kind, w.n, u.x, u.y).some(([x, y]) => streetNear(w, x, y));
+}
+
+/** The unique of a form of government, or null when it has none. */
+export function uniqueOfGovernment(government: GovernmentKind): UniqueKind | null {
+  return GOVERNMENT_UNIQUE_KINDS.find((k) => UNIQUES[k].government === government) ?? null;
 }
 
 /**

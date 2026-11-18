@@ -549,10 +549,10 @@ export const BUS_COLORS = [
 ] as const;
 
 /**
- * Buildings of the coast, one lot each. A dock, a port and a resort work (give jobs and income)
- * only with a street within `ROAD_REACH`; the promenade and the lighthouse need nothing. `jobs`
- * are industrial for the dock and the port and commercial for the resort. None of them needs
- * light, and none levels the ground.
+ * Buildings of the coast, one lot each. All of them need light and a street to work; the street
+ * counts when it reaches the building or one of the coast buildings beside it, so a single street
+ * serves the whole strip. `jobs` are industrial for the dock and the port and commercial for the
+ * resort. None levels the ground.
  */
 export type CoastKind = 'fishing' | 'promenade' | 'port' | 'resort' | 'lighthouse';
 export const COAST_KINDS: readonly CoastKind[] = ['fishing', 'promenade', 'port', 'resort', 'lighthouse'];
@@ -625,6 +625,12 @@ export type UniqueKind = 'obelisco' | 'calvario' | 'puente' | 'teatro' | 'estadi
 export const UNIQUE_KINDS: readonly UniqueKind[] = ['obelisco', 'calvario', 'puente', 'teatro', 'estadio'];
 export const GOVERNMENT_UNIQUE_KINDS: readonly UniqueKind[] = ['cabildo', 'regimiento', 'planetario', 'santuario', 'sindicato'];
 export const ALL_UNIQUE_KINDS: readonly UniqueKind[] = [...UNIQUE_KINDS, ...GOVERNMENT_UNIQUE_KINDS];
+
+/**
+ * How many uniques a city may raise in a whole run: its own government's one and one of the shared
+ * five. The rest of the list stays visible and refused.
+ */
+export const UNIQUE_LIMIT = 2;
 
 export interface Unique {
   label: string;

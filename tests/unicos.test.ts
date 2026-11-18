@@ -9,7 +9,7 @@ import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { computeCrime, computeServices } from '../src/sim/fields';
 import { zoneTile } from '../src/world/world';
 import { UndoHistory } from '../src/world/history';
-import { applyPlan, groupOfTool, planTool, footprintOfTool, isUniqueTool, uniqueKindOfTool, type ToolId } from '../src/world/tools';
+import { applyPlan, groupOfTool, isForeignUnique, planTool, footprintOfTool, isUniqueTool, uniqueKindOfTool, type ToolId } from '../src/world/tools';
 import { countUniques, industrialJobs, uniqueApproval, uniqueBoost, uniqueFavor, uniqueFootprint, uniqueRefusal, uniqueUpkeep, uniqueWorks } from '../src/world/uniques';
 import { TILE, World } from '../src/world/world';
 
@@ -78,6 +78,16 @@ describe('the category of the uniques', () => {
     expect(uniqueKindOfTool('park')).toBeNull();
   });
 
+  it('leaves out the uniques of the other forms of government: they are not options', () => {
+    expect(isForeignUnique('cabildo', 'democracia')).toBe(false);
+    expect(isForeignUnique('cabildo', 'teocracia')).toBe(true);
+    expect(isForeignUnique('sindicato', 'comunismo')).toBe(false);
+    expect(isForeignUnique('sindicato', 'democracia')).toBe(true);
+    // The five shared ones belong to every government.
+    for (const kind of UNIQUE_KINDS) expect(isForeignUnique(kind, 'teocracia')).toBe(false);
+    expect(isForeignUnique('road', 'teocracia')).toBe(false);
+  });
+
   it('keeps the footprints the player asked for', () => {
     expect([UNIQUES.obelisco.w, UNIQUES.obelisco.h]).toEqual([2, 2]);
     expect([UNIQUES.calvario.w, UNIQUES.calvario.h]).toEqual([3, 6]);
@@ -109,6 +119,20 @@ describe('one of each per city', () => {
     expect(again.cells).toEqual([]);
     expect(again.cost).toBe(0);
     expect(uniqueRefusal(w, 'obelisco', uniqueFootprint('obelisco', w.n, 3, 7))).toMatch(/Obelisco: ya hay uno en la ciudad/);
+  });
+
+  it('refuses a third one: a city raises its own government unique and one of the shared ones', () => {
+    const w = withPlaza(city());
+    w.uniques.push({ x: 3, y: 7, kind: 'obelisco' }, { x: 10, y: 10, kind: 'teatro' });
+    expect(uniqueRefusal(w, 'estadio', uniqueFootprint('estadio', w.n, 20, 20))).toMatch(/ya tiene sus 2 edificios únicos/);
+  });
+
+  it('needs light like any other building, on top of the street', () => {
+    const w = withPlaza(city());
+    put(w, 'obelisco', 3, 7);
+    expect(uniqueWorks(w, w.uniques[0])).toBe(true);
+    w.powered.fill(0);
+    expect(uniqueWorks(w, w.uniques[0])).toBe(false);
   });
 
   it('bills the upkeep of every monument, working or not', () => {
@@ -272,10 +296,11 @@ describe('the card of a monument', () => {
     put(w, 'obelisco', 3, 7);
     const sim = new Simulation(w, newSimState(1), 'X');
     sim.refresh();
+    w.powered.fill(1); // the card only reads the light, and a city with no plant has none
     const card = describeCell(w, sim, 3, 7);
     expect(card.title).toBe('Obelisco');
     expect(card.lines.join(' ')).toMatch(/Suma 6 % al turismo/);
-    expect(card.lines.join(' ')).toMatch(/uno solo por ciudad/);
+    expect(card.lines.join(' ')).toMatch(/uno de cada uno, y 2 en total/);
     expect(card.lines.join(' ')).toMatch(/cualquier gobierno/);
   });
 
@@ -486,6 +511,8 @@ describe('the uniques of each government', () => {
     put(w, 'cabildo', 3, 7);
     expect(w.uniques).toHaveLength(1);
     const sim = new Simulation(w, newSimState(1, 'democracia'), 'X');
+    sim.refresh();
+    w.powered.fill(1); // the card only reads the light, and a city with no plant has none
     const card = describeCell(w, sim, 3, 7);
     expect(card.title).toBe('El Cabildo');
     expect(card.lines.join(' ')).toMatch(/aprobación/);

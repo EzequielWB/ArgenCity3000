@@ -24,6 +24,7 @@ import {
   SERVICES,
   TRAFFIC,
   UNIQUES,
+  UNIQUE_LIMIT,
   WIND,
   type CoastKind,
   type ServiceKind,
@@ -34,7 +35,7 @@ import { isUnlocked } from './milestones';
 import { buildingIssues, type Issue } from './warnings';
 import { SEA_LEVEL } from '../world/terrain';
 import { facilityAt } from '../world/hubs';
-import { uniqueWorks } from '../world/uniques';
+import { uniqueFootprint, uniqueWorks } from '../world/uniques';
 import { busColorOf, busNumberOf, streetNear } from '../world/transport';
 import { serviceAnchorIndex } from '../world/services';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf, type Unique, type ZoneKind } from '../world/world';
@@ -149,12 +150,12 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
     if (tile === TILE.LINE) return { title: `${LINE_TIERS[w.lineTier[i]].label} sobre el agua`, lines: [w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_TIERS[w.lineTier[i]].reach} lotes a su alrededor`] };
     // A monument over the water (the puente) gets its own card before the river's.
     const over = tile === TILE.UNIQUE ? w.uniqueAt(x, y) : undefined;
-    if (over) return describeUnique(w, over);
+    if (over) return describeUnique(w, over, sim);
     return { title: 'Río', lines: ['Agua. Se puede cruzar con calles (puentes) o con tendido eléctrico.'] };
   }
   // A monument on land (the obelisco, the calvario, the teatro, the estadio).
   const monument = tile === TILE.UNIQUE ? w.uniqueAt(x, y) : undefined;
-  if (monument) return describeUnique(w, monument);
+  if (monument) return describeUnique(w, monument, sim);
   if (tile === TILE.PLANT) {
     const p = sim.power;
     const plant = w.plantAt(x, y);
@@ -309,16 +310,17 @@ function uniqueEffect(kind: UniqueKind): string {
   return info.peakMonths.length ? `Suma ${share} % al turismo, y ${peak} % en ${info.peakMonths.map((m) => MONTHS[m - 1]).join(', ')}` : `Suma ${share} % al turismo de la ciudad`;
 }
 
-function describeUnique(w: World, u: Unique): CellReport {
+function describeUnique(w: World, u: Unique, sim: Simulation): CellReport {
   const info = UNIQUES[u.kind];
   const upkeep = `Mantenimiento: $${formatNumber(info.upkeep)} por mes`;
-  const size = `${info.w}×${info.h} lotes · uno solo por ciudad`;
+  const size = `${info.w}×${info.h} lotes · uno de cada uno, y ${UNIQUE_LIMIT} en total`;
   const owner = info.government ? `El único de ${GOVERNMENTS[info.government].label.toLowerCase()}` : 'Lo puede construir cualquier gobierno';
   if (!uniqueWorks(w, u)) {
+    const noStreet = !uniqueFootprint(u.kind, w.n, u.x, u.y).some(([x, y]) => streetNear(w, x, y));
     return {
       title: info.label,
-      lines: [`Sin calle a menos de ${ROAD_REACH} lotes: no lo visita nadie`, size, upkeep],
-      hint: 'Un edificio único sólo rinde si una calle llega hasta él: trazá una calle cerca.',
+      lines: [noStreet ? `Sin calle a menos de ${ROAD_REACH} lotes: no lo visita nadie` : 'Sin luz: no funciona', size, upkeep],
+      hint: noStreet ? 'Un edificio único sólo rinde si una calle llega hasta él: trazá una calle cerca.' : noLightHint(sim, 'No funciona sin luz', 'lo'),
     };
   }
   return { title: info.label, lines: [uniqueEffect(u.kind), owner, size, upkeep] };
