@@ -35,8 +35,10 @@ const CONCRETE = ramp('#a9a395');
 const ROOFTOP = hex('#b9b6ad');
 const PERGOLA = ramp('#2f7a4a');
 const TOWER_WALL = ramp('#c3cfd4');
-/** The facades of the tall blocks: the grey of the first ones, white, cream, sand, celadon and dusty rose. */
-const TOWER_WALLS = ['#c3cfd4', '#ece4d6', '#e2cdaa', '#c8d5c2', '#d9c2b8', '#e8dfc4'].map(ramp);
+/** The facades of the tall blocks: grey, off-white, sand, celadon, rose, vanilla, salmon and stone. */
+const TOWER_WALLS = ['#c3cfd4', '#ece4d6', '#e2cdaa', '#c8d5c2', '#d9c2b8', '#e8dfc4', '#dcb6a0', '#cbb7a4'].map(ramp);
+/** The stone of the podium: the base of the towers is not the same grey all down the avenue either. */
+const TOWER_BASES = ['#a9a395', '#b5a894', '#9ea7a4', '#b9ae9c'].map(ramp);
 /** The dark inside of a shop, and the warm light of the ones that are open. */
 const INSIDE = hex('#2e2620');
 const WARM = hex('#d8a24a');
@@ -508,9 +510,10 @@ function tower(p: Pen, v: number): void {
   const h = 46 + (v % 3) * 6;
   // A skyline painted in one tone reads as a single grey mass, so each variant brings its own facade.
   const wall = TOWER_WALLS[v % TOWER_WALLS.length];
+  const base = TOWER_BASES[v % TOWER_BASES.length];
   p.shadow(0.06, 0.08, 0.94, 0.92);
   // The podium: two floors at street level, wider than the tower, so the silhouette steps in.
-  p.box(0.06, 0.08, 0.94, 0.92, 0, 10, CONCRETE, 'plain', [door(4, 4, 8), pane(10, 2, 4, 6, GLASS)], [pane(4, 2, 4, 6, GLASS)], ROOFTOP);
+  p.box(0.06, 0.08, 0.94, 0.92, 0, 10, base, 'plain', [door(4, 4, 8), pane(10, 2, 4, 6, GLASS)], [pane(4, 2, 4, 6, GLASS)], ROOFTOP);
   p.canopy(0.08, 0.92, 0.9, 11, GLASS, shade(GLASS, 1.4));
   const u0 = 0.18;
   const v0 = 0.2;

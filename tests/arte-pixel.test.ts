@@ -154,8 +154,12 @@ describe('the towers of the last level', () => {
   it('come in more than one facade colour, so a skyline of them is not one grey mass', () => {
     const grey = palette(paintResidential(5, 0));
     const extra = new Set<number>();
-    for (let variant = 1; variant < 8; variant++)
-      for (const c of palette(paintResidential(5, variant))) if (!grey.has(c)) extra.add(c);
+    for (let variant = 1; variant < 8; variant++) {
+      const fresh = [...palette(paintResidential(5, variant))].filter((c) => !grey.has(c));
+      // Each variant has to bring a colour of its own: a taller grey tower is still a grey tower.
+      expect(fresh.length, `variant ${variant}`).toBeGreaterThan(0);
+      for (const c of fresh) extra.add(c);
+    }
     // Four new colours is a little over one facade ramp: the variants are not the same wall repainted.
     expect(extra.size).toBeGreaterThan(3);
   });
