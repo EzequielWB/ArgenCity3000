@@ -36,12 +36,12 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
 
 | ID | Tarea | Specs | Archivos | Commit |
 |---|---|---|---|---|
-| T1 | El monte: la loma, su perfil y los recortes de roca | S1, S3 | `src/render/pixelArt.ts` | `8c9f7e2` |
-| T2 | La escalinata de piedra que sube la cara de la loma | S1, S2 | `src/render/pixelArt.ts` | `8c9f7e2` |
-| T3 | Las tres cruces en la cresta, con su plataforma | S2 | `src/render/pixelArt.ts` | `8c9f7e2` |
-| T4 | El bosque: pinos y eucaliptos en la base y la ladera | S1, S2 | `src/render/pixelArt.ts` | `8c9f7e2` |
-| T5 | El renderer usa el píxel y se borra el canvas | S4, S6 | `src/render/sprites.ts` | `8c9f7e2` |
-| T6 | Tests y tablero | S3, S5 | `tests/calvario-pixel.test.ts`, `scripts/unicos-board.ts` | `8c9f7e2` |
+| T1 | El monte: la loma, su perfil y los recortes de roca | S1, S3 | `src/render/pixelArt.ts` | `c251ce1` |
+| T2 | La escalinata de piedra que sube la cara de la loma | S1, S2 | `src/render/pixelArt.ts` | `c251ce1` |
+| T3 | Las tres cruces en la cresta, con su plataforma | S2 | `src/render/pixelArt.ts` | `c251ce1` |
+| T4 | El bosque: pinos y eucaliptos en la base y la ladera | S1, S2 | `src/render/pixelArt.ts` | `c251ce1` |
+| T5 | El renderer usa el píxel y se borra el canvas | S4, S6 | `src/render/sprites.ts` | `c251ce1` |
+| T6 | Tests y tablero | S3, S5 | `tests/calvario-pixel.test.ts`, `scripts/unicos-board.ts` | `c251ce1` |
 
 ## Log
 
