@@ -156,6 +156,8 @@ export class World {
   readonly pollution: Uint8Array;
   readonly landValue: Uint8Array;
   readonly roadAccess: Uint8Array;
+  /** Whether the coast building on the cell reaches the street, itself or through the ones beside it. */
+  readonly coastAccess: Uint8Array;
   /** 0–100, how unsafe the cell is. */
   readonly crime: Uint8Array;
   /** 0–100 coverage of each public service. */
@@ -209,6 +211,7 @@ export class World {
     this.pollution = new Uint8Array(size);
     this.landValue = new Uint8Array(size);
     this.roadAccess = new Uint8Array(size);
+    this.coastAccess = new Uint8Array(size);
     for (let i = 0; i < size; i++) this.variant[i] = (i * 2654435761) >>> 29;
   }
 

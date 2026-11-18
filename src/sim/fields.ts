@@ -2,7 +2,7 @@ import { BOULEVARD, CAPACITY, COAST_FIELDS, DEFAULT_FUNDING, HUBS, PARK, PLANTS,
 import { SEA_LEVEL } from '../world/terrain';
 import { hubFacilities } from '../world/hubs';
 import { serviceBlocksOf } from '../world/services';
-import { TILE, World } from '../world/world';
+import { TILE, World, coastOf } from '../world/world';
 import { uniqueSources } from '../world/uniques';
 import { coastWorks } from './coast';
 
@@ -34,6 +34,37 @@ export function computeRoadAccess(w: World): void {
     }
   }
   for (let i = 0; i < n * n; i++) w.roadAccess[i] = dist[i] >= 0 ? 1 : 0;
+  propagateCoastAccess(w);
+}
+
+/**
+ * A coast building reaches the street through the ones touching it: one street along the promenade
+ * serves the whole strip. Written here, next to `roadAccess`, so `coastWorks` stays a lookup.
+ */
+function propagateCoastAccess(w: World): void {
+  const n = w.n;
+  const access = w.coastAccess;
+  access.fill(0);
+  const queue = new Int32Array(n * n);
+  let tail = 0;
+  for (let i = 0; i < n * n; i++) {
+    if (w.roadAccess[i] === 1 && coastOf(w.tiles[i]) !== null) {
+      access[i] = 1;
+      queue[tail++] = i;
+    }
+  }
+  for (let head = 0; head < tail; head++) {
+    const i = queue[head];
+    const x = i % n;
+    const y = (i - x) / n;
+    const next = [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < n - 1 ? i + n : -1];
+    for (const j of next) {
+      if (j < 0 || access[j]) continue;
+      if (coastOf(w.tiles[j]) === null) continue;
+      access[j] = 1;
+      queue[tail++] = j;
+    }
+  }
 }
 
 /**

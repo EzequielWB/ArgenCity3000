@@ -24,8 +24,8 @@ const WATER = SEA_LEVEL - 1;
  * Sea to the west (cells x 0..7). North half (y < 16): a sand column at x = 8 and land from x = 9.
  * South half: land from x = 8, with no sand at all (a bluff).
  */
-/** Light everywhere: the light of the coast buildings has its own tests below. */
-const lit = (w: World): World => (w.powered.fill(1), w.roadAccess.fill(1), w);
+/** Light and a street everywhere: the light of the coast buildings has its own tests below. */
+const lit = (w: World): World => (w.powered.fill(1), w.roadAccess.fill(1), w.coastAccess.fill(1), w);
 
 function shore(n = 32): Terrain {
   const s = n + 1;
@@ -320,6 +320,20 @@ describe('a coast building at work', () => {
     w.powered.fill(0); // a street but no light
     expect(coastWorks(w, w.idx(8, 5))).toBe(false);
     expect(coastWorks(w, w.idx(9, 8))).toBe(false);
+  });
+
+  it('works off the street of the building beside it, so one street serves the strip', () => {
+    const w = lit(new World(shore()));
+    build(w, 'promenade', 8, 4);
+    build(w, 'promenade', 8, 5);
+    build(w, 'promenade', 8, 6);
+    build(w, 'promenade', 8, 7);
+    computeRoadAccess(w); // no street at all
+    for (const y of [4, 5, 6, 7]) expect(coastWorks(w, w.idx(8, y))).toBe(false);
+    // One street reaching the middle of the strip lights the whole strip.
+    build(w, 'road', 9, 5);
+    computeRoadAccess(w);
+    for (const y of [4, 5, 6, 7]) expect(coastWorks(w, w.idx(8, y))).toBe(true);
   });
 
   it('is false for a lot with no coast building', () => {

@@ -69,9 +69,12 @@ export function coastRefusal(w: World, kind: CoastKind, x: number, y: number): s
   return 'El balneario necesita playa: tiene que estar sobre la arena, pegado al agua';
 }
 
-/** True when the coast building at cell `i` works: every one of them, the promenade and the lighthouse too, needs a street near and light. */
+/**
+ * True when the coast building at cell `i` works: it needs light, and a street that reaches it or one
+ * of the coast buildings touching it, so a single street along the promenade serves the whole strip.
+ */
 export function coastWorks(w: World, i: number): boolean {
-  return coastOf(w.tiles[i]) !== null && w.roadAccess[i] === 1 && w.powered[i] === 1;
+  return coastOf(w.tiles[i]) !== null && w.coastAccess[i] === 1 && w.powered[i] === 1;
 }
 
 /** Number of buildings of each kind on the map. */
