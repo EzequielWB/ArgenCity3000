@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Pixels } from '../src/render/pixel';
-import { boatArt, headingOf, planeArt, roadVehicle } from '../src/render/vehicleArt';
+import { boatArt, headingOf, planeArt, planeShadowArt, roadVehicle } from '../src/render/vehicleArt';
 
 /** The painted pixels of a vehicle, as the painter leaves them: no canvas is needed to judge them. */
 const painted = (kind: 'car' | 'taxi' | 'bus', color: number, dir: 0 | 1 | 2 | 3): Pixels => roadVehicle(kind, color, dir).px;
@@ -60,6 +60,21 @@ describe('the road vehicles in pixel', () => {
     expect(level5).toBeGreaterThan(level1 * 2);
     const drawn = [0, 1, 2, 3].map((dir) => Array.from(planeArt(3, dir as 0 | 1 | 2 | 3).px.data).join(','));
     expect(new Set(drawn).size).toBe(4);
+  });
+
+  it('casts a flat black shadow on the ground instead of a copy of the body', () => {
+    const px = planeShadowArt(3, 0).px;
+    let painted = 0;
+    let opaquePixels = 0;
+    let coloured = 0;
+    for (let i = 0; i < px.data.length; i += 4) {
+      if (!px.data[i + 3]) continue;
+      painted++;
+      if (px.data[i + 3] === 255) opaquePixels++;
+      if (px.data[i] || px.data[i + 1] || px.data[i + 2]) coloured++;
+    }
+    expect(painted).toBeGreaterThan(0);
+    expect([opaquePixels, coloured]).toEqual([0, 0]);
   });
 
   it('paints the same thing twice for the same vehicle, and a different colour for another line', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HUBS } from '../src/config';
-import { Vessels, boatPosition, planeAt, takeoffAt, type Plane } from '../src/render/vessels';
+import { Vessels, boatPosition, planeAt, planeFacing, takeoffAt, type Plane } from '../src/render/vessels';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { applyPlan, planTool, type ToolId } from '../src/world/tools';
 import { TILE, World } from '../src/world/world';
@@ -85,8 +85,17 @@ describe('the planes of an airport', () => {
     expect([...seen].sort()).toEqual(['in', 'landing', 'out', 'takeoff', 'wait']);
   });
 
-  it('leaves the map and comes back in from beyond it, fading only at the edge', () => {
-    const board: Plane = { x: 2, y: 11, level: 1, phase: 'out', t: 0, dir: 1, far: 30 };
+  it('points its nose at the runway when it comes back and lands, never backwards', () => {
+    const out: Plane = { x: 5, y: 12, level: 1, phase: 'out', t: 1, dir: 1, far: 30 };
+    expect(planeFacing(out, 0)).toBe(0); // flying east, nose east
+    expect(planeFacing({ ...out, phase: 'in' }, 0)).toBe(2); // coming back, nose west
+    expect(planeFacing({ ...out, phase: 'landing' }, 0)).toBe(2);
+    const west: Plane = { ...out, dir: -1 };
+    expect(planeFacing(west, 0)).toBe(2);
+    expect(planeFacing({ ...west, phase: 'in' }, 0)).toBe(0);
+  });
+
+  it('leaves the map and comes back in from beyond it, fading only at the edge', () => {    const board: Plane = { x: 2, y: 11, level: 1, phase: 'out', t: 0, dir: 1, far: 30 };
     const start = planeAt(board, 0)!;
     expect(start.alpha).toBe(1); // it flies away in plain sight, it does not evaporate
     expect(start.altitude).toBeGreaterThan(20);
@@ -153,6 +162,7 @@ describe('the fishing boats of a dock', () => {
   const dockWorld = (): World => {
     const w = city();
     w.roadAccess.fill(1);
+    w.coastAccess.fill(1);
     put(w, 'fishing', 18, 12);
     return w;
   };
@@ -167,6 +177,7 @@ describe('the fishing boats of a dock', () => {
     expect(v.boats.size).toBe(0);
     w.powered.fill(1);
     w.roadAccess.fill(0); // no street
+    w.coastAccess.fill(0);
     v.refresh();
     expect(v.boats.size).toBe(0);
   });

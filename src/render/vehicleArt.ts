@@ -290,8 +290,6 @@ function paintPlane(level: number, dir: Heading): { px: Pixels; ax: number; ay: 
   const wingBack = frame(dir)(-len * 0.16, 0);
   const wq = wing.corners.map((q) => at([q[0] + wingBack[0], q[1] + wingBack[1]], 1));
   p.px.poly(wq, () => WING);
-  const wq2 = wing.corners.map((q) => at([q[0] + wingBack[0], q[1] + wingBack[1]], 0));
-  p.px.poly(wq2, () => shade(WING, 0.72));
   // The fuselage, white with a dark belly, and the cockpit at the nose.
   const cap = foot(faces.capIsU ? faces.u : faces.v);
   const side = foot(faces.capIsU ? faces.v : faces.u);
@@ -313,6 +311,38 @@ function paintPlane(level: number, dir: Heading): { px: Pixels; ax: number; ay: 
     const [x, y] = along(side, t);
     p.px.rect(Math.round(x), Math.round(y) - 1, 1, 1, GLASS_DARK);
   }
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+/**
+ * Paints the shadow a plane leaves on the runway: its own plan, flat on the ground and shifted the
+ * same 3 by 2 the buildings shift theirs, so the sun keeps one direction over the whole map.
+ */
+function paintPlaneShadow(level: number, dir: Heading): { px: Pixels; ax: number; ay: number } {
+  const len = 0.5 + 0.14 * Math.max(1, Math.min(5, level));
+  const wid = len * 0.28;
+  const span = len * 1.9;
+  const p = rig(10, 16 * (span + len) + 12);
+  const at = (q: Pt): Pt => {
+    const [x, y] = p.P(q[0], q[1], 0);
+    return [x + 3, y + 2];
+  };
+  p.px.shadow(
+    footprint(dir, len, wid).corners.map(at),
+    0.42,
+  );
+  const wing = footprint(dir, len * 0.34, span);
+  const back = frame(dir)(-len * 0.16, 0);
+  p.px.shadow(
+    wing.corners.map((q) => at([q[0] + back[0], q[1] + back[1]])),
+    0.42,
+  );
+  const tail = footprint(dir, len * 0.16, wid * 2.6);
+  const tailBack = frame(dir)(-len * 0.42, 0);
+  p.px.shadow(
+    tail.corners.map((q) => at([q[0] + tailBack[0], q[1] + tailBack[1]])),
+    0.42,
+  );
   return { px: p.px, ax: p.ax, ay: p.ay };
 }
 
@@ -340,9 +370,21 @@ export function planePixelSprite(level: number, dir: Heading): Sprite {
   return sprite;
 }
 
+/** The shadow of a plane, cached the same way: it is drawn once on the runway, under the body. */
+export function planeShadowSprite(level: number, dir: Heading): Sprite {
+  const key = `planeShadow:${level}:${dir}`;
+  let sprite = vehicleCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintPlaneShadow(level, dir));
+    vehicleCache.set(key, sprite);
+  }
+  return sprite;
+}
+
 /** The painted form of a boat or a plane, for the tests and the sheet. */
 export const boatArt = (kind: 'tour' | 'fishing' | 'cruise', dir: Heading) => paintBoat(kind, dir);
 export const planeArt = (level: number, dir: Heading) => paintPlane(level, dir);
+export const planeShadowArt = (level: number, dir: Heading) => paintPlaneShadow(level, dir);
 
 /** The sprite of a road vehicle, cached by kind, colour and heading. */
 export function carPixelSprite(kind: 'car' | 'taxi' | 'bus', color: number, dir: Heading): Sprite {

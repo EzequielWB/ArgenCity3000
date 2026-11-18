@@ -13,7 +13,7 @@ import { coastWorks } from '../sim/coast';
 import type { Pt } from './geometry';
 import type { MapRenderer } from './mapRenderer';
 import { heightAt } from './traffic';
-import { boatPixelSprite, headingOf, planePixelSprite } from './vehicleArt';
+import { boatPixelSprite, headingOf, planePixelSprite, planeShadowSprite, type Heading } from './vehicleArt';
 
 /** Seconds a take-off (or its reverse, a landing) lasts, and how many of them are on the ground. */
 const FLIGHT = 4;
@@ -259,8 +259,17 @@ export function planeAt(p: Plane, rot: Rotation): { x: number; y: number; altitu
   return { x, y, altitude, alpha };
 }
 
-/** Continuous world position of a boat: cell centres at +0.5. */
-export function boatPosition(b: Boat): Pt {
+/**
+ * The heading the plane is painted with. Taking off and flying out it points away from the runway;
+ * coming back and landing it points at the runway, so it never looks like it flies backwards.
+ */
+export function planeFacing(p: Plane, rot: Rotation): Heading {
+  const [rdx, rdy] = rotateDir(p.dir, 0, rot);
+  const heading = headingOf(rdx, rdy);
+  return (p.phase === 'in' || p.phase === 'landing' ? (heading + 2) % 4 : heading) as Heading;
+}
+
+/** Continuous world position of a boat: cell centres at +0.5. */export function boatPosition(b: Boat): Pt {
   return [b.x + 0.5 + b.dx * b.t, b.y + 0.5 + b.dy * b.t];
 }
 
@@ -298,11 +307,12 @@ export function drawPlanes(g: CanvasRenderingContext2D, v: Vessels, map: MapRend
     const { sx, sy: ground } = screenOf(w, map, at.x, at.y);
     const sy = ground - 2.2; // the runway is a little above the ground
     if (sx < x0 - 30 || sx > x1 + 30 || sy < y0 - 60 || sy > y1 + 30) continue;
-    const [rdx, rdy] = rotateDir(p.dir, 0, map.rot);
-    // The body goes up with the altitude and its shadow stays on the runway, as before.
-    const sprite = planePixelSprite(p.level, headingOf(rdx, rdy));
-    g.globalAlpha = at.alpha * 0.22;
-    g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - sprite.ay));
+    // The body goes up with the altitude and its shadow stays on the runway.
+    const facing = planeFacing(p, map.rot);
+    const sprite = planePixelSprite(p.level, facing);
+    const shadow = planeShadowSprite(p.level, facing);
+    g.globalAlpha = at.alpha * 0.8;
+    g.drawImage(shadow.canvas, Math.round(sx - shadow.ax), Math.round(sy - shadow.ay));
     g.globalAlpha = at.alpha;
     g.drawImage(sprite.canvas, Math.round(sx - sprite.ax), Math.round(sy - at.altitude - sprite.ay));
     g.globalAlpha = 1;
