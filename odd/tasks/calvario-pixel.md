@@ -17,6 +17,10 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
 - **S8.** *"Si a mi tampoco me gusta la loma como baja ni los costados, podrias darle como 'volumen' que
   este en una loma esto"* — la loma tiene que tener **volumen**: un monte con cuerpo a los cuatro lados,
   no una cuña con una ladera y una cara cortada que se juntan en un filo.
+- **S9.** *"yo tiraría el 'centro', es decir la cruz más al 3/4 final de la base y que esté más en un
+  'slope' con estos desniveles … y que tenga más base ya que ahora queda raro"* — la cumbre **no va en el
+  medio**: va a tres cuartos de la base, con la escalinata subiendo la ladera larga, y la loma tiene que
+  ocupar más base, no quedar como un montículo suelto en el medio del lote.
 - **S3.** Píxel a 1×, píxeles duros; la única transparencia parcial permitida es la sombra (alfa ≤ 96).
 - **S4.** El sprite se pinta para el lote como se ve: 3×6 y 6×3 según gire la cámara. Un dibujo por
   orientación, del mismo tamaño, y en las dos la escalinata sube hacia la cresta.
@@ -121,3 +125,17 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
     mismos tonos, la loma no se despega del piso.
 - **L15.** Evidencia: `npx vitest run` **1139 / 67 archivos** verdes · `tsc --noEmit` limpio ·
   `npm run board` · las dos orientaciones en el tablero.
+- **L16.** Pedido, textual: *"Esta raro igual, yo tiraria el 'centro' es decir la cruz mas al 3/4 final
+  de la base y que este mas en un 'slope' con estos desniveles, me explico? y que tenga mas base ya que
+  ahora queda raro"*. Se agregó S9 y el monte pasó a ser asimétrico: `PEAK_AT = 0.66`, base de `0.06` a
+  `L - 0.06`, y las dos laderas se cierran con curvas distintas (`(1-t)^1.15` adelante, `(1-t)^1.7`
+  atrás) para que el lado que no se ve conserve cuerpo — con la misma curva a los dos lados el monte se
+  leía como una rampa. La escalinata y las estaciones se apoyan ahora en los anillos de la cumbre
+  corrida (`stepAt`), no en el centro geométrico.
+- **L17.** El atrio de la cumbre se peleó tres veces, y las tres enseñan lo mismo: **ninguna losa con
+  altura sobre una meseta angosta se puede leer como apoyada**. Una caja de 1,24 de lado "volaba", dos
+  escalones de piedra hacían una mesa con mantel. Quedó un **atrio plano**: un rectángulo de 0,9 × 0,5
+  pintado a la altura de la cumbre, sin volumen, con la cruz parada arriba. Y la cumbre se despeja de
+  monte (`nearStair` la rechaza en un radio de 2,1): un pino al lado de la cruz le pelea el remate.
+- **L18.** Evidencia: `npx vitest run` **1139 / 67 archivos** verdes · `tsc --noEmit` limpio · las dos
+  orientaciones en el tablero.
