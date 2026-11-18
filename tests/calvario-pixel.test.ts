@@ -91,13 +91,14 @@ describe('el Calvario en píxel', () => {
 
   it('la escalinata sube la ladera de punta a punta', () => {
     const a = paintCalvario(3, 6);
+    // La piedra de la escalinata y la esplanada: el único gris claro del lote, y buena parte del dibujo.
     const steps = countish(a, stone);
-    expect(steps).toBeGreaterThan(300);
-    // Un solo peldaño no sería una escalinata: los píxeles de piedra tienen que estar en toda la altura
-    // de la loma, desde el pie hasta la cresta.
+    expect(steps).toBeGreaterThan(100);
+    // Un solo peldaño no sería una escalinata: los peldaños tienen que aparecer a lo largo de toda la
+    // altura de la loma, desde el pie hasta la cresta, y ser varios y no uno.
     const rows: number[] = [];
     for (let y = 0; y < a.px.h; y++) if (countish(a, stone, y, y + 1) > 0) rows.push(y);
-    expect(rows.length).toBeGreaterThan(28);
+    expect(rows.length).toBeGreaterThan(10);
     expect(rows[rows.length - 1] - rows[0]).toBeGreaterThan(40);
   });
 

@@ -3638,7 +3638,7 @@ export function treePixelSprite(kind: number, variant: number): Sprite {
 /** The grass of the hill, the green of the cut face, the stone of the stair and the wood of the crosses. */
 const HILL = ramp('#7fa356');
 const HILL_CUT = ramp('#5f7f42');
-const STAIR = ramp('#d5cdbb');
+const STAIR = ramp('#c2baa6');
 const CROSS_WOOD = ramp('#6b4a2e');
 /** The tallest thing on the lot: the crosses stand on the crest, and this is the widest lot of the game. */
 const CALVARIO_MAX_Z = 86;
@@ -3741,8 +3741,8 @@ function paintCalvarioOn(p: Pen, vw: number, vh: number): void {
     );
   }
 
-  // The stair: twelve flights cut into the face, each with its tread and its riser and a stone balustrade
-  // on both sides. It is the first thing the eye has to find, so it is the lightest tone on the lot.
+  // The stair: a flight per step, the riser in shadow and the tread in the light. That pair of tones is
+  // the whole stair — flattening it into one band with lines across turned it into a grey path.
   const N = 7;
   const sFar = 1.34;
   const sNear = 1.7;
@@ -3751,38 +3751,16 @@ function paintCalvarioOn(p: Pen, vw: number, vh: number): void {
     const aNear = aFoot - ((aFoot - aCrest1) * k) / N;
     const aFar = aFoot - ((aFoot - aCrest1) * (k + 1)) / N;
     const zTop = rise * (k + 1);
-    // The riser, then the tread over it: the two tones of stone are close, or the stair reads as a
-    // ladder of white bars instead of a stair.
-    // The riser in the dark tone and the tread in the light one, with the nosing of each step lit: two
-    // tones that close turned the stair into a stone path, and a stair has to show its steps.
-    // Flat tones, no dithering: two dithered fills of almost the same stone read as one mottled path,
-    // and a stair is read by the contrast between the riser in shadow and the tread in the light.
     p.poly([Q(aNear, sFar, zTop - rise), Q(aNear, sNear, zTop - rise), Q(aNear, sNear, zTop), Q(aNear, sFar, zTop)], () =>
-      shade(STAIR[0], 0.66),
+      shade(STAIR[0], 0.74),
     );
-    p.poly([Q(aFar, sFar, zTop), Q(aNear, sFar, zTop), Q(aNear, sNear, zTop), Q(aFar, sNear, zTop)], () => shade(STAIR[1], 1.18));
+    p.poly([Q(aFar, sFar, zTop), Q(aNear, sFar, zTop), Q(aNear, sNear, zTop), Q(aFar, sNear, zTop)], () => STAIR[1]);
   }
-  // The two balustrades: a stone rail per flight, on each side of the stair, following the steps. A
-  // continuous line drawn with `ceil` wandered like a scratch beside the stair instead of holding it.
-  for (let k = 0; k < N; k++) {
-    const aNear = aFoot - ((aFoot - aCrest1) * k) / N;
-    const aFar = aFoot - ((aFoot - aCrest1) * (k + 1)) / N;
-    const zTop = rise * (k + 1);
-    for (const [side, tone] of [
-      [sFar - 0.12, 0.78],
-      [sNear + 0.12, 1.06],
-    ] as const) {
-      const [x0, y0] = Q(aFar, side, zTop + 2.2);
-      const [x1, y1] = Q(aNear, side, zTop + 2.2);
-      p.px.line([Math.round(x0), Math.round(y0)], [Math.round(x1), Math.round(y1)], shade(STAIR[0], tone));
-      p.px.line([Math.round(x0), Math.round(y0) + 1], [Math.round(x1), Math.round(y1) + 1], shade(STAIR[0], tone * 0.72));
-    }
-  }
-  // A station of the Via Crucis above the far balustrade every few flights: a white niche on its post.
-  for (const k of [1, 4, 7]) {
+  // A station of the Via Crucis beside the stair every few steps: a white niche on its post.
+  for (const k of [1, 4]) {
     const a = aFoot - ((aFoot - aCrest1) * (k + 0.5)) / N;
-    const z = rise * (k + 1) + 2;
-    if (z > H - 6) continue;
+    const z = rise * (k + 1) + 1.5;
+    if (z > H - 8) continue;
     const [sx, sy] = Q(a, sFar - 0.28, z);
     const cx = Math.round(sx);
     const cy = Math.round(sy);

@@ -75,3 +75,14 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
   `npm run board` 38 kB · seis tests nuevos en `tests/calvario-pixel.test.ts`.
 - **L7.** `sprites.ts` perdió `calvarioArt` y quedó en 1.135 líneas. Lo que resta en canvas son nueve
   monumentos: obelisco, puente, teatro, estadio, cabildo, regimiento, planetario, santuario y sindicato.
+- **L8.** La escalinata necesitó dos vueltas más después del primer visto bueno, y las dos enseñan lo
+  mismo: **el contraste es el dibujo**. La primera era un sendero de piedra porque los dos tonos estaban
+  a un paso; se abrió el contraste. La segunda, ya con peldaños, quedó con un **fleco pálido a los
+  costados**: eran las barandas, y una baranda dibujada como línea clara sobre pasto oscuro se lee como
+  un rayón. Se borraron. La tercera intentó simplificar a una banda con líneas transversales y volvió a
+  ser un camino gris: la banda tenía los bordes limpios pero perdió los peldaños, que es lo único que
+  hay que leer. Quedó la versión de siempre —**un tramo por escalón, riser en sombra y huella en luz, sin
+  barandas**— porque es la única de las cuatro que se lee como escalinata.
+- **L9.** Los tests tuvieron que cambiar con el dibujo, y está bien: lo que prueban es que hay piedra,
+  que aparece en toda la altura de la loma y que son varios peldaños, no un número de píxeles que se
+  movía con cada vuelta del dibujo.
