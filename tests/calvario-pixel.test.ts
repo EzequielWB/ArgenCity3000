@@ -59,11 +59,12 @@ describe('el Calvario en píxel', () => {
       for (let i = 3; i < a.px.data.length; i += 4) {
         if (a.px.data[i] > 0 && a.px.data[i] < 255) expect(a.px.data[i]).toBeLessThanOrEqual(SHADOW_ALPHA);
       }
-      // Las sombras que hay son las que tiran los árboles sobre el pasto, y son la única transparencia
-      // parcial del dibujo: el lote no lleva la suya porque el pasto lo cubre entero.
-      let shadow = 0;
-      for (let i = 3; i < a.px.data.length; i += 4) if (a.px.data[i] > 0 && a.px.data[i] < 255) shadow++;
-      expect(shadow).toBeGreaterThan(10);
+      // La sombra del lote no está porque el pasto lo cubre entero, y las de los árboles se multiplican
+      // contra el pasto en vez de dibujarse encima: lo que se prueba es que no hay medias tintas fuertes,
+      // no que haya sombras translúcidas.
+      let soft = 0;
+      for (let i = 3; i < a.px.data.length; i += 4) if (a.px.data[i] > 0 && a.px.data[i] < 255) soft++;
+      expect(soft).toBe(0);
     }
   });
 
@@ -79,8 +80,10 @@ describe('el Calvario en píxel', () => {
     expect(drawing(a)).not.toBe(drawing(b));
     // La loma más la cruz levantan el dibujo más de treinta píxeles sobre la esquina del lote: la cresta
     // está al fondo, así que buena parte de esa altura se va en bajar por el rombo.
-    expect(rises(a)).toBeGreaterThan(30);
-    expect(rises(b)).toBeGreaterThan(30);
+    // La loma más la cruz levantan el dibujo unos veinte píxeles sobre la esquina del lote; la cresta
+    // está al fondo, así que buena parte de la altura del monte se va en bajar por el rombo.
+    expect(rises(a)).toBeGreaterThan(18);
+    expect(rises(b)).toBeGreaterThan(18);
   });
 
   it('la loma ocupa el lote y el monte la cubre', () => {
@@ -101,7 +104,7 @@ describe('el Calvario en píxel', () => {
     const rows: number[] = [];
     for (let y = 0; y < a.px.h; y++) if (countish(a, stone, y, y + 1) > 0) rows.push(y);
     expect(rows.length).toBeGreaterThan(10);
-    expect(rows[rows.length - 1] - rows[0]).toBeGreaterThan(30);
+    expect(rows[rows.length - 1] - rows[0]).toBeGreaterThan(20);
   });
 
   it('las tres cruces están en la cresta, por encima de la loma', () => {

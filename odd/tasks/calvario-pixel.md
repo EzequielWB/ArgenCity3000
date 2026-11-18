@@ -14,6 +14,9 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
 - **S7.** *"Preferiria quizá un poco menos de altura, que haya algunas piedritas en la zona verde y que
   haya una sola cruz mas grande"* — la loma baja, el pasto con piedritas sueltas y una cruz sola, que
   sea el remate del monumento.
+- **S8.** *"Si a mi tampoco me gusta la loma como baja ni los costados, podrias darle como 'volumen' que
+  este en una loma esto"* — la loma tiene que tener **volumen**: un monte con cuerpo a los cuatro lados,
+  no una cuña con una ladera y una cara cortada que se juntan en un filo.
 - **S3.** Píxel a 1×, píxeles duros; la única transparencia parcial permitida es la sombra (alfa ≤ 96).
 - **S4.** El sprite se pinta para el lote como se ve: 3×6 y 6×3 según gire la cámara. Un dibujo por
   orientación, del mismo tamaño, y en las dos la escalinata sube hacia la cresta.
@@ -99,3 +102,22 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
   sombra abajo —al revés se leían como manchas—, pintadas antes del monte para que un árbol de adelante
   las tape. Y la cruz quedó sola, de 28 de alto y 13 de ancho, con el palo de tres píxeles y un pie de
   piedra.
+- **L12.** Pedido, textual: *"Si a mi tampoco me gusta la loma como baja ni los costados, podrias darle
+  como 'volumen' que este en una loma esto"*. Se agregó S8 y reabrió la tarea del monte.
+- **L13.** La loma dejó de ser un perfil con cara cortada y pasó a ser un **monte de terrazas**: ocho
+  anillos que se cierran con la altura, cada uno con su **pared en sombra mirando a la cámara** y su
+  **huella iluminada arriba**, más la sombra que tira sobre el prado. La punta es una meseta (el radio no
+  baja de 0,26 del pie) y ahí se para la esplanada con la cruz, que antes flotaba sobre un pico.
+- **L14.** Las cuatro vueltas que necesitó el volumen, y qué enseñan:
+  - Apilar anillos de un píxel con un degradé parejo dio un **mapa topográfico plano**: sin pared no hay
+    cuerpo, por más que la luz esté bien.
+  - Las terrazas con la pared en verde oscuro quedaron un **pastel de bodas**: la pared se comía la
+    huella. La huella tiene que ir con el radio de **abajo**, que es el anillo que se ve entre una pared y
+    la siguiente.
+  - Con la huella bien, la escalinata eran **tablones sueltos** apoyados en la loma. Ahora primero se
+    dibuja el cuerpo de la escalera —una cinta de cuatro píxeles que une peldaño con peldaño— y después la
+    huella de cada peldaño encima.
+  - El monte tiene que ser **más claro y más chico** que el lote, y el prado un verde distinto: con los
+    mismos tonos, la loma no se despega del piso.
+- **L15.** Evidencia: `npx vitest run` **1139 / 67 archivos** verdes · `tsc --noEmit` limpio ·
+  `npm run board` · las dos orientaciones en el tablero.
