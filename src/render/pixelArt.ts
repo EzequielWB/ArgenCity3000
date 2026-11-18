@@ -752,6 +752,11 @@ function penLot(n: number, maxZ: number): Pen {
   return new Pen(new Pixels(32 * n + 8, maxZ + 16 * n + 8), 16 * n + 4, maxZ + 2);
 }
 
+/** The same canvas as `penLot`, for a lot that is not square: the uniques and anything longer than a cell. */
+function penRect(vw: number, vh: number, maxZ: number): Pen {
+  return new Pen(new Pixels(16 * (vw + vh) + 8, maxZ + 8 * (vw + vh) + 8), 16 * vh + 4, maxZ + 2);
+}
+
 /** The fruit and vegetables that show on the market stalls. */
 const FRUIT = ['#c8392f', '#e0a526', '#4f8f3a', '#7a3f8a'].map(hex);
 
@@ -3540,8 +3545,8 @@ export function polePixelSprite(tier: number, variant: number): Sprite {
  * the colour is the last thing that arrives. The crown is five pixels over the trunk on the smallest side,
  * which is what makes a tree read as a tree and not as a bush.
  */
-function treeAt(p: Pen, u: number, v: number, kind: number, scale: number): void {
-  const [x, y] = p.P(u, v, 0);
+function treeAt(p: Pen, u: number, v: number, kind: number, scale: number, z = 0): void {
+  const [x, y] = p.P(u, v, z);
   const cx = Math.round(x);
   const cy = Math.round(y);
   const s = scale;
@@ -3624,6 +3629,235 @@ export function treePixelSprite(kind: number, variant: number): Sprite {
   if (!sprite) {
     sprite = spriteOf(paintTree(((kind - 1) % 4) + 1, variant));
     treePixelCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+/* ---------- El Calvario de Tandil ---------- */
+
+/** The grass of the hill, the green of the cut face, the stone of the stair and the wood of the crosses. */
+const HILL = ramp('#7fa356');
+const HILL_CUT = ramp('#5f7f42');
+const STAIR = ramp('#d5cdbb');
+const CROSS_WOOD = ramp('#6b4a2e');
+/** The tallest thing on the lot: the crosses stand on the crest, and this is the widest lot of the game. */
+const CALVARIO_MAX_Z = 86;
+
+/**
+ * El Calvario (3x6): un montecito con monte alrededor y la escalinata de piedra del Via Crucis que sube
+ * la ladera hasta las tres cruces de la cresta. Es el unico monumento que pinta su propio terreno —la
+ * loma esta dibujada, no puesta— y el unico, tambien, que se dibuja en las dos orientaciones.
+ */
+function paintCalvarioOn(p: Pen, vw: number, vh: number): void {
+  const alongU = vw >= vh;
+  const L = Math.max(vw, vh);
+  const W = Math.min(vw, vh);
+  const uv = (a: number, c: number): [number, number] => (alongU ? [a, c] : [c, a]);
+  const Q = (a: number, c: number, z: number): Pt => {
+    const [u, v] = uv(a, c);
+    return p.P(u, v, z);
+  };
+  /** A box given along the monument and across it, so the same call works on the two orientations. */
+  const boxAC = (a0: number, c0: number, a1: number, c1: number, z: number, h: number, base: Ramp) => {
+    const [u0, v0] = uv(Math.min(a0, a1), Math.min(c0, c1));
+    const [u1, v1] = uv(Math.max(a0, a1), Math.max(c0, c1));
+    p.box(Math.min(u0, u1), Math.min(v0, v1), Math.max(u0, u1), Math.max(v0, v1), z, h, base, 'plain');
+  };
+
+  const cFar = 0.25;
+  const cNear = W - 0.25;
+  const aCrest0 = 1.15;
+  const aCrest1 = 2.0;
+  const aFoot = L - 0.5;
+  const H = 44;
+  // The crest is a short flat run near the back and the long slope falls toward the camera: that is the
+  // silhouette of the sierra de Tandil, and the reason a stair can be cut into its face.
+  const prof = (a: number): number => {
+    if (a >= aFoot || a <= 0.35) return 0;
+    if (a >= aCrest0 && a <= aCrest1) return H;
+    if (a > aCrest1) return H * (1 - (a - aCrest1) / (aFoot - aCrest1)) ** 1.2;
+    return H * (1 - (aCrest0 - a) / (aCrest0 - 0.35)) ** 1.5;
+  };
+
+  // No drop shadow of the lot: the meadow covers the whole diamond, so a shadow under it would be
+  // painted and then hidden. The shadows here are the ones the trees cast on the grass.
+  // The meadow of the lot, before the hill: the wood stands on it and the hill grows out of it.
+  p.poly([Q(0.02, 0.02, 0), Q(L - 0.02, 0.02, 0), Q(L - 0.02, W - 0.02, 0), Q(0.02, W - 0.02, 0)], (x, y) =>
+    noise(x, y, 4) > 0.58 ? HILL[2] : HILL[1],
+  );
+  // The slope the camera sees, in bands along the hill so the grass does not read as one flat sheet.
+  const bands = 14;
+  for (let k = 0; k < bands; k++) {
+    const aA = aCrest1 + ((aFoot - aCrest1) * k) / bands;
+    const aB = aCrest1 + ((aFoot - aCrest1) * (k + 1)) / bands;
+    p.poly([Q(aA, cFar, prof(aA)), Q(aB, cFar, prof(aB)), Q(aB, cNear, prof(aB)), Q(aA, cNear, prof(aA))], (x, y) =>
+      noise(x, y * 1.6, 6) > 0.58 ? shade(HILL[1], 1.02 - k * 0.013) : shade(HILL[2], 1.01 - k * 0.013),
+    );
+  }
+  p.poly([Q(aCrest0, cFar, H), Q(aCrest1, cFar, H), Q(aCrest1, cNear, H), Q(aCrest0, cNear, H)], (x, y) =>
+    noise(x, y, 5) > 0.5 ? HILL[1] : shade(HILL[1], 1.1),
+  );
+  // The rim of lit grass along the top of the cut face: without it the slope and the face meet on a hard
+  // edge and the hill reads as a slice of cake.
+  for (let k = 0; k < 40; k++) {
+    const a = aCrest0 + ((aFoot - aCrest0) * k) / 39;
+    const [x, y] = Q(a, cNear, Math.max(0, prof(a)));
+    p.px.set(Math.round(x), Math.round(y), k % 3 === 0 ? shade(HILL[1], 1.14) : HILL[1]);
+    p.px.set(Math.round(x), Math.round(y) + 1, shade(HILL_CUT[1], 1.2));
+  }
+  // The cut face of the hill, the one the stair climbs: darker, because the sun does not reach it.
+  const face: Pt[] = [Q(aCrest0, cNear, 0)];
+  for (let k = 0; k <= 34; k++) {
+    const a = aCrest0 + ((aFoot - aCrest0) * k) / 34;
+    face.push(Q(a, cNear, Math.max(0, prof(a))));
+  }
+  face.push(Q(aFoot, cNear, 0));
+  p.poly(face, (x, y) => {
+    // The face darkens as it comes down: the top of the hill still catches the light, the foot is in its
+    // own shadow, and that is what stops it reading as one flat wedge of green.
+    const k = Math.min(1, Math.max(0, (y - p.ay + 0) / Math.max(1, p.px.h)));
+    return noise(x, y, 7) > 0.52 ? shade(HILL_CUT[1], 1.12 - k * 0.5) : shade(HILL_CUT[2], 1.02 - k * 0.42);
+  });
+  // Two strata lines down the face and the rock that breaks out of it: the sierra is stone under grass.
+  for (const [off, tone] of [
+    [8, 0.9],
+    [20, 0.84],
+  ] as const) {
+    for (let k = 1; k < 34; k++) {
+      const a = aCrest0 + ((aFoot - aCrest0) * k) / 34;
+      const z = prof(a) - off;
+      if (z < 2) continue;
+      const [x, y] = Q(a, cNear, z);
+      p.px.set(Math.round(x), Math.round(y), shade(HILL_CUT[2], tone));
+    }
+  }
+  for (const [a0, a1, h] of [
+    [3.5, 3.95, 7],
+    [4.35, 4.9, 5],
+    [2.78, 3.08, 4],
+  ] as const) {
+    p.poly([Q(a0, cNear, 0.5), Q(a0 + 0.12, cNear, h), Q(a1, cNear, h * 0.55), Q(a1, cNear, 0.5)], (x, y) =>
+      bayer(x, y) < 0.5 ? STONE[1] : STONE[2],
+    );
+  }
+
+  // The stair: twelve flights cut into the face, each with its tread and its riser and a stone balustrade
+  // on both sides. It is the first thing the eye has to find, so it is the lightest tone on the lot.
+  const N = 7;
+  const sFar = 1.34;
+  const sNear = 1.7;
+  const rise = H / N;
+  for (let k = N - 1; k >= 0; k--) {
+    const aNear = aFoot - ((aFoot - aCrest1) * k) / N;
+    const aFar = aFoot - ((aFoot - aCrest1) * (k + 1)) / N;
+    const zTop = rise * (k + 1);
+    // The riser, then the tread over it: the two tones of stone are close, or the stair reads as a
+    // ladder of white bars instead of a stair.
+    // The riser in the dark tone and the tread in the light one, with the nosing of each step lit: two
+    // tones that close turned the stair into a stone path, and a stair has to show its steps.
+    // Flat tones, no dithering: two dithered fills of almost the same stone read as one mottled path,
+    // and a stair is read by the contrast between the riser in shadow and the tread in the light.
+    p.poly([Q(aNear, sFar, zTop - rise), Q(aNear, sNear, zTop - rise), Q(aNear, sNear, zTop), Q(aNear, sFar, zTop)], () =>
+      shade(STAIR[0], 0.66),
+    );
+    p.poly([Q(aFar, sFar, zTop), Q(aNear, sFar, zTop), Q(aNear, sNear, zTop), Q(aFar, sNear, zTop)], () => shade(STAIR[1], 1.18));
+  }
+  // The two balustrades: a stone rail per flight, on each side of the stair, following the steps. A
+  // continuous line drawn with `ceil` wandered like a scratch beside the stair instead of holding it.
+  for (let k = 0; k < N; k++) {
+    const aNear = aFoot - ((aFoot - aCrest1) * k) / N;
+    const aFar = aFoot - ((aFoot - aCrest1) * (k + 1)) / N;
+    const zTop = rise * (k + 1);
+    for (const [side, tone] of [
+      [sFar - 0.12, 0.78],
+      [sNear + 0.12, 1.06],
+    ] as const) {
+      const [x0, y0] = Q(aFar, side, zTop + 2.2);
+      const [x1, y1] = Q(aNear, side, zTop + 2.2);
+      p.px.line([Math.round(x0), Math.round(y0)], [Math.round(x1), Math.round(y1)], shade(STAIR[0], tone));
+      p.px.line([Math.round(x0), Math.round(y0) + 1], [Math.round(x1), Math.round(y1) + 1], shade(STAIR[0], tone * 0.72));
+    }
+  }
+  // A station of the Via Crucis above the far balustrade every few flights: a white niche on its post.
+  for (const k of [1, 4, 7]) {
+    const a = aFoot - ((aFoot - aCrest1) * (k + 0.5)) / N;
+    const z = rise * (k + 1) + 2;
+    if (z > H - 6) continue;
+    const [sx, sy] = Q(a, sFar - 0.28, z);
+    const cx = Math.round(sx);
+    const cy = Math.round(sy);
+    p.px.rect(cx, cy - 8, 2, 8, CROSS_WOOD[0]);
+    p.px.rect(cx - 1, cy - 11, 4, 3, PLASTER[1]);
+    p.px.rect(cx - 1, cy - 8, 4, 1, PLASTER[0]);
+  }
+  // The paved yard at the foot of the stair.
+  p.poly([Q(aFoot, sFar - 0.35, 0), Q(L - 0.12, sFar - 0.35, 0), Q(L - 0.12, sNear + 0.35, 0), Q(aFoot, sNear + 0.35, 0)], (x, y) =>
+    bayer(x, y) < 0.5 ? hex('#b6afa0') : hex('#a8a192'),
+  );
+
+  // The wood: pines and eucalyptus on the meadow and up the slope, standing on the hill and not in it.
+  // It is painted by depth, so a tree of the front covers the one behind it.
+  const wood: [number, number][] = [
+    [0.42, 0.44],
+    [0.8, 2.68],
+    [1.7, 0.42],
+    [1.32, 2.78],
+    [2.55, 0.55],
+    [2.9, 2.55],
+    [3.35, 1.4],
+    [3.62, 0.5],
+    [4.15, 2.5],
+    [4.55, 0.6],
+    [4.78, 1.72],
+    [5.2, 2.35],
+    [5.36, 0.78],
+    [5.55, 1.5],
+  ];
+  wood.sort((A, B) => A[0] + A[1] - (B[0] + B[1]));
+  // Nothing of the wood stands on the stair: a tree in the corridor hides the one thing the monument is.
+  wood.filter(([a, c]) => !(a > aCrest1 - 0.2 && a < aFoot + 0.1 && c > sFar - 0.35 && c < sNear + 0.35)).forEach(([a, c], i) => {
+    const [u, v] = uv(a, c);
+    // Pine and eucalyptus, as on the hill in Tandil: no jacarandá, whose lilac crown read as a lollipop.
+    const kind = i % 3 === 0 ? 3 : 4;
+    const z = prof(a) > 0.5 ? prof(a) - 0.6 : 0;
+    treeAt(p, u, v, kind, 0.82 + 0.1 * (i % 3), z);
+  });
+
+  // The esplanade of the summit and the three crosses, the tall one in the middle. They go last: they
+  // are the top of the monument and nothing of the hill may cover them.
+  const platform = H + 1.6;
+  boxAC(aCrest0 + 0.06, 0.62, aCrest1 - 0.1, W - 0.62, H, 1.6, STONE);
+  const cross = (a: number, c: number, h: number, arm: number) => {
+    const [x, y] = Q(a, c, platform);
+    const cx = Math.round(x);
+    const cy = Math.round(y);
+    const armAt = cy - Math.round(h * 0.74);
+    p.px.rect(cx, cy - h, 2, h, CROSS_WOOD[0]);
+    p.px.rect(cx + 1, cy - h, 1, h, shade(CROSS_WOOD[1], 1.15));
+    p.px.rect(cx - arm, armAt, arm * 2 + 3, 2, CROSS_WOOD[0]);
+    p.px.rect(cx - arm, armAt, arm * 2 + 3, 1, shade(CROSS_WOOD[1], 1.15));
+  };
+  cross(aCrest0 + 0.44, W / 2 - 0.72, 15, 3);
+  cross(aCrest0 + 0.44, W / 2 + 0.72, 15, 3);
+  cross(aCrest0 + 0.58, W / 2, 22, 4);
+}
+
+/** Paints el Calvario on the lot the camera sees: 3x6 or 6x3. */
+export function paintCalvario(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, CALVARIO_MAX_Z);
+  paintCalvarioOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const calvarioCache = new Map<string, Sprite>();
+
+/** El Calvario as a sprite, keyed by the shape of the lot the camera sees. */
+export function calvarioPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = calvarioCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintCalvario(vw, vh));
+    calvarioCache.set(key, sprite);
   }
   return sprite;
 }

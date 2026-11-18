@@ -1,7 +1,7 @@
 import { PAL, shade } from './color';
 import type { UniqueKind } from '../config';
 import type { ZoneKind } from '../world/world';
-import { commercialPixelSprite, industrialPixelSprite, residentialPixelSprite } from './pixelArt';
+import { calvarioPixelSprite, commercialPixelSprite, industrialPixelSprite, residentialPixelSprite } from './pixelArt';
 
 /**
  * Procedural isometric sprites in canvas: what the pixel pass of `pixelArt.ts` has not taken yet.
@@ -494,136 +494,6 @@ function obeliscoArt(vw: number, vh: number): Sprite {
   p.g.stroke();
   // The lamp at the front corner goes last: it is in front of the shaft.
   lamp(vw - 0.24, vh - 0.24);
-  return done(p);
-}
-
-/** El Calvario (3×6): the stone stair climbing the sierra of Tandil, the three crosses on top. */
-function calvarioArt(vw: number, vh: number): Sprite {
-  const { p, L, W, uv, box } = longPainter(vw, vh, 118);
-  const g = p.g;
-  const base = 1.2;
-  const Q = (a: number, c: number, z: number): Pt => {
-    const [u, v] = uv(a, c);
-    return p.P(u, v, z);
-  };
-  /** A post that starts at height `z` instead of at the ground, for what stands on the hill. */
-  const post = (a: number, c: number, z: number, h: number, color: string) => {
-    const [u, v] = uv(a, c);
-    const [x, y] = p.P(u, v, z);
-    const bx = Math.round(x);
-    const by = Math.round(y);
-    const tall = Math.max(2, Math.round(h));
-    g.fillStyle = shade(color, 1.08);
-    g.fillRect(bx - 1, by - tall, 1, tall);
-    g.fillStyle = color;
-    g.fillRect(bx, by - tall, 1, tall);
-    g.fillStyle = shade(color, 0.7);
-    g.fillRect(bx + 1, by - tall, 1, tall);
-  };
-  const cFar = 0.16;
-  const cNear = W - 0.16;
-  const aBack = 0.4;
-  const aCrest0 = 1.0;
-  const aCrest1 = 2.0;
-  const aFoot = L - 0.6;
-  const H = 76;
-  // The sierra rises from the near foot to a crest that is flat for about a cell, and falls away
-  // behind it with a rounded shoulder: a hill, not a cone.
-  const prof = (a: number): number => {
-    if (a >= aFoot || a <= aBack) return base;
-    if (a >= aCrest0 && a <= aCrest1) return base + H;
-    if (a > aCrest1) return base + H * (1 - (a - aCrest1) / (aFoot - aCrest1)) ** 1.2;
-    return base + H * (1 - (aCrest0 - a) / (aCrest0 - aBack)) ** 1.7;
-  };
-  box(0.02, 0.02, L - 0.02, W - 0.02, 0, base, '#6f9a52', false);
-  // The slope that faces the camera, banded so the grass reads as a sunlit hillside.
-  const bands = 8;
-  for (let k = 0; k < bands; k++) {
-    const aA = aCrest1 + ((aFoot - aCrest1) * k) / bands;
-    const aB = aCrest1 + ((aFoot - aCrest1) * (k + 1)) / bands;
-    p.poly([Q(aA, cFar, prof(aA)), Q(aB, cFar, prof(aB)), Q(aB, cNear, prof(aB)), Q(aA, cNear, prof(aA))], shade('#8aac5e', 0.98 - k * 0.02), '#617b41');
-  }
-  p.poly([Q(aCrest0, cFar, base + H), Q(aCrest1, cFar, base + H), Q(aCrest1, cNear, base + H), Q(aCrest0, cNear, base + H)], '#9cba6a', '#617b41');
-  // The near face: the silhouette the stair climbs, with the grey rock of the sierra showing.
-  const face: Pt[] = [];
-  for (let k = 0; k <= 26; k++) {
-    const a = aBack + ((aFoot - aBack) * k) / 26;
-    face.push(Q(a, cNear, prof(a)));
-  }
-  p.poly(face, '#718f4a', '#54683a');
-  // The rock of the sierra, in low outcrops at the foot and patches under the crest.
-  p.poly([Q(4.3, cNear, base + 1), Q(4.6, cNear, prof(4.6) - 3), Q(5.1, cNear, base + 7), Q(5.0, cNear, base + 1)], '#9a9482', '#7d7863');
-  p.poly([Q(3.6, cNear, base + 1), Q(3.85, cNear, prof(3.85) - 2), Q(4.15, cNear, base + 5), Q(3.95, cNear, base + 1)], '#a39d8b', '#7d7863');
-  p.poly([Q(2.15, cNear, prof(2.15) - 3), Q(2.5, cNear, prof(2.5) - 12), Q(2.85, cNear, prof(2.85) - 6), Q(2.7, cNear, prof(2.7) - 2)], '#a8a291', '#7d7863');
-  // Two strata lines down the face: the hill reads as a slope and not as a flat wall.
-  for (const [off, color] of [
-    [9, '#7f9c55'],
-    [21, '#7b9752'],
-    [33, '#779350'],
-  ] as const) {
-    g.beginPath();
-    for (let k = 0; k <= 26; k++) {
-      const a = aBack + ((aFoot - aBack) * k) / 26;
-      const z = Math.max(base + 1, prof(a) - off);
-      const [x, y] = Q(a, cNear, z);
-      if (k === 0) g.moveTo(x, y);
-      else g.lineTo(x, y);
-    }
-    g.strokeStyle = color;
-    g.lineWidth = 0.9;
-    g.stroke();
-  }
-  // The stair: twelve thin flights cut into the slope, with a stone balustrade on each side.
-  const N = 12;
-  const sFar = 0.9;
-  const sNear = 2.15;
-  const rise = H / N;
-  const stone = '#e4ddce';
-  for (let k = N - 1; k >= 0; k--) {
-    const aNear = aFoot - ((aFoot - aCrest1) * k) / N;
-    const aFar = aFoot - ((aFoot - aCrest1) * (k + 1)) / N;
-    const zTop = base + rise * (k + 1);
-    p.poly([Q(aNear, sFar, zTop - rise), Q(aNear, sNear, zTop - rise), Q(aNear, sNear, zTop), Q(aNear, sFar, zTop)], shade(stone, 0.74), '#a89f8c');
-    p.poly([Q(aFar, sFar, zTop), Q(aNear, sFar, zTop), Q(aNear, sNear, zTop), Q(aFar, sNear, zTop)], stone);
-    box(aFar, sFar - 0.14, aNear, sFar, zTop, 2, '#c9c1b0', false);
-    box(aFar, sNear, aNear, sNear + 0.14, zTop, 2.2, '#d2cab9', false);
-  }
-  // A Via Crucis station above the far balustrade every few flights.
-  for (const k of [1, 4, 7, 10]) {
-    const a = aFoot - ((aFoot - aCrest1) * (k + 0.5)) / N;
-    const z = base + rise * (k + 1) + 2;
-    post(a, sFar - 0.26, z, 9, '#6b4f35');
-    const [u, v] = uv(a, sFar - 0.26);
-    const [x, y] = p.P(u, v, z + 9);
-    g.fillStyle = '#f2ecdc';
-    g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
-  }
-  // The paved way up to the foot of the stair.
-  p.poly([Q(aFoot, sFar - 0.3, base), Q(L - 0.1, sFar - 0.3, base), Q(L - 0.1, sNear + 0.3, base), Q(aFoot, sNear + 0.3, base)], '#b6afa0', '#948d7e');
-  // The esplanade on the summit and the three crosses, the tall one in the middle.
-  const platform = base + H + 1.8;
-  box(aCrest0 + 0.02, 0.55, aCrest1 - 0.06, W - 0.55, base + H, 1.8, '#b3ab9a');
-  const cross = (a: number, c: number, h: number, arm: number) => {
-    post(a, c, platform, h, '#5d4529');
-    const [u, v] = uv(a, c);
-    const [x, y] = p.P(u, v, platform + h * 0.72);
-    g.fillStyle = '#5d4529';
-    g.fillRect(Math.round(x) - arm, Math.round(y), arm * 2 + 1, 2);
-    g.fillStyle = '#7c5e39';
-    g.fillRect(Math.round(x) - arm, Math.round(y), arm * 2 + 1, 1);
-  };
-  cross(1.16, W / 2 - 0.72, 20, 4);
-  cross(1.16, W / 2 + 0.72, 20, 4);
-  cross(1.22, W / 2, 30, 5);
-  // Boulders at the foot and the trees of the sierra.
-  p.hipRoof(aFoot + 0.05, 0.45, aFoot + 0.6, 0.95, base, 4, '#9a978c');
-  p.hipRoof(L - 0.5, 2.5, L - 0.1, 2.9, base, 3, '#a8a18e');
-  const tree = (a: number, c: number, kind: number, s: number) => {
-    const [u, v] = uv(a, c);
-    p.tree(u, v, kind, s);
-  };
-  tree(L - 0.16, 0.42, 2, 1);
-  tree(L - 0.3, W - 0.4, 0, 1);
   return done(p);
 }
 
@@ -1191,7 +1061,7 @@ export function uniqueSprite(kind: UniqueKind, vw: number, vh: number): Sprite {
       case 'obelisco':
         return obeliscoArt(vw, vh);
       case 'calvario':
-        return calvarioArt(vw, vh);
+        return calvarioPixelSprite(vw, vh);
       case 'puente':
         return puenteArt(vw, vh);
       case 'teatro':

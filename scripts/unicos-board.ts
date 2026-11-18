@@ -24,7 +24,9 @@ const H = 560;
 for (const el of Array.from(document.querySelectorAll('canvas[data-kind]'))) {
   const kind = el.dataset.kind;
   const { w, h } = UNIQUES[kind];
-  const s = uniqueSprite(kind, w, h);
+  // data-rot pide el mismo monumento con la camara girada un cuarto de vuelta: es el otro lote que ve
+  // el renderer, y el Calvario es el unico que se dibuja a mano en las dos orientaciones.
+  const s = el.dataset.rot ? uniqueSprite(kind, h, w) : uniqueSprite(kind, w, h);
   el.width = W;
   el.height = H;
   const g = el.getContext('2d');
@@ -118,6 +120,13 @@ const page = `<!doctype html>
         <figcaption>
           <div class="name">El Calvario</div>
           <div class="meta"><span class="size"></span><br />En una loma de altura 10 o mas<br /><span class="tour">Turismo +2 %, +18 % en septiembre</span></div>
+        </figcaption>
+      </figure>
+      <figure class="wide">
+        <canvas data-kind="calvario" data-rot="1"></canvas>
+        <figcaption>
+          <div class="name">El Calvario, con la cámara girada</div>
+          <div class="meta">El mismo monumento sobre el lote de 6×3: la escalinata sube igual, para el otro lado.</div>
         </figcaption>
       </figure>
       <figure class="wide">
