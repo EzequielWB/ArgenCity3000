@@ -4219,21 +4219,21 @@ export function puentePixelSprite(vw: number, vh: number): Sprite {
 
 const TEATRO_MAX_Z = 62;
 
-/** La piedra del teatro, el mármol de las columnas y el cobre de la cúpula, ya verdoso. */
-const THEATRE_WALL: Ramp = ramp('#efe2c4');
-const THEATRE_STONE: Ramp = ramp('#e2d6bc');
-const THEATRE_COLUMN: Ramp = ramp('#fbf8f0');
-const THEATRE_LOGGIA = hex('#5d4f3c');
-const COPPER: Ramp = [hex('#4f6a58'), hex('#6d8b74'), hex('#82a48c')];
+/** La piedra del teatro, la mampostería de las columnas y la pizarra del techo. */
+const THEATRE_WALL: Ramp = ramp('#f0dcb0');
+const THEATRE_STONE: Ramp = ramp('#f2e9d3');
+const THEATRE_COLUMN: Ramp = ramp('#fdfaf2');
+const THEATRE_LOGGIA = hex('#4d4034');
+/** La pizarra del techo del teatro, más azul y más pesada que la losa de las azoteas. */
+const ROOF_SLATE: Ramp = [hex('#6d7480'), hex('#5a606a'), hex('#4a5058')];
 
 /**
- * El Teatro (3x3): el pórtico de seis columnas contra la logia oscura, el frontón con el tímpano
- * hundido y la cúpula de cobre ancha y baja con su linterna. Una cúpula alta y con remate dorado se lee
- * como mezquita, que es lo que este edificio no es.
+ * El Teatro (3x3): el pórtico de seis columnas contra la logia oscura, el frontón con el tímpano hundido
+ * y la mansarda de pizarra detrás. **El Colón no tiene cúpula**: tiene un techo enorme y pesado, y es lo
+ * que lo distingue de un banco con columnas.
  */
 function paintTeatroOn(p: Pen, vw: number, vh: number): void {
   const cx = vw / 2;
-  const cy = vh / 2;
   const inn = 0.42;
   const x0 = inn;
   const y0 = inn;
@@ -4246,22 +4246,42 @@ function paintTeatroOn(p: Pen, vw: number, vh: number): void {
   const z0 = 4;
   const H = 26;
   // La casa: tres plantas con las ventanas en la cara del costado. La de adelante la ocupa la logia.
+  // Los paños van primero: el primer parche que toca un píxel gana, así que las molduras no los tapan.
   const sidePanes: Patch[] = [];
   for (const z of [6, 13, 20]) {
     for (const t of [5, 15, 25]) {
-      sidePanes.push({ t0: t, t1: t + 5, k0: z, k1: z + 5, c: shade(GLASS, 0.92) });
-      sidePanes.push({ t0: t, t1: t + 5, k0: z + 5, k1: z + 6, c: shade(THEATRE_STONE[1], 0.86) });
+      sidePanes.push({ t0: t, t1: t + 5, k0: z, k1: z + 5, c: shade(GLASS, 0.86) });
+      sidePanes.push({ t0: t, t1: t + 5, k0: z + 5, k1: z + 6, c: shade(THEATRE_STONE[2], 0.72) });
+      sidePanes.push({ t0: t + 1, t1: t + 2, k0: z, k1: z + 5, c: shade(GLASS, 1.5) });
     }
+  }
+  // El zócalo, las cornisas de piso y las pilastras: sin esto la piedra es un plano de un solo color y el
+  // teatro se ve liso como una caja de zapatos.
+  // El zócalo: dos hiladas de piedra gris, almohadilladas, que le dan base al edificio. Sin él la pared
+  // arranca del suelo sin apoyo y todo el bloque se ve liviano.
+  sidePanes.push({ t0: 0, t1: 40, k0: 0, k1: 1, c: shade(CONCRETE[1], 1.06) });
+  sidePanes.push({ t0: 0, t1: 40, k0: 1, k1: 2, c: shade(CONCRETE[2], 0.84) });
+  sidePanes.push({ t0: 0, t1: 40, k0: 2, k1: 3, c: shade(CONCRETE[1], 0.96) });
+  for (const z of [11, 18]) {
+    sidePanes.push({ t0: 0, t1: 40, k0: z, k1: z + 1, c: shade(THEATRE_STONE[1], 1.12) });
+    sidePanes.push({ t0: 0, t1: 40, k0: z + 1, k1: z + 2, c: shade(THEATRE_STONE[2], 0.74) });
+  }
+  for (const t of [1, 12, 22]) {
+    sidePanes.push({ t0: t, t1: t + 2, k0: 2, k1: 25, c: shade(THEATRE_STONE[1], 1.04) });
+    sidePanes.push({ t0: t + 2, t1: t + 3, k0: 2, k1: 25, c: shade(THEATRE_STONE[2], 0.8) });
   }
   // La logia: un plano oscuro sobre la cara de adelante. Sin ese fondo, seis columnas claras sobre
   // piedra clara no se leen a 1×.
   const front: Patch[] = [
-    { t0: 2, t1: 32, k0: 4, k1: 22, c: THEATRE_LOGGIA },
-    { t0: 2, t1: 32, k0: 22, k1: 23, c: shade(THEATRE_STONE[2], 0.8) },
+    { t0: 0, t1: 40, k0: 0, k1: 1, c: shade(CONCRETE[1], 1.06) },
+    { t0: 0, t1: 40, k0: 1, k1: 2, c: shade(CONCRETE[2], 0.84) },
+    { t0: 0, t1: 40, k0: 2, k1: 3, c: shade(CONCRETE[1], 0.96) },
+    { t0: 2, t1: 36, k0: 4, k1: 22, c: THEATRE_LOGGIA },
+    { t0: 2, t1: 36, k0: 22, k1: 23, c: shade(THEATRE_STONE[2], 0.72) },
     { t0: 13, t1: 21, k0: 4, k1: 12, c: INSIDE },
   ];
-  // La cubierta va más oscura que los muros: con la losa clara el frontón y la cúpula se perdían en ella.
-  p.box(x0, y0, x1, y1, z0, H, THEATRE_WALL, 'plain', front, sidePanes, shade(THEATRE_STONE[0], 0.88));
+  // La cubierta de arriba es la pizarra del techo, no una losa de piedra.
+  p.box(x0, y0, x1, y1, z0, H, THEATRE_WALL, 'plain', front, sidePanes, shade(ROOF_SLATE[2], 1.06));
   // Las seis columnas, cada una con su basa y su capitel, paradas un poco más adelante que la pared.
   const face = y1;
   for (let k = 0; k < 6; k++) {
@@ -4270,41 +4290,54 @@ function paintTeatroOn(p: Pen, vw: number, vh: number): void {
     p.box(u - 0.075, face - 0.01, u + 0.075, face + 0.11, z0 + 2, 1.2, THEATRE_STONE, 'plain');
     p.box(u - 0.075, face - 0.01, u + 0.075, face + 0.11, z0 + H - 1.4, 1.4, THEATRE_COLUMN, 'plain');
   }
-  // El tambor y la cúpula. La cúpula se pinta por anillos, cada uno más chico y más alto que el de
-  // abajo: con un solo casquete, el Tambor se come el borde y queda una tira verde dando vueltas.
-  const dv = cy - 0.42;
-  const drumH = 4.8;
-  const drumZ = z0 + H + 2.6;
-  p.box(cx - 0.46, dv - 0.46, cx + 0.46, dv + 0.46, drumZ, drumH, THEATRE_STONE, 'plain');
-  const domeZ = drumZ + drumH;
-  const [ex, ey] = p.P(cx, dv, domeZ);
-  const rx = 0.3 * vw * 16;
-  // La media naranja: un semicírculo, no un globo. Un `blob` entero se lee como una piedra apoyada en el
-  // techo porque la mitad de abajo también se ve.
-  const domeRy = rx * 0.92;
-  const dome: Pt[] = [];
-  for (let i = 0; i <= 20; i++) {
-    const th = Math.PI * (i / 20);
-    dome.push([ex + rx * Math.cos(th), ey - domeRy * Math.sin(th)]);
+  // El techo: el Colón **no lleva cúpula**, lleva una mansarda de pizarra enorme y pesada. Se pinta con
+  // dos faldas —la del frente y la del costado— y un quiebre arriba: pendiente fuerte abajo y remate más
+  // tendido, que es la silueta que el teatro tiene desde la calle.
+  // El alero vuela a los costados pero no al frente: el frontón tiene que quedar delante del techo.
+  const eave = 0.07;
+  const roofZ = z0 + H;
+  const breakZ = roofZ + 6;
+  const breakIn = 0.4;
+  const topZ = breakZ + 2.2;
+  const topIn = 0.66;
+  /** Una falda de pizarra: hileras cada tres píxeles y el borde de arriba iluminado. */
+  const slate = (tone: number): Paint => (x, y) => {
+    if (y % 3 === 0) return shade(ROOF_SLATE[2], tone * 0.82);
+    return noise(x, y >> 1, 5) > 0.86 ? shade(ROOF_SLATE[1], tone * 0.94) : shade(ROOF_SLATE[1], tone);
+  };
+  // La falda del frente, la del costado del mismo lado, y las dos del quiebre.
+  p.poly(
+    [p.P(x0, y1, roofZ), p.P(x1, y1, roofZ), p.P(x1 - breakIn, y1 - breakIn, breakZ), p.P(x0 + breakIn, y1 - breakIn, breakZ)],
+    slate(1.06),
+  );
+  p.poly(
+    [p.P(x1 + eave, y1, roofZ), p.P(x1 + eave, y0 - eave, roofZ), p.P(x1 - breakIn, y0 + breakIn, breakZ), p.P(x1 - breakIn, y1 - breakIn, breakZ)],
+    slate(0.86),
+  );
+  p.poly(
+    [p.P(x0 + breakIn, y1 - breakIn, breakZ), p.P(x1 - breakIn, y1 - breakIn, breakZ), p.P(x1 - topIn, y1 - topIn, topZ), p.P(x0 + topIn, y1 - topIn, topZ)],
+    slate(1.2),
+  );
+  p.poly(
+    [p.P(x1 - breakIn, y1 - breakIn, breakZ), p.P(x1 - breakIn, y0 + breakIn, breakZ), p.P(x1 - topIn, y0 + topIn, topZ), p.P(x1 - topIn, y1 - topIn, topZ)],
+    slate(0.98),
+  );
+  // La cumbrera: el borde alto del techo, iluminado, y la losa de arriba.
+  p.poly(
+    [p.P(x0 + topIn, y0 + topIn, topZ), p.P(x1 - topIn, y0 + topIn, topZ), p.P(x1 - topIn, y1 - topIn, topZ), p.P(x0 + topIn, y1 - topIn, topZ)],
+    (_x, y) => (y % 3 === 0 ? shade(ROOF_SLATE[0], 0.9) : shade(ROOF_SLATE[0], 1.12)),
+  );
+  p.px.line(p.P(x0 + breakIn, y1 - breakIn, breakZ), p.P(x1 - breakIn, y1 - breakIn, breakZ), shade(ROOF_SLATE[0], 1.26));
+  p.px.line(p.P(x0, y1, roofZ), p.P(x1 + eave, y1, roofZ), shade(ROOF_SLATE[2], 0.66));
+  // Las claraboyas del techo, dos, hundidas en la pizarra: un techo de ese tamaño vacío es una mancha.
+  for (const k of [-0.28, 0.28]) {
+    const bu = cx + k * 1.1;
+    const bv = y1 - 0.2;
+    p.poly(
+      [p.P(bu - 0.12, bv, roofZ + 2), p.P(bu + 0.12, bv, roofZ + 2), p.P(bu + 0.12, bv - 0.16, roofZ + 3.4), p.P(bu - 0.12, bv - 0.16, roofZ + 3.4)],
+      () => shade(ROOF_SLATE[0], 1.4),
+    );
   }
-  p.poly(dome, (x, y) => {
-    // La luz viene de arriba a la izquierda: el casquete se aclara arriba y a la izquierda y se hunde a la
-    // derecha. Por franjas y sin tramado: el tramado parejo en toda la cúpula la deja a cuadros.
-    const t = (ey - y) / domeRy;
-    const side = (x - ex) / rx;
-    if (Math.abs(side) > 0.94) return shade(COPPER[0], 0.8);
-    if (side > 0.42) return shade(COPPER[0], 1.04);
-    if (t > 0.74) return shade(COPPER[2], 1.22);
-    if (t > 0.42) return COPPER[1];
-    if (t > 0.12) return shade(COPPER[2], 1.08);
-    return COPPER[1];
-  });
-  // El borde de abajo, donde la cúpula se apoya en el tambor.
-  p.px.line([ex - rx, ey], [ex + rx, ey], shade(COPPER[0], 0.76));
-  // La linterna que cierra la cúpula, en piedra, con su capuchón de cobre.
-  const lanternZ = domeZ + Math.round(domeRy);
-  p.box(cx - 0.1, dv - 0.1, cx + 0.1, dv + 0.1, lanternZ, 2.4, THEATRE_STONE, 'plain');
-  p.hip(cx - 0.12, dv - 0.12, cx + 0.12, dv + 0.12, lanternZ + 2.4, 1.8, COPPER);
 
   // El entablamento: sólo la banda del frente, sin tapa. Una caja con tapa se comía la cubierta entera y
   // el teatro quedaba con una losa de piedra por techo.
@@ -4315,7 +4348,7 @@ function paintTeatroOn(p: Pen, vw: number, vh: number): void {
   p.px.line(p.P(x0 - 0.05, face + 0.12, z0 + H + 2.4), p.P(x1 + 0.05, face + 0.12, z0 + H + 2.4), shade(THEATRE_STONE[1], 1.2));
   p.px.line(p.P(x0 - 0.05, face + 0.12, z0 + H), p.P(x1 + 0.05, face + 0.12, z0 + H), shade(THEATRE_STONE[2], 0.82));
   const base = z0 + H + 2.4;
-  const apexH = 11;
+  const apexH = 10;
   // El frontón, con las dos faldas en tonos distintos y la arista iluminada: tres triángulos encimados del
   // mismo color no se leen, y el frontón es lo único que dice que esto es un teatro y no un banco.
   const ped = face + 0.12;

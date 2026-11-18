@@ -30,8 +30,10 @@ el dibujo de canvas, y la prueba mira la estructura, no la tinta.
   convierte en una mancha gris. El agua, los dos muros de piedra en las puntas y el bote del Riachuelo
   son parte del dibujo, porque el puente pinta su propio río dentro del lote.
 - **S9. Teatro.** Seis columnas claras contra un plano oscuro —la logia—, entablamento y frontón con el
-  tímpano oscuro, ventanas en tres filas sobre la cara lateral, y la cúpula de cobre **ancha y baja** con
-  su linterna: una cúpula alta y con remate dorado se lee como mezquita, que es lo que este edificio no es.
+  tímpano oscuro, ventanas en tres filas sobre la cara lateral, y **una mansarda de pizarra** detrás:
+  *"El teatro tiene que ser estilo teatro Colón, no tiene una cúpula arriba sino como una especie de
+  techo"*. Y `S10`: *"dale más profundidad a su color, es medio plano"* — la piedra necesita moldura,
+  zócalo y pilastras, no un solo tono.
 
 ## Tasks
 
@@ -73,3 +75,20 @@ el dibujo de canvas, y la prueba mira la estructura, no la tinta.
   acero por tercio, tajadas de logia— y no cantidad de tinta.
 - **L5.** Evidencia: `npx vitest run` **1157 / 70 archivos** verdes · `tsc --noEmit` limpio ·
   `npm run board` 39 kB · las dos orientaciones del puente en el tablero.
+- **L6.** Pedido, textual: *"El teatro tiene que ser estilo teatro colón, no tiene una cupula arriba sino
+  como una especie de techo, y dale mas profundidad a su color, es medio plano, los otros dos me
+  gustaron"*. Se agregaron S9 (corregido) y S10, y se reabrió la tarea del teatro.
+- **L7.** Fuera el tambor, la media naranja y la linterna. El techo es ahora una **mansarda de pizarra**:
+  la falda del frente, la del costado y el quiebre de arriba, con hileras cada tres píxeles, la cumbrera
+  iluminada y dos claraboyas. El alero vuela a los costados pero **no al frente**, para que el frontón
+  quede delante del techo y no compartan plano.
+- **L8.** La profundidad del color no salió de oscurecer la piedra —eso la puso turbia— sino de **agregar
+  moldura**: zócalo almohadillado de tres hiladas, cornisas de piso, pilastras con su sombra al lado, el
+  antepecho y el brillo de cada ventana. La piedra quedó más cálida (`#f0dcb0`) y las molduras más claras
+  que la pared, que es al revés de lo que uno hace por instinto.
+- **L9.** Dos trampas de las pruebas, anotadas porque van a volver: la pizarra azulada **entraba** en el
+  predicado del vidrio con un umbral flojo (dos columnas de ventanas que no existían) y las dos
+  claraboyas del techo del mismo vidrio sumaban dos más. El vidrio pide un sesgo azul fuerte (`b > r+28`)
+  y las claraboyas van en pizarra clara, no en vidrio.
+- **L10.** Evidencia: `npx vitest run` **1157 / 70 archivos** verdes · `tsc --noEmit` limpio ·
+  `npm run board` · el teatro en el tablero, sin cúpula.
