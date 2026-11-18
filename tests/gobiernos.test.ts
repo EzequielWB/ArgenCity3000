@@ -77,7 +77,7 @@ describe('the new forms of government', () => {
     expect(GOVERNMENTS.teocracia.termYears).toBeNull();
     expect(stepApproval(79, 100, 'teocracia')).toBe(80);
     expect(GOVERNMENTS.comunismo.termYears).toBe(5);
-    expect(GOVERNMENTS.comunismo.toWin).toBe(40);
+    expect(GOVERNMENTS.comunismo.toWin).toBe(55);
     expect(stepApproval(50, 100, 'comunismo')).toBe(51); // it barely moves
   });
 });

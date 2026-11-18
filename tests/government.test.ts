@@ -110,6 +110,8 @@ describe('forms of government', () => {
       for (const pro of GOVERNMENTS[kind].pros) expect(closed).toContain(pro);
       for (const con of GOVERNMENTS[kind].cons) expect(closed).toContain(con);
     }
+    // The congress threshold is quoted in the card too: it must read the same number `toWin` enforces.
+    expect(closed).toContain(`hace falta el ${GOVERNMENTS.comunismo.toWin} % para seguir`);
     expect(closed).toContain('(recomendada)');
     const opened = governmentCardsHtml('dictadura');
     expect(opened.match(/aria-expanded="true"/g)).toHaveLength(1);

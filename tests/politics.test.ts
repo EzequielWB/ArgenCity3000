@@ -132,6 +132,23 @@ describe('elections', () => {
     expect(sim.state.terms).toBe(2);
   });
 
+  it('put the Party to a vote at its congress: from 55 % up it stays, below that it goes', () => {
+    const year = nextElectionYear(0, 'comunismo')!;
+    const stays = new Simulation(new World(flat()), newSimState(1, 'comunismo'), 'Prueba');
+    runTo(stays, months(year, 10));
+    stays.state.approval = 56;
+    runTo(stays, months(year, 11));
+    expect(stays.state.lostElection).toBe(false);
+    expect(stays.state.terms).toBe(1);
+
+    const goes = new Simulation(new World(flat()), newSimState(1, 'comunismo'), 'Prueba');
+    runTo(goes, months(year, 10));
+    goes.state.approval = 45; // enough under the old 40, not under 55
+    runTo(goes, months(year, 11));
+    expect(goes.state.lostElection).toBe(true);
+    expect(goes.state.terms).toBe(0);
+  });
+
   it('are lost under 50, and after that the city goes on without elections', () => {
     const sim = new Simulation(new World(flat()), newSimState(1), 'Prueba');
     runTo(sim, months(1993, 10));
