@@ -3930,6 +3930,427 @@ export function paintCalvario(vw: number, vh: number): { px: Pixels; ax: number;
   return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
 }
 
+const OBELISCO_MAX_Z = 120;
+
+/** La piedra del fuste: casi blanca, con el filo iluminado y la cara del costado en sombra. */
+const MARBLE: Ramp = [hex('#c9c3b4'), hex('#f6f1e6'), hex('#efe9da')];
+
+/**
+ * El Obelisco (2x2): la plaza de la República con sus dos escalones y sus cuatro faroles, y el fuste de
+ * cuatro caras planas que remata en el piramidión filoso. El fuste **no se angosta** —el de verdad son
+ * cuatro caras planas— así que se pinta como dos quads y no como una escalera de cajas.
+ */
+function paintObeliscoOn(p: Pen, vw: number, vh: number): void {
+  const cx = vw / 2;
+  const cy = vh / 2;
+  // La plaza: dos escalones de piedra, el de abajo más gastado y el de arriba más claro.
+  p.box(0.03, 0.03, vw - 0.03, vh - 0.03, 0, 2, STONE_LIGHT, 'plain', [], [], hex('#c5bfb0'));
+  p.box(0.26, 0.26, vw - 0.26, vh - 0.26, 2, 2, STONE_LIGHT, 'plain', [], [], hex('#ded8c9'));
+  const lamp = (u: number, v: number) => {
+    const [x, y] = p.P(u, v, 4);
+    const ix = Math.round(x);
+    const iy = Math.round(y);
+    p.px.rect(ix, iy - 12, 1, 12, LEG);
+    p.px.rect(ix - 1, iy - 15, 3, 3, LAMP);
+    p.px.set(ix - 1, iy - 15, BEAM);
+    p.px.set(ix + 1, iy - 14, shade(LAMP, 0.78));
+  };
+  // Tres faroles: el de la esquina de atrás cae justo detrás del fuste y no se ve, así que no se pinta.
+  // Los del costado van antes que el fuste y el de adelante después, que es el orden de la cámara.
+  lamp(vw - 0.3, 0.3);
+  lamp(0.3, vh - 0.3);
+
+  const z0 = 6;
+  const zTop = z0 + 94;
+  const hb = 0.36;
+  // El zócalo: un dado apenas más ancho que el fuste, para que la piedra no salga cortando la plaza.
+  p.box(cx - 0.46, cy - 0.46, cx + 0.46, cy + 0.46, 4, 2, MARBLE, 'plain', [], [], hex('#e6e0d2'));
+  // La cara que da a la cámara (span en u) y la del costado (span en v). La primera toma la luz y la
+  // segunda queda en sombra: sin ese contraste el fuste se lee como un rectángulo blanco.
+  p.poly(
+    [p.P(cx - hb, cy + hb, z0), p.P(cx + hb, cy + hb, z0), p.P(cx + hb, cy + hb, zTop), p.P(cx - hb, cy + hb, zTop)],
+    (x, y) => (noise(x, y * 3, 9) > 0.93 ? shade(MARBLE[1], 0.95) : MARBLE[1]),
+  );
+  p.poly(
+    [p.P(cx + hb, cy + hb, z0), p.P(cx + hb, cy - hb, z0), p.P(cx + hb, cy - hb, zTop), p.P(cx + hb, cy + hb, zTop)],
+    (x, y) => (noise(x, y * 2, 7) > 0.9 ? shade(MARBLE[2], 0.92) : shade(MARBLE[2], 0.84)),
+  );
+  // El filo del vértice: una línea iluminada donde se encuentran las dos caras, y el otro filo oscuro.
+  p.px.line(p.P(cx + hb, cy + hb, z0), p.P(cx + hb, cy + hb, zTop), shade(MARBLE[1], 1.1));
+  p.px.line(p.P(cx - hb, cy + hb, z0), p.P(cx - hb, cy + hb, zTop), shade(MARBLE[2], 0.7));
+  // La puerta al pie, en la cara de la cámara, y las dos ventanitas de arriba, una por cara visible.
+  {
+    const [dx, dy] = p.P(cx, cy + hb, z0);
+    const ix = Math.round(dx);
+    const iy = Math.round(dy);
+    p.px.rect(ix - 1, iy - 7, 4, 7, INSIDE);
+    p.px.rect(ix - 1, iy - 8, 4, 1, shade(MARBLE[2], 0.7));
+    p.px.set(ix + 2, iy - 7, shade(MARBLE[1], 0.9));
+    const [wx, wy] = p.P(cx, cy + hb, zTop - 9);
+    p.px.rect(Math.round(wx) - 1, Math.round(wy) - 3, 2, 4, INSIDE);
+    const [sx, sy] = p.P(cx + hb, cy, zTop - 9);
+    p.px.rect(Math.round(sx), Math.round(sy) - 3, 2, 4, INSIDE);
+  }
+  // El piramidión: dos triángulos, el de la cámara iluminado y el del costado en sombra, con la arista
+  // del vértice marcada. Es alto y filoso como el de verdad, y la antena lo cierra.
+  const apex: Pt = p.P(cx, cy, zTop + 13);
+  p.poly([p.P(cx - hb, cy + hb, zTop), p.P(cx + hb, cy + hb, zTop), apex], (x, y) =>
+    noise(x, y * 2, 5) > 0.9 ? shade(MARBLE[1], 0.9) : MARBLE[1],
+  );
+  p.poly([p.P(cx + hb, cy + hb, zTop), p.P(cx + hb, cy - hb, zTop), apex], () => shade(MARBLE[2], 0.8));
+  p.px.line(p.P(cx + hb, cy + hb, zTop), apex, shade(MARBLE[1], 1.14));
+  const [ax, ay] = apex;
+  p.px.rect(Math.round(ax), Math.round(ay) - 6, 1, 6, LEG);
+  p.px.set(Math.round(ax) - 1, Math.round(ay) - 5, LEG);
+
+  // El farol de adelante va último: está delante de todo.
+  lamp(vw - 0.3, vh - 0.3);
+}
+
+/** Paints el Obelisco on the lot the camera sees: 2x2. */
+export function paintObelisco(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, OBELISCO_MAX_Z);
+  paintObeliscoOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const obeliscoCache = new Map<string, Sprite>();
+
+/** El Obelisco as a sprite. */
+export function obeliscoPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = obeliscoCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintObelisco(vw, vh));
+    obeliscoCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+const PUENTE_MAX_Z = 62;
+
+/** El acero del transbordador: una chapa galvanizada, que a 1× se lee por el filo y no por el tono. */
+const BRIDGE_STEEL: Ramp = ramp('#9aa6ae');
+const BRIDGE_DARK = hex('#39424a');
+/** El agua del Riachuelo: más verde y más sucia que el río de la costa. */
+const RIVER = hex('#3f7f78');
+const RIVER_LIGHT = hex('#5fa79b');
+const RIVER_GLINT = hex('#8fc9bd');
+/** La barca: el rojo del hierro y la cubierta de crema. */
+const CAR_GIRDER = ramp('#a8382c');
+const CAR_DECK = hex('#e8e0cc');
+
+/**
+ * El Puente Transbordador (2x6): las dos torres de celosía sobre los muros de piedra, el tablero alto
+ * entre ellas y la barca colgada de cuatro varas sobre el agua. **Pocos miembros a propósito**: una
+ * celosía densa a 1× es una mancha gris. El puente pinta su propio río, así que el agua y los dos muros
+ * son parte del dibujo.
+ */
+function paintPuenteOn(p: Pen, vw: number, vh: number): void {
+  const alongU = vw >= vh;
+  const L = Math.max(vw, vh);
+  const W = Math.min(vw, vh);
+  const uv = (a: number, c: number): [number, number] => (alongU ? [a, c] : [c, a]);
+  const Q = (a: number, c: number, z: number): Pt => {
+    const [u, v] = uv(a, c);
+    return p.P(u, v, z);
+  };
+  const boxAC = (a0: number, c0: number, a1: number, c1: number, z: number, h: number, base: Ramp, tex: Tex = 'plain') => {
+    const [u0, v0] = uv(Math.min(a0, a1), Math.min(c0, c1));
+    const [u1, v1] = uv(Math.max(a0, a1), Math.max(c0, c1));
+    p.box(Math.min(u0, u1), Math.min(v0, v1), Math.max(u0, u1), Math.max(v0, v1), z, h, base, tex);
+  };
+  const line = (a0: number, c0: number, z0: number, a1: number, c1: number, z1: number, c: RGB) => {
+    p.px.line(Q(a0, c0, z0), Q(a1, c1, z1), c);
+  };
+
+  // El río, primero, bajo los dos muros: el agua se ve entre ellos y el puente la cruza.
+  p.poly([Q(0, 0, -2), Q(L, 0, -2), Q(L, W, -2), Q(0, W, -2)], (x, y) => {
+    const n = noise(x, y, 5);
+    return n > 0.88 ? RIVER_LIGHT : RIVER;
+  });
+  // Los dos muros de piedra, con el borde oscuro donde toca el agua y el pretil arriba.
+  const bank = 0.66;
+  for (const a0 of [0, L - bank]) {
+    boxAC(a0, 0, a0 + bank, W, -2, 5, QUAY);
+    boxAC(a0 + 0.06, 0.06, a0 + bank - 0.06, W - 0.06, 3, 1.6, QUAY, 'plain');
+    // Las hiladas de piedra en la cara que da al agua, o el muro es una losa lisa.
+    for (const z of [0.6, 2.2]) {
+      line(a0 + (a0 === 0 ? bank : 0), 0.04, z, a0 + (a0 === 0 ? bank : 0), W - 0.04, z, shade(QUAY[2], 0.72));
+    }
+  }
+  // Tres brillos en el agua y el bote de remos del Riachuelo: sin ellos el río es una franja azul.
+  for (const [a, c, w] of [
+    [1.35, 1.45, 4],
+    [2.65, 0.55, 5],
+    [4.5, 1.35, 4],
+  ]) {
+    const [x, y] = Q(a, c, -1.6);
+    p.px.rect(Math.round(x) - w, Math.round(y), w * 2, 1, RIVER_GLINT);
+  }
+  {
+    const [bx, by] = Q(1.75, 0.72, -1.2);
+    p.px.rect(Math.round(bx) - 3, Math.round(by) - 1, 6, 2, WOOD_DARK[1]);
+    p.px.rect(Math.round(bx) - 2, Math.round(by) - 2, 4, 1, WOOD[1]);
+  }
+
+  /** Una pata de las torres: dos píxeles, el de la izquierda con luz. */
+  const leg = (a: number, c: number, z0: number, z1: number) => {
+    const [x, y] = Q(a, c, z0);
+    const ix = Math.round(x);
+    const iy = Math.round(y);
+    const h = Math.round(z1 - z0);
+    p.px.rect(ix, iy - h, 1, h, shade(BRIDGE_STEEL[1], 1.08));
+    p.px.rect(ix + 1, iy - h, 1, h, shade(BRIDGE_STEEL[2], 0.86));
+  };
+  const cLow = 0.44;
+  const cHigh = W - 0.44;
+  const zFoot = 3;
+  const zHead = 50;
+  const trussLow = 34;
+  const trussHigh = 40;
+
+  /** Una torre: dos patas, tres travesaños y una cruz por vano. Es toda la celosía que aguanta el 1×. */
+  const tower = (a: number) => {
+    leg(a, cLow, zFoot, zHead);
+    leg(a, cHigh, zFoot, zHead);
+    for (const z of [zFoot + 2, 24, zHead - 2]) {
+      line(a, cLow, z, a, cHigh, z, BRIDGE_STEEL[1]);
+      line(a, cLow, z + 1, a, cHigh, z + 1, shade(BRIDGE_STEEL[2], 0.8));
+    }
+    // La celosía va sólo abajo del tablero: arriba las torres siguen con las dos patas y el travesaño
+    // de la punta, como el transbordador de verdad.
+    for (const [z0, z1] of [
+      [zFoot + 4, 20],
+      [23, trussLow - 2],
+    ]) {
+      line(a, cLow + 0.06, z0, a, cHigh - 0.06, z1, BRIDGE_DARK);
+      line(a, cHigh - 0.06, z0, a, cLow + 0.06, z1, BRIDGE_DARK);
+    }
+    // La cruz de San Andrés se apoya en los travesaños: dos remaches en cada punta.
+    for (const [c, z] of [
+      [cLow, zHead - 2],
+      [cHigh, zHead - 2],
+    ]) {
+      const [x, y] = Q(a, c, z);
+      p.px.set(Math.round(x), Math.round(y) - 1, shade(BRIDGE_STEEL[1], 1.2));
+    }
+  };
+
+  const aNear = 0.45;
+  const aFar = L - 0.45;
+  // La torre del fondo primero: la de adelante la tapa, como en la realidad.
+  tower(aFar);
+  // El tablero alto entre las dos torres: una viga llena con el cordón de arriba iluminado, y la
+  // celosía marcada encima en oscuro. Una celosía de alambre sola —lo que hice primero— se lee como una
+  // escalera colgada en el aire, no como la viga que cruza el río.
+  p.poly(
+    [Q(aNear, cHigh, trussLow), Q(aFar, cHigh, trussLow), Q(aFar, cHigh, trussHigh), Q(aNear, cHigh, trussHigh)],
+    (x, y) => (bayer(x, y) < 0.22 ? shade(BRIDGE_STEEL[1], 0.94) : BRIDGE_STEEL[1]),
+  );
+  line(aNear, cHigh, trussHigh, aFar, cHigh, trussHigh, shade(BRIDGE_STEEL[1], 1.16));
+  line(aNear, cHigh, trussLow, aFar, cHigh, trussLow, shade(BRIDGE_STEEL[2], 0.72));
+  // El cordón del fondo se ve por arriba de la viga: dos líneas alcanzan, y una segunda viga llena
+  // convertía el tablero en dos tableros paralelos.
+  line(aNear, cLow, trussLow, aFar, cLow, trussLow, shade(BRIDGE_STEEL[2], 0.86));
+  line(aNear, cLow, trussHigh, aFar, cLow, trussHigh, shade(BRIDGE_STEEL[1], 1.04));
+  const bays = 4;
+  for (let k = 0; k <= bays; k++) {
+    const a = aNear + ((aFar - aNear) * k) / bays;
+    line(a, cHigh, trussLow, a, cHigh, trussHigh, shade(BRIDGE_STEEL[2], 0.74));
+    if (k < bays) {
+      const a2 = aNear + ((aFar - aNear) * (k + 1)) / bays;
+      line(a, cHigh, trussLow + 1, a2, cHigh, trussHigh - 1, BRIDGE_DARK);
+      line(a, cHigh, trussHigh - 1, a2, cHigh, trussLow + 1, BRIDGE_DARK);
+    }
+  }
+  // La barca: cuelga de cuatro varas, bien abajo del tablero y bien arriba del agua. Con la baranda y
+  // la casilla del operador, que es lo que la distingue de una barcaza.
+  const mid = L / 2;
+  const carZ = 14;
+  boxAC(mid - 0.5, cLow, mid + 0.5, cHigh, carZ, 2.2, CAR_GIRDER);
+  boxAC(mid - 0.44, cLow + 0.06, mid + 0.44, cHigh - 0.06, carZ + 2.2, 0.8, ramp('#e8e0cc'));
+  // Las cuatro varas van antes que la barca: sus puntas quedan escondidas bajo el piso de la cubierta.
+  for (const da of [-0.42, 0.42]) {
+    for (const c of [cLow + 0.06, cHigh - 0.06]) {
+      line(mid + da, c, carZ + 2, mid + da, c, trussLow, BRIDGE_DARK);
+    }
+  }
+  // La baranda del lado de la cámara: cuatro postes y su barra.
+  for (let k = 0; k < 4; k++) {
+    const a = mid - 0.36 + k * 0.24;
+    line(a, cHigh - 0.08, carZ + 3, a, cHigh - 0.08, carZ + 4.6, CAR_DECK);
+  }
+  line(mid - 0.44, cHigh - 0.08, carZ + 4.6, mid + 0.44, cHigh - 0.08, carZ + 4.6, CAR_DECK);
+  // La casilla, del lado del fondo, para que la cubierta quede libre.
+  boxAC(mid - 0.22, cLow + 0.08, mid + 0.22, cLow + 0.34, carZ + 3, 2, ramp('#b84434'));
+  boxAC(mid - 0.2, cLow + 0.12, mid + 0.2, cLow + 0.3, carZ + 5, 0.6, ramp('#e8e0cc'));
+
+  // La sombra del tablero sobre el agua, antes de la torre de adelante: es lo que termina de decir que
+  // el puente pasa por arriba del río y no está apoyado en él.
+  p.poly(
+    [Q(aNear + 0.1, cLow, -1.9), Q(aFar - 0.1, cLow, -1.9), Q(aFar - 0.1, cHigh + 0.5, -1.9), Q(aNear + 0.1, cHigh + 0.5, -1.9)],
+    (x, y) => (bayer(x, y) < 0.5 ? shade(RIVER, 0.72) : null),
+  );
+
+  // La torre de adelante, al final: queda delante del tablero y de la barca.
+  tower(aNear);
+}
+
+/** Paints the Puente Transbordador on the lot the camera sees: 2x6 or 6x2. */
+export function paintPuente(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, PUENTE_MAX_Z);
+  paintPuenteOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const puenteCache = new Map<string, Sprite>();
+
+/** El Puente Transbordador as a sprite, keyed by the shape of the lot the camera sees. */
+export function puentePixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = puenteCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintPuente(vw, vh));
+    puenteCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+const TEATRO_MAX_Z = 62;
+
+/** La piedra del teatro, el mármol de las columnas y el cobre de la cúpula, ya verdoso. */
+const THEATRE_WALL: Ramp = ramp('#efe2c4');
+const THEATRE_STONE: Ramp = ramp('#e2d6bc');
+const THEATRE_COLUMN: Ramp = ramp('#fbf8f0');
+const THEATRE_LOGGIA = hex('#5d4f3c');
+const COPPER: Ramp = [hex('#4f6a58'), hex('#6d8b74'), hex('#82a48c')];
+
+/**
+ * El Teatro (3x3): el pórtico de seis columnas contra la logia oscura, el frontón con el tímpano
+ * hundido y la cúpula de cobre ancha y baja con su linterna. Una cúpula alta y con remate dorado se lee
+ * como mezquita, que es lo que este edificio no es.
+ */
+function paintTeatroOn(p: Pen, vw: number, vh: number): void {
+  const cx = vw / 2;
+  const cy = vh / 2;
+  const inn = 0.42;
+  const x0 = inn;
+  const y0 = inn;
+  const x1 = vw - inn;
+  const y1 = vh - inn;
+  // La vereda y el zócalo: el teatro está sobre un basamento de piedra.
+  p.box(0.03, 0.03, vw - 0.03, vh - 0.03, 0, 2, STONE_LIGHT, 'plain', [], [], hex('#c5bfb0'));
+  p.box(0.2, 0.2, vw - 0.2, vh - 0.2, 2, 2, STONE_LIGHT, 'plain', [], [], hex('#ded8c9'));
+
+  const z0 = 4;
+  const H = 26;
+  // La casa: tres plantas con las ventanas en la cara del costado. La de adelante la ocupa la logia.
+  const sidePanes: Patch[] = [];
+  for (const z of [6, 13, 20]) {
+    for (const t of [5, 15, 25]) {
+      sidePanes.push({ t0: t, t1: t + 5, k0: z, k1: z + 5, c: shade(GLASS, 0.92) });
+      sidePanes.push({ t0: t, t1: t + 5, k0: z + 5, k1: z + 6, c: shade(THEATRE_STONE[1], 0.86) });
+    }
+  }
+  // La logia: un plano oscuro sobre la cara de adelante. Sin ese fondo, seis columnas claras sobre
+  // piedra clara no se leen a 1×.
+  const front: Patch[] = [
+    { t0: 2, t1: 32, k0: 4, k1: 22, c: THEATRE_LOGGIA },
+    { t0: 2, t1: 32, k0: 22, k1: 23, c: shade(THEATRE_STONE[2], 0.8) },
+    { t0: 13, t1: 21, k0: 4, k1: 12, c: INSIDE },
+  ];
+  // La cubierta va más oscura que los muros: con la losa clara el frontón y la cúpula se perdían en ella.
+  p.box(x0, y0, x1, y1, z0, H, THEATRE_WALL, 'plain', front, sidePanes, shade(THEATRE_STONE[0], 0.88));
+  // Las seis columnas, cada una con su basa y su capitel, paradas un poco más adelante que la pared.
+  const face = y1;
+  for (let k = 0; k < 6; k++) {
+    const u = x0 + 0.2 + ((x1 - x0 - 0.4) * (k + 0.5)) / 6;
+    p.box(u - 0.055, face, u + 0.055, face + 0.1, z0 + 3, H - 3, THEATRE_COLUMN, 'plain');
+    p.box(u - 0.075, face - 0.01, u + 0.075, face + 0.11, z0 + 2, 1.2, THEATRE_STONE, 'plain');
+    p.box(u - 0.075, face - 0.01, u + 0.075, face + 0.11, z0 + H - 1.4, 1.4, THEATRE_COLUMN, 'plain');
+  }
+  // El tambor y la cúpula. La cúpula se pinta por anillos, cada uno más chico y más alto que el de
+  // abajo: con un solo casquete, el Tambor se come el borde y queda una tira verde dando vueltas.
+  const dv = cy - 0.42;
+  const drumH = 4.8;
+  const drumZ = z0 + H + 2.6;
+  p.box(cx - 0.46, dv - 0.46, cx + 0.46, dv + 0.46, drumZ, drumH, THEATRE_STONE, 'plain');
+  const domeZ = drumZ + drumH;
+  const [ex, ey] = p.P(cx, dv, domeZ);
+  const rx = 0.3 * vw * 16;
+  // La media naranja: un semicírculo, no un globo. Un `blob` entero se lee como una piedra apoyada en el
+  // techo porque la mitad de abajo también se ve.
+  const domeRy = rx * 0.92;
+  const dome: Pt[] = [];
+  for (let i = 0; i <= 20; i++) {
+    const th = Math.PI * (i / 20);
+    dome.push([ex + rx * Math.cos(th), ey - domeRy * Math.sin(th)]);
+  }
+  p.poly(dome, (x, y) => {
+    // La luz viene de arriba a la izquierda: el casquete se aclara arriba y a la izquierda y se hunde a la
+    // derecha. Por franjas y sin tramado: el tramado parejo en toda la cúpula la deja a cuadros.
+    const t = (ey - y) / domeRy;
+    const side = (x - ex) / rx;
+    if (Math.abs(side) > 0.94) return shade(COPPER[0], 0.8);
+    if (side > 0.42) return shade(COPPER[0], 1.04);
+    if (t > 0.74) return shade(COPPER[2], 1.22);
+    if (t > 0.42) return COPPER[1];
+    if (t > 0.12) return shade(COPPER[2], 1.08);
+    return COPPER[1];
+  });
+  // El borde de abajo, donde la cúpula se apoya en el tambor.
+  p.px.line([ex - rx, ey], [ex + rx, ey], shade(COPPER[0], 0.76));
+  // La linterna que cierra la cúpula, en piedra, con su capuchón de cobre.
+  const lanternZ = domeZ + Math.round(domeRy);
+  p.box(cx - 0.1, dv - 0.1, cx + 0.1, dv + 0.1, lanternZ, 2.4, THEATRE_STONE, 'plain');
+  p.hip(cx - 0.12, dv - 0.12, cx + 0.12, dv + 0.12, lanternZ + 2.4, 1.8, COPPER);
+
+  // El entablamento: sólo la banda del frente, sin tapa. Una caja con tapa se comía la cubierta entera y
+  // el teatro quedaba con una losa de piedra por techo.
+  p.poly(
+    [p.P(x0 - 0.05, face + 0.12, z0 + H), p.P(x1 + 0.05, face + 0.12, z0 + H), p.P(x1 + 0.05, face + 0.12, z0 + H + 2.4), p.P(x0 - 0.05, face + 0.12, z0 + H + 2.4)],
+    (x, y) => (bayer(x, y) < 0.2 ? shade(THEATRE_STONE[1], 1.06) : shade(THEATRE_STONE[1], 0.98)),
+  );
+  p.px.line(p.P(x0 - 0.05, face + 0.12, z0 + H + 2.4), p.P(x1 + 0.05, face + 0.12, z0 + H + 2.4), shade(THEATRE_STONE[1], 1.2));
+  p.px.line(p.P(x0 - 0.05, face + 0.12, z0 + H), p.P(x1 + 0.05, face + 0.12, z0 + H), shade(THEATRE_STONE[2], 0.82));
+  const base = z0 + H + 2.4;
+  const apexH = 11;
+  // El frontón, con las dos faldas en tonos distintos y la arista iluminada: tres triángulos encimados del
+  // mismo color no se leen, y el frontón es lo único que dice que esto es un teatro y no un banco.
+  const ped = face + 0.12;
+  const apex = p.P(cx, ped, base + apexH);
+  p.poly([p.P(x0 - 0.04, ped, base), p.P(cx, ped, base), apex], () => THEATRE_STONE[0]);
+  p.poly([p.P(cx, ped, base), p.P(x1 + 0.04, ped, base), apex], () => shade(THEATRE_STONE[0], 0.84));
+  p.px.line(p.P(cx, ped, base), apex, shade(THEATRE_STONE[0], 1.14));
+  p.px.line(p.P(x0 - 0.04, ped, base), p.P(x1 + 0.04, ped, base), shade(THEATRE_STONE[2], 0.68));
+  // El tímpano: el triángulo hundido entre la arista y la base, en sombra.
+  p.poly(
+    [p.P(x0 + 0.42, ped, base + 1.8), p.P(x1 - 0.42, ped, base + 1.8), p.P(cx, ped, base + apexH - 2.6)],
+    () => shade(THEATRE_STONE[1], 0.88),
+  );
+}
+
+/** Paints el Teatro on the lot the camera sees: 3x3. */
+export function paintTeatro(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, TEATRO_MAX_Z);
+  paintTeatroOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const teatroCache = new Map<string, Sprite>();
+
+/** El Teatro as a sprite, keyed by the shape of the lot the camera sees. */
+export function teatroPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = teatroCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintTeatro(vw, vh));
+    teatroCache.set(key, sprite);
+  }
+  return sprite;
+}
+
 const calvarioCache = new Map<string, Sprite>();
 
 /** El Calvario as a sprite, keyed by the shape of the lot the camera sees. */

@@ -136,6 +136,13 @@ const page = `<!doctype html>
           <div class="meta"><span class="size"></span><br />Sobre el agua, con una punta en tierra<br /><span class="tour">Turismo +5 %, todo el ano</span></div>
         </figcaption>
       </figure>
+      <figure class="wide">
+        <canvas data-kind="puente" data-rot="1"></canvas>
+        <figcaption>
+          <div class="name">Puente Transbordador, con la cámara girada</div>
+          <div class="meta">El mismo puente sobre el lote de 6×2: las torres cambian de punta y el río corre para el otro lado.</div>
+        </figcaption>
+      </figure>
       <h2>Los de gobierno</h2>
       <p class="sub">
         Uno por forma de gobierno: la ciudad fundada como democracia puede construir el Cabildo y no el
