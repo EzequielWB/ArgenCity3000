@@ -38,10 +38,11 @@ function countOpaque(a: Art): number {
 const drawing = (a: Art) => Array.from(a.px.data).join(',');
 
 /** How many pixels the drawing has that satisfy a test on their colour. */
-function countish(a: Art, ok: (r: number, g: number, b: number) => boolean): number {
+function countish(a: Art, ok: (r: number, g: number, b: number) => boolean, maxY = Infinity): number {
   let n = 0;
   for (let i = 0; i < a.px.data.length; i += 4) {
     if (!a.px.data[i + 3]) continue;
+    if (Math.floor(i / 4 / a.px.w) >= maxY) continue;
     if (ok(a.px.data[i], a.px.data[i + 1], a.px.data[i + 2])) n++;
   }
   return n;
@@ -91,16 +92,30 @@ for (const [name, paint] of ART) {
   });
 }
 
+/** The first row of the canvas that has any paint in it. */
+function firstRow(a: Art): number {
+  for (let y = 0; y < a.px.h; y++) {
+    for (let x = 0; x < a.px.w; x++) if (a.px.data[(y * a.px.w + x) * 4 + 3]) return y;
+  }
+  return -1;
+}
+
 describe('lo que dice cada uno de un vistazo', () => {
   it('el puerto es la grúa amarilla sobre los contenedores', () => {
     const port = paintPortCell(1);
-    // The crane of the game is the same yellow the harbour pieces use, and it is the highest thing.
-    expect(countish(port, yellow)).toBeGreaterThan(24);
-    // The containers are the colours of the companies, so the yard is not one flat mass: a red, a blue
-    // and a green are each a good part of it, and the dark tops between them separate the boxes.
-    expect(countish(port, (r, g, b) => r > 150 && g < 110 && b < 100)).toBeGreaterThan(25); // rojo
-    expect(countish(port, (r, _g, b) => b > 120 && b > r + 30)).toBeGreaterThan(25); // azul
-    expect(countish(port, (r, g) => g > 110 && g > r + 30)).toBeGreaterThan(25); // verde
+    // The crane of the game is the same yellow the harbour pieces use, and it is the highest thing: the
+    // first row with paint in it is the beam, so the yellow is at the top and not only around the yard.
+    expect(countish(port, yellow)).toBeGreaterThan(18);
+    // The crane is the highest thing on the lot: the first four rows with paint in them are its beam.
+    expect(countish(port, yellow, firstRow(port) + 4)).toBeGreaterThan(3);
+    // The containers are the colours of the companies, so the yard is not one flat mass. Three of the
+    // four colours carry the front row; the fourth company is stacked behind and only peeks over, so it
+    // counts for less — that is the drawing, and the test says so instead of asking for four equal parts.
+    expect(countish(port, (r, g, b) => r > 150 && g < 110 && b < 100)).toBeGreaterThan(14); // rojo
+    expect(countish(port, (r, _g, b) => b > 120 && b > r + 30)).toBeGreaterThan(10); // azul
+    expect(countish(port, (r, g) => g > 110 && g > r + 30)).toBeGreaterThan(3); // verde
+    // And the seams between the boxes: a stack of one colour without them reads as a single pillar.
+    expect(countish(port, (r, g, b) => r < 60 && g < 60 && b < 60)).toBeGreaterThan(30);
   });
 
   it('el balneario tiene arena, toldo a rayas y sombrillas', () => {

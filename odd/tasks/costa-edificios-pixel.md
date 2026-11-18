@@ -60,3 +60,20 @@ piezas en el tablero `arte.html?solo=costa` y en una manzana del mapa.
   `arte.html?solo=city` con los tres en la orilla y el crucero en el agua.
 - **L8.** `sprites.ts` quedó en 1.213 líneas y sin los tres: lo que resta en canvas son los diez
   edificios únicos de los gobiernos.
+- **L9.** El puerto no pasó el ojo del humano en el primer intento, y tenía razón: los contenedores eran
+  **dos cajas de 29 píxeles por piso, una por nivel**, así que el patio se leía como una rampa a rayas
+  azul-verde-oro y la grúa como un arco de fútbol. El test contaba 30 píxeles amarillos y 25 de cada
+  color y pasaba: **un test verde no dice que el dibujo se lea**, dice que hay tinta. Que esto quede
+  escrito, porque es la lección del pase.
+- **L10.** Lo que lo arregló, después de cuatro vueltas: **un color por caja y nunca uno por piso**. Dos
+  filas de dos cajas largas con costillas (azul, roja, oro y verde), cada una de dos alturas, y el largo
+  como dato del dibujo —un contenedor es largo, y a cuatro píxeles cuadrados vuelve a ser un ladrillo—.
+  La grúa quedó con las patas separadas, el riel en el medio, la viga con su pescante y la carga colgando
+  **delante** del patio, no encima: arriba de una pila del mismo color se lee como una caja más.
+- **L11.** El tablero mostró el problema que había detrás de la costa vacía: el mapa de la plancha se
+  aplanaba entero. Ahora nivela los dos planos (tierra un nivel sobre el agua) y las calles que quedaban
+  sobre el agua vuelven a ser agua. Con eso el puerto, el balneario, el faro y el crucero se ven en el
+  mapa y en la orilla.
+- **L12.** Evidencia final: `npx vitest run` **1133 / 66 archivos** verdes · `tsc --noEmit` limpio ·
+  `npm run arte` 174 kB · `arte.html?solo=costa` con las tres piezas y sus máscaras ·
+  `arte.html?solo=city` con los tres en la orilla y el crucero navegando.

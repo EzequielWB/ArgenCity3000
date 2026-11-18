@@ -2948,7 +2948,7 @@ export function fishingPixelSprite(dir: number): Sprite {
 /** The sand of the beach, warmer than any pavement. */
 const SAND: Ramp = [hex('#b58d52'), hex('#e2c48f'), hex('#cfae74')];
 /** Thatch: straw over the shadow of the eave. */
-const THATCH: Ramp = [hex('#7a5320'), hex('#c9a45a'), hex('#a8823f')];
+const THATCH: Ramp = [hex('#8a6327'), hex('#d8b871'), hex('#b8934a')];
 /** The stone the lighthouse stands on, and the foam that hits it. */
 const STONE: Ramp = ramp('#8b8b84');
 const FOAM = hex('#eaf5f8');
@@ -3012,70 +3012,58 @@ function quayFloor(p: Pen, water: number[]): void {
 }
 
 /**
- * A gantry crane over the quay: two legs and the beam on top, the cab where the beam crosses the
- * middle, and a container hanging from the spreader. This is what says "puerto" at a glance.
+ * A gantry crane over the quay: two legs standing on their rails, the beam on top and the cab under it.
+ * The beam runs out past the legs on the water side, which is the boom, and that is what makes the
+ * silhouette a crane and not a goal post.
  */
 function gantryCrane(p: Pen, u0: number, u1: number, v: number, h: number, color: Ramp): [number, number] {
-  const legW = 0.1;
-  const depth = 0.12;
-  // The legs, four pixels wide each: a two-pixel post reads as a wire and the crane disappears.
+  const legW = 0.08;
+  const depth = 0.1;
   for (const ua of [u0, u1 - legW]) {
-    p.box(ua, v, ua + legW, v + depth, 0, h, color, 'sheet');
-    // One rail down the middle of each leg, which is what makes it a lattice and not a slab.
-    const [lx, ly] = p.P(ua + legW / 2, v + depth, h);
-    p.px.rect(Math.round(lx), Math.round(ly), 1, h - 4, shade(color[2], 0.78));
+    // The leg is a solid two-pixel post with one rail down its middle: a full lattice at this size
+    // reads as a ladder, and no rail at all leaves a hollow doorway.
+    p.box(ua, v, ua + legW, v + depth, 0, h, color, 'plain');
+    const [rx, ry] = p.P(ua + legW / 2, v + depth, 0);
+    p.px.rect(Math.round(rx), Math.round(ry) - h + 2, 1, h - 3, shade(color[2], 1.28));
+    // The shoe, because a gantry crane runs on a rail.
+    p.box(ua - 0.03, v - 0.02, ua + legW + 0.03, v + depth + 0.02, 0, 2, [shade(color[0], 0.86), shade(color[1], 0.86), shade(color[2], 0.86)], 'plain');
   }
-  // A brace at the foot of each leg: without it the beam looks like it is standing on two sticks.
-  p.box(u0 - 0.01, v + depth, u0 + 0.2, v + depth + 0.06, 0, 3, color, 'plain');
-  p.box(u1 - 0.2, v + depth, u1 + 0.01, v + depth + 0.06, 0, 3, color, 'plain');
-  // The beam, five pixels over the legs, with its dark underside and a lit top rail.
-  p.box(u0 - 0.04, v, u1 + 0.04, v + depth, h, 4, color, 'plain');
-  p.px.line(p.P(u0 - 0.04, v, h), p.P(u1 + 0.04, v, h), shade(color[2], 0.7));
-  p.px.line(p.P(u0 - 0.04, v, h + 4), p.P(u1 + 0.04, v, h + 4), shade(color[2], 1.42));
+  // The beam, two pixels over the legs, dark underneath, and the boom sticking out over the water.
+  p.box(u0 - 0.07, v, u1 + 0.14, v + depth, h, 2, color, 'plain');
+  p.px.line(p.P(u0 - 0.07, v, h), p.P(u1 + 0.14, v, h), shade(color[2], 0.64));
+  // The cab under the beam, glass facing the quay.
   const uc = (u0 + u1) / 2;
-  // The cab, hanging under the beam with its glass facing the quay.
-  p.box(uc - 0.1, v + 0.02, uc + 0.1, v + depth, h - 6, 6, color, 'plain', [
-    { t0: 1, t1: 4, k0: 2, k1: 4, c: GLASS },
-    { t0: 1, t1: 4, k0: 5, k1: 6, c: shade(color[2], 1.35) },
-  ]);
-  p.px.line(p.P(uc - 0.1, v, h - 6), p.P(uc + 0.1, v, h - 6), shade(color[0], 0.72));
+  p.box(uc - 0.07, v + 0.01, uc + 0.07, v + depth, h - 5, 5, color, 'plain', [{ t0: 1, t1: 4, k0: 2, k1: 4, c: GLASS }]);
   return [uc, v + depth / 2];
 }
 
 /**
- * The load of the crane: the trolley, its two cables, the spreader and a container in the air. It is
- * painted after the stacks, so it hangs in front of them instead of disappearing behind the yard.
+ * The load of the crane: the trolley on the beam, its two cables, the spreader and the container in the
+ * air. It is painted after the yard, so it hangs in front of the containers instead of vanishing into
+ * them.
  */
 function gantryLoad(p: Pen, uc: number, v: number, h: number, color: Ramp, load: RGB): void {
-  const z = h - 24;
+  const z = Math.round(h) - 15;
   const [tx, ty] = p.P(uc, v, h);
-  p.px.rect(Math.round(tx) - 4, Math.round(ty), 9, 2, shade(color[0], 0.82));
-  const [bx, by] = p.P(uc, v, z + 5);
-  for (const dx of [-4, 4]) p.px.rect(Math.round(tx) + dx, Math.round(ty) + 2, 1, Math.max(2, Math.round(by) - Math.round(ty) - 1), LEG);
-  p.px.rect(Math.round(bx) - 5, Math.round(by) - 1, 11, 2, shade(color[0], 0.68));
-  p.box(
-    uc - 0.13,
-    v - 0.03,
-    uc + 0.13,
-    v + 0.03,
-    z,
-    4,
-    [shade(load, 1.05), shade(load, LEFT), shade(load, RIGHT)],
-    'sheet',
-    [{ t0: 0, t1: 99, k0: 1, k1: 3, c: shade(load, 0.82) }],
-  );
+  p.px.rect(Math.round(tx) - 3, Math.round(ty) - 1, 7, 2, shade(color[1], 0.88));
+  const [bx, by] = p.P(uc, v, z + 4);
+  for (const dx of [-3, 3]) p.px.rect(Math.round(tx) + dx, Math.round(ty) + 1, 1, Math.max(2, Math.round(by) - Math.round(ty) - 1), LEG);
+  p.px.rect(Math.round(bx) - 4, Math.round(by) - 1, 9, 1, shade(color[0], 0.7));
+  p.box(uc - 0.09, v - 0.02, uc + 0.09, v + 0.07, z, 3, [shade(load, 1.05), shade(load, LEFT), shade(load, RIGHT)], 'sheet', [], [], shade(load, 1.2));
 }
 
-/** A row of containers stacked one on top of the other, in the colour of each company. */
-function containerStack(p: Pen, u: number, v: number, w: number, colors: number[], h: number): void {
-  colors.forEach((k, i) => {
-    const c = CARGO[k % 4];
-    const z = i * h;
-    // The ribs of the plate: one dark line every three pixels, which is what makes it a container.
-    const ribs: Patch[] = [];
-    for (let t = 2; t < w * 32; t += 3) ribs.push({ t0: t, t1: t + 1, k0: 0, k1: h, c: shade(c, 0.84) });
-    p.box(u, v, u + w, v + 0.22, z, h, [shade(c, 1.04), shade(c, LEFT), shade(c, RIGHT)], 'sheet', ribs, ribs, shade(c, 1.1));
-  });
+/**
+ * A row of containers stacked two high: one long ribbed box per tier, all of one colour. A tier in a
+ * different colour turns three rows into a striped ramp — that was the first attempt — so the colour
+ * changes from box to box and never from tier to tier. The ribs are what say "container".
+ */
+function containerRow(p: Pen, u: number, v: number, w: number, dv: number, tiers: number, c: RGB): void {
+  const ribs: Patch[] = [];
+  const len = Math.round(w * 32);
+  for (let t = 2; t < len; t += 3) ribs.push({ t0: t, t1: t + 1, k0: 0, k1: 2, c: shade(c, 0.74) });
+  for (let t = 0; t < tiers; t++) {
+    p.box(u, v, u + w, v + dv, t * 2, 2, [shade(c, 1.06), shade(c, LEFT), shade(c, RIGHT)], 'sheet', ribs, [], shade(c, 1.14));
+  }
 }
 
 /**
@@ -3086,12 +3074,25 @@ function paintPort(p: Pen, mask: number): void {
   const water = waterSides(mask);
   p.shadow(0.06, 0.06, 0.94, 0.94);
   quayFloor(p, water);
-  // Two long rows of containers, one behind the other: a container is long, and four short boxes in a
-  // square read as a heap of cubes instead of a yard.
-  containerStack(p, 0.04, 0.3, 0.9, [1, 0], 4);
-  containerStack(p, 0.04, 0.62, 0.9, [3, 2, 1], 4);
-  const [cu, cv] = gantryCrane(p, 0.1, 0.9, 0.04, 38, CRANE);
-  gantryLoad(p, cu, cv, 38, CRANE, CARGO[0]);
+  // The gantry spans the lot from the back edge, and the yard is stacked in front of its legs, two rows
+  // deep, so the crane works over what you can see instead of hiding it.
+  // The lane of the terminal, dashed in the yellow of the crane: without it the apron is a grey plate
+  // and the whole front of the lot is empty.
+  for (let t = 0.08; t < 0.92; t += 0.1) {
+    const [lx, ly] = p.P(t, 0.84, 0.3);
+    p.px.set(Math.round(lx), Math.round(ly), shade(CRANE[1], 1.12));
+  }
+  // The gantry spans the lot from the back edge, and the yard stacks in front of its legs: two rows of
+  // two long boxes, each box one company colour, so the yard is a patchwork of four and none of them
+  // turns into a stripe.
+  const [cu] = gantryCrane(p, 0.16, 0.84, 0.06, 28, CRANE);
+  containerRow(p, 0.04, 0.3, 0.42, 0.1, 2, CARGO[1]);
+  containerRow(p, 0.52, 0.3, 0.44, 0.1, 2, CARGO[0]);
+  containerRow(p, 0.04, 0.52, 0.42, 0.1, 2, CARGO[3]);
+  containerRow(p, 0.52, 0.52, 0.44, 0.1, 1, CARGO[2]);
+  // The trolley runs the beam, so the load hangs at the crane's own u, in front of the yard: over a stack
+  // it reads as one more box instead of a box in the air.
+  gantryLoad(p, cu, 0.72, 28, CRANE, CARGO[0]);
 }
 
 /** Paints the cargo port. */
