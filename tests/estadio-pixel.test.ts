@@ -5,7 +5,7 @@ import { UNIQUES } from '../src/config';
 /**
  * El Estadio (4×4): la cancha en el medio, las tribunas alrededor y las cuatro torres de luz. Lo que se
  * prueba es que **la cancha esté adentro y rodeada**, que las gradas se vean como gradas —escalones, no
- * una pared lisa— y que las torres de luz sean cuatro. No se prueba que haya tinta dorada.
+ * una pared lisa— y que las torres de luz sean tres. No se prueba que haya tinta dorada.
  */
 
 interface Art {
@@ -97,10 +97,10 @@ describe('el Estadio en píxel', () => {
     expect(lineas.w).toBeGreaterThan(pitch.w * 0.6);
   });
 
-  it('hay cuatro torres de luz, y la gente se ve', () => {
-    // La parrilla encendida está en cuatro puntos separados: ni dos ni cinco. Se agrupa en dos
-    // dimensiones, porque la torre del fondo y la de adelante de la misma esquina caen en la misma
-    // columna y contando por columnas eran tres torres.
+  it('hay tres torres de luz, y la gente se ve', () => {
+    // La parrilla encendida está en tres puntos separados: las tres esquinas de la herradura. La
+    // cuarta no existe porque la cuarta esquina es la abierta, y además su mástil cruzaría la cancha.
+    // Se agrupa en dos dimensiones, porque dos torres pueden caer en la misma columna.
     const dark = (r: number, g: number, b: number) => r < 80 && g < 80 && b < 85;
     const heads: [number, number][] = [];
     for (let y = 0; y < a.px.h; y++) {
@@ -110,7 +110,7 @@ describe('el Estadio en píxel', () => {
         if (!heads.some(([hx, hy]) => Math.hypot(hx - x, hy - y) < 9)) heads.push([x, y]);
       }
     }
-    expect(heads.length).toBe(4);
+    expect(heads.length).toBe(3);
     expect(count(a, isCrowd).n).toBeGreaterThan(25);
     expect(count(a, dark).n).toBeGreaterThan(20);
   });

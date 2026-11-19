@@ -76,3 +76,37 @@ cuatro falla conviene saberlo antes de dibujar los otros dos.
   tronco.
 - **L9.** Evidencia: `npx vitest run` **1177 / 73 archivos** verdes · `tsc --noEmit` limpio ·
   `npm run board` (42 kB de sprites) · el tablero con los tres.
+- **L10. El estadio vuelve a la forma de antes.** Pedido: *"el estadio dejalo como estaba antes pero dale
+  una apariencia mas pixel"*. La versión de canvas no era una caja: era una **herradura abierta hacia la
+  cámara**, con las gradas por el fondo y por la izquierda y el frente cerrado por un muro bajo con la
+  banda del club. Se restauró esa planta y se pintó con `Pen.box` —caras con el volumen de siempre, el
+  filo de arriba al sol— más lo que el canvas no tenía: la gente como motas de cuatro colores sobre el
+  asiento, los mástiles de dos píxeles y las hiladas de teja de la tribuna.
+- **L11.** Tres correcciones de esa vuelta, todas de legibilidad a 1×: la banda azul **cortada a motas**
+  parecía un error de pintura y va sólida con el filo en luz; los palcos del frente en gris oscuro
+  **no eran ventanas, eran un agujero** —a siete píxeles de alto, tres de negro puro no dicen nada— y
+  pasaron a vidrio con la fila de arriba iluminada; y la puerta con `INSIDE` puro era una mancha, así que
+  es un hueco en sombra suave con el dintel claro.
+- **L12. El cabildo: no era una torre, era un cuerpo apoyado en el techo.** Tenía doce píxeles de ancho y
+  trece de alto sobre la cumbrera: un muñón. Ahora el fuste va angosto (`tw 0.28`) y largo (`tH = H + 30`),
+  y el reloj vive en un **cuerpo propio más ancho** que lo corona: ese corrimiento es lo único que hace
+  que una torre se lea como torre. El techo bajó a tres píxeles y apareció la **balaustrada corrida** —
+  el Cabildo no se reconoce por el techo, se reconoce por la balaustrada y por la torre.
+- **L13.** El remate de la torre fue al revés de lo que parecía: un `cornice` deja **la losa gris a la
+  vista** y en la punta se arma un patio de cemento que se lee como un bloque; el casquete de tejas la
+  cierra. `CABILDO_MAX_Z` pasó de 44 a 64 porque el fuste nuevo no entraba.
+- **L14. El planetario: era un tarro con tapa.** Tres cosas, en orden de importancia: la cúpula iba como
+  **media naranja** (media esfera vista desde esta cámara es una bola pesada) y pasó a un casquete chato,
+  más ancho que alto; el tambor pasó a ser **más alto y más ancho** para tener cuerpo propio; y la
+  galería dejó de ser un collar oscuro y grueso —**el filo en piedra clara, el resto en hierro, dos
+  filas**—. El zócalo tiene que seguir **el arco de abajo columna por columna**: pintado en la fila del
+  centro corta el tambor a media altura y el edificio se lee como una copa de vino.
+- **L15.** La entrada del planetario: un pórtico de caja aparte se lee como **otro edificio pegado
+  abajo**, así que la puerta y sus tres gradas van pintadas sobre el tambor. Y el cornisamento de un
+  píxel sobre la elipse del tambor queda **en guiones** —una línea de puntos no es una moldura—: se sacó.
+- **L16.** Pruebas tocadas en esta vuelta: las torres de luz del estadio son **tres** y no cuatro (la
+  cuarta esquina es la abierta de la herradura y su mástil cruzaría la cancha), y el piso del parque del
+  planetario bajó de 1200 a 1000 píxeles porque el tambor creció. Las dos son consecuencias del dibujo,
+  no permisos: si el dibujo cambia otra vez, la prueba tiene que volver a mirarlo.
+- **L17.** Evidencia: **1177 / 73** verdes · `tsc --noEmit` limpio · tablero regenerado · los tres
+  revisados en pantalla.

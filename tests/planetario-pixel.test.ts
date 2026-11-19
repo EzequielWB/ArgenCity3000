@@ -111,7 +111,8 @@ describe('el Planetario en píxel', () => {
   });
 
   it('el parque lo rodea y tiene sus árboles', () => {
-    expect(count(a, isPark).n).toBeGreaterThan(1200);
+    // Un piso holgado: el tambor es ancho y come parque, pero el parque es todo el lote alrededor.
+    expect(count(a, isPark).n).toBeGreaterThan(1000);
     // Los árboles, fuera del edificio: se cuentan los troncos, que es lo único que no se confunde con el
     // pasto —la copa del árbol y el parque son casi el mismo verde—.
     let troncos = 0;
