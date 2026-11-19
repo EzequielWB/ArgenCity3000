@@ -116,3 +116,10 @@ lecciones de los siete anteriores ya juntas. Cuando estén, `sprites.ts` baja a 
   RIGHT`. `sprites.ts` queda en **240 líneas**: el cartel de la ruta y nada más.
 - **L22.** Evidencia: **1197 / 76** verdes · `tsc --noEmit` limpio · tablero regenerado · los dos
   mirados en el tablero a 1× y a 6×.
+- **L23.** El portal del Santuario quedaba **pegado a la torre de la izquierda**, con el paño del medio
+  vacío. La causa no era el portal: era la **profundidad de las torres**. Una torre de 0,67 de fondo
+  proyecta su cara lateral sobre el paño del medio (8 px) y se come la mitad de la luz. Tres arreglos, en
+  orden: las torres van **poco profundas** (0,26) y apoyadas en el plano del frente; la **fachada toma
+  todo el ancho del lote** (`n0 = 0.16`) para que el paño del medio sea ancho; y la **nave es más
+  angosta que la fachada** (`m0 = 0.36`), que es lo que hace una basílica y además le devuelve el cielo a
+  la aguja de la derecha (con la nave del ancho de la fachada, el techo le ganaba por un píxel).

@@ -5120,9 +5120,17 @@ function paintSantuarioOn(p: Pen, vw: number, vh: number): void {
   const FACADE_H = 23;
   const fv = V - 0.22; // el plano del frente
   const fd = 0.5; // la profundidad del cuerpo del frente
-  const tw = 0.55; // el ancho de cada torre
-  const n0 = 0.32;
-  const n1 = U - 0.32;
+  const tw = 0.5; // el ancho de cada torre
+  // La fachada toma casi todo el ancho del lote: con las torres pegadas a los bordes, el paño del medio
+  // queda ancho y el portal respira. Con las torres más adentro, las caras **laterales** de las torres se
+  // comen la luz del portal y la puerta aparece corrida a la izquierda.
+  const n0 = 0.16;
+  const n1 = U - 0.16;
+  // La nave es **más angosta que la fachada**: la fachada toma todo el lote y la nave se mete, que es lo
+  // que hace una basílica. Además, con la nave del ancho de la fachada el techo le ganaba en altura a la
+  // aguja de la torre de la derecha.
+  const m0 = 0.36;
+  const m1 = U - 0.36;
   const PC = U / 2;
   const UM = PC; // la cumbrera de la nave, en el eje
 
@@ -5137,17 +5145,17 @@ function paintSantuarioOn(p: Pen, vw: number, vh: number): void {
   // La nave: el cuerpo largo de ladrillo. El techo va a dos aguas con la cumbrera a lo largo de la nave,
   // así que desde la cámara se ve **una sola falda**, la de la derecha: la otra mira para el otro lado.
   const nb = fv - fd;
-  p.box(n0, 0.18, n1, nb, z0, NAVE_H - z0, SANTUARIO_BRICK, 'brick', [], [
+  p.box(m0, 0.18, m1, nb, z0, NAVE_H - z0, SANTUARIO_BRICK, 'brick', [], [
     { t0: 0, t1: 99, k0: 0, k1: z0, c: ATRIO[2] },
   ]);
   // Las **dos** faldas del techo: la de la derecha, que da a la cámara, y la de la izquierda, que se ve
   // desde arriba y va más oscura. Con una sola falda la mitad de la planta queda con el techo de ladrillo
   // del cuerpo, que es lo que se ve si no se pinta: una ladera es una superficie inclinada, no una tapa.
   const ry = NAVE_H + 5;
-  p.poly([p.P(UM, 0.14, ry), p.P(n1 + 0.05, 0.14, NAVE_H), p.P(n1 + 0.05, nb, NAVE_H), p.P(UM, nb, ry)], (_x, y) =>
+  p.poly([p.P(UM, 0.14, ry), p.P(m1 + 0.05, 0.14, NAVE_H), p.P(m1 + 0.05, nb, NAVE_H), p.P(UM, nb, ry)], (_x, y) =>
     y % 3 === 0 ? shade(SANTUARIO_SLATE[0], 0.9) : SANTUARIO_SLATE[0],
   );
-  p.poly([p.P(n0 - 0.05, 0.14, NAVE_H), p.P(UM, 0.14, ry), p.P(UM, nb, ry), p.P(n0 - 0.05, nb, NAVE_H)], (_x, y) =>
+  p.poly([p.P(m0 - 0.05, 0.14, NAVE_H), p.P(UM, 0.14, ry), p.P(UM, nb, ry), p.P(m0 - 0.05, nb, NAVE_H)], (_x, y) =>
     y % 3 === 0 ? shade(SANTUARIO_SLATE[2], 0.92) : SANTUARIO_SLATE[2],
   );
   // La cumbrera, que de día es la línea más clara del techo.
@@ -5155,7 +5163,7 @@ function paintSantuarioOn(p: Pen, vw: number, vh: number): void {
   // Los contrafuertes del costado que se ve.
   for (let k = 1; k <= 3; k++) {
     const v = ((nb - 0.18) * k) / 4 + 0.18;
-    p.box(n1 - 0.02, v - 0.1, n1 + 0.06, v + 0.1, z0, 13, SANTUARIO_BRICK, 'brick');
+    p.box(m1 - 0.02, v - 0.1, m1 + 0.06, v + 0.1, z0, 13, SANTUARIO_BRICK, 'brick');
   }
 
   // El frente: un cuerpo de ladrillo más alto que la nave, con el cornisamiento de piedra y las pilastras
@@ -5187,8 +5195,10 @@ function paintSantuarioOn(p: Pen, vw: number, vh: number): void {
 
   /** Una torre: el cuerpo, el campanario con la campana, el cornisamiento, la aguja y la cruz. */
   const tower = (u0: number, u1: number) => {
-    const tv0 = nb - 0.1;
+    // La torre se apoya **en el plano del frente** y es poco profunda: su cara lateral se proyecta sobre el
+    // paño del medio, y con una torre honda el portal queda pegado a la torre de la izquierda.
     const tv1 = fv + 0.07;
+    const tv0 = tv1 - 0.26;
     const bw = Math.round((u1 - u0) * 16);
     const bt = Math.round(bw / 2) - 2;
     const bs = Math.round(((tv1 - tv0) * 16) / 2) - 2;
