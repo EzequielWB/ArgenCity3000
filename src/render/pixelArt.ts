@@ -4909,6 +4909,172 @@ export function calvarioPixelSprite(vw: number, vh: number): Sprite {
 }
 
 /** The same lot as a sprite the map can blit. Needs a DOM: call it from the game, not a test. */
+const REGIMIENTO_MAX_Z = 46;
+
+/** La cal del cuartel, con los tres tonos a mano: el 0,69 y el 0,59 automáticos dejan un crema grisáceo. */
+const CUARTEL_WALL: Ramp = [hex('#f9f5ea'), hex('#ece6d4'), hex('#d2cab1')];
+/** La teja verde: es lo que hace que un cuartel se lea como cuartel y no como una casa cualquiera. */
+const CUARTEL_ROOF: Ramp = [hex('#84a578'), hex('#5f7d55'), hex('#48603f')];
+/** La tierra apisonada del patio de armas. */
+const PATIO: Ramp = [hex('#cdc0a2'), hex('#bbac8b'), hex('#a69571')];
+/** El zinc del capuchón de la torre: contra el techo verde del fondo, un techo verde se pierde. */
+const CUARTEL_CAP: Ramp = [hex('#7f868b'), hex('#626a6f'), hex('#4c5358')];
+/** El oliva del camión. */
+const OLIVA: Ramp = [hex('#7b8a6d'), hex('#67755b'), hex('#535f49')];
+
+/**
+ * El Regimiento (4x3): **dos cuadras de cal con techo de teja verde en ele, alrededor del patio de armas
+ * vacío**, el mástil con la bandera en el medio, la torre de vigilancia sobre el portón y el muro del
+ * perímetro. El patio vacío no es un lote sin terminar: es lo que el edificio **es**. Un cuartel es un
+ * cerco con un campo adentro, así que se reconoce por la planta y no por la altura — es el único único
+ * que se lee desde arriba.
+ */
+function paintRegimientoOn(p: Pen, vw: number, vh: number): void {
+  const L = Math.max(vw, vh);
+  const W = Math.min(vw, vh);
+  const z0 = 2; // el zócalo de piedra
+  const H = 14; // el alto de las cuadras: bajo, que es lo que son
+
+  // El patio de armas. El lote entero es tierra apisonada, así que el piso lleva las manchas del uso:
+  // liso se lee como una cancha de cemento, que es lo contrario de un cuartel.
+  p.poly([p.P(0.03, 0.03), p.P(L - 0.03, 0.03), p.P(L - 0.03, W - 0.03), p.P(0.03, W - 0.03)], (x, y) => {
+    const n = noise(x, y, 33);
+    if (n > 0.9) return shade(PATIO[1], 1.1);
+    if (n < 0.1) return shade(PATIO[1], 0.89);
+    return PATIO[1];
+  });
+
+  /** La fila de ventanas de una cara de `w` píxeles: `n` huecos, cada uno con su dintel y su antepecho. */
+  const windows = (w: number, n: number, door0: number | null): Patch[] => {
+    const out: Patch[] = [];
+    if (door0 !== null) out.push(door(door0, 4, 7));
+    out.push({ t0: 0, t1: 99, k0: 0, k1: z0, c: shade(STONE_LIGHT[1], 0.9) });
+    for (let i = 0; i < n; i++) {
+      const t = Math.round((w / n) * (i + 0.5)) - 2;
+      out.push({ t0: t - 1, t1: t + 4, k0: 4, k1: 5, c: shade(CUARTEL_WALL[1], 1.14) });
+      out.push(pane(t, 5, 3, 4));
+      out.push({ t0: t - 1, t1: t + 4, k0: 9, k1: 10, c: shade(CUARTEL_WALL[1], 0.84) });
+    }
+    return out;
+  };
+
+  /** Una cuadra: cal, zócalo de piedra, la fila de ventanas y el techo de teja a cuatro aguas. */
+  const cuadra = (u0: number, v0: number, u1: number, v1: number, nf: number, ns: number, door0: number | null) => {
+    const fw = Math.round((u1 - u0) * 16);
+    const sw = Math.round((v1 - v0) * 16);
+    p.box(u0, v0, u1, v1, z0, H - z0, CUARTEL_WALL, 'plain', windows(fw, nf, door0), windows(sw, ns, null));
+    p.hip(u0 - 0.05, v0 - 0.05, u1 + 0.05, v1 + 0.05, H, 4, CUARTEL_ROOF);
+  };
+
+  // Las dos cuadras en ele, al fondo y a la izquierda: el patio queda abierto del lado de la cámara, que
+  // es lo único que lo deja ver. La corta va primero porque la larga le pasa por delante.
+  cuadra(0.16, 0.72, 0.72, W - 0.14, 1, 3, null);
+  cuadra(0.16, 0.12, L - 0.16, 0.72, 5, 1, Math.round((L - 0.32) * 16) - 12);
+
+  // El muro del perímetro, del lado de la cámara, con el portón sobre la calle. El portón va en el muro
+  // de adelante y no debajo de la torre: puesto ahí, la torre lo tapaba y quedaba un hueco sin explicación.
+  const GU0 = 1.3;
+  const GU1 = 1.8;
+  p.box(0.03, W - 0.1, GU0, W - 0.04, 0, 3, CUARTEL_WALL, 'plain');
+  p.box(GU1, W - 0.1, L - 0.1, W - 0.04, 0, 3, CUARTEL_WALL, 'plain');
+  p.box(L - 0.1, 0.03, L - 0.04, W - 0.04, 0, 3, CUARTEL_WALL, 'plain');
+  // La hoja de reja del portón: en una pared de cal, un paño oscuro a la altura del muro se lee como
+  // portón, y las varillas de la textura 'sheet' lo dicen sin dibujar una reja.
+  p.box(GU0 + 0.02, W - 0.09, GU1 - 0.02, W - 0.05, 0, 3, [hex('#5f6660'), hex('#4b524c'), hex('#3c423d')], 'sheet');
+  // Los dos pilares del portón, con su remate de piedra.
+  for (const gu of [GU0 - 0.06, GU1]) {
+    p.box(gu, W - 0.12, gu + 0.06, W - 0.02, 0, 8, CUARTEL_WALL, 'plain');
+    p.box(gu - 0.02, W - 0.14, gu + 0.08, W - 0.0, 8, 1, STONE_LIGHT, 'plain');
+  }
+
+  // La torre de vigilancia: **es lo que hace cuartel al edificio**. Va alta —casi dos veces la cuadra—,
+  // angosta y adelante, sobre el patio y no sobre el techo: contra la cal del fondo, una torre de cal no
+  // tiene contorno y se lee como una caseta. Contra la tierra del patio, sí.
+  const TU = L - 0.5;
+  const TV = 1.85;
+  const tw = 0.11;
+  const TH = 30;
+  p.box(TU - tw - 0.03, TV - tw - 0.03, TU + tw + 0.03, TV + tw + 0.03, 0, 2, STONE_LIGHT, 'plain');
+  p.box(TU - tw, TV - tw, TU + tw, TV + tw, 2, TH - 2, CUARTEL_WALL, 'plain', [pane(1, 20, 2, 3), pane(1, 13, 2, 2)], [
+    pane(1, 20, 2, 3),
+  ]);
+  // El balcón que vuela y la baranda: la silueta de la torre no puede ser un rectángulo.
+  p.box(TU - tw - 0.07, TV - tw - 0.07, TU + tw + 0.07, TV + tw + 0.07, TH, 1, STONE_LIGHT, 'plain');
+  p.px.wall(p.P(TU - tw - 0.07, TV + tw + 0.07, TH + 1), p.P(TU + tw + 0.07, TV + tw + 0.07, TH + 1), 1, () => shade(CUARTEL_WALL[2], 0.9));
+  p.hip(TU - tw - 0.07, TV - tw - 0.07, TU + tw + 0.07, TV + tw + 0.07, TH + 1.6, 3, CUARTEL_CAP);
+  {
+    const [lx, ly] = p.P(TU, TV, TH + 6);
+    p.px.rect(Math.round(lx), Math.round(ly) - 1, 1, 2, hex('#f2d98a'));
+  }
+
+  // El mástil en el medio del patio, con la bandera: es lo que se ve desde el otro lado de la ciudad.
+  // Va adelante y no alto, para que la bandera quede contra la tierra del patio: contra la cal del fondo
+  // el celeste y el blanco se lavan y la bandera parece pintada en la pared del cuartel.
+  {
+    const mu = L * 0.6;
+    const mv = W * 0.73;
+    const [mx, my] = p.P(mu, mv, 0);
+    const ix = Math.round(mx);
+    const iy = Math.round(my);
+    p.px.rect(ix, iy - 22, 1, 22, shade(STEEL[1], 0.86));
+    const ROWS = [FLAG[0], FLAG[0], FLAG[1], FLAG[1], FLAG[0], FLAG[0]];
+    ROWS.forEach((c, k) => p.px.rect(ix + 1, iy - 22 + k, 7, 1, c));
+    // La punta que ondula: sin esto la bandera es un rectángulo pegado al palo.
+    p.px.set(ix + 8, iy - 21, FLAG[0]);
+    p.px.set(ix + 8, iy - 18, FLAG[1]);
+    p.px.set(ix + 4, iy - 20, hex('#d9b45c'));
+    p.px.set(ix - 1, iy - 22, shade(STEEL[1], 1.15));
+  }
+
+  // El camión de la guarnición, estacionado contra la cuadra larga.
+  {
+    const tu = L - 1.05;
+    const tv = 1.02;
+    p.box(tu, tv, tu + 0.34, tv + 0.16, 0, 4, OLIVA, 'plain');
+    p.box(tu + 0.34, tv + 0.03, tu + 0.5, tv + 0.15, 0, 3, OLIVA, 'plain', [pane(0, 1, 2, 2, GLASS_LIT)]);
+    const [wx, wy] = p.P(tu + 0.1, tv + 0.16, 0);
+    const [wx2, wy2] = p.P(tu + 0.42, tv + 0.16, 0);
+    p.px.rect(Math.round(wx), Math.round(wy) - 1, 2, 2, LEG);
+    p.px.rect(Math.round(wx2), Math.round(wy2) - 1, 2, 2, LEG);
+  }
+
+  // Las bolsas de arena del puesto de guardia, al lado del portón.
+  for (const [su, sv] of [
+    [GU1 + 0.5, W - 0.5],
+    [GU1 + 0.66, W - 0.38],
+  ]) {
+    p.box(su - 0.14, sv - 0.11, su + 0.14, sv + 0.11, 0, 2, [hex('#dccfa8'), hex('#cdbe94'), hex('#b6a67c')], 'plain');
+  }
+
+  // Los árboles del perímetro, del lado de adentro: van antes que la sombra y después de todo, porque
+  // plantados antes la copa del que está atrás se le sube encima de la torre.
+  p.tree(0.42, W - 0.5);
+  p.tree(L - 0.5, W - 0.28);
+  p.tree(1.05, W - 0.34);
+
+  p.shadow(0.03, 0.03, L - 0.03, W - 0.03);
+}
+
+/** Paints el Regimiento on the lot the camera sees: 4x3. */
+export function paintRegimiento(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, REGIMIENTO_MAX_Z);
+  paintRegimientoOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const regimientoCache = new Map<string, Sprite>();
+
+/** El Regimiento as a sprite, keyed by the shape of the lot the camera sees. */
+export function regimientoPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = regimientoCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintRegimiento(vw, vh));
+    regimientoCache.set(key, sprite);
+  }
+  return sprite;
+}
+
 export function spriteOf(painted: { px: Pixels; ax: number; ay: number; smoke?: [number, number][]; attach?: [number, number] }): Sprite {
   return { canvas: painted.px.toCanvas(1), ax: painted.ax, ay: painted.ay, smoke: painted.smoke ?? [], attach: painted.attach };
 }

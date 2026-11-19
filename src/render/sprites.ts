@@ -10,6 +10,7 @@ import {
   obeliscoPixelSprite,
   planetarioPixelSprite,
   puentePixelSprite,
+  regimientoPixelSprite,
   residentialPixelSprite,
   teatroPixelSprite,
 } from './pixelArt';
@@ -434,55 +435,6 @@ export function routeSignSpriteFor(dvx: number, dvy: number): Sprite {
 // ---------------------------------------------------------------- the uniques of each government
 
 /**
- * The regimiento (4x3): a regimental barracks, the way Campo de Mayo looks from the road. Low
- * whitewashed blocks with green roofs around an open parade ground, a watchtower at the corner and
- * the flag mast in the middle, because the ground is empty on purpose: that is what it is for.
- */
-function regimientoArt(vw: number, vh: number): Sprite {
-  const p = rectPainter(vw, vh, 42);
-  const wall = '#e2dccb';
-  const roof = '#5d7a54';
-  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1, '#b9a888', false);
-  p.box(0.5, 0.5, vw - 0.5, vh - 0.5, 1, 0.4, '#a89474', false);
-  const block = (u0: number, v0: number, u1: number, v1: number) => {
-    p.box(u0, v0, u1, v1, 1, 12, wall, true);
-    p.hipRoof(u0 - 0.06, v0 - 0.06, u1 + 0.06, v1 + 0.06, 13, 3.2, roof);
-    p.windows(u0, v0, u1, v1, 3, 11, 5, '#5a5348', 4, 3.2);
-  };
-  block(0.34, 0.28, vw - 0.7, 0.9);
-  block(0.28, vh - 0.94, 0.9, vh - 0.32);
-  // The guard post and the watchtower with its lamp, at the corner the camera meets first.
-  p.box(vw - 1.4, vh - 1.35, vw - 0.85, vh - 0.85, 1, 6, wall, true);
-  p.hipRoof(vw - 1.46, vh - 1.41, vw - 0.79, vh - 0.79, 7, 2.2, roof);
-  const tu = vw - 0.95;
-  const tv = vh - 0.9;
-  p.box(tu - 0.17, tv - 0.17, tu + 0.17, tv + 0.17, 1, 19, '#efe9da', true);
-  p.box(tu - 0.25, tv - 0.25, tu + 0.25, tv + 0.25, 20, 1.1, '#cfc7b5', true);
-  p.left(tv + 0.17, tu - 0.11, tu + 0.11, 14.5, 17.5, '#4d463d');
-  p.hipRoof(tu - 0.28, tv - 0.28, tu + 0.28, tv + 0.28, 21.1, 2.8, roof);
-  // The mast in the middle of the ground, with the flag: the one thing that reads from far away.
-  const mu = vw / 2 - 0.15;
-  const mv = vh / 2 + 0.25;
-  p.post(mu, mv, 28, '#8f8b82');
-  const [fx, fy] = p.P(mu, mv, 28);
-  p.g.fillStyle = '#7cb0d8';
-  p.g.fillRect(Math.round(fx) + 1, Math.round(fy) - 5, 8, 5);
-  p.g.fillStyle = '#f4f1e8';
-  p.g.fillRect(Math.round(fx) + 1, Math.round(fy) - 3.4, 8, 2);
-  p.g.fillStyle = '#d9b45c';
-  p.g.fillRect(Math.round(fx) + 4, Math.round(fy) - 4, 2, 2);
-  // Two sandbag nests by the gate and the truck parked next to the block.
-  for (const [su, sv] of [
-    [0.5, vh - 0.5],
-    [0.5, vh - 0.95],
-  ]) {
-    p.box(su - 0.13, sv - 0.11, su + 0.13, sv + 0.11, 1, 2.2, '#b3a888', true);
-  }
-  p.box(1.6, vh - 2.1, 2.5, vh - 1.5, 1, 3, '#6f7d63', true);
-  return done(p);
-}
-
-/**
  * The santuario (3x4): the basilica of Lujan, in brick, with the two towers of its front and the rose
  * window between them. The spires are drawn as the pyramids they are, so the building ends in two
  * points instead of a dome, which is what tells it apart from a church of any other style.
@@ -599,7 +551,7 @@ export function uniqueSprite(kind: UniqueKind, vw: number, vh: number): Sprite {
       case 'cabildo':
         return cabildoPixelSprite(vw, vh);
       case 'regimiento':
-        return regimientoArt(vw, vh);
+        return regimientoPixelSprite(vw, vh);
       case 'planetario':
         return planetarioPixelSprite(vw, vh);
       case 'santuario':
