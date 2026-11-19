@@ -33,6 +33,11 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
   **heladería** con el toldo a rayas de punta a punta, y la torre pasa a ser **cafetería premium**, de dos
   pisos, con la vidriera de bar abajo y los balcones corridos arriba. El techo a dos aguas y las fajas de
   oficinas se van.
+- **S8.** *"La cafeteria no parece una heladeria, hacela un poco mas baja y arriba hacele una taza de café
+  o algo asi como para que se entienda. La hleaderia hacela de colores mas llamativos, rosa con verde,
+  amarillo con violeta, y asi"* — la cafetería baja de altura y lleva **una taza de café sobre la azotea**
+  como remate; la heladería se pinta con **pares de colores que no comparten nada** —rosa con verde,
+  amarillo con violeta, celeste con naranja, verde con rosa— en el toldo y paredes pastel.
 
 ## Tasks
 
@@ -142,3 +147,26 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
   otras tres fachadas— y la cafetería por ser la más alta y la más angosta, que era el test de la torre y
   sigue siendo cierto con otro edificio. El vidrio de la heladería baja de ocho a seis porque el mostrador
   lo cruza a la altura de la cintura y lo parte en dos.
+- **L24.** **La taza de café** es el remate de la cafetería y su nombre. Vista de frente, de once píxeles
+  —el ancho del techo— y **con contorno oscuro**: sin línea, la porcelana blanca sobre el techo gris es
+  una mancha. Lleva el borde, el café, el asa con el hueco abierto y dos columnas de vapor que nacen en la
+  boca. Es lo único de las cuatro fachadas que se sale del volumen hacia arriba.
+- **L25.** Las dos primeras versiones de la taza fallaron por lo mismo: la primera era un cuerpo de tres
+  filas vistas desde arriba, sin asa y con el vapor flotando dos píxeles más arriba, y se leía como una
+  mancha con dos ojos; la segunda tenía el vapor todavía suelto. El vapor tiene que **tocar la boca** o no
+  es vapor, y la taza tiene que tener contorno o el techo se la come.
+- **L26.** La heladería se pinta en **pares que no comparten nada**: rosa con verde, amarillo con violeta,
+  celeste con naranja, verde con rosa. El verde oscuro fijo de antes era correcto y aburrido; una heladería
+  de barrio se nombra desde la esquina por el par de colores, y a 1× dos tonos opuestos se leen a veinte
+  píxeles. La pared va pastel y saturada para aguantar el toldo, y el cartel toma el color del par que no
+  domina, así la fachada tiene tres tonos.
+- **L27.** El toldo se pinta **por las dos caras**, la del frente y la del costado: por una sola, el dibujo
+  parecía medio toldo y la esquina quedaba desnuda.
+- **L28.** **La variante elige dos veces**: el par de colores por el modelo y la pared por el bloque de
+  ocho. Con `v % 4` en las dos, la variante 0 y la 4 —las dos heladerías— salían idénticas.
+- **L29.** **Las pruebas siguen al dibujo**, otra vez: el verde fijo del toldo ya no existe, así que la
+  heladería se mide por los **saltos de tono entre píxeles vivos de una misma fila** —quince con el toldo a
+  rayas, seis o menos en cualquier otra fachada— y la cafetería por **los píxeles de porcelana** de la taza
+  (treinta y uno, contra diez de la nave y cero de la heladería). La cafetería deja de ser la más alta
+  —empata con la galería, y con la taza la pasa— y la nave deja de ser la más ancha: la heladería, que se
+  ensanchó para que el toldo luzca, la supera.
