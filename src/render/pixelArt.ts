@@ -4036,15 +4036,12 @@ const BRIDGE_DARK = hex('#39424a');
 const RIVER = hex('#3f7f78');
 const RIVER_LIGHT = hex('#5fa79b');
 const RIVER_GLINT = hex('#8fc9bd');
-/** La barca: el rojo del hierro y la cubierta de crema. */
-const CAR_GIRDER = ramp('#a8382c');
-const CAR_DECK = hex('#e8e0cc');
-
 /**
- * El Puente Transbordador (2x6): las dos torres de celosía sobre los muros de piedra, el tablero alto
- * entre ellas y la barca colgada de cuatro varas sobre el agua. **Pocos miembros a propósito**: una
- * celosía densa a 1× es una mancha gris. El puente pinta su propio río, así que el agua y los dos muros
- * son parte del dibujo.
+ * El Puente Transbordador Nicolás Avellaneda (2x6): dos torres de celosía apenas abocinadas sobre sus
+ * pilas de mampostería en el agua, y la viga alta que las une, con su canto y sus cruces. **No lleva
+ * barca**: el pedido fue la forma del puente, y la barca roja y blanca en el medio se comía el dibujo.
+ * Pocos miembros a propósito: una celosía densa a 1× es una mancha gris. El puente pinta su propio río,
+ * así que el agua y los dos muros son parte del dibujo.
  */
 function paintPuenteOn(p: Pen, vw: number, vh: number): void {
   const alongU = vw >= vh;
@@ -4081,9 +4078,9 @@ function paintPuenteOn(p: Pen, vw: number, vh: number): void {
   }
   // Tres brillos en el agua y el bote de remos del Riachuelo: sin ellos el río es una franja azul.
   for (const [a, c, w] of [
-    [1.35, 1.45, 4],
-    [2.65, 0.55, 5],
-    [4.5, 1.35, 4],
+    [1.9, 1.45, 2],
+    [3.1, 0.55, 3],
+    [4.5, 1.35, 2],
   ]) {
     const [x, y] = Q(a, c, -1.6);
     p.px.rect(Math.round(x) - w, Math.round(y), w * 2, 1, RIVER_GLINT);
@@ -4094,56 +4091,71 @@ function paintPuenteOn(p: Pen, vw: number, vh: number): void {
     p.px.rect(Math.round(bx) - 2, Math.round(by) - 2, 4, 1, WOOD[1]);
   }
 
-  /** Una pata de las torres: dos píxeles, el de la izquierda con luz. */
-  const leg = (a: number, c: number, z0: number, z1: number) => {
-    const [x, y] = Q(a, c, z0);
-    const ix = Math.round(x);
-    const iy = Math.round(y);
-    const h = Math.round(z1 - z0);
-    p.px.rect(ix, iy - h, 1, h, shade(BRIDGE_STEEL[1], 1.08));
-    p.px.rect(ix + 1, iy - h, 1, h, shade(BRIDGE_STEEL[2], 0.86));
-  };
-  const cLow = 0.44;
-  const cHigh = W - 0.44;
-  const zFoot = 3;
-  const zHead = 50;
-  const trussLow = 34;
-  const trussHigh = 40;
+  // Las dos pilas de mampostería: el puente de verdad no apoya las torres en el muro, las apoya en dos
+  // pilas que se meten en el río. Sin ellas las torres nacen del agua como postes clavados.
+  const aNear = 0.62;
+  const aFar = L - 0.62;
+  for (const a of [aNear, aFar]) {
+    boxAC(a - 0.3, 0.1, a + 0.36, W - 0.1, -2, 8.4, QUAY);
+    boxAC(a - 0.34, 0.06, a + 0.4, W - 0.06, 7, 1.4, QUAY, 'plain');
+    // El borde oscuro donde la pila toca el agua: es lo que la asienta.
+    line(a + (a === aNear ? 0.36 : -0.3), 0.12, -1.4, a + (a === aNear ? 0.36 : -0.3), W - 0.12, -1.4, shade(QUAY[2], 0.66));
+  }
 
-  /** Una torre: dos patas, tres travesaños y una cruz por vano. Es toda la celosía que aguanta el 1×. */
+  const cLow = 0.4;
+  const cHigh = W - 0.4;
+  const zFoot = 7;
+  const zHead = 54;
+  // El canto de la viga es un octavo del tramo: con quince píxeles —lo que tenía— la viga se lee como
+  // una pared y las torres quedan flacas al lado de ella.
+  const trussLow = 42;
+  const trussHigh = 52;
+
+  /** Una pata: se abocina, así que es una línea y no una columna, con la cara iluminada a la izquierda. */
+  const leg = (a: number, c0: number, c1: number) => {
+    const A = Q(a, c0, zFoot);
+    const B = Q(a, c1, zHead);
+    p.px.line(A, B, shade(BRIDGE_STEEL[1], 1.12));
+    p.px.line([A[0] + 1, A[1]], [B[0] + 1, B[1]], shade(BRIDGE_STEEL[1], 0.9));
+    p.px.line([A[0] + 2, A[1]], [B[0] + 2, B[1]], shade(BRIDGE_STEEL[2], 0.82));
+  };
+
+  /** Una torre: dos patas abocinadas, cinco travesaños y una cruz por vano. Toda la celosía que aguanta el 1×. */
   const tower = (a: number) => {
-    leg(a, cLow, zFoot, zHead);
-    leg(a, cHigh, zFoot, zHead);
-    for (const z of [zFoot + 2, 24, zHead - 2]) {
-      line(a, cLow, z, a, cHigh, z, BRIDGE_STEEL[1]);
-      line(a, cLow, z + 1, a, cHigh, z + 1, shade(BRIDGE_STEEL[2], 0.8));
+    // Abocinadas al revés de lo que sale por instinto: **más anchas abajo**. Una torre que se ensancha
+    // hacia arriba se ve parada sobre la punta de un alfiler.
+    const taper = 0.12;
+    leg(a, cLow - taper, cLow);
+    leg(a, cHigh + taper, cHigh);
+    const levels = [zFoot + 1.4, 18, 27, 36];
+    for (const [i, z] of levels.entries()) {
+      const t = (z - zFoot) / (zHead - zFoot);
+      const l0 = cLow - taper * (1 - t);
+      const l1 = cHigh + taper * (1 - t);
+      line(a, l0, z, a, l1, z, shade(BRIDGE_STEEL[1], 1.02));
+      line(a, l0, z + 1, a, l1, z + 1, shade(BRIDGE_STEEL[2], 0.78));
+      // La cruz de San Andrés del vano que queda arriba de este travesaño: en oscuro, que es como se lee
+      // una celosía a 1×, y sin dithering, que la ensucia.
+      const z2 = i < levels.length - 1 ? levels[i + 1] : zHead;
+      if (z2 < trussLow) {
+        const t2 = (z2 - zFoot) / (zHead - zFoot);
+        const m0 = cLow - taper * (1 - t2);
+        const m1 = cHigh + taper * (1 - t2);
+        line(a, l0 + 0.04, z + 2, a, m1 - 0.04, z2 - 1, shade(BRIDGE_STEEL[1], 0.95));
+        line(a, l1 - 0.04, z + 2, a, m0 + 0.04, z2 - 1, shade(BRIDGE_STEEL[1], 0.95));
+      }
     }
-    // La celosía va sólo abajo del tablero: arriba las torres siguen con las dos patas y el travesaño
-    // de la punta, como el transbordador de verdad.
-    for (const [z0, z1] of [
-      [zFoot + 4, 20],
-      [23, trussLow - 2],
-    ]) {
-      line(a, cLow + 0.06, z0, a, cHigh - 0.06, z1, BRIDGE_DARK);
-      line(a, cHigh - 0.06, z0, a, cLow + 0.06, z1, BRIDGE_DARK);
-    }
-    // La cruz de San Andrés se apoya en los travesaños: dos remaches en cada punta.
-    for (const [c, z] of [
-      [cLow, zHead - 2],
-      [cHigh, zHead - 2],
-    ]) {
-      const [x, y] = Q(a, c, z);
-      p.px.set(Math.round(x), Math.round(y) - 1, shade(BRIDGE_STEEL[1], 1.2));
-    }
+    // El remate de la punta: un travesaño grueso con el filo de arriba iluminado, que es lo que le da
+    // cabeza a la torre.
+    line(a, cLow, zHead, a, cHigh, zHead, shade(BRIDGE_STEEL[1], 1.2));
+    line(a, cLow, zHead - 1, a, cHigh, zHead - 1, shade(BRIDGE_STEEL[2], 0.8));
   };
 
-  const aNear = 0.45;
-  const aFar = L - 0.45;
   // La torre del fondo primero: la de adelante la tapa, como en la realidad.
   tower(aFar);
-  // El tablero alto entre las dos torres: una viga llena con el cordón de arriba iluminado, y la
-  // celosía marcada encima en oscuro. Una celosía de alambre sola —lo que hice primero— se lee como una
-  // escalera colgada en el aire, no como la viga que cruza el río.
+
+  // La viga alta entre las dos torres: dos cordones, los montantes y una cruz por vano. Es una viga
+  // llena con la celosía marcada encima; una celosía de alambre sola se lee como una escalera colgada.
   p.poly(
     [Q(aNear, cHigh, trussLow), Q(aFar, cHigh, trussLow), Q(aFar, cHigh, trussHigh), Q(aNear, cHigh, trussHigh)],
     (x, y) => (bayer(x, y) < 0.22 ? shade(BRIDGE_STEEL[1], 0.94) : BRIDGE_STEEL[1]),
@@ -4154,46 +4166,30 @@ function paintPuenteOn(p: Pen, vw: number, vh: number): void {
   // convertía el tablero en dos tableros paralelos.
   line(aNear, cLow, trussLow, aFar, cLow, trussLow, shade(BRIDGE_STEEL[2], 0.86));
   line(aNear, cLow, trussHigh, aFar, cLow, trussHigh, shade(BRIDGE_STEEL[1], 1.04));
-  const bays = 4;
+  const bays = 5;
   for (let k = 0; k <= bays; k++) {
     const a = aNear + ((aFar - aNear) * k) / bays;
     line(a, cHigh, trussLow, a, cHigh, trussHigh, shade(BRIDGE_STEEL[2], 0.74));
+    line(a, cLow, trussLow, a, cLow, trussHigh, shade(BRIDGE_STEEL[2], 0.8));
     if (k < bays) {
       const a2 = aNear + ((aFar - aNear) * (k + 1)) / bays;
       line(a, cHigh, trussLow + 1, a2, cHigh, trussHigh - 1, BRIDGE_DARK);
       line(a, cHigh, trussHigh - 1, a2, cHigh, trussLow + 1, BRIDGE_DARK);
+      line(a, cLow, trussLow + 1, a2, cLow, trussHigh - 1, shade(BRIDGE_DARK, 1.18));
+      line(a, cLow, trussHigh - 1, a2, cLow, trussLow + 1, shade(BRIDGE_DARK, 1.18));
     }
   }
-  // La barca: cuelga de cuatro varas, bien abajo del tablero y bien arriba del agua. Con la baranda y
-  // la casilla del operador, que es lo que la distingue de una barcaza.
-  const mid = L / 2;
-  const carZ = 14;
-  boxAC(mid - 0.5, cLow, mid + 0.5, cHigh, carZ, 2.2, CAR_GIRDER);
-  boxAC(mid - 0.44, cLow + 0.06, mid + 0.44, cHigh - 0.06, carZ + 2.2, 0.8, ramp('#e8e0cc'));
-  // Las cuatro varas van antes que la barca: sus puntas quedan escondidas bajo el piso de la cubierta.
-  for (const da of [-0.42, 0.42]) {
-    for (const c of [cLow + 0.06, cHigh - 0.06]) {
-      line(mid + da, c, carZ + 2, mid + da, c, trussLow, BRIDGE_DARK);
-    }
-  }
-  // La baranda del lado de la cámara: cuatro postes y su barra.
-  for (let k = 0; k < 4; k++) {
-    const a = mid - 0.36 + k * 0.24;
-    line(a, cHigh - 0.08, carZ + 3, a, cHigh - 0.08, carZ + 4.6, CAR_DECK);
-  }
-  line(mid - 0.44, cHigh - 0.08, carZ + 4.6, mid + 0.44, cHigh - 0.08, carZ + 4.6, CAR_DECK);
-  // La casilla, del lado del fondo, para que la cubierta quede libre.
-  boxAC(mid - 0.22, cLow + 0.08, mid + 0.22, cLow + 0.34, carZ + 3, 2, ramp('#b84434'));
-  boxAC(mid - 0.2, cLow + 0.12, mid + 0.2, cLow + 0.3, carZ + 5, 0.6, ramp('#e8e0cc'));
+  // El riel del carro, pegado abajo del cordón: una línea oscura que dice que de ahí cuelga algo.
+  line(aNear, cHigh - 0.02, trussLow - 1, aFar, cHigh - 0.02, trussLow - 1, shade(BRIDGE_DARK, 1.1));
 
-  // La sombra del tablero sobre el agua, antes de la torre de adelante: es lo que termina de decir que
-  // el puente pasa por arriba del río y no está apoyado en él.
+  // La sombra de la viga sobre el agua, antes de la torre de adelante: es lo que termina de decir que el
+  // puente pasa por arriba del río y no está apoyado en él.
   p.poly(
     [Q(aNear + 0.1, cLow, -1.9), Q(aFar - 0.1, cLow, -1.9), Q(aFar - 0.1, cHigh + 0.5, -1.9), Q(aNear + 0.1, cHigh + 0.5, -1.9)],
     (x, y) => (bayer(x, y) < 0.5 ? shade(RIVER, 0.72) : null),
   );
 
-  // La torre de adelante, al final: queda delante del tablero y de la barca.
+  // La torre de adelante, al final: queda delante de la viga.
   tower(aNear);
 }
 

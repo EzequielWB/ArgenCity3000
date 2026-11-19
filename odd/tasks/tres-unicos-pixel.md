@@ -25,10 +25,14 @@ el dibujo de canvas, y la prueba mira la estructura, no la tinta.
   caras planas —no una escalera de cajas que se angostan—, con puerta al pie y dos ventanitas arriba; y
   el piramidión alto y filoso, con la antena. El fuste no se angosta: el obelisco de verdad son cuatro
   caras planas.
-- **S8. Puente.** Dos torres de celosía, el tablero alto entre ellas y la barca colgada de cuatro varas,
-  con la baranda y la casilla del operador. **Pocos miembros a propósito**: una celosía densa a 1× se
-  convierte en una mancha gris. El agua, los dos muros de piedra en las puntas y el bote del Riachuelo
-  son parte del dibujo, porque el puente pinta su propio río dentro del lote.
+- **S8. Puente.** El **Nicolás Avellaneda**: dos torres de celosía abocinadas —más anchas abajo— sobre
+  sus **pilas de mampostería metidas en el agua**, y la viga alta entre ellas con su canto y sus cruces.
+  **Pocos miembros a propósito**: una celosía densa a 1× se convierte en una mancha gris. El agua, las
+  dos pilas en las puntas y el bote del Riachuelo son parte del dibujo, porque el puente pinta su propio
+  río dentro del lote.
+  `S11` (*"debería parecerse al puente transbordador Nicolás Avellaneda, no hace falta que tenga esa cosa
+  roja y blanca en el medio, con que tenga la forma del puente estamos"*): **se va la barca** —el hierro
+  rojo, la cubierta de crema, la baranda y la casilla del operador—. El puente queda por su forma.
 - **S9. Teatro.** Seis columnas claras contra un plano oscuro —la logia—, entablamento y frontón con el
   tímpano oscuro, ventanas en tres filas sobre la cara lateral, y **una mansarda de pizarra** detrás:
   *"El teatro tiene que ser estilo teatro Colón, no tiene una cúpula arriba sino como una especie de
@@ -92,3 +96,21 @@ el dibujo de canvas, y la prueba mira la estructura, no la tinta.
   y las claraboyas van en pizarra clara, no en vidrio.
 - **L10.** Evidencia: `npx vitest run` **1157 / 70 archivos** verdes · `tsc --noEmit` limpio ·
   `npm run board` · el teatro en el tablero, sin cúpula.
+- **L11.** Pedido, textual: *"lo que si el puente transbordador deberia parecerse al puente transbordador
+  nicolás avellaneda, no hace falta que tenga ese 'cosa' roja y blanca en el medio, con que tenga la
+  forma del puente estamos"*. Se reescribió S8 y se agregó S11.
+- **L12.** Fuera la barca entera. En su lugar el parecido sale de la estructura: las torres **abocinan
+  al revés de lo que sale por instinto** —más anchas abajo, no arriba—, cada una sobre una **pila de
+  mampostería que se mete en el río** (antes las patas nacían del agua como postes clavados), y la viga
+  se afinó de 15 a 10 píxeles de canto: con quince se leía como una pared y las torres quedaban flacas
+  al lado de ella. Las patas pasaron de 2 a 3 píxeles y la celosía de las torres de oscura a gris medio,
+  que contra el cielo una cruz oscura se lee como un hueco.
+- **L13.** **El acero de las pruebas estaba contando piedra.** El predicado era `|r−g| < 16 && |r−b| < 18`
+  y la mampostería de las pilas (un gris cálido) lo pasaba igual que el acero (un gris frío): media
+  docena de pruebas daban verde contando mampostería, y la de "el acero está cargado en las dos puntas"
+  pasaba por las pilas, no por las torres. Ahora el acero pide el azul por encima del rojo. Con eso las
+  pruebas se reescribieron sobre lo que de verdad hay: **dos columnas altas y nada más** (las torres; la
+  viga cruza, no baja), la viga con acero en **todas** las columnas del tramo —cero huecos— y el acero
+  más bajo del tramo por encima de la línea del agua.
+- **L14.** Evidencia: `npx vitest run` **1158 / 70 archivos** verdes · `tsc --noEmit` limpio ·
+  `npm run board` · el puente en el tablero, sin barca y con pilas.
