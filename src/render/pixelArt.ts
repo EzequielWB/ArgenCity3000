@@ -4331,10 +4331,9 @@ export function treePixelSprite(kind: number, variant: number): Sprite {
 
 /* ---------- El Calvario de Tandil ---------- */
 
-/** El verde de la loma y el del corte, y el pasto del lote: los tres tonos del cerro. */
+/** El verde de la loma y el del corte: los dos tonos del cerro. */
 const HILL = ramp('#6f9a4a');
 const HILL_CUT = ramp('#4f7038');
-const MEADOW = ramp('#93b45f');
 
 const CALVARIO_MAX_Z = 74;
 
@@ -4374,16 +4373,32 @@ function paintCalvarioOn(p: Pen, vw: number, vh: number): void {
   const TERR = 8;
   const cut = Array.from({ length: TERR + 1 }, (_, k) => 0.05 + ((L - 0.1) * k) / TERR);
   const zAt = (k: number): number => (H * k) / TERR;
+  /**
+   * El ancho del cerro a la altura del tramo `k`: se angosta hacia arriba.
+   *
+   * Sin esto las huellas de los tramos altos llegaban hasta los dos bordes del lote y, como están treinta
+   * píxeles más arriba, en isométrica se dibujaban afuera del rombo: quedaban lenguas de pasto en el aire a
+   * los costados del atrio. Un cerro se angosta y así entra solo.
+   */
+  const edgeAt = (k: number): [number, number] => {
+    const inset = 0.52 * (k / TERR);
+    return [inset, W - inset];
+  };
+
   /** El ancho de la escalinata, medido en lotes: casi la mitad del lote, como en el cerro de verdad. */
-  const sHalf = W * 0.21;
+  const sHalf = W * 0.17;
   /** La piedra del camino, más clara que cualquier otra cosa del lote: es lo que hace que se lea. */
   const PATH: Ramp = [hex('#b9b2a0'), hex('#efe9d9'), hex('#fbf6e8')];
 
-  // El prado del lote. La loma se levanta de acá: no hay sombra de lote porque el pasto cubre el rombo
-  // entero y la sombra quedaría debajo.
-  p.poly([Q(0.02, 0.02, 0), Q(L - 0.02, 0.02, 0), Q(L - 0.02, W - 0.02, 0), Q(0.02, W - 0.02, 0)], (x, y) =>
-    noise(x, y, 4) > 0.78 ? MEADOW[2] : MEADOW[1],
-  );
+  // **La sombra del lote, como la de cualquier edificio.** El Calvario era el único que no la pintaba, con
+  // el argumento de que el pasto cubría el rombo entero; y sin sombra que lo una al suelo, un monumento de
+  // cuarenta píxeles de alto se lee como una maqueta puesta encima del mapa. Es lo que lo hacía flotar.
+  // Adentro del borde y no sobre él: la sombra de lote va corrida hacia la cámara, y al filo del rombo se
+  // leía como un marco negro alrededor del pasto.
+  p.shadow(0.12, 0.12, L - 0.3, W - 0.12);
+  // Y **nada de prado propio**: el mapa ya tiene su pasto, y una alfombra de otro verde encima se lee como
+  // una baldosa pegada. El cerro se apoya directamente en el terreno del juego.
+  
 
   // El cerro, tramo por tramo. En cada uno la **ladera** de adelante —verde, con la roca asomando— y la
   // huella de arriba. Los costados no son paredes: la loma se apaga contra el prado en pendiente, y si no
@@ -4393,22 +4408,32 @@ function paintCalvarioOn(p: Pen, vw: number, vh: number): void {
     const a1 = cut[k + 1];
     const z0 = zAt(k);
     const z1 = zAt(k + 1);
-    // Los dos costados en pendiente: un trapecio que arranca en el prado y muere en la huella.
-    for (const c of [0, W]) {
-      p.poly([Q(a0, c, Math.max(0, z0 - 1)), Q(a1, c, z1), Q(a1, c, Math.max(0, z0 - 1))], (x, y) =>
-        bayer(x, y) < 0.3 ? shade(HILL_CUT[1], 0.94) : shade(HILL[1], 1.02),
-      );
+    // Las laderas laterales, **en pendiente hasta el borde del lote**: el cerro muere en el pasto del mapa
+    // y no termina en una pared recta. Con el talud vertical el conjunto parecía una meseta elevada.
+    const [l0, r0] = edgeAt(k);
+    const [l1, r1] = edgeAt(k + 1);
+    for (const [cb, ct, cn] of [
+      [0, l1, l0],
+      [W, r1, r0],
+    ] as [number, number, number][]) {
+      p.poly([Q(a0, cb, 0), Q(a1, cb, 0), Q(a1, ct, z1), Q(a0, cn, z0)], (x, y) => {
+        // La roca asoma en la ladera, pero con cuentagotas: a una de cada veinte se ve como una salpicadura
+        // de pintura blanca y no como piedra.
+        const g = noise(x * 1.3, y * 1.7, 7);
+        if (g > 0.975) return shade(STONE[1], 1.02);
+        return g > 0.55 ? shade(HILL[1], 1.04) : shade(HILL_CUT[1], 0.97);
+      });
     }
     // La ladera de adelante, con la roca a la vista en el medio y el pasto en los bordes: es el corte que
     // el camino atraviesa, y el mismo tono de la foto, piedra gris entre el verde.
-    p.poly([Q(a0, 0, z0), Q(a0, W, z0), Q(a0, W, z1), Q(a0, 0, z1)], (x, y) => {
+    p.poly([Q(a0, l0, z0), Q(a0, r0, z0), Q(a0, r1, z1), Q(a0, l1, z1)], (x, y) => {
       const g = noise(x, y * 2, 9);
-      if (g > 0.78) return shade(STONE[0], 1.14);
+      if (g > 0.8) return shade(STONE[0], 1.14);
       if (bayer(x, y) < 0.4) return shade(HILL_CUT[0], 0.9);
       return shade(HILL_CUT[1], 0.98);
     });
     // La huella: pasto, salvo la franja del camino, que se pinta después y por encima.
-    p.poly([Q(a0, 0, z1), Q(a1, 0, z1), Q(a1, W, z1), Q(a0, W, z1)], (x, y) =>
+    p.poly([Q(a0, l1, z1), Q(a1, l1, z1), Q(a1, r1, z1), Q(a0, r1, z1)], (x, y) =>
       noise(x, y * 1.7, 3) > 0.55 ? HILL[2] : HILL[1],
     );
   }
@@ -4534,11 +4559,11 @@ function paintCalvarioOn(p: Pen, vw: number, vh: number): void {
   const aTop0 = cut[TERR - 2];
   const aTop1 = cut[TERR] - 0.2;
   const zTop = H;
-  p.poly([Q(aTop0, 0.72, zTop), Q(aTop1, 0.72, zTop), Q(aTop1, W - 0.72, zTop), Q(aTop0, W - 0.72, zTop)], (x, y) =>
+  p.poly([Q(aTop0, 0.85, zTop), Q(aTop1, 0.85, zTop), Q(aTop1, W - 0.85, zTop), Q(aTop0, W - 0.85, zTop)], (x, y) =>
     bayer(x, y) < 0.25 ? shade(PATH[1], 1.02) : PATH[1],
   );
   // El escalón del atrio, en la cara que da al camino.
-  p.poly([Q(aTop0, 0.72, zTop - 2), Q(aTop0, W - 0.72, zTop - 2), Q(aTop0, W - 0.72, zTop), Q(aTop0, 0.72, zTop)], () =>
+  p.poly([Q(aTop0, 0.85, zTop - 2), Q(aTop0, W - 0.85, zTop - 2), Q(aTop0, W - 0.85, zTop), Q(aTop0, 0.85, zTop)], () =>
     shade(PATH[0], 0.94),
   );
 

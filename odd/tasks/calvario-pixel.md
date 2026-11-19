@@ -198,3 +198,21 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
   (columnas 95-113 dentro de 87-130), y los nichos de las estaciones repartidos a los dos lados.
 - **L51.** Evidencia: `npx vitest run tests/calvario-pixel.test.ts` **7 / 7** verdes · `tsc --noEmit` limpio ·
   tablero regenerado y leído en las dos orientaciones (3×6 y 6×3).
+- **L52.** El usuario, mirando el Calvario nuevo, dijo una sola cosa: *"está flotando"*. Tres cambios, todos
+  del mismo tipo —el monumento no toca el suelo que dibuja—:
+  - **La sombra del lote.** El Calvario era el único edificio que no la pintaba, con el argumento de que el
+    pasto cubría el rombo entero. Sin sombra que lo una al suelo, cuarenta píxeles de piedra y cerro se leen
+    como una maqueta puesta encima del mapa. Va **adentro del borde**: al filo del rombo se leía como un
+    marco negro alrededor del pasto.
+  - **Nada de prado propio.** El lote no se pinta: el mapa ya tiene su pasto, y una alfombra de otro verde
+    encima se lee como una baldosa pegada. Ese era el otro flotado, el más literal.
+  - **El cerro se angosta hacia arriba y sus laderas mueren en el borde del lote a altura cero.** Con las
+    huellas de los tramos altos llegando hasta los dos bordes, como están treinta píxeles más arriba, en
+    isométrica se dibujaban **afuera del rombo**: quedaban lenguas de pasto en el aire a los costados del
+    atrio.
+- **L53.** Un intento que se tiró: pintar el cerro por barrido, punto por punto, con una función de altura.
+  Es el enfoque correcto para un relieve sin bordes rectos, pero hay que resolver el orden de pintado
+  (profundidad contra las oclusiones) y la densidad para que no queden agujeros, y el dibujo salió peor que
+  el de tramos: **se revirtió entero**. Los tramos con laderas en pendiente dan lo que hace falta.
+- **L54.** La lección que queda: **a un píxel, un monumento se apoya en el suelo con una sombra**, no con más
+  arquitectura. Es lo mismo que el Calvario ya sabía por otras piezas y no se aplicaba a sí mismo.
