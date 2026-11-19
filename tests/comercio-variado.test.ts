@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { paintCommercial } from '../src/render/pixelArt';
 
 /**
- * El nivel 5 del comercio: **cuatro locales**, no uno con cuatro colores. Lo que se prueba es lo que se ve
- * desde la vereda — la vidriera de piso a techo, la arcada, el ventanal de dos plantas y el cartel
- * parante de la nave baja —, medido en el dibujo y no contando tinta.
+ * El nivel 5 del comercio: **cuatro locales**, no uno con cuatro colores. Lo que se prueba es la silueta,
+ * que es lo que se ve desde la vereda: el techo a dos aguas de la casona, las columnas de la galería, la
+ * torre de fajas con el cartel de azotea y la nave baja con el cartel en un mástil.
  *
  * Las variantes 0 a 3 son los cuatro modelos; de la 4 a la 7 se repiten con otra pared y otro cartel.
  */
@@ -23,7 +23,48 @@ const at = (a: ReturnType<typeof art>, x: number, y: number): C | null => {
 const lum = (c: C) => c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11;
 const isGlass = (c: C) => c[2] - c[0] > 15 && c[2] > 70;
 
-/** La tirada de vidrio más larga en una columna: es la altura del paño que da a la calle. */
+interface Shape {
+  /** El ancho de cada fila pintada, de arriba abajo: la punta del dibujo primero. */
+  widths: number[];
+  height: number;
+  width: number;
+  /** La fila más alta con algo, por columna: la mediana dice dónde está el cuerpo del edificio. */
+  medianTop: number;
+  top: number;
+}
+
+function shape(a: ReturnType<typeof art>): Shape {
+  const widths: number[] = [];
+  const tops: number[] = [];
+  for (let y = 0; y < a.px.h; y++) {
+    let mn = a.px.w;
+    let mx = -1;
+    for (let x = 0; x < a.px.w; x++) {
+      if (!at(a, x, y)) continue;
+      mn = Math.min(mn, x);
+      mx = Math.max(mx, x);
+    }
+    if (mx >= 0) widths.push(mx - mn + 1);
+  }
+  for (let x = 0; x < a.px.w; x++) {
+    for (let y = 0; y < a.px.h; y++) {
+      if (at(a, x, y)) {
+        tops.push(y);
+        break;
+      }
+    }
+  }
+  tops.sort((p, q) => p - q);
+  return {
+    widths,
+    height: widths.length,
+    width: Math.max(...widths),
+    medianTop: tops[Math.floor(tops.length / 2)],
+    top: tops[0],
+  };
+}
+
+/** La tirada de vidrio más larga en una columna: la altura del paño que da a la calle. */
 function tallestGlass(a: ReturnType<typeof art>): number {
   let best = 0;
   for (let x = 0; x < a.px.w; x++) {
@@ -37,58 +78,30 @@ function tallestGlass(a: ReturnType<typeof art>): number {
   return best;
 }
 
-interface Shape {
-  height: number;
-  width: number;
-  /** La fila más alta con algo, por columna: la mediana dice dónde está el cuerpo del edificio. */
-  medianTop: number;
-  top: number;
-  y0: number;
-  y1: number;
-}
-
-function shape(a: ReturnType<typeof art>): Shape {
-  const widths: number[] = [];
-  const tops: number[] = [];
-  let y0 = -1;
-  let y1 = -1;
-  for (let y = 0; y < a.px.h; y++) {
-    let mn = a.px.w;
-    let mx = -1;
-    for (let x = 0; x < a.px.w; x++) {
-      if (!at(a, x, y)) continue;
-      mn = Math.min(mn, x);
-      mx = Math.max(mx, x);
-    }
-    if (mx < 0) continue;
-    if (y0 < 0) y0 = y;
-    y1 = y;
-    widths.push(mx - mn + 1);
-  }
+/**
+ * Las fajas de vidrio apiladas: cuántas tiradas verticales de vidrio separadas por muro hay en la columna
+ * que más tiene. Es lo que distingue una torre de oficinas de un local de una sola fachada vidriada.
+ */
+function glassBands(a: ReturnType<typeof art>): number {
+  let best = 0;
   for (let x = 0; x < a.px.w; x++) {
+    let runs = 0;
+    let prev = false;
     for (let y = 0; y < a.px.h; y++) {
-      if (at(a, x, y)) {
-        tops.push(y);
-        break;
-      }
+      const c = at(a, x, y);
+      const g = !!c && isGlass(c);
+      if (g && !prev) runs++;
+      prev = g;
     }
+    best = Math.max(best, runs);
   }
-  tops.sort((p, q) => p - q);
-  return {
-    height: y1 - y0 + 1,
-    width: Math.max(...widths),
-    medianTop: tops[Math.floor(tops.length / 2)],
-    top: tops[0],
-    y0,
-    y1,
-  };
+  return best;
 }
 
 /**
  * La tirada vertical más larga en sombra. En la galería son los huecos entre los pilares: la arcada no se
- * reconoce por una fila de píxeles claros —la vidriera del modelo 0 también tiene reflejos y maniquíes y
- * da tramos claros— sino por el **hueco oscuro y alto** que queda debajo del pórtico. Un edificio sin
- * galería no tiene ningún hueco de esa altura: su planta baja es vidrio, que es claro.
+ * reconoce por una fila de píxeles claros —la vidriera también tiene reflejos y maniquíes y da tramos
+ * claros— sino por el hueco oscuro y alto que queda debajo del pórtico.
  */
 function shadowRun(a: ReturnType<typeof art>): number {
   let best = 0;
@@ -116,40 +129,48 @@ describe('el nivel 5 del comercio: cuatro locales', () => {
     expect(new Set(masks).size).toBe(4);
   });
 
-  it('la vidriera: la planta baja entera de vidrio, de la vereda a la banda', () => {
-    // El paño de la vidriera mide entre siete y diez píxeles de alto. Menos, es un ventanal; más, es el
-    // ventanal de dos plantas del modelo 2, y entonces los dos modelos se leerían iguales.
-    const glass = tallestGlass(art(0));
-    expect(glass).toBeGreaterThanOrEqual(7);
-    expect(glass).toBeLessThanOrEqual(10);
+  it('la casona: el techo a dos aguas, la única punta triangular de la zona', () => {
+    // Una casona reciclada termina en un triángulo: la fila más alta mide un píxel y cinco filas más abajo
+    // el techo ya mide más de diez. Ninguna de las otras tres arranca en una punta así —la galería y la
+    // nave terminan en una losa ancha y la torre en una caja de cartel—, y por eso esta prueba no se puede
+    // pasar con otro modelo.
+    const s = shape(art(0));
+    expect(s.widths[0]).toBeLessThanOrEqual(2);
+    expect(s.widths[4]).toBeGreaterThanOrEqual(10);
+    for (const v of [1, 3]) {
+      const o = shape(art(v));
+      expect(o.widths[0] > 2 || o.widths[4] < 10, `variant ${v}`).toBe(true);
+    }
+    // Y la vidriera de la planta baja, que es lo que la hace comercio y no una casa.
+    expect(tallestGlass(art(0))).toBeGreaterThanOrEqual(7);
+    expect(tallestGlass(art(0))).toBeLessThanOrEqual(10);
   });
 
   it('la arcada: el hueco del pórtico es alto y oscuro, y el local común no tiene ninguno', () => {
-    // Diez píxeles de sombra seguidos en una columna son una galería; la vidriera del modelo 0 no pasa de
+    // Diez píxeles de sombra seguidos en una columna son una galería; la vidriera de la casona no pasa de
     // dos, porque el vidrio es claro y el hueco del pórtico no existe.
     expect(shadowRun(art(1))).toBeGreaterThanOrEqual(8);
     expect(shadowRun(art(0))).toBeLessThanOrEqual(4);
   });
 
-  it('el ventanal: un paño de dos plantas, más alto que cualquier otro vidrio de la zona', () => {
-    // El modelo moderno se reconoce por el vidrio que atraviesa dos pisos. Se compara contra el de la
-    // vidriera común: si midieran lo mismo, el ventanal no sería una doble altura.
-    const atrium = tallestGlass(art(2));
-    expect(atrium).toBeGreaterThanOrEqual(14);
-    expect(atrium).toBeGreaterThan(tallestGlass(art(0)) + 4);
+  it('la torre: la más alta y la más angosta, con las fajas de vidrio apiladas', () => {
+    const tower = shape(art(2));
+    for (const v of [0, 1, 3]) expect(tower.height, `variant ${v}`).toBeGreaterThan(shape(art(v)).height);
+    for (const v of [0, 1, 3]) expect(tower.width, `variant ${v}`).toBeLessThan(shape(art(v)).width);
+    // Cuatro fajas en la misma columna: la torre sube en pisos de oficina y no en una sola fachada.
+    expect(glassBands(art(2))).toBeGreaterThanOrEqual(3);
   });
 
   it('la nave: la más baja y la más ancha, con el cartel en un mástil sobre el techo', () => {
     const shed = shape(art(3));
-    for (const v of [0, 1, 2]) {
-      expect(shed.height, `variant ${v}`).toBeLessThan(shape(art(v)).height);
-      expect(shed.width, `variant ${v}`).toBeGreaterThan(shape(art(v)).width);
-    }
-    // El mástil: en alguna columna la punta del dibujo está muy por encima del cuerpo del edificio. Es el
-    // cartel parante, lo único de la zona que se ve desde la otra cuadra.
+    for (const v of [0, 1, 2]) expect(shed.width, `variant ${v}`).toBeGreaterThan(shape(art(v)).width);
+    // Más baja que la galería y que la torre. La casona mide casi lo mismo que la nave, y eso está bien:
+    // las dos son bajas, y lo que las separa es el techo y no la altura.
+    for (const v of [1, 2]) expect(shed.height, `variant ${v}`).toBeLessThan(shape(art(v)).height);
+    // El mástil: la punta del dibujo está diez píxeles por encima del cuerpo del edificio, y esa punta es
+    // un rectángulo de ancho parejo, que es el paño del cartel.
     expect(shed.medianTop - shed.top).toBeGreaterThan(6);
-    // Los otros tres no tienen nada así: su borde de arriba es la losa y es parejo.
-    for (const v of [0, 1, 2]) expect(shape(art(v)).medianTop - shape(art(v)).top, `variant ${v}`).toBeLessThan(5);
+    expect(Math.abs(shed.widths[0] - shed.widths[3])).toBeLessThanOrEqual(1);
   });
 
   it('los cuatro tienen vidrio y el color de la marca', () => {

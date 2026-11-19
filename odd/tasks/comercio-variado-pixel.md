@@ -14,15 +14,19 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
   le da el mismo tratamiento que al del residencial: **cuatro modelos**, elegidos por la variante, con la
   paleta saliendo también de la variante.
 - **S2.** Un local de nivel 5 no es una torre de oficinas: es **una casa de ropa de avenida**. Los cuatro
-  modelos se distinguen por cómo atienden a la calle — la vidriera, la galería, el ventanal en doble
-  altura o el cartel parante — y no por la altura de un fuste.
+  modelos se distinguen por la **silueta** y no por una fachada de vidrio más o menos alta: el techo a dos
+  aguas de la casona, las columnas de la galería, la torre de fajas con el cartel de azotea y la nave baja
+  con el cartel en un mástil.
 - **S3.** La interfaz no cambia: `paintCommercial(level, variant)` sigue recibiendo los cinco niveles y
   las ocho variantes, y `HEIGHT.commercial[5] = 62` sigue siendo el techo del sprite.
 - **S4.** La variante 0 a 3 son los cuatro modelos; de la 4 a la 7 se repiten con otra pared y otro color
   de cartel. La simulación no se toca.
 - **S5.** Se escribe una prueba de estructura por modelo, con lo que lo distingue dibujado y no "hay
-  tinta": la vidriera de piso a techo, la arcada en sombra, el ventanal de dos plantas y el cartel sobre el
-  techo.
+  tinta": la punta triangular del techo, la arcada en sombra, las fajas apiladas de la torre y el cartel
+  sobre el mástil.
+- **S6.** *"Bien, hace que vidriera, galeria y ventanal sea distinto, deja solo el galeria y hacer que los
+  otros dos sean distintos"* — de los tres primeros, que eran la misma caja con vidrio abajo, **se queda
+  la galería**; la vidriera y el ventanal se rehacen con siluetas que no se parezcan a ella ni entre sí.
 
 ## Tasks
 
@@ -73,3 +77,27 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
   parejas, más baja y más ancha que las demás.
 - **L9.** Evidencia: **1209 / 78** verdes · `tsc --noEmit` limpio · `npm run arte` regenerado · los cuatro
   mirados a 3× y en la fila del tablero.
+- **L10.** Los tres primeros eran la misma caja: dos o tres plantas, vidrio abajo, banda de color y
+  ventanas arriba. A 728 píxeles en el tablero se veían como el mismo local con tres carteles distintos, y
+  el único rasgo propio de la galería —las columnas— quedaba tapado por el parecido de los otros dos. La
+  vidriera y el ventanal se rehacen; la galería y la nave se quedan.
+- **L11.** **La casona** (reemplaza a la vidriera): dos plantas, la baja de vidrio, la banda, las ventanas
+  de la casa con su alféizar y **un techo a dos aguas de chapa**. La silueta termina en un triángulo, que
+  es lo único de la zona que no es una losa ni una caja. La casa de avenida reciclada en local es un tipo
+  real de Buenos Aires y es lo contrario del prisma moderno.
+- **L12.** **La torre** (reemplaza al ventanal): cuatro plantas, angosta, con las fajas de vidrio apiladas
+  y **la caja del cartel sobre la azotea**. Es la única que crece en vez de extenderse, y la única cuyo
+  remate es una caja de color y no una losa.
+- **L13.** El cartel del techo de la casona se fue dos veces: pintado en el faldón era un rectángulo
+  amarillo flotando sobre la teja, y colgando del alero, una franja de color atravesada. A 1× un cartel
+  sobre un techo inclinado no se lee como cartel: se lee como un error de pintura. La banda de la pared
+  ya nombra el local y el techo es el rasgo del modelo.
+- **L14.** **Las pruebas cambiaron con el dibujo**, y eso cambia qué significa "correcto": el ventanal de
+  18 píxeles ya no existe, así que la prueba del modelo 2 pasó a medir **las fajas apiladas** (cuatro
+  tiradas de vidrio en la misma columna) y la altura, y la del modelo 0 pasó a medir **la punta
+  triangular** (la fila más alta mide un píxel y cinco filas abajo el techo mide más de diez). La de la
+  nave dejó de exigir "la más baja de las cuatro" —la casona mide 36 y la nave 37, y eso está bien porque
+  las dos son bajas— y pasa a exigir que sea la más ancha y que la punta sea un rectángulo de ancho
+  parejo, que es el paño del cartel y no una punta.
+- **L15.** Medidas finales, de arriba abajo del sprite: casona 36 de alto y 28 de ancho, galería 45 y 30,
+  torre 55 y 26, nave 37 y 31.
