@@ -277,7 +277,7 @@ const FAMILIES: Family[] = [
       [2, 'Casa de familia', 'Chalet de tejas, chimenea, porche y jardín con cerco.'],
       [3, 'Casa chorizo', 'Ancha y baja: cornisa, rejas, garage y azotea con pérgola.'],
       [4, 'Edificio de renta', 'Ladrillo a la vista, local con toldo y balcones por piso.'],
-      [5, 'Torre', 'Basamento ancho, franjas de vidrio y sala de máquinas.'],
+      [5, 'Torre', 'Cuatro modelos: podio y fuste, escalones, torre con ala baja y franjas verticales.'],
     ],
   },
   {

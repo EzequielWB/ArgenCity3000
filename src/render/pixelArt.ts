@@ -380,8 +380,13 @@ export class Pen {
   /** A thin antenna on the roof. */
   antenna(u: number, v: number, z: number, h: number): void {
     const [x, y] = this.P(u, v, z);
-    this.px.rect(Math.round(x), Math.round(y) - h, 1, h, LEG);
-    this.px.rect(Math.round(x) - 1, Math.round(y) - h + 1, 3, 1, LEG);
+    const cx = Math.round(x);
+    const cy = Math.round(y);
+    this.px.rect(cx, cy - h, 1, h, LEG);
+    // Dos travesaños, el de arriba más corto: con uno solo en la punta el mástil se lee como una cruz, y
+    // una cruz en lo alto de una torre de oficinas es una iglesia.
+    this.px.rect(cx - 1, cy - h + 1, 3, 1, LEG);
+    this.px.rect(cx - 2, cy - Math.round(h * 0.5), 5, 1, LEG);
   }
 
   /** A flagpole on the roof, with the flag of the country: light blue, white, light blue. */
@@ -505,31 +510,131 @@ function block(p: Pen, v: number): void {
   if (v % 2 === 1) p.antenna(0.7, 0.34, h + 6, 7);
 }
 
-/** Level 5: the tower, on a wider podium, with glass bands and a machine room on top. */
+/** El ancho de una cara en píxeles, que es en lo que se miden los parches (`t0`/`t1`). */
+const faceW = (a: number, b: number): number => Math.round((b - a) * 16);
+
+/**
+ * Nivel 5: la torre. Cuatro **modelos** y no uno con ocho colores: con veinte torres en la ciudad, lo que
+ * distingue un edificio de otro a 1× es la **silueta** —el podio, los escalones, el ala baja— antes que el
+ * color de la fachada. La variante elige el modelo (`v & 3`) y la paleta (`v`), así que cada modelo
+ * aparece con dos colores distintos.
+ */
 function tower(p: Pen, v: number): void {
-  const h = 46 + (v % 3) * 6;
-  // A skyline painted in one tone reads as a single grey mass, so each variant brings its own facade.
+  const model = v & 3;
   const wall = TOWER_WALLS[v % TOWER_WALLS.length];
-  const base = TOWER_BASES[v % TOWER_BASES.length];
+  const base = TOWER_BASES[(v >> 2) % TOWER_BASES.length];
+  if (model === 1) towerSteps(p, wall, base);
+  else if (model === 2) towerWing(p, wall, base);
+  else if (model === 3) towerSlab(p, wall, base);
+  else towerPodium(p, wall, base, v);
+}
+
+/** Modelo 0: podio ancho de dos plantas y el fuste esbelto encima, con cintas de vidrio. */
+function towerPodium(p: Pen, wall: Ramp, base: Ramp, v: number): void {
+  const h = 46 + ((v >> 2) & 1) * 6;
   p.shadow(0.06, 0.08, 0.94, 0.92);
-  // The podium: two floors at street level, wider than the tower, so the silhouette steps in.
+  // El podio: dos plantas a la calle, más ancho que la torre, así la silueta entra y sale.
   p.box(0.06, 0.08, 0.94, 0.92, 0, 10, base, 'plain', [door(4, 4, 8), pane(10, 2, 4, 6, GLASS)], [pane(4, 2, 4, 6, GLASS)], ROOFTOP);
   p.canopy(0.08, 0.92, 0.9, 11, GLASS, shade(GLASS, 1.4));
-  const u0 = 0.18;
-  const v0 = 0.2;
-  const u1 = 0.82;
-  const v1 = 0.8;
+  const w = faceW(0.18, 0.82);
   const front: Patch[] = [];
   const side: Patch[] = [];
   for (let z = 14; z + 4 <= h; z += 5) {
-    front.push(...ribbon(1, 14, z, 3));
-    side.push(...ribbon(2, 13, z, 3));
+    front.push(...ribbon(1, w - 1, z, 3));
+    side.push(...ribbon(2, w - 2, z, 3));
   }
-  p.box(u0, v0, u1, v1, 10, h - 10, wall, 'plain', front, side, ROOFTOP);
-  p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
+  p.box(0.18, 0.2, 0.82, 0.8, 10, h - 10, wall, 'plain', front, side, ROOFTOP);
+  p.cornice(0.18, 0.2, 0.82, 0.8, h, 2, CONCRETE);
   p.box(0.32, 0.34, 0.6, 0.6, h + 2, 5, CONCRETE, 'plain');
   p.tank(0.66, 0.26, h + 2);
   p.antenna(0.42, 0.4, h + 7, 9);
+}
+
+/**
+ * Modelo 1: **los escalones**. Tres cuerpos que se van achicando en altura: la torre de los setenta, la
+ * que en Buenos Aires se ve en hilera sobre Avenida del Libertador, y la que más se diferencia de la del
+ * podio en el contorno.
+ */
+function towerSteps(p: Pen, wall: Ramp, base: Ramp): void {
+  p.shadow(0.05, 0.07, 0.95, 0.93);
+  p.box(0.05, 0.07, 0.95, 0.93, 0, 9, base, 'plain', [door(3, 4, 7), pane(9, 2, 5, 5, GLASS)], [pane(3, 2, 4, 5, GLASS)], ROOFTOP);
+  p.canopy(0.07, 0.93, 0.93, 10, GLASS, shade(GLASS, 1.4));
+  // Cuerpo 1: el más ancho, seis plantas.
+  const f1 = bands(0.06, 0.94, 12, 34);
+  p.box(0.06, 0.08, 0.94, 0.92, 9, 25, wall, 'plain', f1.front, f1.side, ROOFTOP);
+  p.cornice(0.06, 0.08, 0.94, 0.92, 34, 1, CONCRETE);
+  // Cuerpo 2: se mete un tercio y saca tres plantas más.
+  const f2 = bands(0.2, 0.8, 38, 48);
+  p.box(0.2, 0.22, 0.8, 0.78, 35, 13, wall, 'plain', f2.front, f2.side, ROOFTOP);
+  p.cornice(0.2, 0.22, 0.8, 0.78, 48, 1, CONCRETE);
+  // Cuerpo 3: la cabina, chica y alta.
+  const f3 = bands(0.34, 0.66, 51, 58);
+  p.box(0.34, 0.36, 0.66, 0.64, 49, 9, wall, 'plain', f3.front, f3.side, ROOFTOP);
+  p.cornice(0.34, 0.36, 0.66, 0.64, 58, 1, CONCRETE);
+  p.tank(0.42, 0.42, 59);
+  p.antenna(0.54, 0.48, 65, 8);
+}
+
+/** Las cintas de vidrio de un cuerpo, cara por cara, cada cinco píxeles de altura. */
+function bands(u0: number, u1: number, z0: number, z1: number): { front: Patch[]; side: Patch[] } {
+  const w = faceW(u0, u1);
+  const front: Patch[] = [];
+  const side: Patch[] = [];
+  for (let z = z0; z + 4 <= z1; z += 5) {
+    front.push(...ribbon(1, w - 1, z, 3));
+    side.push(...ribbon(2, w - 2, z, 3));
+  }
+  return { front, side };
+}
+
+/**
+ * Modelo 2: **la torre con el ala baja**. La torre va sobre la esquina del fondo y un ala de dos plantas
+ * cruza el frente: la planta es una ele y el skyline gana un cuerpo bajo que ninguna otra torre tiene.
+ */
+function towerWing(p: Pen, wall: Ramp, base: Ramp): void {
+  p.shadow(0.05, 0.07, 0.95, 0.93);
+  const H = 54;
+  // La torre primero, que está atrás: el ala la tapa abajo y así se lee que sale de ella.
+  const tb = bands(0.22, 0.66, 14, H);
+  p.box(0.22, 0.12, 0.66, 0.54, 0, H, wall, 'plain', tb.front, tb.side, ROOFTOP);
+  p.cornice(0.22, 0.12, 0.66, 0.54, H, 2, CONCRETE);
+  p.box(0.32, 0.24, 0.54, 0.42, H + 2, 4, CONCRETE, 'plain');
+  p.antenna(0.38, 0.32, H + 6, 8);
+  // El ala: local a la calle, una planta de oficinas arriba y la azotea con pretil.
+  const ab = bands(0.06, 0.94, 9, 13);
+  p.box(0.06, 0.56, 0.94, 0.94, 0, 13, base, 'plain', [
+    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(base[1], 0.6) },
+    door(4, 4, 8),
+    pane(10, 1, 5, 6, GLASS),
+    ...ab.front,
+  ], [pane(2, 1, 4, 6, GLASS)], ROOFTOP);
+  p.cornice(0.06, 0.56, 0.94, 0.94, 13, 1, CONCRETE);
+  p.parapet(0.06, 0.56, 0.94, 0.94, 14, 1, base);
+  p.canopy(0.07, 0.94, 0.93, 10, GLASS, shade(GLASS, 1.4));
+}
+
+/**
+ * Modelo 3: **las franjas verticales**. El prisma toma casi todo el lote, sin podio, y la fachada es una
+ * tabiquería de hormigón con el vidrio hundido: la del edificio de oficinas de los sesenta. En el mapa se
+ * distingue por el remate, que vuela, y por no tener el escalón del podio.
+ */
+function towerSlab(p: Pen, wall: Ramp, base: Ramp): void {
+  p.shadow(0.06, 0.08, 0.94, 0.92);
+  const H = 52;
+  p.box(0.1, 0.12, 0.9, 0.88, 0, 6, base, 'plain', [door(6, 4, 6), pane(12, 1, 4, 4, GLASS)], [pane(4, 1, 4, 4, GLASS)], ROOFTOP);
+  const w = faceW(0.13, 0.87);
+  const front: Patch[] = [];
+  const side: Patch[] = [];
+  for (let t = 1; t + 1 < w - 1; t += 4) {
+    front.push({ t0: t, t1: t + 2, k0: 0, k1: H - 8, c: GLASS });
+    front.push({ t0: t, t1: t + 2, k0: H - 8, k1: H - 7, c: shade(GLASS, 1.6) });
+    side.push({ t0: t, t1: t + 2, k0: 0, k1: H - 8, c: shade(GLASS, 0.86) });
+  }
+  p.box(0.13, 0.15, 0.87, 0.85, 6, H - 6, wall, 'plain', front, side, ROOFTOP);
+  p.cornice(0.13, 0.15, 0.87, 0.85, H, 2, CONCRETE);
+  p.box(0.3, 0.3, 0.54, 0.54, H + 2, 4, CONCRETE, 'plain');
+  p.tank(0.62, 0.2, H + 2);
+  p.antenna(0.36, 0.34, H + 6, 7);
 }
 
 /** Level 1: the kiosk, a lit counter behind a service window and an awning over the pavement. */
