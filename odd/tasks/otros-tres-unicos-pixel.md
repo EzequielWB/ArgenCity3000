@@ -133,3 +133,25 @@ cuatro falla conviene saberlo antes de dibujar los otros dos.
   sobre el anillo.
 - **L23.** Evidencia: **1178 / 73** verdes · `tsc --noEmit` limpio · tablero regenerado · los tres
   revisados en pantalla.
+- **L24. El Planetario, con las fotos delante.** Las tres fotos del Galileo Galilei dicen lo que la
+  descripción no decía: la cúpula es **oscura**, de chapa perforada y **casi una esfera**; abajo hay un
+  **plato de vidrio que vuela más ancho que el cuerpo**, con la carpintería a la vista y un filo de cal;
+  entre los dos, una terraza; y el plato no apoya en un muro sino en **cuatro tensores de hormigón** que
+  entran desde el parque. Lo anterior era un tambor de vidrio con una tapa clara: la estructura era
+  correcta y el edificio no.
+- **L25.** Cuatro cosas que se arreglaron mirando la pantalla y no el código: el filo de cal del plato
+  iba en los dos bordes y el plato quedaba **una cáscara de huevo** (el canto de abajo va en el vidrio
+  oscuro); la terraza iba en cal y **se comía la franja de vidrio** (va en gris medio, es un piso a la
+  sombra); las patas de un píxel **se leían como cables** (van de cuatro); y las dos cajas blancas al pie
+  del domo **le daban cara** —dos ojos— así que quedó sólo el mástil de la antena.
+- **L26.** La malla de la cúpula se pinta en damero con dos tonos del mismo plomo (0,9 de diferencia):
+  así se lee la chapa perforada. El damero tiene que ser suave —a 0,84 la cúpula parecía tejida a
+  crochet— y la prueba lo pide por lo que es: **dos tonos mezclados**, no un relleno liso, que ocuparía
+  la misma área y pasaría un conteo de píxeles igual.
+- **L27.** `tests/planetario-pixel.test.ts` reescrito otra vez (7 pruebas), ahora sobre la estructura
+  nueva: la cúpula es oscura y redonda con la fila más ancha abajo, la cúpula está perforada (dos tonos),
+  el plato vuela más ancho que la cúpula y tiene carpintería, **las patas llegan al suelo de los dos
+  lados** —se cuentan de un lado y del otro, que es lo que lo hace un apoyo y no una pata sola—, y la
+  cúpula está centrada sobre el plato.
+- **L28.** Evidencia: **1178 / 73** verdes · `tsc --noEmit` limpio · tablero regenerado · el planetario
+  comparado con las fotos.

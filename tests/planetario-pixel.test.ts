@@ -3,10 +3,10 @@ import { paintPlanetario } from '../src/render/pixelArt';
 import { UNIQUES } from '../src/config';
 
 /**
- * El Planetario (3×3): el basamento de piedra, el **anillo de vidrio** con su carpintería, la galería, el
- * casquete y la linterna, en medio del parque. Lo que se prueba es la estructura: que la cúpula sea una
- * cúpula —redonda, más ancha que alta, con la fila más ancha abajo—, que el vidrio esté **entre** el
- * basamento y la cúpula, y que los parantes sean varios y verticales. No se prueba que haya tinta.
+ * El Planetario (3×3): **la cúpula oscura sobre el plato de vidrio que vuela, con las patas de hormigón**.
+ * Lo que se prueba es la estructura, que es lo que lo identifica: que la cúpula sea oscura y redonda, que
+ * el plato de vidrio sea más ancho que ella y con carpintería, que la cúpula esté centrada, y que las
+ * patas lleguen al suelo de los dos lados. No se prueba que haya tinta.
  */
 
 interface Art {
@@ -22,27 +22,27 @@ const at = (a: Art, x: number, y: number): [number, number, number] | null => {
   return [a.px.data[i], a.px.data[i + 1], a.px.data[i + 2]];
 };
 
-/** El casquete de chapa: un azul claro y pálido, más oscuro que la cal del basamento. */
-const isDome = (r: number, g: number, b: number) => b > r + 12 && b > 150 && r > 150 && g > r;
-/** El vidrio del anillo: azul hondo, mucho más oscuro que el casquete. */
-const isGlass = (r: number, _g: number, b: number) => b > r + 25 && r < 140;
+/** La cúpula: gris plomo, casi neutro y oscuro. Es lo único oscuro del edificio. */
+const isDome = (r: number, g: number, b: number) =>
+  r < 130 && r > 48 && Math.abs(r - g) < 14 && b > r && b - r < 16 && Math.abs(g - b) < 18;
+/** El vidrio del plato: claro y azulado. */
+const isGlass = (r: number, _g: number, b: number) => b > r + 14 && b > 160;
 /** La carpintería: hierro claro, casi blanco. */
 const isMullion = (r: number, g: number, b: number) => r > 225 && g > 218 && b > 200;
-/** La galería: el hierro oscuro, azulado, y **no** el vidrio, que también es azul. */
-const isGallery = (r: number, _g: number, b: number) => b > r + 8 && r < 135 && b < 130;
-/** La cal del basamento: blanco cálido, con el azul por debajo del rojo. */
-const isBase = (r: number, g: number, b: number) => r > 210 && g > 200 && b > 175 && b <= r;
+/** El hormigón de las patas: gris cálido. */
+const isConcrete = (r: number, g: number, b: number) => r > b + 12 && r > 95 && r < 215 && Math.abs(r - g) < 14;
 const isPark = (r: number, g: number, b: number) => g > r + 18 && g > b + 25 && g > 80;
 /** El tronco: madera oscura. La copa no sirve para contarlos, es casi el mismo verde que el pasto. */
 const isTrunk = (r: number, g: number, b: number) => r > 55 && r < 145 && r > g + 16 && g > b + 8;
 
-function count(a: Art, ok: (r: number, g: number, b: number) => boolean) {
+function count(a: Art, ok: (r: number, g: number, b: number) => boolean, y0 = 0, y1 = -1) {
+  const last = y1 < 0 ? a.px.h - 1 : y1;
   let n = 0;
   let minX = a.px.w;
   let maxX = -1;
   let minY = a.px.h;
   let maxY = -1;
-  for (let y = 0; y < a.px.h; y++) {
+  for (let y = y0; y <= last; y++) {
     for (let x = 0; x < a.px.w; x++) {
       const c = at(a, x, y);
       if (!c || !ok(c[0], c[1], c[2])) continue;
@@ -75,36 +75,40 @@ function widths(a: Art, ok: (r: number, g: number, b: number) => boolean, y0: nu
 
 const a = paintPlanetario(3, 3);
 const dome = count(a, isDome);
+const glass = count(a, isGlass);
 
 describe('el Planetario en píxel', () => {
-  it('la cúpula es una cúpula: más ancha que alta y con la fila más ancha abajo', () => {
-    expect(dome.n).toBeGreaterThan(150);
+  it('la cúpula es oscura y redonda: más ancha que alta, con la fila más ancha abajo', () => {
+    // Es lo único oscuro de la ciudad a propósito: la cúpula de chapa perforada se reconoce desde lejos
+    // justamente por el valor. Una cúpula clara sería una tapa más.
+    expect(dome.n).toBeGreaterThan(300);
     expect(dome.w).toBeGreaterThan(dome.h);
-    // Una cúpula se reconoce por el perfil: arranca ancha en la base y se cierra en la punta. Un casquete
-    // chato o una caja con el borde redondeado no cumplen las dos.
     const filas = widths(a, isDome, dome.minY, dome.maxY);
-    expect(filas.length).toBeGreaterThan(5);
+    expect(filas.length).toBeGreaterThan(8);
     const masAncha = filas.reduce((b, f) => (f[1] > b[1] ? f : b), filas[0]);
-    expect(masAncha[0]).toBeGreaterThanOrEqual(dome.maxY - 3);
+    expect(masAncha[0]).toBeGreaterThanOrEqual(dome.maxY - 4);
     expect(filas[0][1]).toBeLessThan(masAncha[1] * 0.55);
   });
 
-  it('el anillo de vidrio está entre el basamento y la cúpula', () => {
-    // La estructura circular de vidrio es lo que identifica al Planetario: el vidrio va **arriba del
-    // basamento y abajo de la cúpula**, no al lado ni pegado al pasto.
-    const glass = count(a, isGlass);
-    const base = count(a, isBase);
-    expect(glass.n).toBeGreaterThan(250);
-    expect(glass.maxY).toBeLessThan(base.maxY);
-    expect(glass.maxY).toBeGreaterThan(dome.maxY - 2);
-    expect(glass.minY).toBeGreaterThan(dome.minY);
-    expect(Math.abs(glass.w - dome.w)).toBeLessThan(5);
+  it('la cúpula está perforada: dos tonos alternados, no un relleno liso', () => {
+    // La malla se pinta en damero. Un relleno de un solo tono ocupa la misma área y también pasaría un
+    // conteo de píxeles; lo que distingue la chapa perforada es que hay **dos** tonos mezclados.
+    const tones = new Set<string>();
+    for (let y = dome.minY; y <= dome.maxY; y++) {
+      for (let x = dome.minX; x <= dome.maxX; x++) {
+        const c = at(a, x, y);
+        if (c && isDome(c[0], c[1], c[2])) tones.add(c.join(','));
+      }
+    }
+    expect(tones.size).toBeGreaterThan(4);
   });
 
-  it('el anillo tiene carpintería: parantes verticales, varios', () => {
-    // Sin parantes el anillo es un tambor pintado de azul. Se cuentan **columnas** con hierro claro y no
-    // píxeles: lo que hace la estructura es la cantidad de parantes, no el área pintada.
-    const glass = count(a, isGlass);
+  it('el plato de vidrio vuela: es más ancho que la cúpula y tiene carpintería', () => {
+    // El plato es la otra mitad del edificio: vuela más ancho que la cúpula y la franja de vidrio se ve.
+    // La franja es corta y la corta la carpintería: lo que importa es que esté, no cuánta.
+    expect(glass.n).toBeGreaterThan(90);
+    expect(glass.w).toBeGreaterThan(dome.w + 2);
+    expect(glass.maxY).toBeGreaterThan(dome.maxY - 2);
     const cols = new Set<number>();
     for (let x = glass.minX; x <= glass.maxX; x++) {
       let n = 0;
@@ -114,20 +118,29 @@ describe('el Planetario en píxel', () => {
       }
       if (n > 3) cols.add(x);
     }
-    expect(cols.size).toBeGreaterThan(4);
+    expect(cols.size).toBeGreaterThan(6);
   });
 
-  it('la galería da la vuelta a la base de la cúpula', () => {
-    // El anillo oscuro es **más ancho** que la cúpula y está a la altura de su base: es el balcón que
-    // vuela, y sin él la cúpula se apoya en el vidrio sin apoyo.
-    const ring = count(a, isGallery);
-    expect(ring.n).toBeGreaterThan(40);
-    expect(ring.w).toBeGreaterThan(dome.w);
-    expect(Math.abs(ring.maxY - dome.maxY)).toBeLessThan(6);
+  it('las patas de hormigón llegan al suelo de los dos lados', () => {
+    // Sin las patas el plato flota. Se cuentan los píxeles de hormigón **de abajo del plato**, y se pide
+    // que haya de los dos lados del edificio, que es lo que lo hace un apoyo y no una pata sola.
+    const bajo = count(a, isConcrete, glass.maxY + 1);
+    expect(bajo.n).toBeGreaterThan(30);
+    let izq = 0;
+    let der = 0;
+    for (let y = glass.maxY + 1; y < a.px.h; y++) {
+      for (let x = 0; x < a.px.w; x++) {
+        const c = at(a, x, y);
+        if (!c || !isConcrete(c[0], c[1], c[2])) continue;
+        if (x < dome.minX) izq++;
+        if (x > dome.maxX) der++;
+      }
+    }
+    expect(izq).toBeGreaterThan(8);
+    expect(der).toBeGreaterThan(8);
   });
 
-  it('la cúpula está centrada sobre el anillo, no al lado', () => {
-    const glass = count(a, isGlass);
+  it('la cúpula está centrada sobre el plato, no al lado', () => {
     expect(dome.minX).toBeGreaterThan(glass.minX);
     expect(dome.maxX).toBeLessThan(glass.maxX);
     const centro = (b: { minX: number; maxX: number }) => (b.minX + b.maxX) / 2;
@@ -135,11 +148,9 @@ describe('el Planetario en píxel', () => {
   });
 
   it('el parque lo rodea y tiene sus árboles', () => {
-    // Un piso holgado: el tambor es ancho y come parque, pero el parque es todo el lote alrededor.
     expect(count(a, isPark).n).toBeGreaterThan(1000);
     // Los árboles, fuera del edificio: se cuentan los troncos, que es lo único que no se confunde con el
     // pasto —la copa del árbol y el parque son casi el mismo verde—.
-    const glass = count(a, isGlass);
     let troncos = 0;
     for (let y = 0; y < a.px.h; y++) {
       for (let x = 0; x < a.px.w; x++) {

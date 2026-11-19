@@ -4729,22 +4729,28 @@ export function cabildoPixelSprite(vw: number, vh: number): Sprite {
   return sprite;
 }
 
-const PLANETARIO_MAX_Z = 44;
+const PLANETARIO_MAX_Z = 40;
 
-/** El tambor blanco, la chapa de la cúpula y el hierro de la galería. */
+/** La cal del basamento y del plato. */
 const DRUM_WHITE: Ramp = [hex('#fdfaf2'), hex('#f5efe2'), hex('#ded6c4')];
-const DOME_SHELL: [RGB, RGB, RGB] = [hex('#dfe9ed'), hex('#c2d2da'), hex('#a5b6bf')];
-const GALLERY = hex('#4d5a64');
-/** El vidrio del anillo: azul más hondo que la cúpula, para que se lea como vidrio y no como cal. */
-const DRUM_GLASS: Ramp = [hex('#7fa8be'), hex('#5f8ba4'), hex('#48708a')];
-/** La carpintería del anillo: hierro claro, que es lo que dibuja la estructura circular. */
+/** La cúpula: chapa perforada, gris plomo. Es lo más oscuro de la ciudad a propósito. */
+const DOME_DARK: [RGB, RGB, RGB] = [hex('#6d7075'), hex('#55585d'), hex('#3d4045')];
+/** El vidrio del plato: apenas azulado y muy claro, porque lo que se ve a través es el cielo. */
+const SAUCER_GLASS: Ramp = [hex('#d8e4e8'), hex('#b9cdd6'), hex('#96b1bd')];
+/** El vidrio del volumen de abajo: más hondo, en sombra. */
+const BASE_GLASS: Ramp = [hex('#5d7f8d'), hex('#4a6a78'), hex('#3a5663')];
+/** La carpintería: hierro claro, que es lo que dibuja la estructura circular. */
 const MULLION = hex('#f4efe2');
+/** El parque del lote. */
 const PARK: Ramp = ramp('#79a95f');
 
 /**
- * El Planetario (3x3): el Galileo Galilei de Palermo. Un tambor blanco, **una bola** arriba con la
- * galería que le da la vuelta a la base, y la linterna en la punta, en medio del parque. Es el único
- * edificio del juego que no es una caja: por eso alcanza con que la bola sea una bola.
+ * El Planetario (3x3): **una cúpula oscura sobre un plato de vidrio que vuela, con cuatro patas**. La
+ * cúpula es de chapa perforada y va oscura —es lo único oscuro de la ciudad y por eso se reconoce desde
+ * lejos—, el plato es una franja de vidrio con la carpintería a la vista que **vuela más ancho que el
+ * cuerpo**, y abajo no hay muro: hay un volumen de vidrio en sombra y cuatro tensores de hormigón que
+ * entran desde el parque y sostienen el plato. Sin las patas y sin el vuelo del plato, el edificio es un
+ * tambor con una tapa, que es lo que era.
  */
 function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
   const L = Math.max(vw, vh);
@@ -4756,113 +4762,109 @@ function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
   p.poly([p.P(0.04, 0.04), p.P(L - 0.04, 0.04), p.P(L - 0.04, W - 0.04), p.P(0.04, W - 0.04)], (x, y) =>
     noise(x, y, 21) > 0.88 ? shade(PARK[1], 1.1) : PARK[1],
   );
-  // El camino llega desde el borde del lote hasta el tambor: una banda con ancho de verdad. Por la
-  // diagonal del lote no se puede, que en isométrico la diagonal es una línea vertical y no se ve.
   p.poly([p.P(L - 0.05, cy - 0.42), p.P(L - 0.05, cy + 0.42), p.P(cx + 0.42, cy - 0.42), p.P(cx + 0.42, cy + 0.42)], (x, y) =>
     bayer(x, y) < 0.3 ? shade(CONCRETE[1], 1.12) : CONCRETE[1],
   );
 
   // Los árboles van **antes** del edificio: pintados después, la copa del que está detrás se le sube
-  // encima de la cúpula y parece un árbol plantado en el tambor.
+  // encima de la cúpula y parece un árbol plantado en el plato.
   p.tree(0.34, W - 0.36);
   p.tree(L - 0.36, W - 0.34);
   p.tree(L - 0.3, 0.3);
   p.tree(0.3, 0.32);
 
-  /** Un cilindro que arranca a la altura `z0`: el cuerpo columna por columna y la cara de arriba como elipse. */
-  const cyl = (ux: number, uy: number, z0: number, r: number, h: number, base: Ramp, mullion: RGB | null = null, foot = true) => {
-    const [bx, by] = p.P(ux, uy, z0);
+  const r = 17; // el radio del plato: vuela dos píxeles por lado sobre la cúpula
+  const discZ = 9; // dónde apoya el plato
+  const discH = 5;
+  // La cúpula es casi una esfera cortada por el plato: con doce de alto quedaba un anillo de terraza de
+  // ocho píxeles que no deja ver el vidrio.
+  const domeRy = 14;
+
+  /** Un cilindro: el cuerpo columna por columna, con la carpintería y los filos si se piden. */
+  const cyl = (z0: number, rad: number, h: number, base: Ramp, mullion: RGB | null = null, rim: RGB | null = null, top = false) => {
+    const [bx, by] = p.P(cx, cy, z0);
     const ix = Math.round(bx);
     const iy = Math.round(by);
-    const ry = Math.max(1, Math.round(r * 0.5));
-    for (let d = -r; d <= r; d++) {
-      const e = Math.round(Math.sqrt(Math.max(0, 1 - (d / r) ** 2)) * ry);
-      const lit = d < -r * 0.45 ? base[0] : d > r * 0.5 ? base[2] : base[1];
+    const ry = Math.max(1, Math.round(rad * 0.5));
+    for (let d = -rad; d <= rad; d++) {
+      const e = Math.round(Math.sqrt(Math.max(0, 1 - (d / rad) ** 2)) * ry);
+      const lit = d < -rad * 0.45 ? base[0] : d > rad * 0.5 ? base[2] : base[1];
       p.px.rect(ix + d, iy - h - e, 1, h + 2 * e, lit);
-      // El zócalo sigue **el arco de abajo**, columna por columna: pintado en la fila del centro corta
-      // el tambor a media altura y el edificio se lee como una copa de vino.
-      if (foot) p.px.rect(ix + d, iy + e - 1, 1, 2, shade(base[2], 0.9));
-      // Los parantes del anillo de vidrio: son la estructura circular, y sin ellos es un tambor pintado.
+      // La carpintería del plato: los parantes son la estructura circular.
       if (mullion && Math.abs(d) % 4 === 1) p.px.rect(ix + d, iy - h - e, 1, h + 2 * e, mullion);
-    }
-    for (let d = -ry; d <= ry; d++) {
-      const w = Math.round(Math.sqrt(Math.max(0, 1 - (d / ry) ** 2)) * r);
-      p.px.rect(ix - w, iy - h - d, w * 2, 1, d < 0 ? base[0] : base[1]);
-    }
-  };
-
-  // El tambor ocupa un cuarto del lote: más chico se pierde en el parque, y el lote es suyo.
-  /** La media naranja: sólo la mitad de arriba de la bola, con la luz viniendo de arriba a la izquierda. */
-  const dome = (ox: number, oy: number, rx: number, ry: number, tones: [RGB, RGB, RGB]) => {
-    for (let dy = -ry; dy <= 0; dy++) {
-      const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy / ry) ** 2)));
-      for (let dx = -w; dx <= w; dx++) {
-        // La luz entra de costado más que de arriba: con el peso en vertical, el ecuador de la cúpula
-        // queda en sombra, se pega con la galería y la cúpula se lee como un casquete chato.
-        const l = (-dx / rx) * 0.55 + (-dy / ry) * 0.45;
-        p.px.set(ox + dx, oy + dy, l > 0.26 ? tones[0] : l > -0.26 ? tones[1] : tones[2]);
+      // Los filos de cal: el de arriba hace que el plato vuele y el de abajo que tenga canto.
+      if (rim) {
+        p.px.set(ix + d, iy - h - e, rim);
+        // El canto de abajo va en el vidrio oscuro y no en cal: con los dos filos blancos el plato es
+        // una cáscara de huevo.
+        p.px.set(ix + d, iy + e - 1, shade(SAUCER_GLASS[2], 0.86));
       }
     }
+    if (top) {
+      for (let d = -ry; d <= ry; d++) {
+        const w = Math.round(Math.sqrt(Math.max(0, 1 - (d / ry) ** 2)) * rad);
+        // La terraza: piso de piedra, no cal. Blanca, la mitad de arriba del plato es una banda blanca.
+        // La terraza va en gris medio y no en cal: es un piso a la sombra del domo, y si es claro se come
+        // la franja de vidrio.
+        p.px.rect(ix - w, iy - h - d, w * 2, 1, d < 0 ? shade(DRUM_WHITE[2], 0.76) : shade(DRUM_WHITE[2], 0.66));
+      }
+    }
+    return { ix, iy, ry };
   };
 
-  /**
-   * El Planetario es **un anillo de vidrio con un casquete arriba**, no un tambor macizo: la estructura
-   * circular de vidrio es la que lo identifica. Abajo un basamento de piedra, en medio la carpintería de
-   * hierro claro con los paños de vidrio azul, arriba el casquete de chapa y la linterna.
-   */
-  const r = 14;
-  const baseH = 4;
-  const h = 13;
-  cyl(cx, cy, 0, r + 1, baseH, DRUM_WHITE);
-  // El vidrio no lleva zócalo propio: se asienta sobre el basamento de piedra, que ya tiene el suyo.
-  cyl(cx, cy, baseH, r, h, DRUM_GLASS, MULLION, false);
-  // La galería: el anillo que vuela alrededor del tambor. Se llena la elipse y la cúpula la tapa; una bola
-  // entera, en cambio, se come el tambor y el planetario queda con la cúpula metida en el cuerpo.
-  const [gx0, gy0] = p.P(cx, cy, baseH + h);
+  const [gx0, gy0] = p.P(cx, cy, 0);
   const gx = Math.round(gx0);
   const gy = Math.round(gy0);
-  const ringRx = r + 1;
-  const ringRy = 2;
-  for (let d = -ringRy; d <= ringRy; d++) {
-    const w = Math.round(ringRx * Math.sqrt(Math.max(0, 1 - (d / ringRy) ** 2)));
-    // El filo de arriba en piedra clara y el resto en hierro: la galería es una baranda, no un zócalo.
-    p.px.rect(gx - w, gy + d, w * 2, 1, d < -1 ? DRUM_WHITE[0] : shade(GALLERY, 1.15));
+
+  /**
+   * Una pata: el tensor de hormigón que entra desde el parque y agarra el plato por abajo. Son cuatro y
+   * arrancan **más lejos que el plato** y suben: es lo que hace que el plato vuele. De un píxel no se
+   * leen, así que van de tres.
+   */
+  const leg = (deg: number, hondo: boolean) => {
+    const a = (deg * Math.PI) / 180;
+    const out = r + 7;
+    const x0 = gx + out * Math.cos(a);
+    const y0 = gy + (out * Math.sin(a)) / 2;
+    const x1 = gx + (r - 4) * Math.cos(a);
+    const y1 = gy + ((r - 4) * Math.sin(a)) / 2 - discZ + 1;
+    const c0 = hondo ? shade(CONCRETE[2], 0.84) : CONCRETE[1];
+    const c1 = hondo ? shade(CONCRETE[1], 0.92) : shade(CONCRETE[0], 1.06);
+    // De cuatro píxeles: de tres se leen como un cable y no como un tensor de hormigón.
+    for (let i = 0; i < 4; i++) p.px.line([x0 + i, y0], [x1 + i, y1], i === 1 ? c1 : c0);
+  };
+
+  // Las de atrás primero, que el plato y el volumen de abajo las tapan.
+  leg(215, true);
+  leg(325, true);
+  // El volumen de vidrio en sombra, abajo del plato y entre las patas.
+  cyl(0, r - 7, discZ, BASE_GLASS);
+  // Las de adelante, que pasan por delante del volumen.
+  leg(35, false);
+  leg(145, false);
+
+  // El plato: la franja de vidrio con la carpintería a la vista, los filos de cal y la terraza arriba.
+  cyl(discZ, r, discH, SAUCER_GLASS, MULLION, DRUM_WHITE[0], true);
+
+  // La cúpula: chapa perforada, oscura, y más ancha que alta porque es una esfera cortada por el plato.
+  const [dx0, dy0] = p.P(cx, cy, discZ + discH);
+  const dx = Math.round(dx0);
+  const dy = Math.round(dy0);
+  for (let k = -domeRy; k <= 0; k++) {
+    const w = Math.round((r - 3) * Math.sqrt(Math.max(0, 1 - (k / domeRy) ** 2)));
+    for (let d = -w; d <= w; d++) {
+      const l = (-d / (r - 3)) * 0.5 + (-k / domeRy) * 0.5;
+      const tone = l > 0.34 ? DOME_DARK[0] : l > -0.3 ? DOME_DARK[1] : DOME_DARK[2];
+      const x = dx + d;
+      const y = dy + k;
+      // La malla: un punto más oscuro en damero. Es lo que hace que la cúpula se lea perforada y no
+      // como una bola de plástico.
+      p.px.set(x, y, (x + y) % 2 === 0 ? shade(tone, 0.9) : tone);
+    }
   }
-  // La cúpula va **más chata que una media naranja**: media esfera vista desde esta cámara es una bola
-  // pesada, y una cúpula de planetario se lee justamente porque es un casquete ancho.
-  const domeRy = 9;
-  dome(gx, gy - 1, r - 1, domeRy, DOME_SHELL);
-  // Los meridianos de la cúpula: del polo a la base, en arco. Sin ellos la cúpula es un huevo apoyado.
-  for (const f of [-0.78, -0.42, 0.42, 0.78]) {
-    const x0 = gx + f * (r - 1);
-    const y0 = gy - 1;
-    const x1 = gx + f * (r - 1) * 0.3;
-    const y1 = gy - 1 - Math.round(domeRy * 0.92);
-    p.px.line([x0, y0], [x1, y1], shade(DOME_SHELL[1], 0.9));
-  }
-  // La puerta y sus gradas, pintadas **sobre el tambor**: un pórtico de caja aparte se lee como otro
-  // edificio pegado abajo, y el tambor sin puerta es un tanque.
-  {
-    const [bx, by] = p.P(cx, cy, 0);
-    const ix = Math.round(bx);
-    const iy = Math.round(by) + Math.round(r * 0.5);
-    p.px.rect(ix - 1, iy - 5, 3, 5, shade(INSIDE, 2.6));
-    p.px.rect(ix - 2, iy - 6, 5, 1, shade(STONE_LIGHT[1], 1.05));
-    p.px.rect(ix - 4, iy, 9, 1, STONE_LIGHT[1]);
-    p.px.rect(ix - 3, iy + 1, 7, 1, STONE_LIGHT[2]);
-    p.px.rect(ix - 2, iy + 2, 5, 1, shade(STONE_LIGHT[2], 0.9));
-  }
-
-  // La linterna en la punta de la cúpula, con su capuchón.
-  const ly = gy - 1 - domeRy - 3;
-  p.px.rect(gx - 1, ly + 2, 1, 2, DRUM_WHITE[0]);
-  p.px.rect(gx, ly + 2, 2, 2, DRUM_WHITE[2]);
-  p.px.rect(gx - 1, ly + 1, 3, 1, shade(DOME_SHELL[2], 0.9));
-  p.px.rect(gx - 2, ly - 1, 5, 2, shade(DOME_SHELL[1], 0.92));
-  p.px.rect(gx - 2, ly - 1, 5, 1, shade(DOME_SHELL[0], 1.02));
-
-
-
+  // El mástil de la antena, sólo: las dos cajas blancas que tiene al pie del domo, a este tamaño, se
+  // leen como dos ojos y el planetario pasa a tener cara.
+  p.px.rect(dx, dy - domeRy - 4, 1, 5, shade(STEEL[1], 1.05));
 
   p.shadow(0.2, 0.2, L - 0.2, W - 0.2);
 }
