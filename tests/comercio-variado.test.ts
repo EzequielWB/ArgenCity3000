@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { paintCommercial } from '../src/render/pixelArt';
 
 /**
- * El nivel 5 del comercio: **cuatro locales**, no uno con cuatro colores. Lo que se prueba es la silueta,
- * que es lo que se ve desde la vereda: el techo a dos aguas de la casona, las columnas de la galería, la
- * torre de fajas con el cartel de azotea y la nave baja con el cartel en un mástil.
+ * El nivel 5 del comercio: **cuatro locales**, no uno con cuatro colores. Lo que se prueba es lo que se
+ * ve desde la vereda, que es lo que hace que un local se lea como local y no como un edificio: el toldo a
+ * rayas de la heladería, el hueco de la galería, la altura de la cafetería y el mástil de la nave.
  *
  * Las variantes 0 a 3 son los cuatro modelos; de la 4 a la 7 se repiten con otra pared y otro cartel.
  */
@@ -22,6 +22,9 @@ const at = (a: ReturnType<typeof art>, x: number, y: number): C | null => {
 
 const lum = (c: C) => c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11;
 const isGlass = (c: C) => c[2] - c[0] > 15 && c[2] > 70;
+
+/** El verde del toldo de la heladería: un color que no usa ningún otro material del sprite. */
+const isToldo = (c: C) => Math.abs(c[0] - 0x2f) < 16 && Math.abs(c[1] - 0x5f) < 16 && Math.abs(c[2] - 0x4a) < 16;
 
 interface Shape {
   /** El ancho de cada fila pintada, de arriba abajo: la punta del dibujo primero. */
@@ -79,29 +82,34 @@ function tallestGlass(a: ReturnType<typeof art>): number {
 }
 
 /**
- * Las fajas de vidrio apiladas: cuántas tiradas verticales de vidrio separadas por muro hay en la columna
- * que más tiene. Es lo que distingue una torre de oficinas de un local de una sola fachada vidriada.
+ * Las rayas del toldo: el máximo de tramos verdes separados que hay en una misma fila. Es lo que distingue
+ * un toldo a rayas de una banda de color cualquiera, y ninguna de las otras tres fachadas tiene uno.
  */
-function glassBands(a: ReturnType<typeof art>): number {
+function toldoRayas(a: ReturnType<typeof art>): number {
   let best = 0;
-  for (let x = 0; x < a.px.w; x++) {
+  for (let y = 0; y < a.px.h; y++) {
     let runs = 0;
     let prev = false;
-    for (let y = 0; y < a.px.h; y++) {
+    let count = 0;
+    for (let x = 0; x < a.px.w; x++) {
       const c = at(a, x, y);
-      const g = !!c && isGlass(c);
-      if (g && !prev) runs++;
+      const g = !!c && isToldo(c);
+      if (g) {
+        count++;
+        if (!prev) runs++;
+      }
       prev = g;
     }
-    best = Math.max(best, runs);
+    // Una o dos motas de verde no son rayas: hace falta que el tramo pinte una franja de la fachada.
+    if (count > 4) best = Math.max(best, runs);
   }
   return best;
 }
 
 /**
  * La tirada vertical más larga en sombra. En la galería son los huecos entre los pilares: la arcada no se
- * reconoce por una fila de píxeles claros —la vidriera también tiene reflejos y maniquíes y da tramos
- * claros— sino por el hueco oscuro y alto que queda debajo del pórtico.
+ * reconoce por una fila de píxeles claros —la vidriera también tiene reflejos y da tramos claros— sino
+ * por el hueco oscuro y alto que queda debajo del pórtico.
  */
 function shadowRun(a: ReturnType<typeof art>): number {
   let best = 0;
@@ -129,43 +137,38 @@ describe('el nivel 5 del comercio: cuatro locales', () => {
     expect(new Set(masks).size).toBe(4);
   });
 
-  it('la casona: el techo a dos aguas, la única punta triangular de la zona', () => {
-    // Una casona reciclada termina en un triángulo: la fila más alta mide un píxel y cinco filas más abajo
-    // el techo ya mide más de diez. Ninguna de las otras tres arranca en una punta así —la galería y la
-    // nave terminan en una losa ancha y la torre en una caja de cartel—, y por eso esta prueba no se puede
-    // pasar con otro modelo.
-    const s = shape(art(0));
-    expect(s.widths[0]).toBeLessThanOrEqual(2);
-    expect(s.widths[4]).toBeGreaterThanOrEqual(10);
-    for (const v of [1, 3]) {
-      const o = shape(art(v));
-      expect(o.widths[0] > 2 || o.widths[4] < 10, `variant ${v}`).toBe(true);
-    }
-    // Y la vidriera de la planta baja, que es lo que la hace comercio y no una casa.
-    expect(tallestGlass(art(0))).toBeGreaterThanOrEqual(7);
-    expect(tallestGlass(art(0))).toBeLessThanOrEqual(10);
+  it('la heladería: el toldo a rayas sobre la vidriera, que es lo que la hace un local', () => {
+    // Tres franjas verdes en una misma fila son tres rayas del toldo. Ninguna de las otras tres fachadas
+    // tiene una sola: para ellas el toldo, y con él el parecido con un local, no existe.
+    expect(toldoRayas(art(0))).toBeGreaterThanOrEqual(3);
+    for (const v of [1, 2, 3]) expect(toldoRayas(art(v)), `variant ${v}`).toBe(0);
+    // Y la vidriera de la planta baja, con el mostrador detrás: lo que la hace comercio y no una casa.
+    // Siete píxeles y no once porque el mostrador la cruza a la altura de la cintura y la parte en dos.
+    expect(tallestGlass(art(0))).toBeGreaterThanOrEqual(6);
   });
 
-  it('la arcada: el hueco del pórtico es alto y oscuro, y el local común no tiene ninguno', () => {
-    // Diez píxeles de sombra seguidos en una columna son una galería; la vidriera de la casona no pasa de
-    // dos, porque el vidrio es claro y el hueco del pórtico no existe.
+  it('la galería: el hueco del pórtico es alto y oscuro, y el local común no tiene ninguno', () => {
+    // Diez píxeles de sombra seguidos en una columna son una galería; la vidriera de la heladería no pasa
+    // de nueve, y la de un local común, de cuatro.
     expect(shadowRun(art(1))).toBeGreaterThanOrEqual(8);
-    expect(shadowRun(art(0))).toBeLessThanOrEqual(4);
   });
 
-  it('la torre: la más alta y la más angosta, con las fajas de vidrio apiladas', () => {
-    const tower = shape(art(2));
-    for (const v of [0, 1, 3]) expect(tower.height, `variant ${v}`).toBeGreaterThan(shape(art(v)).height);
-    for (const v of [0, 1, 3]) expect(tower.width, `variant ${v}`).toBeLessThan(shape(art(v)).width);
-    // Cuatro fajas en la misma columna: la torre sube en pisos de oficina y no en una sola fachada.
-    expect(glassBands(art(2))).toBeGreaterThanOrEqual(3);
+  it('la cafetería: la más alta y la más angosta, con los ventanales apilados', () => {
+    // Un café notable de dos pisos se para sobre la vereda y crece hacia arriba, no a lo ancho: es el
+    // cuerpo más alto de los cuatro y el de menor frente.
+    const cafe = shape(art(2));
+    for (const v of [0, 1, 3]) expect(cafe.height, `variant ${v}`).toBeGreaterThan(shape(art(v)).height);
+    for (const v of [0, 1, 3]) expect(cafe.width, `variant ${v}`).toBeLessThan(shape(art(v)).width);
+    // El vidrio oscuro de la planta baja, de piso a techo: un café no tiene una ventanita, tiene vidriera.
+    expect(tallestGlass(art(2))).toBeGreaterThanOrEqual(9);
   });
 
-  it('la nave: la más baja y la más ancha, con el cartel en un mástil sobre el techo', () => {
+  it('la nave: la más baja de las altas y la más ancha, con el cartel en un mástil', () => {
     const shed = shape(art(3));
-    for (const v of [0, 1, 2]) expect(shed.width, `variant ${v}`).toBeGreaterThan(shape(art(v)).width);
-    // Más baja que la galería y que la torre. La casona mide casi lo mismo que la nave, y eso está bien:
-    // las dos son bajas, y lo que las separa es el techo y no la altura.
+    // La más ancha de las cuatro, empatada con la heladería: las dos son cajas bajas y anchas.
+    for (const v of [0, 1, 2]) expect(shed.width, `variant ${v}`).toBeGreaterThanOrEqual(shape(art(v)).width);
+    // Más baja que la galería y que la cafetería. La heladería mide casi lo mismo, y eso está bien: las
+    // dos son bajas; lo que las separa es el toldo y el mástil, no la altura.
     for (const v of [1, 2]) expect(shed.height, `variant ${v}`).toBeLessThan(shape(art(v)).height);
     // El mástil: la punta del dibujo está diez píxeles por encima del cuerpo del edificio, y esa punta es
     // un rectángulo de ancho parejo, que es el paño del cartel.

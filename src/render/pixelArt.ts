@@ -786,6 +786,32 @@ function bar(p: Pen, v: number): void {
  * pavement: the display window, the arcade, the two-storey glazing and the low shed with the sign on a
  * mast. What changes with the variant is the wall and the colour of the sign, as before.
  */
+/**
+ * El blanco roto y el verde del toldo de la heladería. Son colores propios, que no usa ningún otro
+ * material del sprite, y el verde **no sale de la marca**: con las rayas del color del cartel, toldo y
+ * cartel se leían como una sola masa y la marca desaparecía.
+ */
+const SOMBRILLA = hex('#f0ead8');
+const TOLDO = hex('#2f5f4a');
+
+/**
+ * El toldo a rayas de la heladería, **de dos píxeles por raya**: el `canopy` del bar tiene franjas de seis
+ * y a esta altura se lee como una banda de color con manchas, no como un toldo. Acá las rayas son finas,
+ * el plano es bajo —tres píxeles— y la última fila baja un píxel sí y uno no, que es el festón del borde.
+ */
+function toldo(p: Pen, u0: number, u1: number, v1: number, z: number, a1: RGB, a2: RGB): void {
+  // Veinte centésimas de lote de profundidad: con trece el plano medía dos píxeles y el toldo se leía
+  // como un ribete de color sobre la pared, no como un alero que da sombra a la vereda.
+  const d = 0.2;
+  const raya = (x: number) => (Math.floor(x / 2) & 1 ? a1 : a2);
+  // Un alero **casi plano**: un píxel de caída y el festón otro. Con cinco de caída el toldo medía nueve
+  // píxeles de alto sobre una fachada de veinte y las rayas se leían como columnas de mármol.
+  p.poly([p.P(u0, v1, z), p.P(u1, v1, z), p.P(u1, v1 + d, z - 1), p.P(u0, v1 + d, z - 1)], raya);
+  p.poly([p.P(u0, v1 + d, z - 1), p.P(u1, v1 + d, z - 1), p.P(u1, v1 + d, z - 2), p.P(u0, v1 + d, z - 2)], (x, _y) =>
+    Math.floor(x / 2) & 1 ? shade(a1, 0.8) : shade(a2, 0.8),
+  );
+}
+
 function clothingStore(p: Pen, v: number): void {
   const model = v & 3;
   const wall = WALLS[(v + 5) % WALLS.length];
@@ -797,53 +823,53 @@ function clothingStore(p: Pen, v: number): void {
 }
 
 /**
- * Model 0, the casona: the old house of the avenue turned into a shop. Two floors, the ground floor all
- * glass with the mannequins and the band over it, and **a pitched roof** — the only one of the four with
- * anything but a flat slab on top. The triangle is the whole silhouette: catorce píxeles de techo a dos
- * aguas sobre una caja baja y ancha se leen desde la otra cuadra, y ninguna de las otras tres lo tiene.
+ * Model 0, **la heladería grande**: la caja baja y ancha de la esquina, toda vidriera, con **el toldo a
+ * rayas** de punta a punta y el cartel de la marca arriba. El techo a dos aguas se fue: era lo que la
+ * hacía pasar por una casa y no por un local. Lo que dice heladería es el toldo, y el toldo sólo se lee si
+ * es lo más grande del dibujo — cinco píxeles de alto y todo el ancho de la fachada, no una franja
+ * escondida abajo del cartel.
  */
-function storeWindow(p: Pen, wall: Ramp, sign: RGB, v: number): void {
-  const u0 = 0.08;
-  const v0 = 0.1;
-  const u1 = 0.92;
-  const v1 = 0.88;
+function storeWindow(p: Pen, wall: Ramp, sign: RGB, _v: number): void {
+  const u0 = 0.06;
+  const v0 = 0.08;
+  const u1 = 0.94;
+  const v1 = 0.92;
   const w = faceW(u0, u1);
-  // Cuatro píxeles más de alto que antes: con veinte, las ventanas de la planta alta tocaban el techo y
-  // la casa se leía como una franja de vidrio con un techo encima.
-  const h = 24;
-  /** Las ventanas de la casa, una por una y con su alféizar: una faja corrida es de oficinas, no de casa. */
-  const houseWindows = (): Patch[] => {
-    const out: Patch[] = [];
-    for (const t of [1, 6, 10]) {
-      out.push({ t0: t - 1, t1: t + 4, k0: 14, k1: 15, c: shade(wall[1], 1.16) });
-      out.push(pane(t, 15, 3, 4));
-      out.push({ t0: t - 1, t1: t + 4, k0: 19, k1: 20, c: shade(wall[1], 0.86) });
-    }
+  const h = 20;
+  /**
+   * La vidriera: los paños de vidrio con el marco de hierro, el **mostrador** y la pizarra de los gustos
+   * colgada del paño de la derecha. No lleva maniquíes —una heladería no exhibe ropa— y el mostrador bajo
+   * es lo que se ve detrás del vidrio a esta escala.
+   */
+  const vidriera = (face: 1 | 2): Patch[] => {
+    // **Una pared de vidrio con montantes**, no paños con marco claro: con el marco aclarado la fachada
+    // se leía como una columnata de mármol y el local desaparecía detrás de sus propias columnas.
+    // **El vidrio es la masa de fondo y va al final**: el primer parche que toca un píxel gana, así que
+    // pintado antes se come el mostrador y los montantes y la fachada queda un vidrio liso.
+    const out: Patch[] = [{ t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[face], 0.55) }];
+    // El mostrador, una franja clara a la altura de la cintura, de punta a punta.
+    out.push({ t0: 1, t1: w - 1, k0: 3, k1: 5, c: shade(SOMBRILLA, 0.9) });
+    for (let t = 1; t < w - 1; t += 4) out.push({ t0: t, t1: t + 1, k0: 1, k1: 12, c: shade(LEG, 1.5) });
+    // La pizarra de los gustos, colgada del paño de la derecha.
+    out.push({ t0: w - 5, t1: w - 2, k0: 6, k1: 10, c: shade(LEG, 0.9) });
+    out.push({ t0: w - 5, t1: w - 2, k0: 8, k1: 10, c: shade(SOMBRILLA, 0.82) });
+    out.push({ t0: 1, t1: w - 1, k0: 1, k1: 12, c: shade(GLASS, 0.94) });
     return out;
   };
-  const front: Patch[] = [
-    ...mannequins(1, w, v),
-    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.6) },
-    ...ribbon(1, w - 1, 1, 8),
-    door(6, 3, 8),
-    { t0: 0, t1: 99, k0: 9, k1: 12, c: sign },
-    { t0: 0, t1: 99, k0: 12, k1: 13, c: shade(sign, 1.32) },
-    ...houseWindows(),
-    { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 0.9) },
-  ];
-  const side: Patch[] = [
-    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[2], 0.6) },
-    ...ribbon(1, w - 1, 1, 8),
-    { t0: 0, t1: 99, k0: 9, k1: 12, c: shade(sign, 0.72) },
-    ...houseWindows(),
+  const cartel: Patch[] = [
+    { t0: 0, t1: 99, k0: 16, k1: 19, c: sign },
+    { t0: 1, t1: w - 1, k0: 17, k1: 18, c: shade(SOMBRILLA, 0.94) },
   ];
   p.shadow(u0, v0, u1, v1);
-  p.box(u0, v0, u1, v1, 0, h, wall, 'plain', front, side, wall[0]);
-  // El techo a dos aguas, con la cumbrera a lo ancho del lote: la cámara ve el faldón de adelante y, por
-  // encima, la cumbrera con el otro faldón más oscuro. Es un triángulo, no otra losa.
-  p.gable(u0 - 0.04, v0 - 0.04, u1 + 0.04, v1 + 0.04, h, 6, ROOFS[v % ROOFS.length], shade(wall[1], 0.92), 'sheet');
-  // Sin cartel en el techo: pintado en el faldón o colgado del alero, a 1× es un rectángulo de color
-  // flotando sobre la teja. La banda de la pared ya nombra el local y el techo es el rasgo del modelo.
+  p.box(u0, v0, u1, v1, 0, h, wall, 'plain', [...vidriera(1), ...cartel], [
+    ...vidriera(2),
+    { t0: 0, t1: 99, k0: 16, k1: 19, c: shade(sign, 0.74) },
+  ], ROOFTOP);
+  // El toldo a rayas, de punta a punta de la fachada y por la esquina también: es el techo del local y el
+  // único dibujo del sprite que no es una pared.
+  toldo(p, u0, u1, v1, 15, SOMBRILLA, TOLDO);
+  p.cornice(u0, v0, u1, v1, h, 1, CONCRETE);
+  p.parapet(u0, v0, u1, v1, h + 1, 1, wall);
 }
 
 /**
@@ -906,9 +932,11 @@ function storeArcade(p: Pen, wall: Ramp, sign: RGB): void {
 }
 
 /**
- * Model 2, the tower: the shop that grew. Four floors of glass bands over the same display window at the
- * street, **narrow, tall and straight**, with a sign box on the roof instead of a mast. It is the only
- * one of the four that goes up instead of out, and the only one whose top is a box and not a slab.
+ * Model 2, **la cafetería premium**: el café notable de la esquina, de dos pisos, con la **marquesina** de
+ * chapa sobre la vidriera y los **balcones corridos** de hierro en los pisos altos. Es el más alto de los
+ * cuatro después de la galería, y el único con dos cosas que ningún otro tiene: un plano volado sobre la
+ * vereda y las barandas. Una torre de fajas de vidrio era un edificio de oficinas; un café tiene toldo,
+ * vidriera baja y balcones, porque arriba también hay mesas.
  */
 function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
   const u0 = 0.14;
@@ -916,42 +944,56 @@ function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
   const u1 = 0.86;
   const v1 = 0.86;
   const w = faceW(u0, u1);
-  const h = 38;
+  const h = 32;
+  /**
+   * La planta baja del café: los paños de vidrio oscuro —vidrio de bar, no de vidriera de ropa—, el
+   * marco de hierro entre ellos y la puerta de madera. La carpintería oscura es la mitad del parecido con
+   * un café notable; con marco claro volvía a ser un local cualquiera.
+   */
+  const plantaBaja = (face: 1 | 2): Patch[] => {
+    const out: Patch[] = [
+      { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[face], 0.55) },
+      // El zócalo de granito y el reflejo: los detalles antes que la masa de vidrio, que va al final.
+      { t0: 0, t1: 99, k0: 1, k1: 2, c: shade(LEG, 1.1) },
+      { t0: 3, t1: 4, k0: 3, k1: 9, c: shade(GLASS, 1.24) },
+      { t0: 7, t1: 8, k0: 3, k1: 9, c: shade(GLASS, 1.24) },
+    ];
+    for (let t = 1; t < w - 1; t += 4) out.push({ t0: t, t1: t + 1, k0: 1, k1: 11, c: LEG });
+    out.push({ t0: 1, t1: w - 1, k0: 1, k1: 11, c: shade(GLASS, 0.72) });
+    return out;
+  };
+  /** Un piso alto: el balcón corrido de hierro adelante y los ventanales altos detrás. */
+  const piso = (k: number, _face: 1 | 2): Patch[] => {
+    const out: Patch[] = [
+      { t0: 0, t1: 99, k0: k, k1: k + 2, c: shade(LEG, 1.25) },
+      { t0: 0, t1: 99, k0: k + 2, k1: k + 3, c: shade(LEG, 1.85) },
+    ];
+    for (let t = 1; t < w - 1; t += 4) out.push({ t0: t, t1: t + 1, k0: k + 3, k1: k + 8, c: shade(LEG, 1.35) });
+    out.push({ t0: 1, t1: w - 1, k0: k + 3, k1: k + 8, c: shade(GLASS, 0.72) });
+    return out;
+  };
   const front: Patch[] = [
-    ...mannequins(1, w, 0),
-    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.6) },
-    ...ribbon(1, w - 1, 1, 7),
-    door(5, 3, 7),
-    { t0: 0, t1: 99, k0: 8, k1: 11, c: sign },
-    { t0: 0, t1: 99, k0: 11, k1: 12, c: shade(sign, 1.34) },
-    ...glazed(2, w - 2, 14, 5, 4),
-    ...glazed(2, w - 2, 22, 5, 4),
-    ...glazed(2, w - 2, 30, 5, 4),
+    ...plantaBaja(1),
+    { t0: 0, t1: 99, k0: 12, k1: 16, c: sign },
+    { t0: 1, t1: 99, k0: 13, k1: 15, c: shade(SOMBRILLA, 0.94) },
+    { t0: 0, t1: 99, k0: 16, k1: 17, c: shade(sign, 1.3) },
+    ...piso(17, 1),
+    ...piso(25, 1),
     { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 1.16) },
   ];
   const side: Patch[] = [
-    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[2], 0.6) },
-    ...ribbon(1, w - 1, 1, 7),
-    { t0: 0, t1: 99, k0: 8, k1: 11, c: shade(sign, 0.72) },
-    ...glazed(2, w - 2, 14, 5, 4),
-    ...glazed(2, w - 2, 22, 5, 4),
-    ...glazed(2, w - 2, 30, 5, 4),
+    ...plantaBaja(2),
+    { t0: 0, t1: 99, k0: 12, k1: 16, c: shade(sign, 0.74) },
+    ...piso(17, 2),
+    ...piso(25, 2),
   ];
   p.shadow(u0, v0, u1, v1);
   p.box(u0, v0, u1, v1, 0, h, wall, 'plain', front, side, ROOFTOP);
   p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
   p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
-  // La caja del cartel sobre la azotea, de la marca, con su filo iluminado: el remate de la torre. Una
-  // torre que termina en una losa es un edificio de oficinas; con la caja, es un local que creció.
-  // El cartel de azotea, **alto y angosto**, con dos renglones claros: de seis píxeles de alto y con una
-  // sola franja en el medio parecía un moño rojo apoyado en la losa, no un cartel.
-  p.box(0.42, 0.38, 0.58, 0.46, h + 3, 9, [sign, sign, shade(sign, 0.84)], 'plain', [
-    { t0: 0, t1: 99, k0: 2, k1: 3, c: hex('#f4ece0') },
-    { t0: 0, t1: 99, k0: 5, k1: 6, c: hex('#f4ece0') },
-  ], [
-    { t0: 0, t1: 99, k0: 2, k1: 3, c: hex('#f4ece0') },
-    { t0: 0, t1: 99, k0: 5, k1: 6, c: hex('#f4ece0') },
-  ], shade(sign, 1.32));
+  // Sin marquesina volada ni mesas: a 1× un plano que sale de la fachada y unas sillas de dos píxeles no
+  // se leen como un café, se leen como una mancha. Lo que sí se lee es el vidrio oscuro de la planta baja,
+  // la carpintería de hierro, el cartel con el renglón claro y los dos balcones corridos.
 }
 
 /**

@@ -27,6 +27,12 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
 - **S6.** *"Bien, hace que vidriera, galeria y ventanal sea distinto, deja solo el galeria y hacer que los
   otros dos sean distintos"* — de los tres primeros, que eran la misma caja con vidrio abajo, **se queda
   la galería**; la vidriera y el ventanal se rehacen con siluetas que no se parezcan a ella ni entre sí.
+- **S7.** *"la casona y la torre no parecen locales, y estamos hablando de zonas de Comercio, yo diria que
+  la casona sea una heladeria grande y la torre sea una cafeteria premium"* — en una zona de comercio un
+  local se lee por lo que **atiende en la vereda**, no por su silueta de edificio: la casona pasa a ser
+  **heladería** con el toldo a rayas de punta a punta, y la torre pasa a ser **cafetería premium**, de dos
+  pisos, con la vidriera de bar abajo y los balcones corridos arriba. El techo a dos aguas y las fajas de
+  oficinas se van.
 
 ## Tasks
 
@@ -107,3 +113,32 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
   con su alféizar y la casa ganó cuatro píxeles de alto para que el techo no las toque—. Y el cartel de
   azotea de la torre, de seis píxeles y con una sola franja clara en el medio, parecía un **moño rojo**
   apoyado en la losa: ahora es una caja alta y angosta con dos renglones.
+- **L17.** La casona y la torre estaban bien dibujadas y no eran locales. Una casa con techo de chapa y un
+  prisma con fajas de vidrio son dos edificios; en una zona de comercio los dos se leen como otra cosa. Lo
+  que los vuelve locales es lo de abajo: el toldo, la vidriera de bar y la gente.
+- **L18.** **La heladería**: se va el techo a dos aguas, que era justamente lo que la hacía pasar por casa.
+  Queda una caja baja y ancha, toda vidriera, con el **toldo a rayas** de punta a punta y el cartel de la
+  marca arriba. El toldo es lo más grande del dibujo, y así se lee.
+- **L19.** El toldo necesitó tres intentos y cada uno enseñó una regla. El `canopy` del bar, con franjas
+  de seis píxeles, se leía como una banda manchada: hizo falta un `toldo()` propio, de rayas de dos. Con
+  cinco píxeles de caída el plano medía nueve de alto sobre una fachada de veinte y las rayas parecían
+  columnas de mármol: la caída baja a uno más el festón. Y con las rayas del color de la marca, toldo y
+  cartel se leían como una sola masa amarilla: el verde del toldo es ahora un color propio, que no sale de
+  la marca.
+- **L20.** **La cafetería premium**: dos pisos, la planta baja de vidrio oscuro con la carpintería de
+  hierro y el reflejo de dos rayas, el cartel con el renglón claro y **los dos balcones corridos** con los
+  ventanales altos detrás. Es la más alta y la más angosta de las cuatro, que es lo que un café notable de
+  esquina es.
+- **L21.** Se fueron dos cosas más, las dos por la misma razón —a 1× no se leen—: la **marquesina volada**
+  de la cafetería, que salía de la fachada como un ala suelta, y las **mesas en la vereda**, con sombrilla
+  de catorce píxeles y sillas de dos, que eran manchas blancas flotando delante del local. Lo que se lee
+  de una vereda con gente, a esta escala, es el toldo, no las sillas.
+- **L22.** **El orden de los parches volvió a morder**: el vidrio es la masa de fondo de una fachada y hay
+  que pintarlo **último**, porque el primer parche que toca un píxel gana. Pintado primero se comía el
+  mostrador, los montantes y los reflejos, y las dos fachadas quedaban un vidrio liso. La heladería y la
+  cafetería se dibujaron enteras al revés hasta que se vio.
+- **L23.** **Las pruebas siguieron al dibujo**: la punta triangular del techo a dos aguas ya no existe, así
+  que la heladería se mide por **las rayas del toldo** —tres tramos verdes en la misma fila, y cero en las
+  otras tres fachadas— y la cafetería por ser la más alta y la más angosta, que era el test de la torre y
+  sigue siendo cierto con otro edificio. El vidrio de la heladería baja de ocho a seis porque el mostrador
+  lo cruza a la altura de la cintura y lo parte en dos.
