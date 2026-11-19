@@ -2,10 +2,13 @@ import { shade } from './color';
 import type { UniqueKind } from '../config';
 import type { ZoneKind } from '../world/world';
 import {
+  cabildoPixelSprite,
   calvarioPixelSprite,
   commercialPixelSprite,
+  estadioPixelSprite,
   industrialPixelSprite,
   obeliscoPixelSprite,
+  planetarioPixelSprite,
   puentePixelSprite,
   residentialPixelSprite,
   teatroPixelSprite,
@@ -431,63 +434,6 @@ export function routeSignSpriteFor(dvx: number, dvy: number): Sprite {
 // ---------------------------------------------------------------- the uniques of each government
 
 /**
- * The cabildo (3x2): the colonial town hall of Buenos Aires. A two-storey arcade of cream stone under
- * a red tile roof, with the central tower that holds the clock, the way it still stands on the Plaza
- * de Mayo. The seat of the government faces the plaza, so the front has the arches and the balcony.
- */
-function cabildoArt(vw: number, vh: number): Sprite {
-  const p = rectPainter(vw, vh, 56);
-  const cream = '#efe6d2';
-  const tile = '#a8503c';
-  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1.2, '#cfc8bb', false);
-  p.box(0.1, 0.14, vw - 0.1, vh - 0.14, 1.2, 1.4, '#dcd5c6', true);
-  const z0 = 2.6;
-  const bodyH = 15;
-  p.box(0.16, 0.2, vw - 0.16, vh - 0.2, z0, bodyH, cream, true);
-  const u0 = 0.16;
-  const u1 = vw - 0.16;
-  const v0 = 0.2;
-  const v1 = vh - 0.2;
-  // The ground floor is the arcade: an arch on each face, dark, at the level of the street.
-  const arches = 4;
-  for (let k = 0; k < arches; k++) {
-    const a = u0 + ((u1 - u0) * (k + 0.28)) / arches;
-    const b = u0 + ((u1 - u0) * (k + 0.72)) / arches;
-    p.left(v1 - 0.005, a, b, z0 + 1.2, z0 + 6.6, '#6b6257');
-    const c = v0 + ((v1 - v0) * (k + 0.28)) / arches;
-    const d = v0 + ((v1 - v0) * (k + 0.72)) / arches;
-    p.right(u1 - 0.005, c, d, z0 + 1.2, z0 + 6.6, '#6b6257');
-  }
-  p.windows(u0, v0, u1, v1, z0 + 8.8, z0 + bodyH - 0.8, 6, '#7a6a52', 4, 2.8);
-  // The balcony and the tile roof, low and wide like the real one.
-  p.box(u0 - 0.05, v0 - 0.05, u1 + 0.05, v1 + 0.05, z0 + 7.4, 0.8, '#e3dac7', true);
-  p.hipRoof(u0 - 0.08, v0 - 0.08, u1 + 0.08, v1 + 0.08, z0 + bodyH, 3.6, tile);
-  // The tower over the middle of the front, with the clock and its little roof.
-  const cu = (u0 + u1) / 2;
-  const cv = (v0 + v1) / 2;
-  const tw = 0.74;
-  p.box(cu - tw, cv - tw, cu + tw, cv + tw, z0 + bodyH, 13, cream, true);
-  const clockZ = z0 + bodyH + 6.4;
-  p.left(cv + tw - 0.01, cu - 0.3, cu + 0.3, clockZ, clockZ + 4, '#f7f2e6');
-  p.right(cu + tw - 0.01, cv - 0.3, cv + 0.3, clockZ, clockZ + 4, '#f7f2e6');
-  const [cx1, cy1] = p.P(cu, cv + tw - 0.02, clockZ + 1.6);
-  const [cx2, cy2] = p.P(cu + tw - 0.02, cv, clockZ + 1.6);
-  p.g.fillStyle = '#3b352e';
-  p.g.fillRect(Math.round(cx1) - 1, Math.round(cy1) - 1, 2, 2);
-  p.g.fillRect(Math.round(cx2) - 1, Math.round(cy2) - 1, 2, 2);
-  p.box(cu - tw - 0.05, cv - tw - 0.05, cu + tw + 0.05, cv + tw + 0.05, z0 + bodyH + 13, 0.8, '#e3dac7', true);
-  p.hipRoof(cu - tw - 0.07, cv - tw - 0.07, cu + tw + 0.07, cv + tw + 0.07, z0 + bodyH + 13.8, 4.4, tile);
-  // The mast with the flag over the tower.
-  p.post(cu, cv, z0 + bodyH + 18.2, '#5d554b');
-  const [fx, fy] = p.P(cu, cv, z0 + bodyH + 18.2);
-  p.g.fillStyle = '#7cb0d8';
-  p.g.fillRect(Math.round(fx), Math.round(fy) - 4, 6, 4);
-  p.g.fillStyle = '#f2efe6';
-  p.g.fillRect(Math.round(fx), Math.round(fy) - 2.4, 6, 1.6);
-  return done(p);
-}
-
-/**
  * The regimiento (4x3): a regimental barracks, the way Campo de Mayo looks from the road. Low
  * whitewashed blocks with green roofs around an open parade ground, a watchtower at the corner and
  * the flag mast in the middle, because the ground is empty on purpose: that is what it is for.
@@ -533,60 +479,6 @@ function regimientoArt(vw: number, vh: number): Sprite {
     p.box(su - 0.13, sv - 0.11, su + 0.13, sv + 0.11, 1, 2.2, '#b3a888', true);
   }
   p.box(1.6, vh - 2.1, 2.5, vh - 1.5, 1, 3, '#6f7d63', true);
-  return done(p);
-}
-
-/**
- * The planetario (3x3): the Galileo Galilei of Palermo. A white drum in the middle of a plaza and the
- * sphere on top of it, the dark ring of the gallery at its equator and the little lantern: it is the
- * only building of the city that is not a box, and that is exactly what makes it read.
- */
-function planetarioArt(vw: number, vh: number): Sprite {
-  const p = rectPainter(vw, vh, 52);
-  const cu = vw / 2;
-  const cv = vh / 2;
-  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1, '#c9c4b4', false);
-  // The parterre of the park and the steps that climb to the drum.
-  p.poly([p.P(0.08, 0.08, 1.05), p.P(vw - 0.4, 0.08, 1.05), p.P(vw - 0.4, vh - 0.4, 1.05), p.P(0.08, vh - 0.4, 1.05)], '#79a95f');
-  p.box(0.9, 1.2, 2.1, 1.9, 1, 0.9, '#b9b2a4', true);
-  // The drum: a wide white cylinder with its band of windows, and the sphere sitting on it.
-  p.cylinder(cu, cv, 0.56, 1, 15, '#eae4d6');
-  p.cylinder(cu, cv, 0.58, 15, 1.2, '#f4efe3');
-  for (const a of [-0.3, 0.3]) p.left(1.755, cu + a - 0.12, cu + a + 0.12, 5.6, 10.4, '#54707f');
-  const [bx, by] = p.P(cu, cv, 18);
-  const r = 14;
-  // A sphere projects as a ball, not as a stack of ellipses: one circle, and over it three more,
-  // each one smaller and shifted to the side the light comes from. That stepped shading is what
-  // turns a flat disc into a volume without painting a single gradient.
-  const sphere = '#b6ccd6';
-  const disc = (dx: number, dy: number, rad: number, tone: string) => {
-    p.g.beginPath();
-    p.g.ellipse(bx + dx, by + dy, rad, rad, 0, 0, Math.PI * 2);
-    p.g.fillStyle = tone;
-    p.g.fill();
-  };
-  disc(0, 0, r, shade(sphere, 0.7));
-  disc(-r * 0.05, -r * 0.1, r * 0.9, shade(sphere, 0.9));
-  disc(-r * 0.2, -r * 0.3, r * 0.68, shade(sphere, 1.1));
-  disc(-r * 0.32, -r * 0.46, r * 0.4, shade(sphere, 1.3));
-  // The gallery: the walkway that goes round the equator, clipped to the ball so it hugs it.
-  p.g.save();
-  p.g.beginPath();
-  p.g.ellipse(bx, by, r * 0.995, r * 0.995, 0, 0, Math.PI * 2);
-  p.g.clip();
-  p.g.beginPath();
-  p.g.ellipse(bx, by + r * 0.02, r * 1.02, r * 0.32, 0, Math.PI * 0.02, Math.PI * 0.98);
-  p.g.strokeStyle = '#4d5a64';
-  p.g.lineWidth = 1.7;
-  p.g.stroke();
-  p.g.restore();
-  // The lantern on the crown of the ball, with its little cap and the mast of the telescope.
-  p.cylinder(cu, cv, 0.055, 31.4, 2, '#e8e2d4');
-  p.hipRoof(cu - 0.075, cv - 0.075, cu + 0.075, cv + 0.075, 33.4, 1.2, '#b9b2a4');
-  // The trees of the park.
-  p.tree(0.34, vh - 0.34, 1, 0.9);
-  p.tree(vw - 0.36, vh - 0.36, 3, 0.8);
-  p.tree(vw - 0.34, 0.36, 1, 0.85);
   return done(p);
 }
 
@@ -690,98 +582,6 @@ function sindicatoArt(vw: number, vh: number): Sprite {
   return done(p);
 }
 
-/** The stadium (4×4): the yellow tiers of La Bombonera around the pitch, and the four floodlights. */
-function estadioArt(vw: number, vh: number): Sprite {
-  const p = rectPainter(vw, vh, 52);
-  const g = p.g;
-  const Q = (u: number, v: number, z: number): Pt => p.P(u, v, z);
-  const yellow = '#e0c05c';
-  const blue = '#2f5e9e';
-  /** A corner floodlight: the mast, the lamp head and the glow it throws. */
-  const flood = (u: number, v: number): void => {
-    p.post(u, v, 44, '#564f48');
-    const [x, y] = p.P(u, v, 44);
-    const bx = Math.round(x);
-    const by = Math.round(y);
-    g.fillStyle = '#3f3a35';
-    g.fillRect(bx - 4, by - 4, 9, 4);
-    g.fillStyle = '#ffe9a0';
-    g.fillRect(bx - 3, by - 3, 7, 2);
-    g.fillStyle = 'rgba(255,233,160,0.22)';
-    g.fillRect(bx - 6, by + 1, 13, 2);
-  };
-  // The two masts of the far corners and the one at the left: enough to read the stadium, and
-  // none of them crosses the pitch.
-  flood(0.14, 0.14);
-  flood(vw - 0.14, 0.14);
-  flood(0.14, vh - 0.14);
-  // The apron of the ground, and the pitch with its outline, the halfway line and the circle.
-  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1.1, '#a6a7ab', false);
-  const p0 = 1;
-  const p1 = vw - 1;
-  p.poly([Q(p0, p0, 1.2), Q(p1, p0, 1.2), Q(p1, p1, 1.2), Q(p0, p1, 1.2)], '#3f8f4a', '#e7e2d2');
-  g.strokeStyle = 'rgba(240,236,222,0.9)';
-  g.lineWidth = 0.7;
-  const [gx, gy] = Q(vw / 2, vh / 2, 1.2);
-  g.beginPath();
-  g.ellipse(gx, gy, 10, 5, 0, 0, Math.PI * 2);
-  g.stroke();
-  g.beginPath();
-  g.moveTo(...Q(vw / 2, p0, 1.2));
-  g.lineTo(...Q(vw / 2, p1, 1.2));
-  g.stroke();
-  // Four steep tiers of yellow concrete on the two sides that face away from the camera, so the
-  // seating is visible; the front half stays low and the bowl reads as a horseshoe.
-  const tiers: [number, number, number][] = [
-    [0.04, 0.24, 22],
-    [0.24, 0.46, 16.5],
-    [0.46, 0.68, 11],
-    [0.68, 0.84, 5.5],
-  ];
-  for (const [a, b, h] of tiers) p.box(0.04, a, vw - 0.22, b, 0, h, yellow, true);
-  for (const [a, b, h] of tiers) p.box(a, 0.84, b, vh - 0.24, 0, h, yellow, true);
-  // The blue band of the club on the top tier, the one the camera can see.
-  p.left(0.24, 0.3, vw - 0.3, 18, 21, blue);
-  p.right(0.24, 0.9, vh - 0.3, 18, 21, blue);
-  // The crowd: flecks of colour along the steps.
-  const flecks = ['#f2ead6', '#c8392f', '#2f5e9e', '#e0a526'];
-  let seed = 5;
-  const rnd = (): number => (seed = (seed * 41 + 13) % 97) / 97;
-  for (const [c, z] of [
-    [0.14, 22],
-    [0.35, 16.5],
-    [0.57, 11],
-    [0.76, 5.5],
-  ] as const) {
-    for (let k = 0; k < 14; k++) {
-      const [x, y] = Q(0.3 + rnd() * (vw - 0.6), c, z + 0.5);
-      g.fillStyle = flecks[k % flecks.length];
-      g.fillRect(Math.round(x), Math.round(y), 1, 1);
-    }
-    for (let k = 0; k < 10; k++) {
-      const [x, y] = Q(c, 0.95 + rnd() * (vh - 1.9), z + 0.5);
-      g.fillStyle = flecks[(k + 2) % flecks.length];
-      g.fillRect(Math.round(x), Math.round(y), 1, 1);
-    }
-  }
-  // The low wall that closes the bowl in front, with the blue band and the gate of the horseshoe.
-  p.box(0.22, 3.4, vw - 0.5, vh - 0.06, 0, 7, yellow, true);
-  p.left(vh - 0.06, 0.3, vw - 0.6, 2.6, 4.8, blue);
-  // The row of boxes over the blue band, the facade the barrio knows.
-  for (let k = 0; k < 5; k++) {
-    const a = 0.5 + k * 0.62;
-    p.left(vh - 0.06, a, a + 0.34, 5.2, 6.2, '#8a7440');
-  }
-  for (const [c0, c1] of [
-    [0.9, 1.62],
-    [2.42, 3.1],
-  ] as const) {
-    p.box(vw - 0.42, c0, vw - 0.06, c1, 0, 7, yellow, true);
-    p.right(vw - 0.06, c0 + 0.08, c1 - 0.08, 2.6, 4.8, blue);
-  }
-  return done(p);
-}
-
 /** The sprite of a unique building, on a footprint of `vw`×`vh` lots as the camera sees it. */
 export function uniqueSprite(kind: UniqueKind, vw: number, vh: number): Sprite {
   return cached(`unique:${kind}:${vw}x${vh}`, () => {
@@ -795,13 +595,13 @@ export function uniqueSprite(kind: UniqueKind, vw: number, vh: number): Sprite {
       case 'teatro':
         return teatroPixelSprite(vw, vh);
       case 'estadio':
-        return estadioArt(vw, vh);
+        return estadioPixelSprite(vw, vh);
       case 'cabildo':
-        return cabildoArt(vw, vh);
+        return cabildoPixelSprite(vw, vh);
       case 'regimiento':
         return regimientoArt(vw, vh);
       case 'planetario':
-        return planetarioArt(vw, vh);
+        return planetarioPixelSprite(vw, vh);
       case 'santuario':
         return santuarioArt(vw, vh);
       case 'sindicato':

@@ -4380,6 +4380,444 @@ export function teatroPixelSprite(vw: number, vh: number): Sprite {
   return sprite;
 }
 
+const ESTADIO_MAX_Z = 46;
+
+/** El hormigón dorado de las tribunas, el azul del club y el verde de la cancha. */
+const STADIUM_GOLD: Ramp = ramp('#dcc06a');
+const STADIUM_BLUE = hex('#2f5e9e');
+const PITCH = hex('#3d8b47');
+const PITCH_DARK = hex('#316f3a');
+const PITCH_LINE = hex('#eae5d5');
+const FLOOD_LAMP = hex('#fff4c4');
+/** La gente: cuatro colores y nada más. A 1× un moteado de diez colores es ruido. */
+const CROWD: RGB[] = [hex('#f2ead6'), hex('#c8392f'), hex('#2f5e9e'), hex('#e0a526')];
+
+/**
+ * El Estadio (4x4): la cancha en el medio con sus líneas, las tribunas alrededor y las cuatro torres de
+ * luz. **La tribuna de atrás es alta y las de adelante son bajas**: es lo único que deja ver el juego
+ * desde esta cámara. Con las cuatro iguales el estadio es una caja con un pozo adentro, que es lo que
+ * era la versión de canvas.
+ */
+function paintEstadioOn(p: Pen, vw: number, vh: number): void {
+  const L = Math.max(vw, vh);
+  const W = Math.min(vw, vh);
+  const o = 0.05;
+  /** Lo que ocupa una tribuna de ancho. */
+  const bw = 0.82;
+  const z0 = 1.2;
+  const H_BACK = 25;
+  const H_NEAR = 12;
+  const x0 = o;
+  const y0 = o;
+  const x1 = L - o;
+  const y1 = W - o;
+
+  // El playón de cemento bajo todo, y la vereda que lo separa de la calle.
+  p.box(x0, y0, x1, y1, 0, z0, CONCRETE, 'plain');
+
+  /** La cara de adentro de una tribuna: la contrahuella en sombra, el asiento en luz y la gente. */
+  const tier =
+    (h: number, base: Ramp): WallPaint =>
+    (t, k) => {
+      if (k >= h - 1) return shade(base[0], 1.16); // el borde de arriba, al sol
+      const r = k % 3;
+      if (r === 0) return shade(base[2], 0.62); // la contrahuella
+      if (r === 1) return noise(t, k, 11) > 0.78 ? CROWD[Math.floor(noise(t, k, 5) * 4)] : shade(base[1], 0.92);
+      return shade(base[1], 1.08);
+    };
+
+  /**
+   * La pasarela de arriba, vista desde arriba: **las gradas también**. Pintada de un gris parejo, la
+   * pasarela se lee como un piso de cemento —y encima el estadio entero parece una plataforma con un
+   * pozo—; rayada como las gradas que son, el estadio cierra.
+   */
+  const deck = (u0: number, v0: number, u1: number, v1: number, z: number) => {
+    const thinV = v1 - v0 <= u1 - u0;
+    const n = 3;
+    for (let i = 0; i < n; i++) {
+      const a = i / n;
+      const b = (i + 1) / n;
+      const quad: Pt[] = thinV
+        ? [p.P(u0, v0 + (v1 - v0) * a, z), p.P(u1, v0 + (v1 - v0) * a, z), p.P(u1, v0 + (v1 - v0) * b, z), p.P(u0, v0 + (v1 - v0) * b, z)]
+        : [p.P(u0 + (u1 - u0) * a, v0, z), p.P(u0 + (u1 - u0) * a, v1, z), p.P(u0 + (u1 - u0) * b, v1, z), p.P(u0 + (u1 - u0) * b, v0, z)];
+      p.poly(quad, () => (i % 2 ? shade(STADIUM_GOLD[2], 0.7) : shade(STADIUM_GOLD[1], 0.84)));
+    }
+  };
+
+  /** Una torre de luz: el mástil, la parrilla y el resplandor. */
+  const flood = (u: number, v: number) => {
+    const [bx, by] = p.P(u, v, 0);
+    const cx = Math.round(bx);
+    const cy = Math.round(by);
+    p.px.rect(cx, cy - 40, 1, 40, shade(STEEL[1], 0.92));
+    p.px.rect(cx - 3, cy - 44, 7, 4, shade(LEG, 1.5));
+    p.px.rect(cx - 3, cy - 44, 7, 1, FLOOD_LAMP);
+    p.px.rect(cx - 2, cy - 41, 5, 1, hex('#f7e08a'));
+  };
+
+  // Las dos torres del fondo van primero: las tribunas las tapan de abajo.
+  flood(x0 + 0.12, y0 + 0.12);
+  flood(x1 - 0.12, y0 + 0.12);
+
+  // La tribuna del fondo, la alta: se le ve la cara de adentro, y por eso se ve la gente.
+  p.px.wall(p.P(x0, y0 + bw, z0), p.P(x1, y0 + bw, z0), H_BACK, tier(H_BACK, STADIUM_GOLD));
+  deck(x0, y0, x1, y0 + bw, z0 + H_BACK);
+  // La tribuna de la izquierda, también de adentro: su cara visible es la de u = x0 + bw.
+  p.px.wall(p.P(x0 + bw, y0 + bw, z0), p.P(x0 + bw, y1, z0), H_BACK - 3, tier(H_BACK - 3, STADIUM_GOLD));
+  deck(x0, y0 + bw, x0 + bw, y1, z0 + H_BACK - 3);
+
+  // La cancha: el verde primero, las líneas encima y la sombra del borde.
+  const pa = x0 + bw;
+  const pb = x1 - bw;
+  const pz = z0 + 1;
+  p.poly([p.P(pa, pa, pz), p.P(pb, pa, pz), p.P(pb, pb, pz), p.P(pa, pb, pz)], (x, y) => (noise(x, y, 3) > 0.82 ? PITCH_DARK : PITCH));
+  const ln = (a: number, b: number, c: number, d: number) => p.px.line(p.P(a, b, pz), p.P(c, d, pz), PITCH_LINE);
+  const m = 0.16;
+  ln(pa + m, pa + m, pb - m, pa + m);
+  ln(pb - m, pa + m, pb - m, pb - m);
+  ln(pb - m, pb - m, pa + m, pb - m);
+  ln(pa + m, pb - m, pa + m, pa + m);
+  ln((pa + pb) / 2, pa + m, (pa + pb) / 2, pb - m);
+  // El círculo del medio, en ocho píxeles: un círculo de dos píxeles de radio no tiene otra forma.
+  {
+    const [mx, my] = p.P((pa + pb) / 2, (pa + pb) / 2, pz);
+    const cx = Math.round(mx);
+    const cy = Math.round(my);
+    for (const [dx, dy] of [
+      [-3, 0], [3, 0], [-3, 1], [3, 1], [-2, -1], [2, -1], [-2, 2], [2, 2], [-1, -2], [1, -2], [-1, 3], [1, 3],
+    ]) {
+      p.px.set(cx + dx, cy + dy, PITCH_LINE);
+    }
+  }
+
+  /** La cara de afuera: la banda del club y la fila de palcos en sombra. */
+  const facade =
+    (h: number): WallPaint =>
+    (_t, k) => {
+      if (k >= h - 1) return shade(STADIUM_GOLD[0], 1.18);
+      if (k >= 5) return shade(STADIUM_GOLD[2], 0.78);
+      if (k >= 2) return STADIUM_BLUE;
+      return shade(STADIUM_GOLD[1], 0.9);
+    };
+
+  // Las dos tribunas de adelante, bajas: su cara de afuera da a la calle.
+  // La cara de afuera de cada tribuna es la del borde del lote: la de adentro no se ve, y si se pinta
+  // ahí la pasarela queda colgando en el aire y abajo se ve el contrapiso como un playón de más.
+  p.px.wall(p.P(x1, y0, z0), p.P(x1, y1, z0), H_NEAR, facade(H_NEAR));
+  deck(x1 - bw, y0, x1, y1, z0 + H_NEAR);
+  p.px.wall(p.P(x0, y1, z0), p.P(x1, y1, z0), H_NEAR, facade(H_NEAR));
+  deck(x0, y1 - bw, x1, y1, z0 + H_NEAR);
+
+  // La puerta grande en el medio del frente, y las dos torres de luz de adelante.
+  p.poly([p.P(L / 2 - 0.24, y1, z0), p.P(L / 2 + 0.24, y1, z0), p.P(L / 2 + 0.24, y1, z0 + 5), p.P(L / 2 - 0.24, y1, z0 + 5)], () => INSIDE);
+  flood(x0 + 0.12, y1 - 0.12);
+  flood(x1 - 0.12, y1 - 0.12);
+
+  p.shadow(x0, y0, x1, y1);
+}
+
+/** Paints el Estadio on the lot the camera sees: 4x4. */
+export function paintEstadio(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, ESTADIO_MAX_Z);
+  paintEstadioOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const estadioCache = new Map<string, Sprite>();
+
+/** El Estadio as a sprite, keyed by the shape of the lot the camera sees. */
+export function estadioPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = estadioCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintEstadio(vw, vh));
+    estadioCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+const CABILDO_MAX_Z = 44;
+
+/**
+ * La cal, con los tres tonos elegidos a mano: el 0,69 y el 0,59 automáticos dejan un crema grisáceo, y
+ * el Cabildo es blanco. El ladrillo del techo y el hierro de las rejas van aparte.
+ */
+const CABILDO_WALL: Ramp = [hex('#fdf6e0'), hex('#f7edd4'), hex('#ded1ae')];
+const CABILDO_TILE: Ramp = ramp('#b0472f');
+const ARCH = hex('#413a31');
+const CLOCK_FACE = hex('#f7f2e6');
+
+/**
+ * El Cabildo (3x2): dos plantas sobre la plaza, la de abajo de arcos y la de arriba de ventanas con
+ * balcón corrido, el techo de tejas a cuatro aguas y **la torre con el reloj en el medio del frente**.
+ * La torre es lo único que lo distingue de cualquier casa de gobierno: tiene que sobresalir del techo y
+ * llevar la bandera, no quedar escondida entre las tejas.
+ */
+function paintCabildoOn(p: Pen, vw: number, vh: number): void {
+  const L = Math.max(vw, vh);
+  const W = Math.min(vw, vh);
+  const x0 = 0.16;
+  const y0 = 0.18;
+  const x1 = L - 0.16;
+  const y1 = W - 0.18;
+  const z0 = 2.2;
+  const H = 20;
+
+  // El zócalo de piedra: una hilera clara y nada más. Dos cajas apiladas dejaban un basamento gris de
+  // un tercio de la altura, que es más que el edificio.
+  p.box(x0 - 0.05, y0 - 0.05, x1 + 0.05, y1 + 0.05, 0, z0, STONE_LIGHT, 'plain');
+
+  const fw = Math.round((x1 - x0) * 16);
+  const sw = Math.round((y1 - y0) * 16);
+
+  /** La planta baja de arcos: el hueco oscuro con el dintel curvado un píxel por lado, y su clave. */
+  const arcade = (w: number, n: number): Patch[] => {
+    const out: Patch[] = [];
+    for (let i = 0; i < n; i++) {
+      const t = Math.round((w * (i + 0.5)) / n) - 3;
+      out.push({ t0: t, t1: t + 6, k0: 1, k1: 6, c: ARCH });
+      out.push({ t0: t + 1, t1: t + 5, k0: 6, k1: 7, c: ARCH });
+      out.push({ t0: t + 2, t1: t + 4, k0: 7, k1: 8, c: ARCH });
+      out.push({ t0: t - 1, t1: t + 8, k0: 8, k1: 9, c: shade(CABILDO_WALL[1], 1.16) });
+    }
+    // El muro de la planta baja, al final y detrás de los arcos: la cal viva es el contraste de los
+    // huecos, y sin ella la planta baja es una banda marrón.
+    out.push({ t0: 0, t1: w, k0: 0, k1: 9, c: shade(CABILDO_WALL[1], 1.04) });
+    return out;
+  };
+  /**
+   * La planta alta: la reja primero —el primer parche que toca un píxel gana, y las barras son de un
+   * píxel—, después el filo iluminado y al final el vidrio.
+   */
+  const upper = (w: number, n: number): Patch[] => {
+    const out: Patch[] = [];
+    for (let i = 0; i < n; i++) {
+      const t = Math.round((w * (i + 0.5)) / n) - 1;
+      out.push({ t0: t, t1: t + 1, k0: 13, k1: 19, c: LEG });
+      out.push({ t0: t + 2, t1: t + 3, k0: 13, k1: 19, c: LEG });
+      out.push({ t0: t, t1: t + 3, k0: 18, k1: 19, c: shade(GLASS, 1.7) });
+      out.push({ t0: t, t1: t + 3, k0: 13, k1: 19, c: GLASS });
+      out.push({ t0: t - 1, t1: t + 4, k0: 12, k1: 13, c: shade(CABILDO_WALL[2], 0.78) });
+    }
+    out.push({ t0: 0, t1: w, k0: 10, k1: 20, c: CABILDO_WALL[1] });
+    return out;
+  };
+
+  p.box(x0, y0, x1, y1, z0, H, CABILDO_WALL, 'plain', [...arcade(fw, 4), ...upper(fw, 4)], [...arcade(sw, 3), ...upper(sw, 3)]);
+  // El balcón corrido por las dos caras, y su baranda.
+  p.balcony(x0, y1, x1, z0 + 8.6);
+  p.box(x1, y0, x1 + 0.1, y1, z0 + 8.6, 1, STONE_LIGHT, 'plain');
+  p.px.line(p.P(x1 + 0.1, y0, z0 + 11.2), p.P(x1 + 0.1, y1, z0 + 11.2), RAIL);
+  // El cornisamento y el techo de tejas.
+  p.cornice(x0, y0, x1, y1, z0 + H, 1, tone(shade(CABILDO_WALL[1], 1.06)));
+  p.hip(x0 - 0.06, y0 - 0.06, x1 + 0.06, y1 + 0.06, z0 + H + 1, 3.6, CABILDO_TILE);
+  {
+    // Las hiladas de teja en la falda del frente: sin ellas el techo es una losa roja.
+    const zr = z0 + H + 1;
+    const apex: Pt = [(p.P(x0, y0, 0)[0] + p.P(x1, y1, 0)[0]) / 2, 0];
+    const apexY = p.P((x0 + x1) / 2, (y0 + y1) / 2, zr + 3.6)[1];
+    apex[1] = apexY;
+    for (const f of [0.4, 0.72]) {
+      const a = p.P(x0 - 0.06, y1 + 0.06, zr);
+      const b = p.P(x1 + 0.06, y1 + 0.06, zr);
+      const l = (k: number, q: number) => Math.round(k + (q - k) * f);
+      p.px.line([l(a[0], apex[0]), l(a[1], apex[1])], [l(b[0], apex[0]), l(b[1], apex[1])], shade(CABILDO_TILE[0], 0.82));
+    }
+  }
+
+  // La torre: en el medio del frente, y sobresaliendo del plano de la pared.
+  const cx = (x0 + x1) / 2;
+  const tw = 0.36;
+  const tv1 = y1 + 0.12;
+  const tv0 = tv1 - 0.92;
+  const tH = H + 12;
+  const tfw = Math.round(2 * tw * 16);
+  const tsw = Math.round((tv1 - tv0) * 16);
+  const clock = (w: number): Patch[] => {
+    const t = Math.round(w / 2) - 3;
+    const k = tH - 7;
+    const cal = shade(CABILDO_WALL[1], 1.05);
+    // Las cuatro esquinas en cal: sin ellas el reloj es un cuadrado blanco, y un reloj es redondo.
+    const esquinas: Patch[] = [
+      { t0: t, t1: t + 1, k0: k, k1: k + 1, c: cal },
+      { t0: t + 5, t1: t + 6, k0: k, k1: k + 1, c: cal },
+      { t0: t, t1: t + 1, k0: k + 5, k1: k + 6, c: cal },
+      { t0: t + 5, t1: t + 6, k0: k + 5, k1: k + 6, c: cal },
+    ];
+    return [
+      ...esquinas,
+      // El reloj arriba de todo: puesto más bajo queda contra la teja y la torre parece un cuerpo sin cara.
+      { t0: t, t1: t + 6, k0: k, k1: k + 6, c: CLOCK_FACE },
+      { t0: 0, t1: w, k0: tH - 2, k1: tH - 1, c: shade(CABILDO_WALL[1], 1.16) },
+    ];
+  };
+  p.box(cx - tw, tv0, cx + tw, tv1, z0, tH, CABILDO_WALL, 'plain', clock(tfw), clock(tsw));
+  // Las agujas: dos píxeles oscuros en cada esfera, o el reloj es un cuadrado blanco.
+  for (const [u, v] of [
+    [cx, tv1],
+    [cx + tw, (tv0 + tv1) / 2],
+  ]) {
+    const [hx, hy] = p.P(u, v, z0 + tH - 4);
+    const ix = Math.round(hx);
+    const iy = Math.round(hy);
+    p.px.set(ix, iy - 1, LEG);
+    p.px.rect(ix, iy, 2, 1, LEG);
+  }
+  // El remate: cornisamento, techo y la bandera.
+  p.cornice(cx - tw, tv0, cx + tw, tv1, z0 + tH, 1, CABILDO_WALL);
+  p.hip(cx - tw - 0.05, tv0 - 0.05, cx + tw + 0.05, tv1 + 0.05, z0 + tH + 1, 3, CABILDO_TILE);
+  p.flag(cx, (tv0 + tv1) / 2, z0 + tH + 4, 7);
+
+  p.shadow(x0, y0, x1, y1);
+}
+
+/** Paints el Cabildo on the lot the camera sees: 3x2. */
+export function paintCabildo(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, CABILDO_MAX_Z);
+  paintCabildoOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const cabildoCache = new Map<string, Sprite>();
+
+/** El Cabildo as a sprite, keyed by the shape of the lot the camera sees. */
+export function cabildoPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = cabildoCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintCabildo(vw, vh));
+    cabildoCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+const PLANETARIO_MAX_Z = 44;
+
+/** El tambor blanco, la chapa de la cúpula y el hierro de la galería. */
+const DRUM_WHITE: Ramp = [hex('#fdfaf2'), hex('#f5efe2'), hex('#ded6c4')];
+const DOME_SHELL: [RGB, RGB, RGB] = [hex('#dfe9ed'), hex('#c2d2da'), hex('#a5b6bf')];
+const GALLERY = hex('#4d5a64');
+const PARK: Ramp = ramp('#79a95f');
+
+/**
+ * El Planetario (3x3): el Galileo Galilei de Palermo. Un tambor blanco, **una bola** arriba con la
+ * galería que le da la vuelta a la base, y la linterna en la punta, en medio del parque. Es el único
+ * edificio del juego que no es una caja: por eso alcanza con que la bola sea una bola.
+ */
+function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
+  const L = Math.max(vw, vh);
+  const W = Math.min(vw, vh);
+  const cx = L / 2;
+  const cy = W / 2;
+
+  // El parque del lote y el camino de entrada.
+  p.poly([p.P(0.04, 0.04), p.P(L - 0.04, 0.04), p.P(L - 0.04, W - 0.04), p.P(0.04, W - 0.04)], (x, y) =>
+    noise(x, y, 21) > 0.88 ? shade(PARK[1], 1.1) : PARK[1],
+  );
+  // El camino llega desde el borde del lote hasta el tambor: una banda con ancho de verdad. Por la
+  // diagonal del lote no se puede, que en isométrico la diagonal es una línea vertical y no se ve.
+  p.poly([p.P(L - 0.05, cy - 0.42), p.P(L - 0.05, cy + 0.42), p.P(cx + 0.42, cy - 0.42), p.P(cx + 0.42, cy + 0.42)], (x, y) =>
+    bayer(x, y) < 0.3 ? shade(CONCRETE[1], 1.12) : CONCRETE[1],
+  );
+
+  // Los árboles van **antes** del edificio: pintados después, la copa del que está detrás se le sube
+  // encima de la cúpula y parece un árbol plantado en el tambor.
+  p.tree(0.34, W - 0.36);
+  p.tree(L - 0.36, W - 0.34);
+  p.tree(L - 0.3, 0.3);
+  p.tree(0.3, 0.32);
+
+  /** Un cilindro que arranca a la altura `z0`: el cuerpo columna por columna y la cara de arriba como elipse. */
+  const cyl = (ux: number, uy: number, z0: number, r: number, h: number, base: Ramp, ribs = false) => {
+    const [bx, by] = p.P(ux, uy, z0);
+    const ix = Math.round(bx);
+    const iy = Math.round(by);
+    const ry = Math.max(1, Math.round(r * 0.5));
+    for (let d = -r; d <= r; d++) {
+      const e = Math.round(Math.sqrt(Math.max(0, 1 - (d / r) ** 2)) * ry);
+      const lit = d < -r * 0.45 ? base[0] : d > r * 0.5 ? base[2] : base[1];
+      p.px.rect(ix + d, iy - h - e, 1, h + 2 * e, lit);
+      // Los nervios: sin las juntas verticales el tambor es un balde blanco.
+      if (ribs && Math.abs(d) % 5 === 2) p.px.rect(ix + d, iy - h - e, 1, h + e, shade(base[2], 0.92));
+    }
+    for (let d = -ry; d <= ry; d++) {
+      const w = Math.round(Math.sqrt(Math.max(0, 1 - (d / ry) ** 2)) * r);
+      p.px.rect(ix - w, iy - h - d, w * 2, 1, d < 0 ? base[0] : base[1]);
+    }
+    // el zócalo, que asienta el tambor en el parque
+    p.px.rect(ix - r, iy, r * 2, 1, shade(base[2], 0.82));
+  };
+
+  // El tambor ocupa un cuarto del lote: más chico se pierde en el parque, y el lote es suyo.
+  /** La media naranja: sólo la mitad de arriba de la bola, con la luz viniendo de arriba a la izquierda. */
+  const dome = (ox: number, oy: number, rx: number, ry: number, tones: [RGB, RGB, RGB]) => {
+    for (let dy = -ry; dy <= 0; dy++) {
+      const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy / ry) ** 2)));
+      for (let dx = -w; dx <= w; dx++) {
+        // La luz entra de costado más que de arriba: con el peso en vertical, el ecuador de la cúpula
+        // queda en sombra, se pega con la galería y la cúpula se lee como un casquete chato.
+        const l = (-dx / rx) * 0.55 + (-dy / ry) * 0.45;
+        p.px.set(ox + dx, oy + dy, l > 0.26 ? tones[0] : l > -0.26 ? tones[1] : tones[2]);
+      }
+    }
+  };
+
+  const r = 13;
+  const h = 17;
+  cyl(cx, cy, 0, r, h, DRUM_WHITE, true);
+  // La galería: el anillo que vuela alrededor del tambor. Se llena la elipse y la cúpula la tapa; una bola
+  // entera, en cambio, se come el tambor y el planetario queda con la cúpula metida en el cuerpo.
+  const [gx0, gy0] = p.P(cx, cy, h);
+  const gx = Math.round(gx0);
+  const gy = Math.round(gy0);
+  const ringRx = r + 1;
+  const ringRy = 4;
+  for (let d = -ringRy; d <= ringRy; d++) {
+    const w = Math.round(ringRx * Math.sqrt(Math.max(0, 1 - (d / ringRy) ** 2)));
+    p.px.rect(gx - w, gy + d, w * 2, 1, d < -1 ? shade(GALLERY, 1.5) : shade(GALLERY, 1.15));
+  }
+  const domeRy = r - 2;
+  dome(gx, gy - 1, r - 1, domeRy, DOME_SHELL);
+  // Los meridianos de la cúpula: del polo a la base, en arco. Sin ellos la cúpula es un huevo apoyado.
+  for (const f of [-0.78, -0.42, 0.42, 0.78]) {
+    const x0 = gx + f * (r - 1);
+    const y0 = gy - 1;
+    const x1 = gx + f * (r - 1) * 0.3;
+    const y1 = gy - 1 - Math.round(domeRy * 0.92);
+    p.px.line([x0, y0], [x1, y1], shade(DOME_SHELL[1], 0.9));
+  }
+  // La linterna en la punta de la cúpula, con su capuchón.
+  const ly = gy - 1 - domeRy - 3;
+  p.px.rect(gx - 1, ly, 3, 3, DRUM_WHITE[1]);
+  p.px.rect(gx - 1, ly + 1, 1, 2, DRUM_WHITE[0]);
+  p.px.rect(gx - 2, ly - 1, 5, 1, shade(DRUM_WHITE[2], 0.86));
+
+
+
+
+  p.shadow(0.2, 0.2, L - 0.2, W - 0.2);
+}
+
+/** Paints el Planetario on the lot the camera sees: 3x3. */
+export function paintPlanetario(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, PLANETARIO_MAX_Z);
+  paintPlanetarioOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const planetarioCache = new Map<string, Sprite>();
+
+/** El Planetario as a sprite, keyed by the shape of the lot the camera sees. */
+export function planetarioPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = planetarioCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintPlanetario(vw, vh));
+    planetarioCache.set(key, sprite);
+  }
+  return sprite;
+}
+
 const calvarioCache = new Map<string, Sprite>();
 
 /** El Calvario as a sprite, keyed by the shape of the lot the camera sees. */
