@@ -16,6 +16,10 @@ lecciones de los siete anteriores ya juntas. Cuando estén, `sprites.ts` baja a 
   la simulación intacta (costo, mantenimiento, tamaño y el efecto de gobierno de cada uno).
 - **S4.** Lo que canvas dibujaba se **borra**, no se deja detrás de una condición: `tsc` con
   `noUnusedLocals` es el árbitro.
+- **S6.** *"Me gustaría que saques ese coso rojo en el frente del sindicato, entiendo que es un cartel? en
+  caso de querer dejarlo hacé que esté igual de angulado que el edificio, sino sacalo."* El estandarte se
+  deja: pasa a ser un **paño pegado al muro**, un parche de la cara, así sigue la diagonal de la fachada
+  como todo lo demás. Pintado con píxeles absolutos era un cartel de frente, flotando sobre la pared.
 - **S5.** Cada uno lleva su prueba, y la prueba cuenta **estructura** (planta, alturas, masas,
   materiales por temperatura), no "hay tinta".
 
@@ -123,3 +127,9 @@ lecciones de los siete anteriores ya juntas. Cuando estén, `sprites.ts` baja a 
   todo el ancho del lote** (`n0 = 0.16`) para que el paño del medio sea ancho; y la **nave es más
   angosta que la fachada** (`m0 = 0.36`), que es lo que hace una basílica y además le devuelve el cielo a
   la aguja de la derecha (con la nave del ancho de la fachada, el techo le ganaba por un píxel).
+- **L24.** El estandarte del Sindicato estaba pintado con `px.rect` en **píxeles de pantalla**: un
+  rectángulo de frente sobre un muro en fuga, que es exactamente lo que lo hacía leer como un cartel
+  flotando. Ahora es un `box` de 0,07 de fondo pegado a la cara del salón, con los parches del paño, la
+  franja clara del nombre y el canto en rojo oscuro. El canto en blanco dejaba una punta rara del lado
+  derecho. Y la faja de vidrio del salón bajó dos píxeles para dejarle el lugar: un cartel **tapa** la
+  faja donde está, no la parte en dos.

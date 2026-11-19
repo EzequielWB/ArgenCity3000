@@ -5322,7 +5322,7 @@ function paintSindicatoOn(p: Pen, vw: number, vh: number): void {
     { t0: 0, t1: 99, k0: 0, k1: z0, c: PATIO_SECO[2] },
     { t0: 0, t1: 99, k0: SALON_H - z0 - 1, k1: SALON_H - z0, c: STONE_LIGHT[1] },
   ];
-  salon.push(...glazed(2, fw - 2, SALON_H - z0 - 8, 4, 5));
+  salon.push(...glazed(2, fw - 2, SALON_H - z0 - 6, 4, 5));
   p.box(0.18, SA0, U - 0.18, SA1, z0, SALON_H - z0, SINDICATO_WALL, 'plain', salon, salon, ROOF_DECK);
   p.parapet(0.18, SA0, U - 0.18, SA1, z0 + SALON_H - z0, 1, [ROOF_DECK, ROOF_DECK, shade(ROOF_DECK, 0.8)]);
 
@@ -5344,17 +5344,31 @@ function paintSindicatoOn(p: Pen, vw: number, vh: number): void {
   p.box(0.18, SA1, U - 0.18, SA1 + 0.06, 0, 10, SINDICATO_WALL, 'plain', doorP);
   p.box(0.18, SA1 + 0.02, U - 0.18, SA1 + 0.14, 0, 1, STONE_LIGHT, 'plain');
 
-  // El estandarte rojo sobre el portón: el paño, la franja clara del nombre y la punta que cuelga. Es la
-  // única cosa roja del edificio, y por eso alcanza para nombrarlo.
+  // El estandarte rojo sobre el portón: un paño **pegado al muro**, así que sigue el ángulo de la fachada
+  // como cualquier otro parche. Pintado con píxeles absolutos quedaba un cartel de frente, flotando.
   {
-    const [bx, by] = p.P(U / 2, SA1 + 0.06, z0 + 10);
-    const ix = Math.round(bx);
-    const iy = Math.round(by);
-    p.px.rect(ix - 8, iy - 3, 17, 4, SINDICATO_RED);
-    p.px.rect(ix - 6, iy - 2, 13, 2, hex('#f2efe6'));
-    p.px.rect(ix - 1, iy - 2, 1, 2, SINDICATO_RED);
-    p.px.rect(ix - 2, iy + 1, 5, 1, SINDICATO_RED);
-    p.px.rect(ix - 1, iy + 2, 3, 1, SINDICATO_RED);
+    const papel = hex('#f2efe6');
+    const bw = 0.46; // media anchura del paño, en celdas
+    const tw2 = Math.round(bw * 2 * 16); // el ancho de la cara, en píxeles
+    p.box(
+      U / 2 - bw,
+      SA1 + 0.015,
+      U / 2 + bw,
+      SA1 + 0.085,
+      z0 + 9,
+      6,
+      tone(SINDICATO_RED),
+      'plain',
+      [
+        { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(SINDICATO_RED, 0.72) },
+        { t0: 0, t1: 99, k0: 1, k1: 2, c: SINDICATO_RED },
+        { t0: 2, t1: tw2 - 2, k0: 2, k1: 4, c: papel },
+        { t0: 0, t1: 99, k0: 4, k1: 5, c: SINDICATO_RED },
+        { t0: 0, t1: 99, k0: 5, k1: 6, c: shade(SINDICATO_RED, 1.38) },
+      ],
+      // El canto del paño va rojo oscuro: en blanco se lee como una punta rara del cartel.
+      [{ t0: 0, t1: 99, k0: 0, k1: 6, c: shade(SINDICATO_RED, 0.8) }],
+    );
   }
 
   // La bandera roja sobre la azotea de las oficinas: el mástil y el paño, con el borde de arriba claro.
