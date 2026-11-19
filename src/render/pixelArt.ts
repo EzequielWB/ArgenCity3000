@@ -4776,9 +4776,9 @@ function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
   const r = 17; // el radio del plato: vuela dos píxeles por lado sobre la cúpula
   const discZ = 9; // dónde apoya el plato
   const discH = 5;
-  // La cúpula es casi una esfera cortada por el plato: con doce de alto quedaba un anillo de terraza de
-  // ocho píxeles que no deja ver el vidrio.
-  const domeRy = 14;
+  const domeRx = r - 3;
+  const domeRy = 17; // alto del domo sobre el plato
+  const lipRy = 4; // cuánto baja el arco de apoyo en el medio
 
   /** Un cilindro: el cuerpo columna por columna, con la carpintería y los filos si se piden. */
   const cyl = (z0: number, rad: number, h: number, base: Ramp, mullion: RGB | null = null, rim: RGB | null = null, top = false) => {
@@ -4850,10 +4850,16 @@ function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
   const [dx0, dy0] = p.P(cx, cy, discZ + discH);
   const dx = Math.round(dx0);
   const dy = Math.round(dy0);
-  for (let k = -domeRy; k <= 0; k++) {
-    const w = Math.round((r - 3) * Math.sqrt(Math.max(0, 1 - (k / domeRy) ** 2)));
+  // La cúpula **no es media naranja**: es una esfera posada en el plato, y por eso tiene que ser más
+  // alta que ancha y terminar en un **arco de apoyo** que baja en el medio. Con la base recta y media
+  // bola de alto, la cúpula se lee como una tapa tirada sobre el plato.
+  for (let k = -domeRy; k <= lipRy; k++) {
+    const w =
+      k <= 0
+        ? Math.round(domeRx * Math.sqrt(Math.max(0, 1 - (k / domeRy) ** 2)))
+        : Math.round(domeRx * Math.sqrt(Math.max(0, 1 - (k / lipRy) ** 2)));
     for (let d = -w; d <= w; d++) {
-      const l = (-d / (r - 3)) * 0.5 + (-k / domeRy) * 0.5;
+      const l = (-d / domeRx) * 0.5 + (-k / domeRy) * 0.55;
       const tone = l > 0.34 ? DOME_DARK[0] : l > -0.3 ? DOME_DARK[1] : DOME_DARK[2];
       const x = dx + d;
       const y = dy + k;

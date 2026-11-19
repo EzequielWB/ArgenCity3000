@@ -85,9 +85,13 @@ describe('el Planetario en píxel', () => {
     expect(dome.w).toBeGreaterThan(dome.h);
     const filas = widths(a, isDome, dome.minY, dome.maxY);
     expect(filas.length).toBeGreaterThan(8);
-    const masAncha = filas.reduce((b, f) => (f[1] > b[1] ? f : b), filas[0]);
-    expect(masAncha[0]).toBeGreaterThanOrEqual(dome.maxY - 4);
-    expect(filas[0][1]).toBeLessThan(masAncha[1] * 0.55);
+    const maxW = Math.max(...filas.map((f) => f[1]));
+    // La parte más ancha del domo cae en el tercio de abajo: apoya en el plato y sigue bajando en arco.
+    // Con la panza en el medio es un huevo, y con la base recta es una tapa tirada sobre el plato.
+    const ultimaAncha = filas.filter((f) => f[1] >= maxW - 1).at(-1)!;
+    expect(ultimaAncha[0]).toBeGreaterThan(dome.minY + (dome.h * 2) / 3);
+    // Y se cierra en la punta: arriba de todo el domo es angosto.
+    expect(filas[0][1]).toBeLessThan(maxW * 0.55);
   });
 
   it('la cúpula está perforada: dos tonos alternados, no un relleno liso', () => {

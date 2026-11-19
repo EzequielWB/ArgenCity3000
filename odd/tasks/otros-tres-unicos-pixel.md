@@ -155,3 +155,9 @@ cuatro falla conviene saberlo antes de dibujar los otros dos.
   cúpula está centrada sobre el plato.
 - **L28.** Evidencia: **1178 / 73** verdes · `tsc --noEmit` limpio · tablero regenerado · el planetario
   comparado con las fotos.
+- **L29. El domo parecía "plano, tirado".** Y lo era por dos cosas: media bola de alto sobre treinta y
+  dos de ancho —una tapa— y, sobre todo, **la base recta**. Una esfera apoyada en un plano no termina en
+  una fila de píxeles: termina en un **arco de apoyo que baja en el medio**. Con `domeRy 17` y un labio
+  de 4 píxeles que sigue la elipse del plato, el domo pasa a tener panza y volumen. Y la prueba se
+  corrigió en el mismo sentido: ahora pide que la parte más ancha esté **en el tercio de abajo** (no "a
+  menos de seis píxeles del borde"), que es lo que distingue un domo de un huevo.
