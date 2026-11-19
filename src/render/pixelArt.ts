@@ -5075,6 +5075,313 @@ export function regimientoPixelSprite(vw: number, vh: number): Sprite {
   return sprite;
 }
 
+const SANTUARIO_MAX_Z = 64;
+
+/**
+ * El ladrillo del santuario, con los tres tonos a mano: los 0,69 y 0,59 automáticos dejan un ladrillo
+ * casi negro, y una basílica de ladrillo a la vista tiene que ser **colorada**.
+ */
+const SANTUARIO_BRICK: Ramp = [hex('#c07a5c'), hex('#9c5a44'), hex('#7d4433')];
+/**
+ * La pizarra del techo de la nave. No es un capricho: con la teja, el techo, las torres y las agujas son
+ * cuatro rojos casi iguales y el edificio se lee como un solo bulto marrón del que sobresale una punta
+ * (la de la torre que da contra el cielo). La pizarra separa el techo del ladrillo y deja que las **dos**
+ * agujas se vean.
+ */
+const SANTUARIO_SLATE: Ramp = [hex('#8d9195'), hex('#6f7378'), hex('#575b60')];
+/** Las agujas, más oscuras que el cuerpo: si no, la torre y su punta son una sola masa. */
+const SANTUARIO_SPIRE: Ramp = [hex('#8a4a38'), hex('#6f3a2b'), hex('#552a1e')];
+/** El atrio: piedra clara, la misma de los cornisamientos. */
+const ATRIO: Ramp = [hex('#cdc5b0'), hex('#bcb39e'), hex('#a69c86')];
+/** El azul del rosetón y el oro de la campana. */
+const ROSETON = hex('#3f5a72');
+/** La madera de la puerta principal: oscura, pero cálida. */
+const PUERTA = hex('#4a3a2c');
+const CAMPANA = hex('#c9a24a');
+
+/**
+ * El Santuario (3x4): **la basílica de Luján**. Ladrillo a la vista, la nave larga con techo de pizarra,
+ * y el frente con las **dos torres y sus agujas** y el rosetón en el medio. Las agujas son lo que lo
+ * distingue de cualquier otra iglesia: el edificio termina en dos puntas y no en una cúpula, y esa
+ * silueta se ve desde el otro lado de la ciudad.
+ *
+ * La nave corre **a lo hondo del lote y no a lo ancho**: el frente mira a la cámara y el techo se va
+ * para atrás. Dibujada a lo ancho —como el Cabildo, que es una fachada y nada más— la nave es una franja
+ * larga paralela a la pantalla, el techo se sube por detrás de la fachada y la torre de la derecha queda
+ * adentro de su silueta: se lee una sola aguja contra el cielo y la otra desaparece contra la pizarra.
+ */
+function paintSantuarioOn(p: Pen, vw: number, vh: number): void {
+  const U = vw;
+  const V = vh;
+  const z0 = 2; // el zócalo de piedra
+  // La nave va baja y el frente alto, que es como es la basílica: la fachada le saca una cabeza al techo
+  // de la nave, y así las agujas se recortan contra el cielo y no contra la pizarra.
+  const NAVE_H = 14;
+  const FACADE_H = 23;
+  const fv = V - 0.22; // el plano del frente
+  const fd = 0.5; // la profundidad del cuerpo del frente
+  const tw = 0.55; // el ancho de cada torre
+  const n0 = 0.32;
+  const n1 = U - 0.32;
+  const PC = U / 2;
+  const UM = PC; // la cumbrera de la nave, en el eje
+
+  // El atrio: la basílica se abre sobre una plaza de piedra, no sobre tierra.
+  p.poly([p.P(0.03, 0.03), p.P(U - 0.03, 0.03), p.P(U - 0.03, V - 0.03), p.P(0.03, V - 0.03)], (x, y) => {
+    const n = noise(x, y, 41);
+    if (n > 0.9) return shade(ATRIO[1], 1.08);
+    if (n < 0.12) return shade(ATRIO[1], 0.9);
+    return ATRIO[1];
+  });
+
+  // La nave: el cuerpo largo de ladrillo. El techo va a dos aguas con la cumbrera a lo largo de la nave,
+  // así que desde la cámara se ve **una sola falda**, la de la derecha: la otra mira para el otro lado.
+  const nb = fv - fd;
+  p.box(n0, 0.18, n1, nb, z0, NAVE_H - z0, SANTUARIO_BRICK, 'brick', [], [
+    { t0: 0, t1: 99, k0: 0, k1: z0, c: ATRIO[2] },
+  ]);
+  // Las **dos** faldas del techo: la de la derecha, que da a la cámara, y la de la izquierda, que se ve
+  // desde arriba y va más oscura. Con una sola falda la mitad de la planta queda con el techo de ladrillo
+  // del cuerpo, que es lo que se ve si no se pinta: una ladera es una superficie inclinada, no una tapa.
+  const ry = NAVE_H + 5;
+  p.poly([p.P(UM, 0.14, ry), p.P(n1 + 0.05, 0.14, NAVE_H), p.P(n1 + 0.05, nb, NAVE_H), p.P(UM, nb, ry)], (_x, y) =>
+    y % 3 === 0 ? shade(SANTUARIO_SLATE[0], 0.9) : SANTUARIO_SLATE[0],
+  );
+  p.poly([p.P(n0 - 0.05, 0.14, NAVE_H), p.P(UM, 0.14, ry), p.P(UM, nb, ry), p.P(n0 - 0.05, nb, NAVE_H)], (_x, y) =>
+    y % 3 === 0 ? shade(SANTUARIO_SLATE[2], 0.92) : SANTUARIO_SLATE[2],
+  );
+  // La cumbrera, que de día es la línea más clara del techo.
+  p.px.line(p.P(UM, 0.14, ry), p.P(UM, nb, ry), shade(SANTUARIO_SLATE[0], 1.25));
+  // Los contrafuertes del costado que se ve.
+  for (let k = 1; k <= 3; k++) {
+    const v = ((nb - 0.18) * k) / 4 + 0.18;
+    p.box(n1 - 0.02, v - 0.1, n1 + 0.06, v + 0.1, z0, 13, SANTUARIO_BRICK, 'brick');
+  }
+
+  // El frente: un cuerpo de ladrillo más alto que la nave, con el cornisamiento de piedra y las pilastras
+  // de las puntas. El cornisamiento va **en el muro** y no como losa: una losa de piedra sobre toda la
+  // planta es una bandeja gris apoyada en el techo.
+  const fw = Math.round((n1 - n0) * 16);
+  const kc = FACADE_H - z0;
+  p.box(n0, nb, n1, fv, z0, kc, SANTUARIO_BRICK, 'brick', [
+    { t0: 0, t1: 99, k0: 0, k1: z0, c: ATRIO[2] },
+    { t0: 0, t1: 99, k0: kc - 2, k1: kc - 1, c: STONE_LIGHT[2] },
+    { t0: 0, t1: 99, k0: kc - 1, k1: kc, c: STONE_LIGHT[1] },
+    { t0: 0, t1: 4, k0: 0, k1: kc - 2, c: shade(SANTUARIO_BRICK[1], 1.12) },
+    { t0: fw - 4, t1: fw, k0: 0, k1: kc - 2, c: shade(SANTUARIO_BRICK[1], 1.12) },
+    { t0: 0, t1: 99, k0: 10, k1: 11, c: STONE_LIGHT[2] },
+  ], [], shade(ATRIO[2], 0.8));
+
+  // El portal: un arco de piedra con la puerta oscura adentro, y el escalón. La puerta va **antes** que el
+  // marco en la lista: el primer parche que toca un píxel gana.
+  const dw = 7;
+  const dt = Math.round(fw / 2) - dw;
+  const front: Patch[] = [];
+  // La puerta, en umber y no en casi negro: a 1x un rectángulo negro es un agujero en el muro.
+  for (let k = 0; k < 8; k++) front.push({ t0: dt + 2, t1: dt + dw * 2 - 2, k0: k, k1: k + 1, c: PUERTA });
+  front.push({ t0: dt + 3, t1: dt + dw * 2 - 3, k0: 8, k1: 9, c: PUERTA });
+  front.push({ t0: dt + 4, t1: dt + dw * 2 - 4, k0: 9, k1: 10, c: shade(PUERTA, 1.5) });
+  for (let k = 0; k < 11; k++) front.push({ t0: dt, t1: dt + dw * 2, k0: k, k1: k + 1, c: k > 8 ? STONE_LIGHT[2] : STONE_LIGHT[1] });
+  p.box(n0 + 0.04, fv - 0.02, n1 - 0.04, fv + 0.05, 0, 11, SANTUARIO_BRICK, 'brick', front);
+  p.box(n0 + 0.2, fv + 0.03, n1 - 0.2, fv + 0.13, 0, 1, ATRIO, 'plain');
+
+  /** Una torre: el cuerpo, el campanario con la campana, el cornisamiento, la aguja y la cruz. */
+  const tower = (u0: number, u1: number) => {
+    const tv0 = nb - 0.1;
+    const tv1 = fv + 0.07;
+    const bw = Math.round((u1 - u0) * 16);
+    const bt = Math.round(bw / 2) - 2;
+    const bs = Math.round(((tv1 - tv0) * 16) / 2) - 2;
+    // La campana va **antes** que el hueco: el primer parche que toca un píxel gana, y al revés el hueco
+    // se come la campana y el campanario queda un agujero negro.
+    p.box(u0, tv0, u1, tv1, z0, 31, SANTUARIO_BRICK, 'brick', [
+      { t0: 0, t1: 99, k0: 0, k1: z0, c: ATRIO[2] },
+      { t0: 0, t1: 99, k0: 29, k1: 31, c: STONE_LIGHT[1] },
+      { t0: 0, t1: 99, k0: 20, k1: 21, c: STONE_LIGHT[2] },
+      { t0: bt + 1, t1: bt + 3, k0: 23, k1: 25, c: CAMPANA },
+      { t0: bt, t1: bt + 4, k0: 21, k1: 28, c: INSIDE },
+    ], [
+      { t0: 0, t1: 99, k0: 29, k1: 31, c: STONE_LIGHT[2] },
+      { t0: bs + 1, t1: bs + 3, k0: 23, k1: 25, c: CAMPANA },
+      { t0: bs, t1: bs + 4, k0: 21, k1: 28, c: shade(INSIDE, 1.25) },
+    ]);
+    // La aguja: una pirámide alta y filosa, que es la punta que se ve de lejos. Va más oscura que el
+    // cuerpo de la torre, o la torre y su punta son la misma masa.
+    p.hip(u0 + 0.02, tv0 + 0.02, u1 - 0.02, tv1 - 0.02, z0 + 31, 19, SANTUARIO_SPIRE);
+    // La cruz arranca **en la punta de la aguja**, no dos píxeles arriba: colgada en el aire no es una cruz,
+    // es un signo flotando sobre la torre.
+    const [cx2, cy2] = p.P((u0 + u1) / 2, (tv0 + tv1) / 2, z0 + 50.4);
+    const ix = Math.round(cx2);
+    const iy = Math.round(cy2);
+    p.px.rect(ix, iy - 5, 1, 6, hex('#4f4a43'));
+    p.px.rect(ix - 1, iy - 4, 3, 1, hex('#4f4a43'));
+  };
+  tower(n0, n0 + tw);
+  tower(n1 - tw, n1);
+
+  // El rosetón, entre las torres y arriba del portal: una rueda de vidrio con el aro de piedra y los
+  // radios. Es el otro detalle que dice basílica desde lejos.
+  {
+    const [rx, ry] = p.P(PC, fv, z0 + 15);
+    const cx3 = Math.round(rx);
+    const cy3 = Math.round(ry);
+    p.px.blob(cx3, cy3, 4, 3.8, [shade(ROSETON, 1.35), ROSETON, shade(ROSETON, 0.7)], STONE_LIGHT[1], false);
+    p.px.set(cx3, cy3 - 2, STONE_LIGHT[2]);
+    p.px.set(cx3, cy3 + 2, STONE_LIGHT[2]);
+    p.px.set(cx3 - 2, cy3, STONE_LIGHT[2]);
+    p.px.set(cx3 + 2, cy3, STONE_LIGHT[2]);
+  }
+
+  // Los árboles, en el atrio y **afuera de la planta**: plantado adentro, el de atrás aparece arriba del
+  // techo y parece un árbol que crece de la pizarra.
+  p.tree(0.3, V - 0.16);
+  p.tree(U - 0.3, V - 0.12);
+  p.shadow(0.03, 0.03, U - 0.03, V - 0.03);
+}
+
+/** Paints el Santuario on the lot the camera sees: 3x4. */
+export function paintSantuario(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, SANTUARIO_MAX_Z);
+  paintSantuarioOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const santuarioCache = new Map<string, Sprite>();
+
+/** El Santuario as a sprite, keyed by the shape of the lot the camera sees. */
+export function santuarioPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = santuarioCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintSantuario(vw, vh));
+    santuarioCache.set(key, sprite);
+  }
+  return sprite;
+}
+
+const SINDICATO_MAX_Z = 40;
+
+/** El hormigón del sindicato, con los tres tonos a mano: el automático lo deja gris de oficina. */
+const SINDICATO_WALL: Ramp = [hex('#e6dfd0'), hex('#d2cbbb'), hex('#b6ae9c')];
+/** El rojo de la bandera y del estandarte: es lo único rojo del edificio y lo que lo nombra. */
+const SINDICATO_RED = hex('#b23a2e');
+/** El patio de cemento, que es donde el sindicato hace sus asambleas. */
+const PATIO_SECO: Ramp = [hex('#c9c4b6'), hex('#b8b2a4'), hex('#a29c8f')];
+
+/**
+ * El Sindicato (3x2): **el salón de un pueblo obrero**, como el de los frigoríficos de Berisso. Un bloque
+ * de hormigón bajo con el salón grande atrás, la faja de ventanas de las oficinas y el portón del salón en
+ * el medio, con el estandarte rojo encima. Un sindicato es un edificio que **dice su nombre**: sin el
+ * estandarte es una sede social cualquiera.
+ */
+function paintSindicatoOn(p: Pen, vw: number, vh: number): void {
+  const U = vw;
+  const V = vh;
+  const z0 = 1;
+  const SALON_H = 22; // el salón, adelante y bajo
+  const OFI_H = 29; // las oficinas, atrás, que le sacan una cabeza
+  const HA0 = 0.22;
+  const HA1 = 1.06;
+  const SA0 = 1.06;
+  const SA1 = 1.68;
+
+  // El patio de cemento, con las juntas de los paños: el piso tiene que ser una losa, no una mancha.
+  p.poly([p.P(0.03, 0.03), p.P(U - 0.03, 0.03), p.P(U - 0.03, V - 0.03), p.P(0.03, V - 0.03)], (_x, y) =>
+    y % 7 === 0 ? shade(PATIO_SECO[1], 0.92) : PATIO_SECO[1],
+  );
+
+  // Las oficinas, atrás y más altas: la faja de vidrio corre por toda la cara y es lo que se ve por encima
+  // del salón. Una sola masa de hormigón no se lee; dos escalonadas sí.
+  const ow = Math.round((U - 0.72) * 16);
+  const ofi: Patch[] = [
+    { t0: 0, t1: 99, k0: 0, k1: z0, c: PATIO_SECO[2] },
+    { t0: 0, t1: 99, k0: OFI_H - z0 - 1, k1: OFI_H - z0, c: STONE_LIGHT[2] },
+  ];
+  // La faja tiene que quedar **por encima del techo del salón** o no se ve: lo único que asoma de las
+  // oficinas son los últimos píxeles de su cara.
+  ofi.push(...glazed(3, ow - 3, OFI_H - z0 - 5, 4, 4));
+  p.box(0.36, HA0, U - 0.36, HA1, z0, OFI_H - z0, SINDICATO_WALL, 'plain', ofi, [
+    { t0: 0, t1: 99, k0: 0, k1: z0, c: PATIO_SECO[2] },
+    { t0: 0, t1: 99, k0: OFI_H - z0 - 1, k1: OFI_H - z0, c: STONE_LIGHT[2] },
+  ]);
+  p.parapet(0.36, HA0, U - 0.36, HA1, z0 + OFI_H - z0, 1, [ROOF_DECK, ROOF_DECK, shade(ROOF_DECK, 0.8)]);
+
+  // El salón, adelante: el bloque ancho con el portón en el medio y la faja de ventanas altas.
+  const fw = Math.round((U - 0.36) * 16);
+  const salon: Patch[] = [
+    { t0: 0, t1: 99, k0: 0, k1: z0, c: PATIO_SECO[2] },
+    { t0: 0, t1: 99, k0: SALON_H - z0 - 1, k1: SALON_H - z0, c: STONE_LIGHT[1] },
+  ];
+  salon.push(...glazed(2, fw - 2, SALON_H - z0 - 8, 4, 5));
+  p.box(0.18, SA0, U - 0.18, SA1, z0, SALON_H - z0, SINDICATO_WALL, 'plain', salon, salon, ROOF_DECK);
+  p.parapet(0.18, SA0, U - 0.18, SA1, z0 + SALON_H - z0, 1, [ROOF_DECK, ROOF_DECK, shade(ROOF_DECK, 0.8)]);
+
+  // El portón del salón: ancho, con el marco de piedra y el escalón. La puerta va en umber y no en negro:
+  // a 1x un rectángulo negro es un agujero en la pared. **La puerta va primero en la lista**, porque el
+  // primer parche que toca un píxel gana y el marco la tapaba entera.
+  const dw = 7;
+  const dt = Math.round(fw / 2) - dw;
+  // El portón va en madera clara y con la junta de las dos hojas: a 1x un rectángulo oscuro es un agujero.
+  const hoja = shade(PUERTA, 1.45);
+  const doorP: Patch[] = [
+    { t0: dt + 1, t1: dt + dw * 2 - 1, k0: 1, k1: 9, c: hoja },
+    { t0: dt + dw - 1, t1: dt + dw + 1, k0: 1, k1: 9, c: shade(PUERTA, 1.05) },
+    { t0: dt + 3, t1: dt + dw * 2 - 3, k0: 4, k1: 9, c: shade(hoja, 1.2) },
+    { t0: dt, t1: dt + dw * 2, k0: 9, k1: 10, c: STONE_LIGHT[1] },
+    { t0: dt, t1: dt + 1, k0: 0, k1: 10, c: STONE_LIGHT[1] },
+    { t0: dt + dw * 2 - 1, t1: dt + dw * 2, k0: 0, k1: 10, c: STONE_LIGHT[2] },
+  ];
+  p.box(0.18, SA1, U - 0.18, SA1 + 0.06, 0, 10, SINDICATO_WALL, 'plain', doorP);
+  p.box(0.18, SA1 + 0.02, U - 0.18, SA1 + 0.14, 0, 1, STONE_LIGHT, 'plain');
+
+  // El estandarte rojo sobre el portón: el paño, la franja clara del nombre y la punta que cuelga. Es la
+  // única cosa roja del edificio, y por eso alcanza para nombrarlo.
+  {
+    const [bx, by] = p.P(U / 2, SA1 + 0.06, z0 + 10);
+    const ix = Math.round(bx);
+    const iy = Math.round(by);
+    p.px.rect(ix - 8, iy - 3, 17, 4, SINDICATO_RED);
+    p.px.rect(ix - 6, iy - 2, 13, 2, hex('#f2efe6'));
+    p.px.rect(ix - 1, iy - 2, 1, 2, SINDICATO_RED);
+    p.px.rect(ix - 2, iy + 1, 5, 1, SINDICATO_RED);
+    p.px.rect(ix - 1, iy + 2, 3, 1, SINDICATO_RED);
+  }
+
+  // La bandera roja sobre la azotea de las oficinas: el mástil y el paño, con el borde de arriba claro.
+  {
+    const [fx, fy] = p.P(U / 2, HA0 + 0.26, z0 + OFI_H + 1);
+    const cx = Math.round(fx);
+    const cy = Math.round(fy);
+    p.px.rect(cx, cy - 10, 1, 10, LEG);
+    for (let j = 0; j < 6; j++) p.px.rect(cx + 1, cy - 10 + j, j < 4 ? 5 : 3, 1, SINDICATO_RED);
+    p.px.rect(cx + 1, cy - 10, 5, 1, shade(SINDICATO_RED, 1.45));
+  }
+
+  // El árbol del patio, adelante a la izquierda, y la sombra.
+  p.tree(0.3, V - 0.12);
+  p.shadow(0.03, 0.03, U - 0.03, V - 0.03);
+}
+
+/** Paints el Sindicato on the lot the camera sees: 3x2. */
+export function paintSindicato(vw: number, vh: number): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penRect(vw, vh, SINDICATO_MAX_Z);
+  paintSindicatoOn(p, vw, vh);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
+const sindicatoCache = new Map<string, Sprite>();
+
+/** El Sindicato as a sprite, keyed by the shape of the lot the camera sees. */
+export function sindicatoPixelSprite(vw: number, vh: number): Sprite {
+  const key = `${vw}x${vh}`;
+  let sprite = sindicatoCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(paintSindicato(vw, vh));
+    sindicatoCache.set(key, sprite);
+  }
+  return sprite;
+}
+
 export function spriteOf(painted: { px: Pixels; ax: number; ay: number; smoke?: [number, number][]; attach?: [number, number] }): Sprite {
   return { canvas: painted.px.toCanvas(1), ax: painted.ax, ay: painted.ay, smoke: painted.smoke ?? [], attach: painted.attach };
 }

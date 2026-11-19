@@ -1,4 +1,3 @@
-import { shade } from './color';
 import type { UniqueKind } from '../config';
 import type { ZoneKind } from '../world/world';
 import {
@@ -12,6 +11,8 @@ import {
   puentePixelSprite,
   regimientoPixelSprite,
   residentialPixelSprite,
+  santuarioPixelSprite,
+  sindicatoPixelSprite,
   teatroPixelSprite,
 } from './pixelArt';
 
@@ -33,11 +34,6 @@ export interface Sprite {
   attach?: [number, number];
 }
 
-/** Face tone factors: measured on the reference, a cream wall (#f6f2e8) shows its sides at #aaa69c and #918d85. */
-const TOP = 1;
-const LEFT = 0.69;
-const RIGHT = 0.59;
-
 type Pt = [number, number];
 
 class Painter {
@@ -54,203 +50,6 @@ class Painter {
   /** Footprint coordinates (u, v in cells, z in px) → sprite pixels. */
   P(u: number, v: number, z: number): Pt {
     return [this.ax + 16 * (u - v), this.ay + 8 * (u + v) - z];
-  }
-
-  poly(pts: Pt[], fill: string, stroke?: string): void {
-    const g = this.g;
-    g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.closePath();
-    g.fillStyle = fill;
-    g.fill();
-    if (stroke) {
-      g.strokeStyle = stroke;
-      g.lineWidth = 0.6;
-      g.stroke();
-    }
-  }
-
-  box(u0: number, v0: number, u1: number, v1: number, z0: number, h: number, color: string, outline = false): void {
-    const z1 = z0 + h;
-    const P = this.P.bind(this);
-    const edge = outline ? shade(color, 0.45) : undefined;
-    this.poly([P(u1, v0, z0), P(u1, v1, z0), P(u1, v1, z1), P(u1, v0, z1)], shade(color, RIGHT), edge);
-    this.poly([P(u0, v1, z0), P(u1, v1, z0), P(u1, v1, z1), P(u0, v1, z1)], shade(color, LEFT), edge);
-    this.poly([P(u0, v0, z1), P(u1, v0, z1), P(u1, v1, z1), P(u0, v1, z1)], shade(color, TOP), edge);
-  }
-
-  /** Rectangle on the left-facing wall (v fixed), spanning u0..u1 and z0..z1. */
-  left(v: number, u0: number, u1: number, z0: number, z1: number, color: string): void {
-    const P = this.P.bind(this);
-    this.poly([P(u0, v, z0), P(u1, v, z0), P(u1, v, z1), P(u0, v, z1)], shade(color, LEFT));
-  }
-
-  /** Rectangle on the right-facing wall (u fixed), spanning v0..v1 and z0..z1. */
-  right(u: number, v0: number, v1: number, z0: number, z1: number, color: string): void {
-    const P = this.P.bind(this);
-    this.poly([P(u, v0, z0), P(u, v1, z0), P(u, v1, z1), P(u, v0, z1)], shade(color, RIGHT));
-  }
-
-  /** Grid of windows on both visible walls of a box. */
-  windows(
-    u0: number,
-    v0: number,
-    u1: number,
-    v1: number,
-    zFrom: number,
-    zTo: number,
-    floorH: number,
-    color: string,
-    cols = 3,
-    winH = 3,
-  ): void {
-    for (let z = zFrom; z + winH <= zTo; z += floorH) {
-      for (let c = 0; c < cols; c++) {
-        const a = u0 + ((u1 - u0) * (c + 0.25)) / cols;
-        const b = u0 + ((u1 - u0) * (c + 0.75)) / cols;
-        this.left(v1, a, b, z, z + winH, color);
-        const p = v0 + ((v1 - v0) * (c + 0.25)) / cols;
-        const q = v0 + ((v1 - v0) * (c + 0.75)) / cols;
-        this.right(u1, p, q, z, z + winH, color);
-      }
-    }
-  }
-
-  hipRoof(u0: number, v0: number, u1: number, v1: number, z: number, rh: number, color: string): void {
-    const P = this.P.bind(this);
-    const apex = P((u0 + u1) / 2, (v0 + v1) / 2, z + rh);
-    this.poly([P(u0, v0, z), P(u1, v0, z), apex], shade(color, 0.95));
-    this.poly([P(u0, v0, z), P(u0, v1, z), apex], shade(color, 1.05));
-    this.poly([P(u0, v1, z), P(u1, v1, z), apex], shade(color, LEFT));
-    this.poly([P(u1, v0, z), P(u1, v1, z), apex], shade(color, RIGHT));
-  }
-
-  /** Gable roof with the ridge running along u. */
-  gableRoof(u0: number, v0: number, u1: number, v1: number, z: number, rh: number, color: string, wall: string): void {
-    const P = this.P.bind(this);
-    const vm = (v0 + v1) / 2;
-    this.poly([P(u0, v0, z), P(u1, v0, z), P(u1, vm, z + rh), P(u0, vm, z + rh)], shade(color, 1.05));
-    this.poly([P(u0, v1, z), P(u1, v1, z), P(u1, vm, z + rh), P(u0, vm, z + rh)], shade(color, LEFT));
-    this.poly([P(u1, v0, z), P(u1, v1, z), P(u1, vm, z + rh)], shade(wall, RIGHT));
-  }
-
-  cylinder(cu: number, cv: number, r: number, z0: number, h: number, color: string): void {
-    const g = this.g;
-    const [bx, by] = this.P(cu, cv, z0);
-    const [, ty] = this.P(cu, cv, z0 + h);
-    const rx = r * 22.6;
-    const ry = rx / 2;
-    g.fillStyle = shade(color, 0.72);
-    g.fillRect(bx - rx, ty, rx * 2, by - ty);
-    g.fillStyle = shade(color, 0.88);
-    g.fillRect(bx - rx, ty, rx * 0.8, by - ty);
-    g.beginPath();
-    g.ellipse(bx, by, rx, ry, 0, 0, Math.PI);
-    g.fillStyle = shade(color, 0.72);
-    g.fill();
-    g.beginPath();
-    g.ellipse(bx, ty, rx, ry, 0, 0, Math.PI * 2);
-    g.fillStyle = shade(color, 1.05);
-    g.fill();
-    g.strokeStyle = shade(color, 0.5);
-    g.lineWidth = 0.6;
-    g.stroke();
-  }
-
-  /** Red-and-white striped chimney; registers a smoke source at its top. */
-
-  /** Striped awning hanging off the left wall. */
-
-  /** Same awning on the right wall. */
-
-  /**
-   * A tree, in the same language as the buildings: flat facets, the same three values of light and
-   * the same thin dark edge. The crown is a ring of faces around an apex, never an ellipse, and the
-   * trunk is drawn in whole pixels with a lit side and a shaded one.
-   */
-  tree(u: number, v: number, kind: number, scale = 1): void {
-    const s = scale;
-    if (kind === 4) {
-      // Eucalipto: tall and narrow.
-      this.post(u, v, 8 * s, TREE.trunkLight);
-      this.crown(u, v, 0.17 * s, 0.12 * s, 6 * s, 10 * s, TREE.eucalyptus);
-      this.crown(u - 0.05 * s, v - 0.03 * s, 0.12 * s, 0.09 * s, 13 * s, 7 * s, TREE.eucalyptus);
-      return;
-    }
-    if (kind === 2) {
-      // Palo borracho: the swollen green trunk is the tree, crowned by its flowers.
-      this.post(u, v, 3 * s, TREE.paloTrunk);
-      this.crown(u, v, 0.07 * s, 0.05 * s, 1.5 * s, 5.5 * s, TREE.paloTrunk);
-      this.crown(u, v, 0.19 * s, 0.15 * s, 6.5 * s, 5 * s, TREE.palo);
-      this.crown(u - 0.06 * s, v - 0.05 * s, 0.09 * s, 0.07 * s, 8 * s, 3 * s, TREE.palo);
-      return;
-    }
-    this.post(u, v, 5 * s, TREE.trunk);
-    if (kind === 3) {
-      // Ombú: wide dark crown.
-      this.crown(u, v, 0.32 * s, 0.26 * s, 4 * s, 8 * s, TREE.ombu);
-      this.crown(u - 0.07 * s, v - 0.05 * s, 0.18 * s, 0.15 * s, 8 * s, 5 * s, TREE.ombu);
-    } else {
-      // Jacarandá: lilac crown, muted so it sits with the rest of the map.
-      this.crown(u, v, 0.28 * s, 0.23 * s, 4 * s, 7 * s, TREE.jacaranda);
-      this.crown(u - 0.06 * s, v - 0.05 * s, 0.16 * s, 0.13 * s, 7 * s, 4.5 * s, TREE.jacaranda);
-    }
-  }
-
-  /**
-   * A faceted crown: three rings and eight faces per band, so the silhouette has shoulders and
-   * reads as a crown instead of a cone. Each face is lit by the side it looks at, the way the walls
-   * are (a face turned to +v is lighter than one turned to +u) and the upper bands are brighter.
-   */
-  crown(cu: number, cv: number, ru: number, rv: number, z: number, h: number, color: string): void {
-    const P = this.P.bind(this);
-    const edge = shade(color, 0.58);
-    const faces = 8;
-    /** Height (0 at the base, 1 at the apex) and radius of each ring. The middle one is the widest. */
-    const rings: [number, number][] = [
-      [0, 0.78],
-      [0.42, 1],
-      [0.82, 0.5],
-    ];
-    const ring = (k: number, t: number, scale: number): Pt => {
-      const a = (k / faces) * Math.PI * 2;
-      return P(cu + Math.cos(a) * ru * scale, cv + Math.sin(a) * rv * scale, z + h * t);
-    };
-    for (let band = 0; band < rings.length; band++) {
-      const [t0, s0] = rings[band];
-      const above = rings[band + 1];
-      const [t1, s1] = above ?? [1, 0];
-      for (let k = 0; k < faces; k++) {
-        const a = ((k + 0.5) / faces) * Math.PI * 2;
-        // -1 for the face turned away from the light, +1 for the one turned towards it.
-        const facing = -(Math.cos(a) + Math.sin(a)) / 2;
-        const fill = shade(color, 0.86 + 0.2 * facing + 0.08 * band);
-        const low = [ring(k, t0, s0), ring(k + 1, t0, s0)];
-        if (above) this.poly([...low, ring(k + 1, t1, s1), ring(k, t1, s1)], fill, edge);
-        else this.poly([...low, P(cu, cv, z + h)], fill, edge);
-      }
-    }
-  }
-
-  /** A trunk: whole pixels, one lit column and one in shadow, like the two visible walls of a box. */
-  post(cu: number, cv: number, h: number, color: string): void {
-    const [x, y] = this.P(cu, cv, 0);
-    const bx = Math.round(x);
-    const by = Math.round(y);
-    const tall = Math.max(2, Math.round(h));
-    this.g.fillStyle = shade(color, 1.06);
-    this.g.fillRect(bx - 2, by - tall, 1, tall);
-    this.g.fillStyle = color;
-    this.g.fillRect(bx - 1, by - tall, 1, tall);
-    this.g.fillStyle = shade(color, 0.68);
-    this.g.fillRect(bx, by - tall, 1, tall);
-  }
-
-  /** A park bench: a seat and its back, built like a tiny box so it sits on the ground like the rest. */
-  bench(cu: number, cv: number): void {
-    this.box(cu - 0.07, cv - 0.025, cu + 0.07, cv + 0.025, 0, 1.4, BENCH);
-    this.box(cu - 0.07, cv - 0.03, cu + 0.07, cv - 0.015, 1.4, 1.3, shade(BENCH, 1.12));
   }
 }
 
@@ -271,19 +70,6 @@ function painter(cells: number, height: number): Painter {
 function done(p: Painter, attach?: [number, number]): Sprite {
   return { canvas: p.canvas, ax: p.ax, ay: p.ay, smoke: p.smoke, attach };
 }
-
-/** Trees and plazas: the greens of the terrain, one violet and one pink. */
-const TREE = {
-  trunk: '#61472d',
-  trunkLight: '#b09e6d',
-  jacaranda: '#ae8eff',
-  ombu: '#46773b',
-  palo: '#e87fa8',
-  paloTrunk: '#879a72',
-  eucalyptus: '#809e89',
-} as const;
-
-const BENCH = '#8a6a45';
 
 /** A building on fire: scorched, with flames on top and smoke rising from them. */
 function burningOf(base: Sprite): Sprite {
@@ -352,15 +138,6 @@ function abandonedOf(base: Sprite): Sprite {
     g.stroke();
   }
   return { canvas: c, ax: base.ax, ay: base.ay, smoke: [] };
-}
-
-// ---------------------------------------------------------------- one-off buildings
-
-/** A painter for a footprint of `vw`×`vh` cells in view space and `height` px above the ground. */
-function rectPainter(vw: number, vh: number, height: number): Painter {
-  const w = 16 * (vw + vh) + 4;
-  const h = 8 * (vw + vh) + height + 4;
-  return new Painter(makeCanvas(w, h), 16 * vh + 2, height + 2);
 }
 
 const cache = new Map<string, Sprite>();
@@ -434,106 +211,6 @@ export function routeSignSpriteFor(dvx: number, dvy: number): Sprite {
 
 // ---------------------------------------------------------------- the uniques of each government
 
-/**
- * The santuario (3x4): the basilica of Lujan, in brick, with the two towers of its front and the rose
- * window between them. The spires are drawn as the pyramids they are, so the building ends in two
- * points instead of a dome, which is what tells it apart from a church of any other style.
- */
-function santuarioArt(vw: number, vh: number): Sprite {
-  const p = rectPainter(vw, vh, 66);
-  const brick = '#9c5a44';
-  const brickDark = '#7d4433';
-  const stone = '#e5ddc8';
-  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1, '#c9c2b1', false);
-  p.box(0.14, vh - 0.95, vw - 0.14, vh - 0.1, 1, 1.3, '#ddd6c4', true);
-  const z0 = 2.2;
-  // The nave: a long brick block with its gable roof and the buttresses that hold it.
-
-  for (let k = 0; k < 3; k++) {
-    const v = 1.05 + k * 1.45;
-    p.box(0.64, v, 0.75, v + 0.24, z0, 16, brickDark, true);
-    p.box(vw - 0.75, v, vw - 0.64, v + 0.24, z0, 16, brickDark, true);
-  }
-  // The front: two towers with their belfries and spires, and the gable with the rose window between.
-  // The towers are the shape of the building, so they get the width: narrow ones read as pilasters.
-  const front = vh - 1;
-  const tower = (u: number) => {
-    const tw = 0.36;
-    // The towers are a touch lighter than the nave so their silhouette separates from the roof
-    // behind them: at game size the two bricks otherwise merge into one mass.
-    const towerBrick = '#ab6650';
-    p.box(u - tw, front - 0.7, u + tw, front + 0.08, z0, 30, towerBrick, true);
-    p.box(u - tw - 0.06, front - 0.76, u + tw + 0.06, front + 0.14, z0 + 30, 1, stone, true);
-    p.left(front + 0.075, u - 0.26, u + 0.26, z0 + 23.5, z0 + 28.6, '#2f2b26');
-    p.right(u + tw - 0.005, front - 0.5, front - 0.1, z0 + 23.5, z0 + 28.6, '#2f2b26');
-    // The bell in the belfry, and the spire with its cross: tall and sharp, as Luján's are.
-    p.left(front + 0.07, u - 0.07, u + 0.07, z0 + 25.4, z0 + 27.6, '#c9a24a');
-    p.hipRoof(u - 0.3, front - 0.7, u + 0.3, front + 0.08, z0 + 31, 18, '#a95a44');
-    p.box(u - 0.05, front - 0.34, u + 0.05, front - 0.24, z0 + 48, 3.2, '#5d554b', false);
-    p.box(u - 0.14, front - 0.34, u + 0.14, front - 0.24, z0 + 49.6, 0.8, '#5d554b', false);
-  };
-  // The nave and its front first, and the towers last: drawn after, they stand in front of the
-  // gable the way the two towers of a basilica stand in front of it, and neither one disappears.
-  p.box(0.74, 0.5, vw - 0.74, vh - 1, z0, 19, brick, true);
-  p.gableRoof(0.7, 0.46, vw - 0.7, vh - 0.96, z0 + 19, 4.4, '#8a4a3a', brick);
-  p.box(0.86, front - 0.5, vw - 0.86, front - 0.02, z0, 21, brick, true);
-  p.gableRoof(0.82, front - 0.54, vw - 0.82, front + 0.02, z0 + 21, 3.4, '#7d4433', brick);
-  tower(0.44);
-  tower(vw - 0.44);
-  const [rx, ry] = p.P(vw / 2, front - 0.02, z0 + 15.5);
-  p.g.beginPath();
-  p.g.ellipse(rx, ry, 4, 4.4, 0, 0, Math.PI * 2);
-  p.g.fillStyle = '#3f5a72';
-  p.g.fill();
-  p.g.strokeStyle = stone;
-  p.g.lineWidth = 1;
-  p.g.stroke();
-  // The portal: a thin stone arch over the dark door, the way the basilica opens on its atrium.
-  p.left(front - 0.015, vw / 2 - 0.3, vw / 2 + 0.3, z0 + 0.2, z0 + 8.6, '#3b322b');
-  p.left(front - 0.02, vw / 2 - 0.34, vw / 2 + 0.34, z0 + 8.6, z0 + 9.4, stone);
-  return done(p);
-}
-
-/**
- * The sindicato (3x2): the union hall of a working town, like the one of the meat workers in Berisso.
- * A plain concrete block with the big hall behind the wide door, the band of windows of the offices
- * and the banner over the entrance, because a union building is a building that shows its name.
- */
-function sindicatoArt(vw: number, vh: number): Sprite {
-  const p = rectPainter(vw, vh, 38);
-  const concrete = '#d8d2c2';
-  const red = '#b23a2e';
-  p.box(0.02, 0.02, vw - 0.02, vh - 0.02, 0, 1, '#c2bba9', false);
-  const z0 = 1;
-  p.box(0.22, 0.26, vw - 0.22, vh - 0.34, z0, 14, concrete, true);
-  p.box(0.18, 0.22, vw - 0.18, vh - 0.3, z0 + 14, 0.9, '#b8b2a2', true);
-  p.windows(0.22, 0.26, vw - 0.22, vh - 0.34, z0 + 7, z0 + 12.6, 5.6, '#54707f', 3, 4);
-  for (const a of [0.36, 0.86]) p.left(vh - 0.345, a, a + 0.34, z0 + 1.6, z0 + 6, '#54707f');
-  // The hall opens on the street with its wide door, a stone frame and a step, and the banner over it.
-  p.left(vh - 0.33, vw / 2 - 0.56, vw / 2 + 0.56, z0 + 0.2, z0 + 9.4, '#d0c9b8');
-  p.left(vh - 0.335, vw / 2 - 0.46, vw / 2 + 0.46, z0 + 0.2, z0 + 8.6, '#3f3830');
-  p.box(vw / 2 - 0.6, vh - 0.44, vw / 2 + 0.6, vh - 0.06, 1, 0.8, '#cfc8b8', true);
-  p.left(vh - 0.35, vw / 2 - 0.62, vw / 2 + 0.62, z0 + 10.4, z0 + 13.4, red);
-  const [bx, by] = p.P(vw / 2, vh - 0.36, z0 + 11.9);
-  p.g.fillStyle = '#f2efe6';
-  p.g.fillRect(Math.round(bx) - 5, Math.round(by) - 2, 10, 4);
-  p.g.fillStyle = red;
-  p.g.beginPath();
-  p.g.arc(bx, by, 1.5, 0, Math.PI * 2);
-  p.g.fill();
-  // The flag over the door and the tree at the corner.
-  const fu = vw / 2 + 0.62;
-  const fv = vh - 0.5;
-  p.post(fu, fv, 24, '#7d776d');
-  const [fx, fy] = p.P(fu, fv, 24);
-  p.g.fillStyle = red;
-  p.g.fillRect(Math.round(fx) + 1, Math.round(fy) - 5, 7, 5);
-  p.g.fillStyle = '#f2e6b8';
-  p.g.fillRect(Math.round(fx) + 3, Math.round(fy) - 4, 3, 3);
-  p.tree(0.34, vh - 0.34, 3, 0.75);
-  return done(p);
-}
-
 /** The sprite of a unique building, on a footprint of `vw`×`vh` lots as the camera sees it. */
 export function uniqueSprite(kind: UniqueKind, vw: number, vh: number): Sprite {
   return cached(`unique:${kind}:${vw}x${vh}`, () => {
@@ -555,9 +232,9 @@ export function uniqueSprite(kind: UniqueKind, vw: number, vh: number): Sprite {
       case 'planetario':
         return planetarioPixelSprite(vw, vh);
       case 'santuario':
-        return santuarioArt(vw, vh);
+        return santuarioPixelSprite(vw, vh);
       case 'sindicato':
-        return sindicatoArt(vw, vh);
+        return sindicatoPixelSprite(vw, vh);
     }
   });
 }
