@@ -139,3 +139,12 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
   monte (`nearStair` la rechaza en un radio de 2,1): un pino al lado de la cruz le pelea el remate.
 - **L18.** Evidencia: `npx vitest run` **1139 / 67 archivos** verdes · `tsc --noEmit` limpio · las dos
   orientaciones en el tablero.
+- **L40.** Corrección de L5, que leí mal y repetí mal: **el Calvario sí entra en el juego**. L5 hablaba
+  de `edificios-unicos.html`, el tablero de arte, y yo lo conté como si fuera el mapa de la partida. Son
+  dos cosas distintas, y el Calvario **no es una pieza precolocada** en ningún mapa: es una herramienta de
+  construcción de `src/world/tools.ts` (tecla `[`) que el jugador pone donde quiera, con la regla de
+  `uniques.ts:197` —el lote tiene que llegar a `cima - 4` niveles, medido contra la cima **del mapa en
+  juego**, no contra un número fijo—. Medido con `uniqueRefusal` sobre cinco mapas generados por
+  `generateTerrain(seed, 48)`: **1314, 1280, 1295, 1315 y 1300 lotes válidos** de unos 2000. Entra de
+  sobra. Lo que no está observado es verlo **construido en una partida**, que es otra cosa y es barata de
+  hacer.
