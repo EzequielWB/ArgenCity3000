@@ -779,42 +779,238 @@ function bar(p: Pen, v: number): void {
   p.tank(0.62, 0.24, 19);
 }
 
-/** Level 5: the clothing store, two display windows with mannequins and a vertical sign on the corner. */
+/**
+ * Level 5: **four** department stores, not one with four colours. Level by level the street was already
+ * doing its job — a kiosk, a greengrocer, a hairdresser, a bar — and the last one was the whole avenue
+ * built out of the same box with a different awning. The four are told apart by how they meet the
+ * pavement: the display window, the arcade, the two-storey glazing and the low shed with the sign on a
+ * mast. What changes with the variant is the wall and the colour of the sign, as before.
+ */
 function clothingStore(p: Pen, v: number): void {
+  const model = v & 3;
   const wall = WALLS[(v + 5) % WALLS.length];
   const sign = SIGNS[(v + 3) % SIGNS.length];
-  const h = 26;
+  if (model === 1) storeArcade(p, wall, sign);
+  else if (model === 2) storeAtrium(p, wall, sign);
+  else if (model === 3) storeShed(p, wall, sign, v);
+  else storeWindow(p, wall, sign, v);
+}
+
+/**
+ * Model 0, the shop of the avenue: two floors, **the ground floor all glass** with the mannequins, the
+ * sign band over it and the windows of the upper floor. It is the same volume as before — the change is
+ * that the window runs from the sill to the band instead of being two holes in a wall.
+ */
+function storeWindow(p: Pen, wall: Ramp, sign: RGB, v: number): void {
   const u0 = 0.08;
   const v0 = 0.1;
   const u1 = 0.92;
   const v1 = 0.88;
+  const w = faceW(u0, u1);
+  const h = 26;
   const front: Patch[] = [
-    ...mannequins(1, 16, v),
-    { t0: 0, t1: 99, k0: 0, k1: 2, c: shade(wall[1], 0.6) },
-    ...ribbon(1, 6, 2, 6),
-    ...ribbon(10, 15, 2, 6),
-    door(7, 3, 7),
-    { t0: 0, t1: 99, k0: 8, k1: 11, c: sign },
-    ...ribbon(2, 15, 13, 4),
-    ...ribbon(2, 15, 19, 4),
+    ...mannequins(1, w, v),
+    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.6) },
+    ...ribbon(1, w - 1, 1, 8),
+    door(6, 3, 8),
+    { t0: 0, t1: 99, k0: 9, k1: 12, c: sign },
+    { t0: 0, t1: 99, k0: 12, k1: 13, c: shade(sign, 1.32) },
+    ...ribbon(2, w - 2, 14, 4),
+    ...ribbon(2, w - 2, 20, 4),
+    { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 1.18) },
   ];
   const side: Patch[] = [
-    { t0: 0, t1: 99, k0: 0, k1: 2, c: shade(wall[2], 0.6) },
-    ...ribbon(2, 13, 2, 6),
-    { t0: 0, t1: 99, k0: 8, k1: 11, c: shade(sign, 0.72) },
-    ...ribbon(3, 14, 13, 4),
-    ...ribbon(3, 14, 19, 4),
+    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[2], 0.6) },
+    ...ribbon(1, w - 1, 1, 8),
+    { t0: 0, t1: 99, k0: 9, k1: 12, c: shade(sign, 0.72) },
+    ...ribbon(2, w - 2, 14, 4),
+    ...ribbon(2, w - 2, 20, 4),
   ];
   p.shadow(u0, v0, u1, v1);
   p.box(u0, v0, u1, v1, 0, h, wall, 'plain', front, side, ROOFTOP);
-  p.canopy(u0, v1, u1, 8, shade(sign, 0.8), shade(sign, 0.64));
   p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
   p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
-  // The vertical sign on the corner, the one you see from the end of the street.
-  p.box(0.86, 0.12, 0.94, 0.2, 11, 14, [sign, shade(sign, LEFT), shade(sign, RIGHT)], 'plain');
   p.box(0.2, 0.24, 0.44, 0.4, h + 2, 3, CONCRETE, 'plain');
 }
 
+/**
+ * Model 1, the arcade: the ground floor steps back and leaves a **colonnade over the pavement**, with
+ * the shops in the shade behind it, and three floors of offices above. The hollow bottom is the whole
+ * silhouette: no other model has a hole in it.
+ */
+function storeArcade(p: Pen, wall: Ramp, sign: RGB): void {
+  const u0 = 0.06;
+  const v0 = 0.08;
+  const u1 = 0.94;
+  const v1 = 0.9;
+  const w = faceW(u0, u1);
+  const h = 30;
+  /**
+   * La arcada: los pilares y, entre ellos, la vidriera del local con la sombra del pórtico arriba. Las
+   * tres bandas —pilar, vidriera, sombra— no se pisan entre sí, que es la única forma de que el orden de
+   * los parches no importe: el primer parche que toca un píxel gana y una sombra grande pintada antes se
+   * come las vidrieras.
+   */
+  const arcade = (): Patch[] => {
+    const out: Patch[] = [];
+    for (let t = 0; t < w; t += 4) out.push({ t0: t, t1: t + 1, k0: 0, k1: 13, c: shade(wall[1], 1.08) });
+    out.push({ t0: 0, t1: 99, k0: 12, k1: 13, c: shade(wall[0], 1.18) });
+    out.push({ t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.5) });
+    for (let t = 1; t < w; t += 4) {
+      out.push({ t0: t, t1: t + 3, k0: 2, k1: 9, c: shade(GLASS, 0.92) });
+      out.push({ t0: t, t1: t + 3, k0: 9, k1: 12, c: shade(LEG, 1.3) });
+    }
+    return out;
+  };
+  const sideArcade = (): Patch[] => {
+    const out: Patch[] = [];
+    for (let t = 0; t < w; t += 4) out.push({ t0: t, t1: t + 1, k0: 0, k1: 13, c: shade(wall[2], 1.06) });
+    out.push({ t0: 0, t1: 99, k0: 12, k1: 13, c: shade(wall[0], 1.1) });
+    out.push({ t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[2], 0.5) });
+    for (let t = 1; t < w; t += 4) {
+      out.push({ t0: t, t1: t + 3, k0: 2, k1: 7, c: shade(GLASS, 0.84) });
+      out.push({ t0: t, t1: t + 3, k0: 7, k1: 12, c: shade(LEG, 1.15) });
+    }
+    return out;
+  };
+  const upper: Patch[] = [
+    { t0: 0, t1: 99, k0: 13, k1: 16, c: sign },
+    { t0: 0, t1: 99, k0: 16, k1: 17, c: shade(sign, 1.3) },
+    ...glazed(2, w - 2, 19, 5, 4),
+    ...glazed(2, w - 2, 25, 5, 4),
+    { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 1.16) },
+  ];
+  p.shadow(u0, v0, u1, v1);
+  p.box(u0, v0, u1, v1, 0, h, wall, 'plain', [...arcade(), ...upper], [
+    ...sideArcade(),
+    { t0: 0, t1: 99, k0: 13, k1: 16, c: shade(sign, 0.74) },
+    ...glazed(2, w - 2, 19, 5, 4),
+    ...glazed(2, w - 2, 25, 5, 4),
+  ]);
+  p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
+  p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
+  p.tank(0.64, 0.26, h + 2);
+}
+
+/**
+ * Model 2, the corner shop of the nineties: **a two-storey window** in a concrete frame at one end —
+ * the double-height glass that says "this is the shop" from the traffic light — and the rest a wall with
+ * the entrance and the band. It is the tallest of the four.
+ */
+function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
+  const u0 = 0.07;
+  const v0 = 0.09;
+  const u1 = 0.93;
+  const v1 = 0.89;
+  const w = faceW(u0, u1);
+  const h = 32;
+  /** El ventanal de dos plantas: el marco de hormigón, el vidrio y el travesaño del entrepiso. */
+  // **El vidrio va primero.** El primer parche que toca un píxel gana, así que el marco pintado como un
+  // bloque y el vidrio después dejaba el ventanal en un rectángulo de hormigón: el marco se comía el
+  // vidrio entero. Ahora el marco son cuatro bandas que no se pisan entre sí ni pisan el vidrio.
+  const glassEnd = (t0: number, t1: number): Patch[] => [
+    ...ribbonIn(t0, t1, 1, 18, GLASS),
+    { t0, t1, k0: 10, k1: 11, c: shade(CONCRETE[0], 1.04) },
+    { t0, t1, k0: 19, k1: 20, c: shade(CONCRETE[0], 1.04) },
+    { t0: t0 - 1, t1: t0, k0: 0, k1: 21, c: CONCRETE[1] },
+    { t0: t1, t1: t1 + 1, k0: 0, k1: 21, c: shade(CONCRETE[1], 0.9) },
+    { t0: t0 - 1, t1: t1 + 1, k0: 20, k1: 21, c: shade(CONCRETE[0], 1.06) },
+    { t0: t0 - 1, t1: t1 + 1, k0: 0, k1: 1, c: shade(CONCRETE[2], 0.92) },
+  ];
+  const front: Patch[] = [
+    ...glassEnd(1, 5),
+    { t0: 7, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.58) },
+    { t0: 8, t1: 11, k0: 0, k1: 8, c: shade(INSIDE, 2.1) },
+    { t0: 8, t1: 11, k0: 7, k1: 9, c: shade(GLASS, 0.9) },
+    { t0: 7, t1: 99, k0: 9, k1: 12, c: sign },
+    { t0: 7, t1: 99, k0: 12, k1: 13, c: shade(sign, 1.3) },
+    ...glazed(8, w - 1, 16, 4, 4),
+    ...glazed(8, w - 1, 23, 4, 4),
+    { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 1.14) },
+  ];
+  const side: Patch[] = [
+    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[2], 0.58) },
+    ...glazed(2, w - 2, 2, 6, 4),
+    { t0: 0, t1: 99, k0: 9, k1: 12, c: shade(sign, 0.72) },
+    ...glazed(2, w - 2, 16, 4, 4),
+    ...glazed(2, w - 2, 23, 4, 4),
+    { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[2], 1.12) },
+  ];
+  p.shadow(u0, v0, u1, v1);
+  p.box(u0, v0, u1, v1, 0, h, wall, 'plain', front, side, ROOFTOP);
+  // La losa vuela: el ventanal de dos plantas tiene que terminar en una línea que le haga sombra.
+  p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
+  p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
+  p.tank(0.7, 0.26, h + 2);
+}
+
+/**
+ * Model 3, the shed: **one tall floor over a lower depot at the back, with the sign on a mast over the
+ * roof**. It is the low, wide one — the only one of the four that does not grow — and the mast is what
+ * names it from two blocks away.
+ */
+function storeShed(p: Pen, wall: Ramp, sign: RGB, v: number): void {
+  const u0 = 0.03;
+  const v0 = 0.06;
+  const U1 = 0.97;
+  const u1 = 0.78;
+  const v1 = 0.94;
+  const w = faceW(u0, u1);
+  const h = 14;
+  const FRENTE = 0.44;
+  const DEP0 = 0.5;
+  p.shadow(u0, v0, U1, v1);
+  // El playón de estacionamiento, **al costado y sobre la calle**: es lo que una casa de ropa de avenida
+  // tiene y ninguna de las otras tres. Atrás no servía: la nave lo tapaba entero.
+  p.poly([p.P(u1 + 0.02, FRENTE), p.P(U1, FRENTE), p.P(U1, v1), p.P(u1 + 0.02, v1)], (x, y) =>
+    (x + y) % 9 === 0 ? shade(CONCRETE[1], 1.12) : shade(CONCRETE[2], 0.9),
+  );
+  /** Un auto estacionado: la caja, el techo y el parabrisas. A este tamaño es una mancha con ruedas. */
+  const parked = (u: number, vv: number, body: RGB) => {
+    p.box(u, vv, u + 0.16, vv + 0.1, 0, 3, [body, body, shade(body, 0.8)], 'plain');
+    p.box(u + 0.03, vv + 0.02, u + 0.13, vv + 0.08, 3, 2, [shade(body, 0.6), shade(body, 0.6), shade(body, 0.5)], 'plain');
+  };
+  parked(0.81, 0.56, hex('#b8443c'));
+  parked(0.81, 0.74, hex('#3f5e7a'));
+  // El depósito, atrás a la derecha y **tres píxeles más alto** que la nave: asoma por encima del techo y
+  // la silueta escalona hacia el fondo. Se pinta antes, que el frente lo tapa por abajo.
+  p.box(DEP0, v0, U1, FRENTE, 0, 17, [wall[2], wall[2], shade(wall[2], 0.9)], 'plain', [], [pane(3, 12, 2, 3, shade(GLASS, 0.8))]);
+  p.cornice(DEP0, v0, U1, FRENTE, 17, 1, CONCRETE);
+  // La nave del frente: una planta alta, la vidriera corrida y la banda de la marca.
+  p.box(u0, FRENTE, u1, v1, 0, h, wall, 'plain', [
+    ...mannequins(2, w - 2, v),
+    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.6) },
+    ...ribbon(1, w - 1, 1, 6),
+    door(7, 4, 6),
+    { t0: 0, t1: 99, k0: 7, k1: 11, c: sign },
+    { t0: 0, t1: 99, k0: 11, k1: 12, c: shade(sign, 1.34) },
+    { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 1.2) },
+  ], [
+    { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[2], 0.6) },
+    ...ribbon(2, w - 3, 1, 6),
+    { t0: 0, t1: 99, k0: 7, k1: 11, c: shade(sign, 0.74) },
+  ], ROOFTOP);
+  p.cornice(u0, FRENTE, u1, v1, h, 1, CONCRETE);
+  p.parapet(u0, FRENTE, u1, v1, h + 1, 1, wall);
+  /**
+   * El cartel parante, sobre el techo del frente: el mástil y el paño de la marca. Es lo que se ve desde
+   * la otra cuadra y lo que hace que la nave baja no sea un galpón. El mástil va **antes** que el paño, o
+   * el paño lo tapa y el cartel queda flotando; y va en acero claro, que de hierro oscuro no se ve.
+   */
+  {
+    const [sx, sy] = p.P(0.26, 0.62, h + 1);
+    const cx = Math.round(sx);
+    const cy = Math.round(sy);
+    p.px.rect(cx, cy - 7, 1, 7, shade(STEEL[0], 1.05));
+    p.px.rect(cx - 3, cy - 14, 7, 7, sign);
+    p.px.rect(cx - 3, cy - 14, 1, 7, shade(sign, 1.55));
+    p.px.rect(cx - 3, cy - 14, 7, 1, shade(sign, 1.4));
+    p.px.rect(cx - 2, cy - 12, 5, 1, hex('#f4ece0'));
+    p.px.rect(cx - 2, cy - 10, 5, 1, hex('#f4ece0'));
+    p.px.rect(cx + 3, cy - 14, 1, 7, shade(sign, 0.7));
+  }
+  p.tank(0.84, 0.2, 18);
+}
 /* ---------- The lots that take more than one cell ---------- */
 
 /**
