@@ -183,3 +183,14 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
   - El asa, de dos píxeles de grosor y separada del cuerpo, parecía una **C de neón colgada al costado**;
     ahora es un anillo angosto que **nace del borde del cuerpo**, de la fila de la boca para abajo.
   - Y el asa, dos filas más arriba, flotaba en una fila donde no había taza.
+- **L32.** *"no me gusta como quedó, no hagas el plato, solo la taza y sin el cafe dentro, vas encaminado
+  pero le falta todavía"* — la taza queda **sin plato y con la boca vacía**: lo que la nombra es la
+  silueta, no lo que tiene adentro, y el plato le comía cuatro filas abajo y la dejaba pegada al techo.
+  Se va también el café: la boca es una elipse de porcelana con el hueco adentro y el borde delantero, que
+  es lo que hace que se lea abierta y no una tapa.
+- **L33.** Y el cuerpo se estiró: **diez filas de cono esbelto, de seis píxeles abajo a once arriba**. Con
+  ocho filas y doce de ancho parecía un bowl; la taza de porcelana es más alta que ancha, y esa es la
+  diferencia entre una taza y un cuenco. El asa creció a seis filas con el hueco abierto.
+- **L34.** La prueba de la taza pasa a la **porcelana** —setenta y ocho píxeles contra uno de la galería—
+  porque el marrón del café ya no existe. Es el cambio de qué significa "correcto" otra vez: la taza sigue
+  siendo el remate de la cafetería, y ahora se mide por su propio material y no por el contenido.

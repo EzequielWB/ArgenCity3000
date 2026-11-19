@@ -837,12 +837,11 @@ function toldo(
 }
 
 /**
- * La taza de café sobre la azotea: el remate y el nombre del local sin una letra. Está dibujada como la
- * taza de porcelana que es —**el plato, el cono del cuerpo, la boca en elipse con el café adentro y el asa
- * redonda con el hueco abierto**— y no como un cuadrado blanco: a este tamaño lo que la hace legible es la
- * silueta del cono y el asa, más el filo oscuro que la separa del techo.
+ * La taza de café sobre la azotea: el remate y el nombre del local sin una letra. **Sin plato y con la
+ * boca vacía**: lo que la nombra es la silueta —el cono del cuerpo, la elipse de la boca y el asa redonda—
+ * y no lo que tiene adentro. El plato le comía cuatro filas abajo y la dejaba pegada al techo.
  *
- * Se dibuja en píxeles de pantalla, de abajo hacia arriba: el plato, el cuerpo, la boca y el asa.
+ * Se dibuja en píxeles de pantalla, de abajo hacia arriba: el cuerpo, la boca y el asa.
  */
 function tazaDeCafe(p: Pen, u: number, v: number, z: number): void {
   const [cx, cy] = p.P(u, v, z);
@@ -851,23 +850,22 @@ function tazaDeCafe(p: Pen, u: number, v: number, z: number): void {
   const porcelana = hex('#f7f3e8');
   const luz = hex('#fffdf6');
   const sombra = shade(porcelana, 0.82);
-  const filo = shade(porcelana, 0.6);
-  const cafe = hex('#3d2112');
-  const cafeLuz = hex('#96521f');
+  const filo = shade(porcelana, 0.58);
+  const hueco = shade(porcelana, 0.72);
 
-  // El plato: el ala ancha, el filo y la sombra que lo despega del techo.
-  p.px.rect(x - 8, y + 1, 17, 1, filo);
-  p.px.rect(x - 8, y, 17, 1, porcelana);
-  p.px.rect(x - 6, y - 1, 13, 1, sombra);
-
-  // El cuerpo: el cono, más ancho arriba, con el brillo a la izquierda y la sombra a la derecha. Cinco
-  // filas visibles entre el plato y la boca: con dos, la taza se veía sentada sobre su propia boca.
+  // El cuerpo: un cono esbelto de diez filas, más ancho arriba, con el brillo a la izquierda y la sombra a
+  // la derecha. Alto y angosto: con ocho filas y doce de ancho la taza se leía como un bowl.
   const cono: [number, number][] = [
+    [6, -1],
     [7, -2],
     [8, -3],
-    [9, -4],
-    [10, -5],
-    [11, -6],
+    [8, -4],
+    [9, -5],
+    [9, -6],
+    [10, -7],
+    [10, -8],
+    [11, -9],
+    [11, -10],
   ];
   for (const [w, dy] of cono) {
     const left = x - Math.floor(w / 2);
@@ -875,26 +873,25 @@ function tazaDeCafe(p: Pen, u: number, v: number, z: number): void {
     p.px.rect(left, y + dy, 1, 1, luz);
     p.px.rect(left + w - 2, y + dy, 2, 1, sombra);
   }
+  // La base: el filo que la apoya en el techo.
+  p.px.rect(x - 3, y, 7, 1, filo);
 
-  // La boca, en elipse: el borde de la porcelana arriba y abajo, y **tres filas de café** en el medio. Con
-  // una sola fila de café la boca se leía como una raya, no como un líquido dentro de una taza.
-  p.px.rect(x - 5, y - 11, 11, 1, sombra);
-  p.px.rect(x - 6, y - 10, 13, 1, porcelana);
-  p.px.rect(x - 6, y - 9, 13, 1, cafe);
-  p.px.rect(x - 5, y - 8, 11, 1, cafeLuz);
-  p.px.rect(x - 4, y - 8, 6, 1, cafe);
-  p.px.rect(x - 5, y - 7, 11, 1, cafe);
-  p.px.rect(x - 6, y - 6, 13, 1, porcelana);
-  p.px.rect(x - 5, y - 5, 11, 1, filo);
+  // La boca: la elipse de porcelana con el hueco adentro, **vacía**. Los dos bordes —el de atrás y el de
+  // adelante— son lo que hace que se lea una boca abierta y no una tapa.
+  p.px.rect(x - 3, y - 13, 7, 1, porcelana);
+  p.px.rect(x - 5, y - 12, 11, 1, porcelana);
+  p.px.rect(x - 6, y - 11, 13, 1, porcelana);
+  p.px.rect(x + 5, y - 11, 1, 1, sombra);
+  p.px.rect(x - 5, y - 10, 11, 1, hueco);
+  p.px.rect(x - 5, y - 9, 11, 1, hueco);
+  p.px.rect(x - 6, y - 8, 13, 1, porcelana);
+  p.px.rect(x - 5, y - 7, 11, 1, sombra);
 
-  // El asa: una C redondeada pegada al cuerpo, del lado derecho, con el hueco abierto. Del tamaño de la
-  // boca y no de un píxel: en la taza de porcelana el asa es casi tan alta como el cuerpo, y es la mitad
-  // de lo que la hace reconocible.
-  // Nace **del borde del cuerpo** —de la fila de la boca para abajo— y no de una fila donde no hay taza: dos
-  // filas más arriba quedaba una C flotando al costado.
-  p.px.rect(x + 5, y - 6, 3, 1, porcelana);
-  p.px.rect(x + 8, y - 5, 1, 2, sombra);
-  p.px.rect(x + 5, y - 3, 3, 1, porcelana);
+  // El asa: una C redondeada que **nace del borde del cuerpo**, del lado derecho, con el hueco abierto.
+  p.px.rect(x + 5, y - 10, 3, 1, porcelana);
+  p.px.rect(x + 8, y - 9, 1, 4, sombra);
+  p.px.rect(x + 7, y - 6, 1, 1, porcelana);
+  p.px.rect(x + 5, y - 6, 2, 1, porcelana);
 }
 
 function clothingStore(p: Pen, v: number): void {
@@ -1076,7 +1073,7 @@ function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
   p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
   // **La taza sobre la azotea**: es el remate y el nombre. Un café de un piso con un cartel podía ser un
   // kiosco; con la taza de porcelana arriba no queda duda de qué se vende adentro.
-  tazaDeCafe(p, (u0 + u1) / 2, (v0 + v1) / 2, h + 3);
+  tazaDeCafe(p, (u0 + u1) / 2, (v0 + v1) / 2, h + 2);
 }
 
 /**

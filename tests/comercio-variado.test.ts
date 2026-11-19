@@ -25,8 +25,8 @@ const isGlass = (c: C) => c[2] - c[0] > 15 && c[2] > 70;
 const sat = (c: C) => Math.max(...c) - Math.min(...c);
 const dist = (a: C, b: C) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
 
-/** El café de la taza: el marrón oscuro y el cobre del reflejo. Ningún otro material del sprite lo usa. */
-const isCafe = (c: C) => c[0] > 45 && c[0] < 175 && c[1] < 110 && c[2] < 70 && c[0] - c[2] > 40;
+/** La porcelana de la taza: un blanco roto que no usa ningún otro material del sprite. */
+const isPorcelana = (c: C) => Math.abs(c[0] - 0xf7) < 12 && Math.abs(c[1] - 0xf3) < 12 && Math.abs(c[2] - 0xe8) < 12;
 
 interface Shape {
   /** El ancho de cada fila pintada, de arriba abajo: la punta del dibujo primero. */
@@ -107,16 +107,13 @@ function rayas(a: ReturnType<typeof art>): number {
   return best;
 }
 
-/**
- * El café de la taza: cuántos píxeles del marrón oscuro y del cobre del reflejo hay en el sprite. Es la
- * taza vista por dentro, que es lo que la nombra.
- */
-function cafe(a: ReturnType<typeof art>): number {
+/** Los píxeles de porcelana: la taza del remate de la cafetería. */
+function porcelana(a: ReturnType<typeof art>): number {
   let n = 0;
   for (let y = 0; y < a.px.h; y++) {
     for (let x = 0; x < a.px.w; x++) {
       const c = at(a, x, y);
-      if (c && isCafe(c)) n++;
+      if (c && isPorcelana(c)) n++;
     }
   }
   return n;
@@ -208,10 +205,10 @@ describe('el nivel 5 del comercio: cuatro locales', () => {
     // Y el cuerpo bajo: más petiso que la galería, y la taza es lo que la levanta.
     expect(shape(art(2)).height).toBeLessThan(shape(art(1)).height - 6);
     expect(shape(art(2)).width).toBeLessThan(shape(art(0)).width);
-    // La taza: ochenta y siete píxeles de café y cobre, contra ninguno de la heladería y seis de la nave.
-    // Es el marrón del café visto desde arriba, que es lo que hace que la taza se lea taza.
-    expect(cafe(art(2))).toBeGreaterThanOrEqual(40);
-    for (const v of [0, 1]) expect(cafe(art(v)), `variant ${v}`).toBeLessThan(11);
+    // La taza: setenta y ocho píxeles de porcelana, contra ninguno de la heladería y diez de la nave. Es
+    // blanca y vacía, y lo que la nombra es la silueta: el cono del cuerpo, la elipse de la boca y el asa.
+    expect(porcelana(art(2))).toBeGreaterThanOrEqual(50);
+    for (const v of [0, 1]) expect(porcelana(art(v)), `variant ${v}`).toBeLessThan(11);
     // El vidrio oscuro de la planta baja: un café no tiene una ventanita, tiene vidriera.
     expect(tallestGlass(art(2))).toBeGreaterThanOrEqual(6);
   });
