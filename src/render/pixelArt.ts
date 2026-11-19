@@ -4331,292 +4331,250 @@ export function treePixelSprite(kind: number, variant: number): Sprite {
 
 /* ---------- El Calvario de Tandil ---------- */
 
-/** The grass of the hill, the green of the cut face, the stone of the stair and the wood of the crosses. */
+/** El verde de la loma y el del corte, y el pasto del lote: los tres tonos del cerro. */
 const HILL = ramp('#6f9a4a');
 const HILL_CUT = ramp('#4f7038');
-/** El pasto del lote: un verde más claro que la loma, o la loma no se despega del piso. */
 const MEADOW = ramp('#93b45f');
-const STAIR = ramp('#c2baa6');
-const CROSS_WOOD = ramp('#6b4a2e');
-/** The tallest thing on the lot: the crosses stand on the crest, and this is the widest lot of the game. */
+
 const CALVARIO_MAX_Z = 74;
 
 /**
- * El Calvario (3x6): un montecito con monte alrededor y la escalinata de piedra del Via Crucis que sube
- * la ladera hasta las tres cruces de la cresta. Es el unico monumento que pinta su propio terreno —la
- * loma esta dibujada, no puesta— y el unico, tambien, que se dibuja en las dos orientaciones.
+ * El Calvario (3x6): la escalinata del Via Crucis que sube el cerro en tramos rectos hasta la cruz alta.
+ *
+ * Es el Calvario de Tandil y no un monte genérico, y lo que lo hace reconocible es **el eje**: una
+ * escalinata ancha y larga que sale del pie del lote y termina en la cruz. La versión anterior subía en
+ * zigzag por un cerro redondo y la cruz quedaba de costado, así que a un píxel se leía como una loma con
+ * un palo y no como una peregrinación.
+ *
+ * Dos cosas la hacen legible. La primera es el **contraste**: la escalinata va en la piedra más clara del
+ * lote y el cerro en verde oscuro, así que el corredor se ve desde lejos, que es como se ve en la foto.
+ * Con la escalera en el mismo gris del terreno todo se juntaba en una mancha. La segunda es la
+ * **granularidad**: el terreno sube en ocho tramos bajos y no en cuatro altos, porque cuatro escalones de
+ * nueve píxeles se leen como una escalera de cuatro escalones y no como un cerro.
+ *
+ * Datos del de verdad, en la ficha del monumento: 96 peldaños, la cruz de 17 metros que proyectó Bustillo,
+ * el Cristo de piedra traído de Francia y las estaciones a los costados del camino.
  */
 function paintCalvarioOn(p: Pen, vw: number, vh: number): void {
   const alongU = vw >= vh;
   const L = Math.max(vw, vh);
   const W = Math.min(vw, vh);
   const uv = (a: number, c: number): [number, number] => (alongU ? [a, c] : [c, a]);
+  // `a` crece hacia la cumbre y **la cumbre va del lado de allá** de la cámara: en las dos orientaciones
+  // eso es el extremo con `u + v` más chico, así que el eje se mide al revés. Con la cumbre de este lado,
+  // la escalinata subía hacia el jugador y la cruz quedaba en primer plano, que es lo contrario de lo que
+  // hace un cerro: el remate se ve al fondo y desde abajo.
   const Q = (a: number, c: number, z: number): Pt => {
-    const [u, v] = uv(a, c);
+    const [u, v] = uv(L - a, c);
     return p.P(u, v, z);
   };
-  // La loma es un monte redondo, no una cuña: se pinta por anillos, del pie a la punta, cada uno más
-  // chico que el de abajo. Eso le da volumen a los cuatro lados —el problema de la versión anterior era
-  // que la ladera y la cara cortada se encontraban en un filo recto— y deja las curvas de nivel como
-  // textura del pasto.
-  // La cumbre no va en el medio: a tres cuartos de la base, como en una sierra de verdad. Así un lado
-  // tiene una ladera larga —la que sube la escalinata— y el otro baja corto, y el monte deja de ser una
-  // torta simétrica.
-  const PEAK_AT = 0.66;
-  const aP = L * PEAK_AT;
-  const cC = W / 2;
-  const H = 30;
-  const aNear0 = 0.06;
-  const aFar0 = L - 0.06;
-  const rc0 = cC - 0.08;
-  const CREST = 0.26;
-  /**
-   * Los tres números de la loma a la altura `t` (0 en el pie, 1 en la cumbre): dónde empieza por el lado
-   * de adelante, dónde termina por el de atrás y cuánto se abre a los costados. Nunca se cierra del todo
-   * —`CREST`— así que la punta es una meseta donde se para la cruz y no un pico.
-   */
-  const edges = (t: number): [number, number, number] => {
-    // Las dos laderas no se cierran igual: la de atrás baja más despacio (`fFar`), así el monte conserva
-    // cuerpo del lado que no se ve. Con la misma curva a los dos lados el resultado era una rampa.
-    const f = Math.max(CREST, (1 - t) ** 1.15);
-    const fFar = Math.max(CREST, (1 - t) ** 1.7);
-    return [aP + (aNear0 - aP) * f, aP + (aFar0 - aP) * fFar, rc0 * f];
-  };
-  /** El centro y el radio largo del anillo de esa altura: el monte se angosta hacia la cumbre. */
-  const ringAt = (t: number): [number, number, number] => {
-    const [an, af, rc] = edges(t);
-    return [(an + af) / 2, (af - an) / 2, rc];
-  };
-  /** La altura de la loma en un punto: para apoyar arriba lo que se pare en ella. */
-  const surfaceZ = (a: number, c: number): number => {
-    for (let t = 1; t > 0; t -= 0.01) {
-      const [ac, ra, rc] = ringAt(t);
-      if (Math.hypot((a - ac) / ra, (c - cC) / rc) <= 1) return H * t;
-    }
-    return 0;
-  };
-  const ring = (t: number, z: number): Pt[] => {
-    const [ac, ra, rc] = ringAt(t);
-    const pts: Pt[] = [];
-    for (let i = 0; i < 24; i++) {
-      const th = (i / 24) * Math.PI * 2;
-      pts.push(Q(ac + ra * Math.cos(th), cC + rc * Math.sin(th), z));
-    }
-    return pts;
-  };
-
-  // No drop shadow of the lot: the meadow covers the whole diamond, so a shadow under it would be
-  // painted and then hidden. The shadows here are the ones the trees cast on the grass.
-  // The meadow of the lot, before the hill: the wood stands on it and the hill grows out of it.
-  p.poly([Q(0.02, 0.02, 0), Q(L - 0.02, 0.02, 0), Q(L - 0.02, W - 0.02, 0), Q(0.02, W - 0.02, 0)], (x, y) =>
-    noise(x, y, 4) > 0.58 ? MEADOW[2] : MEADOW[1],
-  );
-  // La sombra que el monte tira sobre el prado, corrida hacia la cámara: es la pista más fuerte de que la
-  // loma es un cuerpo y no una mancha de pasto.
-  {
-    const [ac, ra, rc] = ringAt(0);
-    for (let k = 0; k < 64; k++) {
-      const th0 = (k / 64) * Math.PI * 2;
-      for (let r = 1.0; r < 1.22; r += 0.035) {
-        const a = ac + ra * r * Math.cos(th0) + 0.16;
-        const c = cC + rc * r * Math.sin(th0) + 0.18;
-        if (a < 0.12 || a > L - 0.12 || c < 0.12 || c > W - 0.12) continue;
-        const [x, y] = Q(a, c, 0);
-        if (bayer(x, y) < 0.42) p.px.set(Math.round(x), Math.round(y), shade(MEADOW[0], 0.86));
-      }
-    }
-  }
-  // La loma, por terrazas: cada una tiene su pared en sombra mirando a la cámara y su huella iluminada
-  // arriba. Apilar anillos de un píxel daba un mapa topográfico plano; la pared es lo que da el volumen.
+  const cMid = W / 2;
+  const H = 32;
+  /** Ocho tramos: el terreno sube parejo y la escalinata tiene dónde apoyar sus peldaños. */
   const TERR = 8;
-  const dz = H / TERR;
-  for (let i = 0; i < TERR; i++) {
-    const t0 = i / TERR;
-    const z0 = i * dz;
-    const z1 = (i + 1) * dz;
-    const [acA, raA, rcA] = ringAt(t0);
-    const front = Math.atan2(rcA, raA);
-    const SEG = 48;
-    for (let j = 0; j < SEG; j++) {
-      const th0 = front - Math.PI / 2 + (j / SEG) * Math.PI;
-      const th1 = front - Math.PI / 2 + ((j + 1) / SEG) * Math.PI;
-      const a0 = acA + raA * Math.cos(th0);
-      const c0 = cC + rcA * Math.sin(th0);
-      const a1 = acA + raA * Math.cos(th1);
-      const c1 = cC + rcA * Math.sin(th1);
-      // Hacia el medio del frente la pared recibe menos luz: el monte se lee redondo.
-      const lit = Math.cos((j / SEG) * Math.PI - Math.PI / 2) ** 2;
-      p.poly([Q(a0, c0, z0), Q(a1, c1, z0), Q(a1, c1, z1), Q(a0, c0, z1)], (x, y) =>
-        bayer(x, y) < 0.18 ? shade(HILL_CUT[2], 1.02 - 0.16 * lit) : shade(HILL[2], 0.94 - 0.22 * lit),
+  const cut = Array.from({ length: TERR + 1 }, (_, k) => 0.05 + ((L - 0.1) * k) / TERR);
+  const zAt = (k: number): number => (H * k) / TERR;
+  /** El ancho de la escalinata, medido en lotes: casi la mitad del lote, como en el cerro de verdad. */
+  const sHalf = W * 0.21;
+  /** La piedra del camino, más clara que cualquier otra cosa del lote: es lo que hace que se lea. */
+  const PATH: Ramp = [hex('#b9b2a0'), hex('#efe9d9'), hex('#fbf6e8')];
+
+  // El prado del lote. La loma se levanta de acá: no hay sombra de lote porque el pasto cubre el rombo
+  // entero y la sombra quedaría debajo.
+  p.poly([Q(0.02, 0.02, 0), Q(L - 0.02, 0.02, 0), Q(L - 0.02, W - 0.02, 0), Q(0.02, W - 0.02, 0)], (x, y) =>
+    noise(x, y, 4) > 0.78 ? MEADOW[2] : MEADOW[1],
+  );
+
+  // El cerro, tramo por tramo. En cada uno la **ladera** de adelante —verde, con la roca asomando— y la
+  // huella de arriba. Los costados no son paredes: la loma se apaga contra el prado en pendiente, y si no
+  // el monumento parece un edificio de piedra con jardín en vez de un cerro.
+  for (let k = TERR - 1; k >= 0; k--) {
+    const a0 = cut[k];
+    const a1 = cut[k + 1];
+    const z0 = zAt(k);
+    const z1 = zAt(k + 1);
+    // Los dos costados en pendiente: un trapecio que arranca en el prado y muere en la huella.
+    for (const c of [0, W]) {
+      p.poly([Q(a0, c, Math.max(0, z0 - 1)), Q(a1, c, z1), Q(a1, c, Math.max(0, z0 - 1))], (x, y) =>
+        bayer(x, y) < 0.3 ? shade(HILL_CUT[1], 0.94) : shade(HILL[1], 1.02),
       );
     }
-    // La huella del escalón va con el radio de ABAJO: el anillo que se ve entre la pared de esta terraza y
-    // la de la siguiente. Con el de arriba, la pared se comía la huella y la loma quedaba toda en sombra.
-    const [xc, yc] = Q(acA, cC, z1);
-    p.poly(ring(t0, z1), (x, y) => {
-      const lit = Math.min(1, Math.max(-1, ((x - xc) * 0.62 + (y - yc)) / 22));
-      const tone = 1.18 - 0.24 * lit - 0.05 * i;
-      return noise(x, y * 1.6, 6) > 0.62 ? shade(HILL[2], tone) : shade(HILL[1], tone);
+    // La ladera de adelante, con la roca a la vista en el medio y el pasto en los bordes: es el corte que
+    // el camino atraviesa, y el mismo tono de la foto, piedra gris entre el verde.
+    p.poly([Q(a0, 0, z0), Q(a0, W, z0), Q(a0, W, z1), Q(a0, 0, z1)], (x, y) => {
+      const g = noise(x, y * 2, 9);
+      if (g > 0.78) return shade(STONE[0], 1.14);
+      if (bayer(x, y) < 0.4) return shade(HILL_CUT[0], 0.9);
+      return shade(HILL_CUT[1], 0.98);
     });
+    // La huella: pasto, salvo la franja del camino, que se pinta después y por encima.
+    p.poly([Q(a0, 0, z1), Q(a1, 0, z1), Q(a1, W, z1), Q(a0, W, z1)], (x, y) =>
+      noise(x, y * 1.7, 3) > 0.55 ? HILL[2] : HILL[1],
+    );
   }
 
-  // La escalinata trepa la ladera larga siguiendo la curva: cada peldaño se apoya en el anillo de su
-  // altura, en el punto que más mira a la cámara. Una escalera recta se despegaría del monte.
-  const N = TERR - 1;
-  const tread: Pt[] = [];
-  const stepAt = (k: number): [number, number, number] => {
-    const [ac, ra, rc] = ringAt(k / TERR);
-    const ang = Math.atan2(rc, ra);
-    return [ac + ra * Math.cos(ang), cC + rc * Math.sin(ang), ang];
-  };
-  for (let k = 0; k <= N; k++) {
-    const [sa, sc] = stepAt(k);
-    const [x, y] = Q(sa, sc, (k + 1) * dz);
-    tread.push([Math.round(x), Math.round(y)]);
-  }
-  // El cuerpo de la escalinata primero: una cinta de cuatro píxeles que une peldaño con peldaño. Sin ella
-  // los peldaños quedaban como tablones sueltos apoyados en la loma.
-  for (let i = 0; i + 1 < tread.length; i++) {
-    for (const [dy, tone] of [
-      [-2, 0.62],
-      [-1, 0.9],
-      [0, 1.06],
-      [1, 0.62],
-    ] as const) {
-      p.px.line([tread[i][0], tread[i][1] + dy], [tread[i + 1][0], tread[i + 1][1] + dy], shade(STAIR[dy === 0 ? 1 : 0], tone));
+  // La escalinata. Peldaños de un píxel escaso, cuatro por tramo: la huella clara arriba y la
+  // contrahuella en sombra abajo, que es lo único que hace que una banda clara se lea como escalones.
+  const PER = 4;
+  for (let k = TERR - 3; k >= 0; k--) {
+    const a0 = cut[k];
+    const a1 = cut[k + 1];
+    const z0 = zAt(k);
+    const dz = (zAt(k + 1) - z0) / PER;
+    for (let i = 0; i < PER; i++) {
+      const sa = a0 + ((a1 - a0) * i) / PER;
+      const sb = a0 + ((a1 - a0) * (i + 1)) / PER;
+      const z = z0 + dz * i;
+      p.poly([Q(sa, cMid - sHalf, z + dz), Q(sb, cMid - sHalf, z + dz), Q(sb, cMid + sHalf, z + dz), Q(sa, cMid + sHalf, z + dz)], (x, y) =>
+        bayer(x, y) < 0.18 ? shade(PATH[1], 1.04) : PATH[1],
+      );
+      // La contrahuella, oscura: es la única línea que hace que una cinta clara se lea como escalones y
+      // no como una rampa de cemento.
+      p.poly([Q(sb, cMid - sHalf, z), Q(sb, cMid + sHalf, z), Q(sb, cMid + sHalf, z + dz), Q(sb, cMid - sHalf, z + dz)], () =>
+        shade(PATH[0], 0.86),
+      );
     }
   }
-  // Y la huella de cada peldaño encima.
-  for (const [cx, cy] of tread) {
-    p.px.rect(cx - 4, cy - 2, 9, 2, shade(STAIR[1], 1.04));
-    p.px.set(cx - 4, cy - 2, shade(STAIR[1], 1.2));
-    p.px.set(cx + 4, cy - 2, shade(STAIR[0], 0.78));
+  // Los pretiles: un píxel de piedra a cada lado del camino, del pie al atrio. Marcan el borde de la
+  // escalinata sin taparla, y son lo que le da la escala de corredor.
+  for (const c of [cMid - sHalf, cMid + sHalf]) {
+    for (let k = TERR - 3; k >= 0; k--) {
+      const a0 = cut[k];
+      const a1 = cut[k + 1];
+      const z0 = zAt(k);
+      const z1 = zAt(k + 1);
+      p.poly([Q(a0, c, z0), Q(a1, c, z0), Q(a1, c, z1), Q(a0, c, z1)], () => shade(PATH[2], 0.9));
+    }
   }
 
-  // A station of the Via Crucis beside the stair every few steps: a white niche on its post.
-  for (const k of [1, 2]) {
-    const [sa, sc, ang] = stepAt(k);
-    const [sx, sy] = Q(
-      sa + Math.cos(ang + Math.PI * 0.75) * 0.4,
-      sc + Math.sin(ang + Math.PI * 0.75) * 0.4,
-      (k + 1) * dz + 1.5,
-    );
-    const cx = Math.round(sx);
-    const cy = Math.round(sy);
-    p.px.rect(cx, cy - 6, 2, 6, CROSS_WOOD[0]);
-    p.px.rect(cx - 1, cy - 9, 4, 3, PLASTER[1]);
-    p.px.rect(cx - 1, cy - 6, 4, 1, PLASTER[0]);
-  }
-  // Un atrio de piedra al pie de la escalinata: chico, contra la loma, y no una vereda que cruce el lote.
-  {
-    const [fa, fc] = stepAt(0);
-    const ay = Math.min(L - 0.12, fa + 0.5);
-    p.poly(
-      [Q(fa - 0.05, fc - 0.42, 0), Q(ay, fc - 0.42, 0), Q(ay, fc + 0.42, 0), Q(fa - 0.05, fc + 0.42, 0)],
-      (x, y) => (bayer(x, y) < 0.5 ? hex('#b6afa0') : hex('#a8a192')),
-    );
-  }
-
-  // Piedritas sueltas sobre el pasto: la sierra es piedra y el verde solo queda demasiado limpio. Van
-  // antes del monte, así un árbol de adelante las tapa como taparía una piedra de verdad.
-  const pebbles: [number, number][] = [
-    [0.62, 1.86],
-    [1.12, 2.32],
-    [1.78, 0.82],
-    [2.08, 1.22],
-    [2.36, 2.62],
-    [2.72, 1.88],
-    [3.08, 0.68],
-    [3.46, 2.22],
-    [3.9, 1.12],
-    [4.3, 0.46],
-    [4.62, 2.58],
-    [5.04, 1.36],
-    [5.4, 2.14],
-    [4.06, 2.74],
-    [0.95, 0.5],
-    [1.5, 2.6],
-    [4.95, 0.55],
-    [5.5, 0.6],
-    [3.15, 2.72],
-    [2.05, 0.35],
-    [0.45, 2.45],
-  ];
-  for (const [a, c] of pebbles) {
-    const [x, y] = Q(a, c, surfaceZ(a, c) + 0.3);
-    const px = Math.round(x);
-    const py = Math.round(y);
-    const big = bayer(px, py) < 0.45;
-    // La piedrita en gris claro, y una sola línea oscura por debajo: la sombra va abajo o la piedra se lee
-    // como una mancha.
-    p.px.rect(px, py - (big ? 2 : 1), big ? 3 : 2, big ? 2 : 1, shade(STONE[2], 1.3));
-    p.px.set(px, py - (big ? 2 : 1), shade(STONE[2], 1.5));
-    p.px.rect(px, py, big ? 3 : 2, 1, shade(HILL_CUT[0], 0.72));
+  // Las estaciones, a los dos lados y escalonadas: un nicho blanco sobre un pedestal de piedra. Son la
+  // prueba de que esto es un Via Crucis y no una escalera cualquiera, así que van parejas.
+  const stationAt = (a: number, side: number): void => {
+    const k = Math.min(TERR - 1, Math.max(0, cut.findIndex((v) => a < v) - 1));
+    const z = zAt(k + 1);
+    const [x, y] = Q(a, cMid + side * (sHalf + 0.3), z);
+    const ix = Math.round(x);
+    const iy = Math.round(y);
+    p.px.rect(ix - 1, iy - 2, 3, 2, shade(STONE[1], 0.88));
+    p.px.rect(ix - 1, iy - 6, 3, 4, PLASTER[1]);
+    p.px.set(ix - 1, iy - 6, shade(PLASTER[1], 0.84));
+    p.px.set(ix + 1, iy - 3, shade(PLASTER[1], 0.68));
+    p.px.set(ix, iy - 5, shade(INSIDE, 0.92));
+  };
+  for (const [a, s] of [
+    [0.6, -1],
+    [0.9, 1],
+    [1.9, -1],
+    [2.2, 1],
+    [3.3, -1],
+    [3.6, 1],
+    [4.6, -1],
+    [4.9, 1],
+  ] as [number, number][]) {
+    stationAt(a, s);
   }
 
-  // The wood: pines and eucalyptus on the meadow and up the slope, standing on the hill and not in it.
-  // It is painted by depth, so a tree of the front covers the one behind it.
+  // El ciprés: la columna verde oscura que enmarca el camino en el cerro de verdad, y el único verde
+  // oscuro del lote. Va fino —tres píxeles— porque a cinco es un poste, y con la punta en aguja.
+  const cypress = (a: number, c: number, s: number): void => {
+    const k = Math.min(TERR - 1, Math.max(0, cut.findIndex((v) => a < v) - 1));
+    const [x, y] = Q(a, c, zAt(k + 1));
+    const cx = Math.round(x);
+    const cy = Math.round(y);
+    const tall = Math.round(17 * s);
+    for (let i = 0; i < tall; i++) {
+      const t = i / tall;
+      // La copa: angosta abajo, más ancha al medio y en aguja arriba.
+      const w = t < 0.12 ? 1 : t > 0.72 ? Math.max(0, Math.round(2.4 * (1 - (t - 0.72) / 0.28))) : 2;
+      if (w <= 0) continue;
+      const tone = 0.66 + 0.3 * (1 - Math.abs(t - 0.4) * 1.4);
+      p.px.rect(cx - w, cy - i, w * 2 + 1, 1, shade(CROWN_EUCALYPTUS[2], tone * 0.8));
+      p.px.set(cx + w, cy - i, shade(CROWN_EUCALYPTUS[2], tone * 0.62));
+      p.px.set(cx - w, cy - i, shade(CROWN_EUCALYPTUS[2], tone * 1.1));
+    }
+    p.px.rect(cx, cy, 1, 2, TRUNK_DARK);
+  };
+  for (const [a, s, k] of [
+    [0.45, -1, 0.8],
+    [0.55, 1, 0.8],
+    [1.5, -1, 0.9],
+    [1.6, 1, 0.9],
+    [2.9, -1, 1],
+    [3.0, 1, 1],
+    [4.2, -1, 1.1],
+    [4.3, 1, 1.1],
+    [4.9, -1, 1.15],
+    [5.0, 1, 1.15],
+  ] as [number, number, number][]) {
+    cypress(a, cMid + s * (sHalf + 0.62), k);
+  }
+
+  // El monte de los costados y del fondo: los árboles de la sierra, fuera del corredor del camino.
   const wood: [number, number][] = [
-    [0.42, 0.44],
-    [0.8, 2.68],
-    [1.7, 0.42],
-    [1.32, 2.78],
-    [2.55, 0.55],
-    [2.9, 2.55],
-    [3.35, 1.4],
-    [3.62, 0.5],
-    [4.15, 2.5],
-    [4.55, 0.6],
-    [4.78, 1.72],
-    [5.2, 2.35],
-    [5.36, 0.78],
-    [5.55, 1.5],
+    [0.5, 0.22],
+    [1.2, W - 0.24],
+    [2.4, 0.2],
+    [3.2, W - 0.22],
+    [4.4, 0.24],
+    [5.1, W - 0.26],
+    [5.5, 0.5],
+    [5.55, W - 0.5],
   ];
   wood.sort((A, B) => A[0] + A[1] - (B[0] + B[1]));
-  // Nothing of the wood stands on the stair: a tree in its corridor hides the one thing the monument is.
-  // El corredor es el segmento que va del pie de la escalinata a la cumbre, medido en el plano del lote.
-  const [s0a, s0c] = stepAt(0);
-  const [s1a, s1c] = stepAt(N);
-  const [acSum, , rcSum] = ringAt(1);
-  const nearStair = (a: number, c: number): boolean => {
-    // La cumbre queda despejada: un pino al lado de la cruz le pelea el remate al monumento.
-    if (Math.hypot((a - acSum) * 0.75, (c - cC) / Math.max(0.3, rcSum)) < 2.1) return true;
-    const da = s1a - s0a;
-    const dc = s1c - s0c;
-    const u = Math.min(1, Math.max(0, ((a - s0a) * da + (c - s0c) * dc) / (da * da + dc * dc)));
-    return Math.hypot(a - (s0a + da * u), c - (s0c + dc * u)) < 0.5;
-  };
-  wood.filter(([a, c]) => !nearStair(a, c)).forEach(([a, c], i) => {
-    const [u, v] = uv(a, c);
-    // Pine and eucalyptus, as on the hill in Tandil: no jacarandá, whose lilac crown read as a lollipop.
-    const kind = i % 3 === 0 ? 3 : 4;
-    const z = surfaceZ(a, c) - 0.4;
-    treeAt(p, u, v, kind, 0.82 + 0.1 * (i % 3), Math.max(0, z));
+  wood.forEach(([a, c], i) => {
+    const k = Math.min(TERR - 1, Math.max(0, cut.findIndex((v) => a < v) - 1));
+    const [u, v] = uv(L - a, c);
+    treeAt(p, u, v, i % 2 === 0 ? 4 : 3, 0.72 + 0.05 * (i % 3), zAt(k + 1));
   });
 
-  // El atrio de la cumbre y la cruz. Van últimos: son la punta del monumento y nada del monte puede
-  // taparlos. Una sola cruz, y grande: es el remate y no hay dos más que la acompañen.
-  const [acTop] = ringAt(1);
-  // El atrio va **plano sobre la cumbre**, sin caja: cualquier losa con altura sobre una meseta angosta
-  // se lee como una mesa que vuela, por más que esté apoyada. Y chico: es una explanada, no una terraza.
-  p.poly(
-    [Q(acTop - 0.45, cC - 0.24, H), Q(acTop + 0.45, cC - 0.24, H), Q(acTop + 0.45, cC + 0.24, H), Q(acTop - 0.45, cC + 0.24, H)],
-    (x, y) => (bayer(x, y) < 0.5 ? shade(STONE[1], 1.04) : STONE[2]),
+  // El atrio: la explanada de piedra donde termina la escalinata y se para la cruz. Chico y adentro del
+  // lote: más grande se salía del rombo y quedaba una planchada flotando sobre el pasto del vecino.
+  // El atrio ocupa el último tramo entero y es **más angosto que el lote**: es la explanada del remate y
+  // no una planchada que cruza de lado a lado.
+  const aTop0 = cut[TERR - 2];
+  const aTop1 = cut[TERR] - 0.2;
+  const zTop = H;
+  p.poly([Q(aTop0, 0.72, zTop), Q(aTop1, 0.72, zTop), Q(aTop1, W - 0.72, zTop), Q(aTop0, W - 0.72, zTop)], (x, y) =>
+    bayer(x, y) < 0.25 ? shade(PATH[1], 1.02) : PATH[1],
   );
-  const platform = H;
-  const [cx0, cy0] = Q(acTop, cC, platform);
-  const cx = Math.round(cx0);
-  const cy = Math.round(cy0);
-  const ch = 28;
-  const arm = 6;
-  const armAt = cy - Math.round(ch * 0.74);
-  // El palo, de tres píxeles con el filo iluminado a la derecha, y el travesaño de dos.
-  p.px.rect(cx - 1, cy - ch, 3, ch, CROSS_WOOD[0]);
-  p.px.rect(cx + 1, cy - ch, 1, ch, shade(CROSS_WOOD[1], 1.2));
-  p.px.rect(cx - arm, armAt, arm * 2 + 3, 2, CROSS_WOOD[0]);
-  p.px.rect(cx - arm, armAt, arm * 2 + 3, 1, shade(CROSS_WOOD[1], 1.2));
-  // El pie de piedra, para que la cruz no salga del pasto.
-  p.px.rect(cx - 2, cy - 1, 5, 2, STONE[1]);
+  // El escalón del atrio, en la cara que da al camino.
+  p.poly([Q(aTop0, 0.72, zTop - 2), Q(aTop0, W - 0.72, zTop - 2), Q(aTop0, W - 0.72, zTop), Q(aTop0, 0.72, zTop)], () =>
+    shade(PATH[0], 0.94),
+  );
+
+  // La cruz. Alta y de piedra clara, sobre un basamento, con el Cristo en sombra sobre el palo: a un
+  // píxel el contraste es lo que hace que la figura se lea y no que sea una mancha más.
+  {
+    const aC = aTop0 + (aTop1 - aTop0) * 0.58;
+    const [bx, by] = Q(aC, cMid, zTop);
+    const cx = Math.round(bx);
+    const cy = Math.round(by);
+    // El basamento de roca: dos dados, el de abajo más ancho.
+    p.px.rect(cx - 4, cy - 2, 9, 2, shade(STONE[1], 0.94));
+    p.px.rect(cx - 4, cy - 2, 9, 1, shade(STONE[2], 1.08));
+    p.px.rect(cx - 2, cy - 4, 5, 2, shade(STONE[1], 1.02));
+    p.px.rect(cx - 2, cy - 4, 5, 1, shade(PATH[1], 0.98));
+    const H_CROSS = 24;
+    const armUp = Math.round(H_CROSS * 0.8);
+    const arm = 5;
+    const yBase = cy - 4;
+    // El palo: tres píxeles, el carril claro y el filo de la derecha en sombra.
+    p.px.rect(cx - 1, yBase - H_CROSS, 3, H_CROSS, PATH[2]);
+    p.px.rect(cx + 1, yBase - H_CROSS, 1, H_CROSS, shade(PATH[0], 1.02));
+    // El travesaño, con el remate de arriba más corto: la cruz latina y no la de cuatro brazos iguales.
+    p.px.rect(cx - arm, yBase - armUp, arm * 2 + 3, 2, PATH[2]);
+    p.px.rect(cx - arm, yBase - armUp, arm * 2 + 3, 1, PATH[1]);
+    p.px.rect(cx + arm, yBase - armUp, 1, 2, shade(PATH[0], 1.02));
+    // El cartel del INRI, arriba del todo.
+    p.px.rect(cx - 2, yBase - H_CROSS - 2, 5, 2, shade(PATH[1], 0.9));
+    // El Cristo: la silueta oscura **pegada al travesaño**, no flotando tres píxeles más abajo. Los
+    // brazos van en la fila de abajo del madero y el cuerpo cuelga del centro.
+    const yArm = yBase - armUp + 1;
+    p.px.rect(cx - arm + 1, yArm, arm * 2 - 1, 1, shade(INSIDE, 1.45));
+    p.px.rect(cx, yArm, 1, 5, shade(INSIDE, 1.4));
+    p.px.rect(cx, yArm - 2, 1, 2, shade(INSIDE, 1.5));
+    p.px.rect(cx - 1, yArm + 5, 3, 1, shade(INSIDE, 1.35));
+  }
 }
 
 /** Paints el Calvario on the lot the camera sees: 3x6 or 6x3. */

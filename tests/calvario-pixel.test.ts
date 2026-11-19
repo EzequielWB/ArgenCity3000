@@ -3,9 +3,13 @@ import { paintCalvario } from '../src/render/pixelArt';
 import { UNIQUES, UNIQUE_RULES } from '../src/config';
 
 /**
- * El Calvario, el primer edificio único en píxel y el único que pinta su propio terreno: la loma, la
- * escalinata del Vía Crucis y el monte alrededor. Se dibuja en las dos orientaciones del lote —3×6 y
- * 6×3—, así que lo que se prueba es que en las dos esté todo y que la escalinata suba.
+ * El Calvario, el único edificio que pinta su propio terreno. Desde que es el Calvario de Tandil lo que
+ * manda es **el eje**: una escalinata recta que sube el cerro y una cruz alta al final del camino. La
+ * versión anterior era una loma redonda con la escalinata en zigzag y las cruces de costado, y a un píxel
+ * eso se leía como una loma con un palo.
+ *
+ * Se dibuja en las dos orientaciones del lote —3×6 y 6×3—, así que lo que se prueba es que en las dos
+ * esté el camino, que suba y que la cruz lo remate.
  */
 
 interface Art {
@@ -16,12 +20,31 @@ interface Art {
 
 const SHADOW_ALPHA = 96;
 
+const pixel = (a: Art, x: number, y: number) => {
+  const i = (y * a.px.w + x) * 4;
+  return [a.px.data[i], a.px.data[i + 1], a.px.data[i + 2]] as [number, number, number];
+};
 const alpha = (a: Art, x: number, y: number) => a.px.data[(y * a.px.w + x) * 4 + 3];
 
 /** Topmost row that has any paint. */
 function topRow(a: Art): number {
   for (let y = 0; y < a.px.h; y++) for (let x = 0; x < a.px.w; x++) if (alpha(a, x, y)) return y;
   return a.px.h;
+}
+
+/** Las columnas que tienen pintura en la franja de arriba del dibujo: el remate del monumento. */
+function topColumns(a: Art, rows: number): [number, number] {
+  const top = topRow(a);
+  let mn = a.px.w;
+  let mx = -1;
+  for (let y = top; y < top + rows; y++) {
+    for (let x = 0; x < a.px.w; x++) {
+      if (!alpha(a, x, y)) continue;
+      mn = Math.min(mn, x);
+      mx = Math.max(mx, x);
+    }
+  }
+  return [mn, mx];
 }
 
 const rises = (a: Art) => a.ay - topRow(a);
@@ -42,10 +65,17 @@ function countish(a: Art, ok: (r: number, g: number, b: number) => boolean, minY
 
 /** Green: the hill and the wood, which is most of the drawing. */
 const green = (r: number, g: number, b: number) => g > r + 14 && g > b + 14;
-/** The stone of the stair and the esplanade: light and neutral, the only pale grey of the lot. */
-const stone = (r: number, g: number, b: number) => r > 150 && Math.abs(r - g) < 22 && Math.abs(g - b) < 26 && b > 120;
-/** The wood of the crosses: brown, dark and warm. */
-const wood = (r: number, g: number, b: number) => r > 60 && r < 150 && g < r - 8 && b < g - 4;
+/** El verde oscuro del ciprés: más oscuro que cualquier pasto del cerro. */
+const cypressGreen = (r: number, g: number, b: number) => g > r + 10 && g < 110 && b < g;
+
+/**
+ * La piedra del camino. Es **lo más claro del lote** y ahora lo único blanco: la escalinata y el atrio van
+ * en `PATH` (`#efe9d9`) y el cerro en verde, que es el contraste que hace que el corredor se lea desde
+ * lejos, como en la foto del cerro de verdad.
+ */
+const path = (r: number, g: number, b: number) => r > 215 && g > 210 && b > 190 && r - b > 12 && r - b < 40;
+/** La contrahuella del peldaño: la misma piedra, en sombra. */
+const stepShade = (r: number, g: number, b: number) => r > 150 && r < 215 && g > 145 && g < 205 && b > 130 && b < 195 && r - b > 10;
 
 const BOTH: [string, number, number][] = [
   ['3×6', 3, 6],
@@ -59,12 +89,6 @@ describe('el Calvario en píxel', () => {
       for (let i = 3; i < a.px.data.length; i += 4) {
         if (a.px.data[i] > 0 && a.px.data[i] < 255) expect(a.px.data[i]).toBeLessThanOrEqual(SHADOW_ALPHA);
       }
-      // La sombra del lote no está porque el pasto lo cubre entero, y las de los árboles se multiplican
-      // contra el pasto en vez de dibujarse encima: lo que se prueba es que no hay medias tintas fuertes,
-      // no que haya sombras translúcidas.
-      let soft = 0;
-      for (let i = 3; i < a.px.data.length; i += 4) if (a.px.data[i] > 0 && a.px.data[i] < 255) soft++;
-      expect(soft).toBe(0);
     }
   });
 
@@ -78,50 +102,89 @@ describe('el Calvario en píxel', () => {
     expect(b.ay).toBe(a.ay);
     // Y el dibujo no es el mismo espejado sin más: la loma se pinta para cada orientación.
     expect(drawing(a)).not.toBe(drawing(b));
-    // La loma más la cruz levantan el dibujo quince píxeles sobre la esquina del lote. La cumbre está a
-    // tres cuartos de la base, o sea cerca de una punta del rombo, así que el monte se come buena parte de
-    // su altura en el rombo: lo que importa es que se levante, no cuánto.
-    expect(rises(a)).toBeGreaterThan(15);
-    expect(rises(b)).toBeGreaterThan(15);
+    // La loma más la cruz levantan el dibujo sobre la esquina del lote. La cruz sola mide veinticuatro
+    // píxeles, así que el remate tiene que pasar de veinte por encima del ancla.
+    expect(rises(a)).toBeGreaterThan(20);
+    expect(rises(b)).toBeGreaterThan(20);
   });
 
-  it('la loma ocupa el lote y el monte la cubre', () => {
+  it('el cerro es verde y el camino de piedra, no una mancha gris', () => {
     const a = paintCalvario(3, 6);
-    // La loma y el monte son el grueso del dibujo, no un detalle encima de un lote vacío.
+    // La loma y el monte son el grueso del dibujo.
     expect(countish(a, green)).toBeGreaterThan(2500);
-    // El monte: las copas oscuras de los pinos y eucaliptos, repartidas en la base y en la ladera.
-    expect(countish(a, (r, g, b) => g > r + 10 && g < 120 && b < g)).toBeGreaterThan(120);
+    // Los cipreses son el verde más oscuro del lote y están repartidos a los dos lados del camino.
+    expect(countish(a, cypressGreen)).toBeGreaterThan(120);
+    // Y la piedra del camino, que es el material que nombra al monumento, es una parte chica y clara.
+    const pathPixels = countish(a, path);
+    expect(pathPixels).toBeGreaterThan(400);
+    expect(pathPixels).toBeLessThan(countish(a, green));
   });
 
-  it('la escalinata sube la ladera de punta a punta', () => {
+  it('la escalinata sube de punta a punta, con peldaños y no con una rampa', () => {
     const a = paintCalvario(3, 6);
-    // La piedra de la escalinata y la esplanada: el único gris claro del lote, y buena parte del dibujo.
-    const steps = countish(a, stone);
-    expect(steps).toBeGreaterThan(100);
-    // Un solo peldaño no sería una escalinata: los peldaños tienen que aparecer a lo largo de toda la
-    // altura de la loma, desde el pie hasta la cresta, y ser varios y no uno.
+    // El camino aparece en filas de toda la altura del cerro: desde el pie hasta el atrio.
     const rows: number[] = [];
-    for (let y = 0; y < a.px.h; y++) if (countish(a, stone, y, y + 1) > 0) rows.push(y);
-    expect(rows.length).toBeGreaterThan(10);
-    expect(rows[rows.length - 1] - rows[0]).toBeGreaterThan(20);
+    for (let y = 0; y < a.px.h; y++) if (countish(a, path, y, y + 1) > 0) rows.push(y);
+    expect(rows.length).toBeGreaterThan(24);
+    expect(rows[rows.length - 1] - rows[0]).toBeGreaterThan(40);
+    // Y los peldaños: sin la contrahuella en sombra el camino es una cinta lisa. Hay que encontrar muchas
+    // filas donde el camino se corta en claro-oscuro-claro, no dos.
+    let bandas = 0;
+    for (let y = 1; y + 1 < a.px.h; y++) {
+      if (countish(a, path, y - 1, y) > 2 && countish(a, stepShade, y, y + 1) > 2 && countish(a, path, y + 1, y + 2) > 2) bandas++;
+    }
+    expect(bandas).toBeGreaterThan(12);
   });
 
-  it('las tres cruces están en la cresta, por encima de la loma', () => {
+  it('la cruz está en el atrio y el atrio es lo más ancho del camino', () => {
     const a = paintCalvario(3, 6);
-    const top = topRow(a);
-    // Las cruces son lo más alto del lote: el madero aparece en la franja de arriba del dibujo.
-    expect(countish(a, wood, top, top + 34)).toBeGreaterThan(60);
-    // Y son tres: los dos brazos laterales se separan del palo mayor.
-    let columns = 0;
-    for (let x = 0; x < a.px.w; x++) {
-      if (countish(a, wood, top, top + 34) === 0) break;
-      let has = false;
-      for (let y = top; y < top + 34 && !has; y++) {
-        if (alpha(a, x, y) && wood(a.px.data[(y * a.px.w + x) * 4], a.px.data[(y * a.px.w + x) * 4 + 1], a.px.data[(y * a.px.w + x) * 4 + 2])) has = true;
+    // La fila con más piedra clara es la explanada del atrio: es la única parte del camino que se abre.
+    let bestRow = 0;
+    let best = 0;
+    for (let y = 0; y < a.px.h; y++) {
+      const n = countish(a, path, y, y + 1);
+      if (n > best) {
+        best = n;
+        bestRow = y;
       }
-      if (has) columns++;
     }
-    expect(columns).toBeGreaterThan(5);
+    expect(best).toBeGreaterThan(14);
+    // Y la cruz se para encima: el remate del dibujo cae dentro del ancho de esa explanada. Con la cruz en
+    // el medio del cerro, el píxel más alto quedaba fuera y el remate parecía apoyado en la ladera.
+    const [tmn, tmx] = topColumns(a, 6);
+    let amn = a.px.w;
+    let amx = -1;
+    for (let y = bestRow - 3; y <= bestRow + 1; y++) {
+      for (let x = 0; x < a.px.w; x++) {
+        if (!alpha(a, x, y)) continue;
+        const [r, g, b] = pixel(a, x, y);
+        if (!path(r, g, b) && !stepShade(r, g, b)) continue;
+        amn = Math.min(amn, x);
+        amx = Math.max(amx, x);
+      }
+    }
+    expect(amn).toBeLessThanOrEqual(tmn + 2);
+    expect(amx).toBeGreaterThanOrEqual(tmx - 2);
+  });
+
+  it('las estaciones del Vía Crucis están a los costados del camino', () => {
+    const a = paintCalvario(3, 6);
+    // Los nichos son el único blanco puro del lote, y van de a pares, uno por lado.
+    const nichos = countish(a, (r, g, b) => r > 230 && g > 228 && b > 220);
+    expect(nichos).toBeGreaterThan(20);
+    let left = 0;
+    let right = 0;
+    for (let y = 0; y < a.px.h; y++) {
+      for (let x = 0; x < a.px.w; x++) {
+        if (!alpha(a, x, y)) continue;
+        const [r, g, b] = pixel(a, x, y);
+        if (!(r > 230 && g > 228 && b > 220)) continue;
+        if (x < a.px.w / 2) left++;
+        else right++;
+      }
+    }
+    expect(left).toBeGreaterThan(4);
+    expect(right).toBeGreaterThan(4);
   });
 
   it('la simulación del Calvario no cambia', () => {

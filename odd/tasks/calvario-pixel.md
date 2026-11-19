@@ -42,6 +42,8 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
 `npx vitest run`, `npx tsc --noEmit`, `npm run board` (edificios-unicos.html), y el mapa real con
 `arte.html?solo=city`.
 
+| S7 | El Calvario se rehace como el de Tandil: la **escalinata recta** manda y la **cruz queda al fondo** sobre el atrio. | `odd/tasks/calvario-pixel.md` | `src/render/pixelArt.ts` | T4 |
+
 ## Tasks
 
 | ID | Tarea | Specs | Archivos | Commit |
@@ -159,3 +161,40 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
   así que `document.querySelector('canvas')` devuelve el suyo y no el del tablero — hay que buscarlo por `id`. Y un
   comentario con comillas invertidas **dentro del template literal** de esbuild cierra el template: `const k = 7,
   css = 600` falló con `Expected ";" but found "css"` por un backtick en el comentario de la línea de al lado.
+- **L43.** El Calvario **no era el Calvario**. La versión anterior era un monte redondo con la escalinata en
+  zigzag y la cruz de costado, y a un píxel se leía como una loma con un palo. El usuario trajo las fotos del
+  Calvario de Tandil y la corrección del rumbo: *"la cruz debería quedar al fondo más o menos y que lo otro
+  sea escalinata"*. Datos del monumento de verdad, de su ficha: **96 peldaños**, la cruz de **17 metros** que
+  proyectó Bustillo en 1943, el Cristo de piedra traído de Francia y las estaciones a los costados.
+- **L44.** Tres decisiones, y la tercera es la que hizo el dibujo:
+  - **Un eje recto y nada más.** La escalinata sube por el medio del lote de punta a punta y la cruz la
+    remata. Fuera el zigzag y fuera la loma simétrica.
+  - **El terreno sube en ocho tramos bajos, no en cuatro altos.** Cuatro escalones de nueve píxeles se leen
+    como una escalera de cuatro escalones; ocho de cuatro se leen como un cerro.
+  - **El contraste es el dibujo.** La escalinata va en la piedra más clara del lote y el cerro en verde: el
+    corredor se ve desde lejos, que es como se ve en la foto. Pintada en el mismo gris del terreno, todo se
+    juntaba en una mancha y el monumento parecía una villa con pileta.
+- **L45.** **La cumbre va del lado de allá de la cámara.** Con el eje natural, la escalinata subía hacia el
+  jugador y la cruz quedaba en primer plano, que es lo contrario de lo que hace un cerro. En las dos
+  orientaciones el lado de allá es el de `u + v` más chico, así que el eje se mide al revés (`uv(L - a, c)`)
+  y los tramos se pintan de atrás hacia adelante.
+- **L46.** Una terraza de nueve píxeles de alto **no es un peldaño**: con la huella y la contrahuella al mismo
+  tamaño el camino se lee como una escalera de mano. La contrahuella tiene que ser **una sola línea**, y no al
+  revés del contraste: la huella clara arriba y la sombra abajo. Con la sombra en `0.7` el camino quedaba a
+  rayas de cebra; en `0.86` se lee escalón.
+- **L47.** **Una cruz de 24 píxeles necesita un atrio cuadrado.** Con un solo tramo, el atrio medía 0.26 de
+  largo por 1.5 de ancho y se veía como una pasarela blanca cruzando el lote, con la cruz parada en su borde.
+  Le di dos tramos (1.28 por 1.5): explanada, y la cruz adentro.
+- **L48.** El Cristo tiene que ir **pegado al travesaño**. A tres píxeles de distancia, los brazos oscuros
+  flotaban al lado del palo y parecían una segunda cruz. Y de color: la cruz de piedra clara y la figura en
+  sombra, porque a un píxel lo que hace que una figura se lea es el contraste y no el detalle.
+- **L49.** Los cipreses son **tres píxeles de ancho**, no cinco: a cinco son postes de alumbrado. Tres con la
+  punta en aguja y el borde iluminado a la izquierda se leen como cipreses de cementerio, que es lo que son.
+- **L50.** Las pruebas del Calvario se reescribieron enteras, y **estaban pasando sin probar nada**: el test
+  que contaba "madera en la franja de arriba" seguía verde porque matcheaba los **troncos de los eucaliptos**
+  del monte, no las cruces — que ahora son de piedra. Las nuevas miden lo que el dibujo tiene que tener: la
+  piedra clara del camino contra el verde del cerro, los peldaños como filas de claro-oscuro-claro (72
+  encontradas), la explanada como la fila con más piedra (41 px) y la cruz cayendo adentro de su ancho
+  (columnas 95-113 dentro de 87-130), y los nichos de las estaciones repartidos a los dos lados.
+- **L51.** Evidencia: `npx vitest run tests/calvario-pixel.test.ts` **7 / 7** verdes · `tsc --noEmit` limpio ·
+  tablero regenerado y leído en las dos orientaciones (3×6 y 6×3).
