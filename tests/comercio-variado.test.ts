@@ -280,3 +280,129 @@ describe('el nivel 5 del comercio: cuatro locales', () => {
     }
   });
 });
+
+/* ---------- La calle baja: dos modelos por nivel ---------- */
+
+const low = (lv: number, v: number) => paintCommercial(lv, v);
+
+/**
+ * Las dos lonas de la calle baja: la del toldo del kiosco y la de las rayas blancas de la pizzería. Son dos
+ * telas de dos tonos distintos, así que van dos predicados.
+ *
+ * La tolerancia es de diez y no más por el **azulejo y el marco de la vidriera** (`#e6e9e2`), que están a
+ * catorce del blanco de lona: con la tolerancia ancha, el marco de la panadería entraba como toldo y la
+ * prueba terminaba midiendo un material del vecino.
+ */
+const cerca = (c: C, r: [number, number, number], d = 10) =>
+  Math.abs(c[0] - r[0]) < d && Math.abs(c[1] - r[1]) < d && Math.abs(c[2] - r[2]) < d;
+/** La lona del toldo del kiosco. */
+const isLonaKiosco = (c: C) => cerca(c, [0xf4, 0xec, 0xe0]);
+/** La franja blanca del toldo a rayas de la pizzería. */
+const isLonaPizza = (c: C) => cerca(c, [0xf2, 0xed, 0xe0]);
+/** El hueco del frente abierto: la masa oscura de adentro, no una vidriera. */
+const isHueco = (c: C) => Math.abs(c[0] - 0x2e) < 12 && Math.abs(c[1] - 0x26) < 12 && Math.abs(c[2] - 0x20) < 14;
+/** La cruz verde de la farmacia. */
+const isCruzVerde = (c: C) => Math.abs(c[0] - 0x2f) < 20 && Math.abs(c[1] - 0x9a) < 22 && Math.abs(c[2] - 0x4a) < 20;
+
+function contarBajo(lv: number, v: number, f: (c: C) => boolean): number {
+  const a = low(lv, v);
+  let n = 0;
+  for (let y = 0; y < a.px.h; y++) {
+    for (let x = 0; x < a.px.w; x++) {
+      const c = at(a, x, y);
+      if (c && f(c)) n++;
+    }
+  }
+  return n;
+}
+
+function shapeBajo(lv: number, v: number): Shape {
+  const a = low(lv, v);
+  const widths: number[] = [];
+  for (let y = 0; y < a.px.h; y++) {
+    let mn = a.px.w;
+    let mx = -1;
+    for (let x = 0; x < a.px.w; x++) {
+      if (!at(a, x, y)) continue;
+      mn = Math.min(mn, x);
+      mx = Math.max(mx, x);
+    }
+    if (mx >= 0) widths.push(mx - mn + 1);
+  }
+  return {
+    widths,
+    height: widths.length,
+    width: Math.max(...widths),
+    medianTop: 0,
+    top: 0,
+  };
+}
+
+/**
+ * La calle baja del comercio, niveles 1 a 4: **dos modelos por nivel**, no uno repintado cuatro veces.
+ *
+ * La variante elige el modelo con `(v >> 1) & 1` y el color con `v`, así que las variantes 0 y 1 son el
+ * primer modelo con dos paletas y las 2 y 3 el segundo con otras dos. Lo que se prueba abajo es la
+ * **diferencia estructural** dentro de cada par, no el color: techo contra toldo, abierto contra cerrado,
+ * cruz contra poste, toldo a rayas contra madera.
+ */
+describe('la calle baja del comercio: dos modelos por nivel', () => {
+  it('nivel 1: el kiosco tiene toldo de lona y la panadería techo a dos aguas', () => {
+    // El toldo de lona es lo único blanco del nivel: el kiosco lo tiene, la panadería no tiene toldo.
+    // El toldo va con la pared, así que la paleta clara lo deja casi entero en un caso y recortado en el
+    // otro: lo que importa es que esté, no cuánto.
+    expect(contarBajo(1, 0, isLonaKiosco)).toBeGreaterThan(20);
+    expect(contarBajo(1, 1, isLonaKiosco)).toBeGreaterThan(20);
+    expect(contarBajo(1, 2, isLonaKiosco)).toBe(0);
+    expect(contarBajo(1, 3, isLonaKiosco)).toBe(0);
+
+    // Y el techo suma altura: la panadería es la más alta de las dos, aunque sea la más baja de la calle.
+    expect(shapeBajo(1, 2).height).toBeGreaterThan(shapeBajo(1, 0).height + 3);
+  });
+
+  it('nivel 2: la verdulería está abierta a la calle y la carnicería cerrada', () => {
+    // El hueco oscuro del frente abierto: treinta y pico de píxeles en la verdulería, ninguno en la
+    // carnicería, que tiene vidriera de vidrio con marco.
+    expect(contarBajo(2, 0, isHueco)).toBeGreaterThan(25);
+    expect(contarBajo(2, 1, isHueco)).toBeGreaterThan(25);
+    expect(contarBajo(2, 2, isHueco)).toBe(0);
+    expect(contarBajo(2, 3, isHueco)).toBe(0);
+  });
+
+  it('nivel 3: la peluquería tiene poste y la farmacia cruz verde', () => {
+    // La cruz es el único verde puro de la calle baja y el único símbolo.
+    expect(contarBajo(3, 2, isCruzVerde)).toBeGreaterThanOrEqual(8);
+    expect(contarBajo(3, 3, isCruzVerde)).toBeGreaterThanOrEqual(8);
+    expect(contarBajo(3, 0, isCruzVerde)).toBe(0);
+    expect(contarBajo(3, 1, isCruzVerde)).toBe(0);
+
+    // Y la cruz es lo que la hace más alta: está en el techo, sobre su pie.
+    expect(shapeBajo(3, 2).height).toBeGreaterThan(shapeBajo(3, 0).height + 8);
+  });
+
+  it('nivel 4: el bar es de madera y la pizzería tiene toldo a rayas', () => {
+    // El toldo a rayas lleva **blanco de lona** en la mitad de las franjas y el bar no tiene ninguno: su
+    // marquesina es del color de la marca con su sombra. Los saltos de tono no sirven acá porque la
+    // marquesina del bar también los da —es de dos tonos— y la prueba terminaría midiendo lo mismo.
+    expect(contarBajo(4, 2, isLonaPizza)).toBeGreaterThan(15);
+    expect(contarBajo(4, 3, isLonaPizza)).toBeGreaterThan(15);
+    expect(contarBajo(4, 0, isLonaPizza)).toBe(0);
+    expect(contarBajo(4, 1, isLonaPizza)).toBe(0);
+
+    // Y la pizzería es más alta por el ducto de la campana.
+    expect(shapeBajo(4, 2).height).toBeGreaterThan(shapeBajo(4, 0).height + 2);
+  });
+
+  it('los cuatro niveles tienen dos siluetas: la máscara de la variante 1 no es la de la 3', () => {
+    // La prueba de conjunto, igual que en el nivel 5: cambia la forma, no sólo el tono.
+    for (const lv of [1, 2, 3, 4]) {
+      const mask = (v: number) => {
+        const a = low(lv, v);
+        const m: number[] = [];
+        for (let i = 3; i < a.px.data.length; i += 4) m.push(a.px.data[i] > 200 ? 1 : 0);
+        return m.join('');
+      };
+      expect(mask(0), `nivel ${lv}`).not.toBe(mask(2));
+    }
+  });
+});

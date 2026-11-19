@@ -672,6 +672,66 @@ function kiosk(p: Pen, v: number): void {
   p.crate(0.12, 0.86, hex('#e0a526'));
 }
 
+/**
+ * Level 1, the second model: **la panadería**. The kiosk is a box with a flat awning; the bakery is the
+ * only shop on the low street with a **pitched roof**, and that triangle is what names it before the
+ * player reads the sign. On the pavement, two baskets of bread — a paper bag at 1x is a white blot, a
+ * wooden basket with the bread showing over the rim is not.
+ */
+function bakery(p: Pen, v: number): void {
+  const wall = WALLS[(v + 2) % WALLS.length];
+  const sign = SIGNS[(v + 3) % SIGNS.length];
+  const roof = ROOFS[(v + 1) % ROOFS.length];
+  const u0 = 0.14;
+  const v0 = 0.18;
+  const u1 = 0.86;
+  // The shop is shallow on purpose: the pitched roof needs the depth to read as a roof and not as a
+  // triangle stuck on a box, and the pavement keeps the baskets.
+  const v1 = 0.62;
+  // La pared sube a once para que la banda del cartel tenga tres filas libres debajo del alero: con la
+  // pared en diez, el faldón del techo y la banda se tocaban y el cartel se leía como el canto del techo.
+  const h = 11;
+  const marco = hex('#e6e9e2');
+  p.shadow(u0, v0, u1, v1);
+  p.box(
+    u0,
+    v0,
+    u1,
+    v1,
+    0,
+    h,
+    wall,
+    'plain',
+    [
+      { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.55) },
+      // La vidriera con las hogazas, el marco claro y la puerta de madera. Nada de toldo: la panadería no
+      // lo tiene porque el horno ya calienta la vereda, y por eso se distingue del kiosco a la distancia.
+      { t0: 2, t1: 4, k0: 3, k1: 6, c: shade(WARM, 0.9) },
+      { t0: 5, t1: 7, k0: 3, k1: 6, c: shade(WARM, 1.14) },
+      { t0: 8, t1: 10, k0: 3, k1: 6, c: shade(WARM, 0.82) },
+      { t0: 1, t1: 2, k0: 1, k1: 7, c: marco },
+      { t0: 10, t1: 11, k0: 1, k1: 7, c: marco },
+      door(12, 4, 7),
+      // La banda del cartel **debajo del alero** y con su filo claro: es la única banda de la calle baja,
+      // porque la panadería no tiene toldo que haga ese trabajo.
+      { t0: 0, t1: 99, k0: 7, k1: 8, c: shade(sign, 1.3) },
+      { t0: 0, t1: 99, k0: 8, k1: 11, c: sign },
+      // La masa de vidrio al final, que es el fondo y no tapa el marco ni el pan.
+      { t0: 1, t1: 11, k0: 1, k1: 7, c: shade(INSIDE, 0.9) },
+    ],
+    [
+      { t0: 0, t1: 99, k0: 7, k1: 9, c: shade(sign, 0.78) },
+      pane(2, 1, 4, 5, shade(WARM, 0.86)),
+    ],
+  );
+  // Rise de cuatro y no de seis: con seis el faldón delantero se comía la fachada entera y la
+  // panadería quedaba sin vidriera a la vista.
+  p.gable(u0 - 0.04, v0, u1 + 0.04, v1, h, 4, roof, wall[1], 'sheet');
+  // Los canastos del pan: la madera con el pan asomando.
+  p.crate(0.2, 0.7, hex('#e8c48a'));
+  p.crate(0.78, 0.7, hex('#e8c48a'));
+}
+
 /** Level 2: the greengrocer, open to the street, with its crates and its price board. */
 function greengrocer(p: Pen, v: number): void {
   const wall = WALLS[(v + 3) % WALLS.length];
@@ -708,6 +768,68 @@ function greengrocer(p: Pen, v: number): void {
   ] as const)
     p.crate(u, 0.84, hex(fruit));
   p.box(0.74, 0.8, 0.86, 0.86, 1, 5, WOOD_DARK, 'plain');
+}
+
+/**
+ * Level 2, the second model: **la carnicería**. La verdulería está **abierta a la calle** —el frente es un
+ * hueco oscuro con los cajones de fruta afuera— y la carnicería está **cerrada**: vidriera de vidrio con
+ * marco, zócalo de azulejo y la carne colgada adentro en tres manchas rojas. La cámara de frío en la
+ * azotea, con su ventilador, remata la silueta.
+ */
+function butcher(p: Pen, v: number): void {
+  const wall = WALLS[(v + 5) % WALLS.length];
+  const sign = SIGNS[(v + 4) % SIGNS.length];
+  const meat = hex('#b8382c');
+  const u0 = 0.1;
+  const v0 = 0.16;
+  const u1 = 0.9;
+  const v1 = 0.72;
+  const w = faceW(u0, u1);
+  const h = 13;
+  p.shadow(u0, v0, u1, v1);
+  p.box(
+    u0,
+    v0,
+    u1,
+    v1,
+    0,
+    h,
+    wall,
+    'plain',
+    [
+      // El azulejo blanco del zócalo, **dos filas**: la carnicería está revestida hasta la cintura, pero con
+      // tres de trece la fachada se volvía blanca y se comía la vidriera.
+      { t0: 0, t1: 99, k0: 0, k1: 2, c: hex('#e6e9e2') },
+      { t0: 0, t1: 99, k0: 2, k1: 3, c: shade(wall[1], 0.6) },
+      // La carne colgada, **antes** de la masa de vidrio que va al final.
+      { t0: 2, t1: 4, k0: 5, k1: 9, c: meat },
+      { t0: 5, t1: 7, k0: 5, k1: 8, c: shade(meat, 0.84) },
+      { t0: 8, t1: 10, k0: 5, k1: 9, c: shade(meat, 1.1) },
+      door(w - 5, 4, 8),
+      // La vidriera y su marco de aluminio.
+      { t0: 1, t1: w - 6, k0: 4, k1: 10, c: shade(GLASS, 0.7) },
+      { t0: 1, t1: 2, k0: 4, k1: 10, c: hex('#c9cdc4') },
+      { t0: w - 7, t1: w - 6, k0: 4, k1: 10, c: hex('#c9cdc4') },
+      { t0: 0, t1: 99, k0: 10, k1: 13, c: sign },
+      { t0: 0, t1: 99, k0: 10, k1: 11, c: shade(sign, 1.3) },
+    ],
+    [
+      { t0: 0, t1: 99, k0: 0, k1: 2, c: hex('#e6e9e2') },
+      pane(2, 5, 5, 4, shade(GLASS, 0.74)),
+      { t0: 0, t1: 99, k0: 10, k1: 13, c: shade(sign, 0.8) },
+    ],
+    ROOFTOP,
+  );
+  // El toldo recto de **chapa gris**, sin rayas: el de la verdulería es de lona verde y éste es de chapa.
+  // Claro se confundía con el azulejo y con el parapeto; oscuro se lee como el alero metálico que es.
+  p.canopy(u0, v1, u1, 10, hex('#8f948d'), hex('#767b74'), 2);
+  p.cornice(u0, v0, u1, v1, h, 1, CONCRETE);
+  p.parapet(u0, v0, u1, v1, h + 1, 1, wall);
+  // La cámara de frío en la azotea, con el ventilador: la única caja con rejilla de la calle.
+  p.box(0.22, 0.24, 0.48, 0.44, h + 1, 5, [hex('#dfe3dc'), hex('#cdd2cb'), hex('#b6bbb4')], 'plain', [
+    { t0: 1, t1: 5, k0: 1, k1: 2, c: hex('#8f948d') },
+    { t0: 1, t1: 5, k0: 3, k1: 4, c: hex('#8f948d') },
+  ]);
 }
 
 /** Level 3: the hairdresser, a wide glass front, a sign band and the barber pole on the corner. */
@@ -747,6 +869,63 @@ function hairdresser(p: Pen, v: number): void {
   p.barberPole(u0, v1 + 0.02, 0, 7);
 }
 
+/**
+ * Level 3, the second model: **la farmacia**. La peluquería se nombra por el poste de barbero, que es una
+ * columna de anillos; la farmacia se nombra por la **cruz verde**, que es el único símbolo de la calle y
+ * el único objeto de este tamaño que se lee a un píxel de distancia. Dos pisos por la escalera de la cruz.
+ */
+function pharmacy(p: Pen, v: number): void {
+  const wall = WALLS[(v + 3) % WALLS.length];
+  const sign = SIGNS[(v + 2) % SIGNS.length];
+  const GREEN = hex('#2f9a4a');
+  const u0 = 0.1;
+  const v0 = 0.14;
+  const u1 = 0.9;
+  const v1 = 0.8;
+  const w = faceW(u0, u1);
+  const h = 18;
+  p.shadow(u0, v0, u1, v1);
+  p.box(
+    u0,
+    v0,
+    u1,
+    v1,
+    0,
+    h,
+    wall,
+    'plain',
+    [
+      { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.55) },
+      { t0: 1, t1: 3, k0: 13, k1: 16, c: shade(GLASS, 0.8) },
+      { t0: w - 3, t1: w - 1, k0: 13, k1: 16, c: shade(GLASS, 0.8) },
+      ...ribbon(1, 6, 1, 7),
+      door(w - 5, 4, 8),
+      { t0: 0, t1: 99, k0: 8, k1: 9, c: shade(sign, 0.6) },
+      { t0: 0, t1: 99, k0: 9, k1: 12, c: sign },
+    ],
+    [
+      pane(3, 1, 4, 6, GLASS),
+      { t0: 0, t1: 99, k0: 8, k1: 9, c: shade(sign, 0.5) },
+      { t0: 0, t1: 99, k0: 9, k1: 12, c: shade(sign, 0.72) },
+    ],
+    ROOFTOP,
+  );
+  p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
+  p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
+  // **La cruz en el techo y no en la pared**: pegada a la fachada, con cinco píxeles y el escorzo de la
+  // isométrica encima, se leía como una mancha verde entre las ventanas. En el techo, sobre su pie de
+  // hierro, es la única pieza de la calle que se ve desde la esquina —que es lo que una cruz de farmacia
+  // hace en la Argentina— y no compite con nada.
+  const [cx, cy] = p.P(0.5, 0.36, h + 2);
+  const cxi = Math.round(cx);
+  const cyi = Math.round(cy);
+  p.px.rect(cxi, cyi - 6, 1, 6, LEG);
+  p.px.rect(cxi, cyi - 15, 1, 9, GREEN);
+  p.px.rect(cxi - 2, cyi - 12, 5, 1, GREEN);
+  p.px.set(cxi - 3, cyi - 12, shade(GREEN, 0.8));
+  p.px.set(cxi + 3, cyi - 12, shade(GREEN, 0.8));
+}
+
 /** Level 4: the bar, wooden ground floor with warm windows, awning and tables on the pavement. */
 function bar(p: Pen, v: number): void {
   const wall = WALLS[(v + 4) % WALLS.length];
@@ -777,6 +956,62 @@ function bar(p: Pen, v: number): void {
   p.cornice(u0, v0, u1, v1, 17, 2, CONCRETE);
   p.parapet(u0, v0, u1, v1, 19, 1, wall);
   p.tank(0.62, 0.24, 19);
+}
+
+/**
+ * Level 4, the second model: **la pizzería**. El bar es de madera, con el tanque de agua en la azotea; la
+ * pizzería tiene **toldo a rayas** y una **campana de chapa** con su chimenea, que es lo que se ve desde
+ * la esquina: el humo del horno. Es el único de la calle que echa humo y el único con el techo ocupado por
+ * algo que no es un tanque.
+ */
+function pizzeria(p: Pen, v: number): void {
+  const wall = WALLS[(v + 1) % WALLS.length];
+  const sign = SIGNS[v % SIGNS.length];
+  const u0 = 0.08;
+  const v0 = 0.12;
+  const u1 = 0.92;
+  const v1 = 0.82;
+  const w = faceW(u0, u1);
+  const h = 16;
+  p.shadow(u0, v0, u1, v1);
+  p.box(
+    u0,
+    v0,
+    u1,
+    v1,
+    0,
+    h,
+    wall,
+    'plain',
+    [
+      ...ribbon(1, 8, 1, 7),
+      door(w - 5, 4, 8),
+      { t0: 0, t1: 99, k0: 8, k1: 9, c: shade(sign, 0.55) },
+      { t0: 0, t1: 99, k0: 9, k1: 12, c: sign },
+      // Las ventanas del piso alto, con su cortina: arriba también se come.
+      ...glazed(2, w - 2, h - 4, 3, 6, shade(WARM, 0.9)),
+      { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 1.2) },
+    ],
+    [
+      pane(3, 1, 4, 6, shade(WARM, 0.9)),
+      { t0: 0, t1: 99, k0: 9, k1: 12, c: shade(sign, 0.72) },
+    ],
+    ROOFTOP,
+  );
+  // El toldo a rayas, rojo y blanco, por las dos caras: es el toldo más ancho de la calle.
+  // El toldo, un píxel adentro a cada lado: con los extremos del lote, el festón se salía del lote en la
+  // esquina y quedaba un pico blanco flotando sobre el pasto.
+  toldo(p, u0 + 0.03, u1 - 0.03, v1, 9, hex('#c8392f'), hex('#f2ede0'));
+  p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
+  p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
+  // La campana de chapa con su ducto, **una sola masa** sobre el techo. Con la chimenea de bandas al lado
+  // se leían dos tarros de pintura: a diez píxeles de alto, las bandas de tres filas no son un ladrillo,
+  // son un envase.
+  const acero: Ramp = [hex('#cfd2cc'), hex('#b9bcb6'), hex('#9ba09a')];
+  p.box(0.22, 0.22, 0.58, 0.46, h + 2, 5, acero, 'plain', [
+    { t0: 1, t1: 9, k0: 1, k1: 2, c: hex('#7f847e') },
+  ]);
+  p.box(0.62, 0.28, 0.72, 0.38, h + 2, 11, acero, 'plain', [], [], hex('#dfe2dc'));
 }
 
 /**
@@ -3789,10 +4024,14 @@ export function paintCommercial(level: number, variant: number): { px: Pixels; a
   const lv = Math.max(1, Math.min(5, level));
   const v = ((variant % 8) + 8) % 8;
   const p = pen(HEIGHT.commercial[lv]);
-  if (lv === 1) kiosk(p, v);
-  else if (lv === 2) greengrocer(p, v);
-  else if (lv === 3) hairdresser(p, v);
-  else if (lv === 4) bar(p, v);
+  // **Dos modelos por nivel en la calle baja**: la variante elige la silueta con `(v >> 1) & 1` y el
+  // color con `v`, así que cada modelo aparece con cuatro paletas sobre las ocho que guarda la partida.
+  // Con la variante entera eligiendo las dos cosas, la mitad de las calles serían del mismo negocio.
+  const segundo = ((v >> 1) & 1) === 1;
+  if (lv === 1) (segundo ? bakery : kiosk)(p, v);
+  else if (lv === 2) (segundo ? butcher : greengrocer)(p, v);
+  else if (lv === 3) (segundo ? pharmacy : hairdresser)(p, v);
+  else if (lv === 4) (segundo ? pizzeria : bar)(p, v);
   else clothingStore(p, v);
   return { px: p.px, ax: p.ax, ay: p.ay };
 }
