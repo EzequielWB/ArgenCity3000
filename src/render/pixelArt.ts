@@ -837,36 +837,64 @@ function toldo(
 }
 
 /**
- * La taza de café sobre la azotea: el remate que dice qué se vende adentro sin una letra. Vista de frente
- * y **con contorno oscuro**, que es lo que la hace legible: sin línea, la porcelana blanca sobre el techo
- * gris es una mancha. Son once píxeles de ancho —el ancho del techo— porque no es una taza chica, es un
- * cartel con forma de taza: el borde, el café, el asa y dos columnas de vapor pegadas a la boca.
+ * La taza de café sobre la azotea: el remate y el nombre del local sin una letra. Está dibujada como la
+ * taza de porcelana que es —**el plato, el cono del cuerpo, la boca en elipse con el café adentro y el asa
+ * redonda con el hueco abierto**— y no como un cuadrado blanco: a este tamaño lo que la hace legible es la
+ * silueta del cono y el asa, más el filo oscuro que la separa del techo.
+ *
+ * Se dibuja en píxeles de pantalla, de abajo hacia arriba: el plato, el cuerpo, la boca y el asa.
  */
 function tazaDeCafe(p: Pen, u: number, v: number, z: number): void {
   const [cx, cy] = p.P(u, v, z);
   const x = Math.round(cx);
   const y = Math.round(cy);
-  const porcelana = SOMBRILLA;
-  const borde = shade(LEG, 1.15);
-  const cafe = hex('#6a3d22');
-  // El vapor: dos columnas de distinta altura que nacen en la boca.
-  p.px.rect(x - 2, y - 7, 1, 2, porcelana);
-  p.px.rect(x + 1, y - 9, 1, 4, porcelana);
-  p.px.rect(x + 1, y - 9, 1, 1, shade(porcelana, 0.85));
-  // El borde de la boca y el café adentro.
-  p.px.rect(x - 5, y - 6, 11, 1, borde);
-  p.px.rect(x - 5, y - 5, 11, 1, cafe);
-  // El cuerpo, con el contorno a los costados y la base más angosta.
-  p.px.rect(x - 5, y - 4, 11, 3, porcelana);
-  p.px.rect(x - 5, y - 4, 1, 3, borde);
-  p.px.rect(x + 5, y - 4, 1, 3, borde);
-  p.px.rect(x - 4, y - 1, 9, 1, shade(porcelana, 0.9));
-  p.px.rect(x - 4, y, 9, 1, borde);
-  // El asa, del lado derecho: el hueco tiene que quedar abierto o no es un asa.
-  p.px.rect(x + 6, y - 4, 1, 1, borde);
-  p.px.rect(x + 6, y - 3, 1, 1, porcelana);
-  p.px.rect(x + 6, y - 2, 1, 1, borde);
-  p.px.rect(x + 7, y - 3, 1, 1, borde);
+  const porcelana = hex('#f7f3e8');
+  const luz = hex('#fffdf6');
+  const sombra = shade(porcelana, 0.82);
+  const filo = shade(porcelana, 0.6);
+  const cafe = hex('#3d2112');
+  const cafeLuz = hex('#96521f');
+
+  // El plato: el ala ancha, el filo y la sombra que lo despega del techo.
+  p.px.rect(x - 8, y + 1, 17, 1, filo);
+  p.px.rect(x - 8, y, 17, 1, porcelana);
+  p.px.rect(x - 6, y - 1, 13, 1, sombra);
+
+  // El cuerpo: el cono, más ancho arriba, con el brillo a la izquierda y la sombra a la derecha. Cinco
+  // filas visibles entre el plato y la boca: con dos, la taza se veía sentada sobre su propia boca.
+  const cono: [number, number][] = [
+    [7, -2],
+    [8, -3],
+    [9, -4],
+    [10, -5],
+    [11, -6],
+  ];
+  for (const [w, dy] of cono) {
+    const left = x - Math.floor(w / 2);
+    p.px.rect(left, y + dy, w, 1, porcelana);
+    p.px.rect(left, y + dy, 1, 1, luz);
+    p.px.rect(left + w - 2, y + dy, 2, 1, sombra);
+  }
+
+  // La boca, en elipse: el borde de la porcelana arriba y abajo, y **tres filas de café** en el medio. Con
+  // una sola fila de café la boca se leía como una raya, no como un líquido dentro de una taza.
+  p.px.rect(x - 5, y - 11, 11, 1, sombra);
+  p.px.rect(x - 6, y - 10, 13, 1, porcelana);
+  p.px.rect(x - 6, y - 9, 13, 1, cafe);
+  p.px.rect(x - 5, y - 8, 11, 1, cafeLuz);
+  p.px.rect(x - 4, y - 8, 6, 1, cafe);
+  p.px.rect(x - 5, y - 7, 11, 1, cafe);
+  p.px.rect(x - 6, y - 6, 13, 1, porcelana);
+  p.px.rect(x - 5, y - 5, 11, 1, filo);
+
+  // El asa: una C redondeada pegada al cuerpo, del lado derecho, con el hueco abierto. Del tamaño de la
+  // boca y no de un píxel: en la taza de porcelana el asa es casi tan alta como el cuerpo, y es la mitad
+  // de lo que la hace reconocible.
+  // Nace **del borde del cuerpo** —de la fila de la boca para abajo— y no de una fila donde no hay taza: dos
+  // filas más arriba quedaba una C flotando al costado.
+  p.px.rect(x + 5, y - 6, 3, 1, porcelana);
+  p.px.rect(x + 8, y - 5, 1, 2, sombra);
+  p.px.rect(x + 5, y - 3, 3, 1, porcelana);
 }
 
 function clothingStore(p: Pen, v: number): void {
@@ -1003,12 +1031,14 @@ function storeArcade(p: Pen, wall: Ramp, sign: RGB): void {
  * vidriera baja y balcones, porque arriba también hay mesas.
  */
 function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
-  const u0 = 0.14;
-  const v0 = 0.12;
-  const u1 = 0.86;
-  const v1 = 0.86;
+  const u0 = 0.1;
+  const v0 = 0.1;
+  const u1 = 0.9;
+  const v1 = 0.9;
   const w = faceW(u0, u1);
-  const h = 26;
+  // **Un solo piso**: el café es una planta baja con la vidriera de bar y el cartel, y nada más. Todo el
+  // volumen que se le sacó al edificio se fue a la taza de la azotea, que ahora es más alta que el local.
+  const h = 15;
   /**
    * La planta baja del café: los paños de vidrio oscuro —vidrio de bar, no de vidriera de ropa—, el
    * marco de hierro entre ellos y la puerta de madera. La carpintería oscura es la mitad del parecido con
@@ -1024,38 +1054,29 @@ function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
     ];
     for (let t = 1; t < w - 1; t += 4) out.push({ t0: t, t1: t + 1, k0: 1, k1: 9, c: LEG });
     out.push({ t0: 1, t1: w - 1, k0: 1, k1: 9, c: shade(GLASS, 0.72) });
-    return out;
-  };
-  /** Un piso alto: el balcón corrido de hierro adelante y los ventanales altos detrás. */
-  const piso = (k: number, _face: 1 | 2): Patch[] => {
-    const out: Patch[] = [
-      { t0: 0, t1: 99, k0: k, k1: k + 2, c: shade(LEG, 1.25) },
-      { t0: 0, t1: 99, k0: k + 2, k1: k + 3, c: shade(LEG, 1.85) },
-    ];
-    for (let t = 1; t < w - 1; t += 4) out.push({ t0: t, t1: t + 1, k0: k + 3, k1: k + 8, c: shade(LEG, 1.35) });
-    out.push({ t0: 1, t1: w - 1, k0: k + 3, k1: k + 8, c: shade(GLASS, 0.72) });
+    // La puerta de madera, al medio: un café tiene puerta y no sólo vidrio.
+    out.push({ t0: Math.floor(w / 2) - 1, t1: Math.floor(w / 2) + 2, k0: 0, k1: 7, c: shade(hex('#5a3a24'), 1.1) });
+    out.push({ t0: Math.floor(w / 2) - 1, t1: Math.floor(w / 2) + 2, k0: 0, k1: 7, c: shade(hex('#5a3a24'), 1.1) });
     return out;
   };
   const front: Patch[] = [
     ...plantaBaja(1),
-    { t0: 0, t1: 99, k0: 10, k1: 14, c: sign },
-    { t0: 1, t1: 99, k0: 11, k1: 13, c: shade(SOMBRILLA, 0.94) },
-    { t0: 0, t1: 99, k0: 14, k1: 15, c: shade(sign, 1.3) },
-    ...piso(15, 1),
+    { t0: 0, t1: 99, k0: 9, k1: 13, c: sign },
+    { t0: 1, t1: 99, k0: 10, k1: 12, c: shade(SOMBRILLA, 0.94) },
+    { t0: 0, t1: 99, k0: 13, k1: 14, c: shade(sign, 1.3) },
     { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 1.16) },
   ];
   const side: Patch[] = [
     ...plantaBaja(2),
-    { t0: 0, t1: 99, k0: 10, k1: 14, c: shade(sign, 0.74) },
-    ...piso(15, 2),
+    { t0: 0, t1: 99, k0: 9, k1: 13, c: shade(sign, 0.74) },
   ];
   p.shadow(u0, v0, u1, v1);
   p.box(u0, v0, u1, v1, 0, h, wall, 'plain', front, side, ROOFTOP);
   p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
   p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
-  // **La taza sobre la azotea**: es el remate y el nombre. Un café de dos pisos con balcones podía ser un
-  // edificio de departamentos con un cartel; con la taza arriba no queda duda de qué se vende adentro.
-  tazaDeCafe(p, (u0 + u1) / 2, (v0 + v1) / 2, h + 4);
+  // **La taza sobre la azotea**: es el remate y el nombre. Un café de un piso con un cartel podía ser un
+  // kiosco; con la taza de porcelana arriba no queda duda de qué se vende adentro.
+  tazaDeCafe(p, (u0 + u1) / 2, (v0 + v1) / 2, h + 3);
 }
 
 /**

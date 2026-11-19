@@ -170,3 +170,16 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
   (treinta y uno, contra diez de la nave y cero de la heladería). La cafetería deja de ser la más alta
   —empata con la galería, y con la taza la pasa— y la nave deja de ser la más ancha: la heladería, que se
   ensanchó para que el toldo luzca, la supera.
+- **L30.** *"Mas baja la cafeteria premium, que sea un solo piso y aprovechá ese espacio para hacer una taza
+  mejor, un estilo como el de la imagen"* — la cafetería baja de 26 a **15 píxeles**: planta baja con la
+  vidriera de bar, la puerta de madera, el cartel y la losa. Los dos pisos altos y los balcones se van
+  enteros, y todo el volumen que se le sacó al edificio se fue a la taza.
+- **L31.** **La taza de porcelana**, dibujada como la de la foto: el plato, el cono del cuerpo, la boca en
+  elipse con el café adentro y el asa redonda. Cuatro correcciones hasta que se leyó:
+  - Con una sola franja de café la boca era una raya: ahora son **tres filas** de marrón, con el cobre del
+    reflejo, entre los dos bordes de la porcelana.
+  - El cono tenía dos filas visibles entre el plato y la boca: la taza se veía sentada sobre su propia
+    boca. Ahora son cinco.
+  - El asa, de dos píxeles de grosor y separada del cuerpo, parecía una **C de neón colgada al costado**;
+    ahora es un anillo angosto que **nace del borde del cuerpo**, de la fila de la boca para abajo.
+  - Y el asa, dos filas más arriba, flotaba en una fila donde no había taza.

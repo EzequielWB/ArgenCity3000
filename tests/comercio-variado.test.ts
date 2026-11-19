@@ -25,8 +25,8 @@ const isGlass = (c: C) => c[2] - c[0] > 15 && c[2] > 70;
 const sat = (c: C) => Math.max(...c) - Math.min(...c);
 const dist = (a: C, b: C) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
 
-/** La porcelana de la taza de café: un blanco roto que no usa ningún otro material del sprite. */
-const isPorcelana = (c: C) => Math.abs(c[0] - 0xf0) < 14 && Math.abs(c[1] - 0xea) < 14 && Math.abs(c[2] - 0xd8) < 14;
+/** El café de la taza: el marrón oscuro y el cobre del reflejo. Ningún otro material del sprite lo usa. */
+const isCafe = (c: C) => c[0] > 45 && c[0] < 175 && c[1] < 110 && c[2] < 70 && c[0] - c[2] > 40;
 
 interface Shape {
   /** El ancho de cada fila pintada, de arriba abajo: la punta del dibujo primero. */
@@ -107,16 +107,50 @@ function rayas(a: ReturnType<typeof art>): number {
   return best;
 }
 
-/** Los píxeles de porcelana: la taza del remate de la cafetería. */
-function porcelana(a: ReturnType<typeof art>): number {
+/**
+ * El café de la taza: cuántos píxeles del marrón oscuro y del cobre del reflejo hay en el sprite. Es la
+ * taza vista por dentro, que es lo que la nombra.
+ */
+function cafe(a: ReturnType<typeof art>): number {
   let n = 0;
   for (let y = 0; y < a.px.h; y++) {
     for (let x = 0; x < a.px.w; x++) {
       const c = at(a, x, y);
-      if (c && isPorcelana(c)) n++;
+      if (c && isCafe(c)) n++;
     }
   }
   return n;
+}
+
+/**
+ * Las filas con vidrio **por encima del cartel**. Es la prueba de que el local tiene un solo piso: en una
+ * planta baja con un cartel arriba no queda vidrio más alto, y en un edificio de dos plantas sí.
+ */
+function vidrioSobreElCartel(a: ReturnType<typeof art>): number {
+  const sat2 = (c: C) => Math.max(...c) - Math.min(...c);
+  let cartelY = -1;
+  let best = 0;
+  for (let y = 0; y < a.px.h; y++) {
+    let n = 0;
+    for (let x = 0; x < a.px.w; x++) {
+      const c = at(a, x, y);
+      if (c && sat2(c) > 90) n++;
+    }
+    if (n > best) {
+      best = n;
+      cartelY = y;
+    }
+  }
+  let filas = 0;
+  for (let y = 0; y < cartelY; y++) {
+    let n = 0;
+    for (let x = 0; x < a.px.w; x++) {
+      const c = at(a, x, y);
+      if (c && isGlass(c)) n++;
+    }
+    if (n > 3) filas++;
+  }
+  return filas;
 }
 
 /**
@@ -166,17 +200,19 @@ describe('el nivel 5 del comercio: cuatro locales', () => {
     expect(shadowRun(art(1))).toBeGreaterThanOrEqual(8);
   });
 
-  it('la cafetería: la taza de café sobre la azotea, y el cuerpo bajo', () => {
-    // El remate: treinta y un píxeles de porcelana, contra diez de la nave y ninguno de la heladería. La
-    // taza es lo único de las cuatro fachadas que se sale del volumen del edificio hacia arriba.
-    expect(porcelana(art(2))).toBeGreaterThanOrEqual(20);
-    for (const v of [0, 1]) expect(porcelana(art(v)), `variant ${v}`).toBeLessThan(11);
-    // El cuerpo bajo y angosto: no compite en altura con la galería, que es la única de las cuatro que es
-    // un edificio de oficinas, y tiene el frente más chico de los cuatro.
-    expect(shape(art(2)).height).toBeLessThanOrEqual(shape(art(1)).height);
+  it('la cafetería: un solo piso y la taza de café sobre la azotea', () => {
+    // **Un solo piso**: por encima del cartel no queda una sola fila de vidrio. La galería, que es la única
+    // de las cuatro que es un edificio de oficinas, tiene diecisiete.
+    expect(vidrioSobreElCartel(art(2))).toBe(0);
+    expect(vidrioSobreElCartel(art(1))).toBeGreaterThan(10);
+    // Y el cuerpo bajo: más petiso que la galería, y la taza es lo que la levanta.
+    expect(shape(art(2)).height).toBeLessThan(shape(art(1)).height - 6);
     expect(shape(art(2)).width).toBeLessThan(shape(art(0)).width);
-    // El vidrio oscuro de la planta baja: un café no tiene una ventanita, tiene vidriera. Siete píxeles y
-    // no nueve porque el zócalo de granito le come abajo y el reflejo lo cruza al medio.
+    // La taza: ochenta y siete píxeles de café y cobre, contra ninguno de la heladería y seis de la nave.
+    // Es el marrón del café visto desde arriba, que es lo que hace que la taza se lea taza.
+    expect(cafe(art(2))).toBeGreaterThanOrEqual(40);
+    for (const v of [0, 1]) expect(cafe(art(v)), `variant ${v}`).toBeLessThan(11);
+    // El vidrio oscuro de la planta baja: un café no tiene una ventanita, tiene vidriera.
     expect(tallestGlass(art(2))).toBeGreaterThanOrEqual(6);
   });
 
@@ -185,9 +221,9 @@ describe('el nivel 5 del comercio: cuatro locales', () => {
     // Más ancha que la galería y que la cafetería. Contra la heladería no compite: las dos son cajas bajas
     // y anchas, y la heladería se nombra con el toldo.
     for (const v of [1, 2]) expect(shed.width, `variant ${v}`).toBeGreaterThan(shape(art(v)).width);
-    // Más baja que la galería y que la cafetería. La heladería mide casi lo mismo, y eso está bien: las
-    // dos son bajas; lo que las separa es el toldo y el mástil, no la altura.
-    for (const v of [1, 2]) expect(shed.height, `variant ${v}`).toBeLessThan(shape(art(v)).height);
+    // Más baja que la galería, que es el único edificio de oficinas de los cuatro. Contra la cafetería no
+    // compite en altura: el café es una planta baja y lo que lo levanta es la taza de la azotea.
+    expect(shed.height).toBeLessThan(shape(art(1)).height);
     // El mástil: la punta del dibujo está diez píxeles por encima del cuerpo del edificio, y esa punta es
     // un rectángulo de ancho parejo, que es el paño del cartel.
     expect(shed.medianTop - shed.top).toBeGreaterThan(6);
