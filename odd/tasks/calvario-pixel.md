@@ -148,3 +148,14 @@ terreno es parte del dibujo: la loma no se apoya en el relieve, la pinta el spri
   `generateTerrain(seed, 48)`: **1314, 1280, 1295, 1315 y 1300 lotes válidos** de unos 2000. Entra de
   sobra. Lo que no está observado es verlo **construido en una partida**, que es otra cosa y es barata de
   hacer.
+- **L41.** El Calvario **construido en un mapa de verdad**, que era lo único sin observar: mapa `generateTerrain(7, 24)`,
+  la herramienta en la celda **6, 14**, las **18 celdas** del 3×6 colocadas, ningún rechazo. La regla de la cima
+  se cumple con holgura sobre el relieve real y no sólo con el terreno nivelado del tablero.
+  - Se ve la cruz de madera sobre la cima, las terrazas con el sendero en zigzag y las estaciones, y el cerro
+    apoyado en la ladera que baja hacia la calle. Entra en la ciudad como una pieza de la ciudad.
+  - **La lección que importa**: el probe de geometría decía "hay 1.300 lotes válidos" y eso no era el punto;
+    lo que no estaba verificado es que el dibujo se sostenga sobre un relieve **inclinado**. Se sostiene.
+- **L42.** Dos trampas del arnés, para no repetirlas: el renderer **crea su propio canvas y lo mete en el DOM**,
+  así que `document.querySelector('canvas')` devuelve el suyo y no el del tablero — hay que buscarlo por `id`. Y un
+  comentario con comillas invertidas **dentro del template literal** de esbuild cierra el template: `const k = 7,
+  css = 600` falló con `Expected ";" but found "css"` por un backtick en el comentario de la línea de al lado.
