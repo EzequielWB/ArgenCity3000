@@ -4627,20 +4627,53 @@ function paintCabildoOn(p: Pen, vw: number, vh: number): void {
     p.px.wall(p.P(x1 + 0.03, y1 + 0.03, zb), p.P(x1 + 0.03, y0 - 0.03, zb), 3, bal);
   }
 
-  // La torre: en el medio del frente, sobresaliendo del plano de la pared y del techo.
-  const cx = (x0 + x1) / 2;
-  // Angosta y alta: es la única manera de que se lea como torre y no como un cuerpo apoyado en el
-  // techo. Con la mitad de alto tenía trece píxeles de torre arriba de la cumbrera, que es un muñón.
-  const tw = 0.28;
-  const tv1 = y1 + 0.12;
-  const tv0 = tv1 - 0.92;
-  const tH = H + 30;
-  const tfw = Math.round(2 * tw * 16);
-  const tsw = Math.round((tv1 - tv0) * 16);
   /**
-   * El cuerpo del reloj, **un poco más ancho que el fuste**: es el corrimiento que hace que una torre
-   * se lea como torre y no como un caño con un cuadrado blanco pegado. Las cuatro esquinas van en cal
-   * porque un cuadrado blanco no es un reloj.
+   * **La crujía central, de una sola masa.** La torre no es una columna plantada adelante: es la crujía
+   * del medio del Cabildo, que arranca en el suelo, atraviesa el techo y sigue. Por eso va a ras de la
+   * pared, del ancho de dos arcos y con las mismas bandas que el cuerpo —arquería, balcón, ventanas,
+   * cornisamento—: si se la dibuja como un tubo angosto en el medio, por más que esté a ras se lee
+   * pegada adelante. Y no lleva losa de cornisamiento propio: esa tapa se lee como una mesa.
+   */
+  const cx = (x0 + x1) / 2;
+  const tw = 0.56;
+  const tw1 = y1;
+  const tw0 = y1 - 0.56;
+  const tH = H + 22;
+  const tfw = Math.round(2 * tw * 16);
+  const tsw = Math.round(0.56 * 16);
+  /** Las tres bandas del cuerpo, en la crujía: dos arcos, el balcón y dos ventanas con reja. */
+  const bay = (w: number): Patch[] => {
+    const n = w > 12 ? 2 : 1;
+    const out: Patch[] = [];
+    for (let i = 0; i < n; i++) {
+      const t = Math.round((w * (i + 0.5)) / n) - 3;
+      out.push({ t0: t, t1: t + 6, k0: 1, k1: 6, c: ARCH });
+      out.push({ t0: t + 1, t1: t + 5, k0: 6, k1: 7, c: ARCH });
+      out.push({ t0: t + 2, t1: t + 4, k0: 7, k1: 8, c: ARCH });
+      out.push({ t0: t - 1, t1: t + 8, k0: 8, k1: 9, c: shade(CABILDO_WALL[1], 1.16) });
+    }
+    out.push({ t0: 0, t1: w, k0: 9, k1: 11, c: shade(STONE_LIGHT[1], 1.02) });
+    out.push({ t0: 0, t1: w, k0: 11, k1: 12, c: LEG });
+    for (let i = 0; i < n; i++) {
+      const t = Math.round((w * (i + 0.5)) / n) - 2;
+      out.push({ t0: t, t1: t + 1, k0: 13, k1: 19, c: LEG });
+      out.push({ t0: t + 3, t1: t + 4, k0: 13, k1: 19, c: LEG });
+      out.push({ t0: t, t1: t + 4, k0: 18, k1: 19, c: shade(GLASS, 1.7) });
+      out.push({ t0: t, t1: t + 4, k0: 13, k1: 19, c: GLASS });
+      out.push({ t0: t - 1, t1: t + 5, k0: 12, k1: 13, c: shade(CABILDO_WALL[2], 0.78) });
+    }
+    out.push({ t0: 0, t1: w, k0: H - 1, k1: H + 1, c: shade(CABILDO_WALL[1], 1.14) });
+    // El hueco de la campaña: sin él la torre tiene veinte píxeles de cal lisa entre el cornisamento y
+    // el reloj, y la crujía deja de leerse como torre.
+    out.push({ t0: Math.round(w / 2) - 2, t1: Math.round(w / 2) + 2, k0: H + 3, k1: H + 8, c: ARCH });
+    out.push({ t0: Math.round(w / 2) - 1, t1: Math.round(w / 2) + 1, k0: H + 8, k1: H + 9, c: ARCH });
+    out.push({ t0: Math.round(w / 2) - 3, t1: Math.round(w / 2) + 3, k0: H + 9, k1: H + 10, c: shade(CABILDO_WALL[1], 1.16) });
+    return out;
+  };
+  p.box(cx - tw, tw0, cx + tw, tw1, z0, tH - 8, CABILDO_WALL, 'plain', bay(tfw), bay(tsw));
+  /**
+   * El cuerpo del reloj, un poco más ancho que la crujía: es el corrimiento que hace que la torre se lea
+   * como torre. Las cuatro esquinas de la esfera van en cal porque un cuadrado blanco no es un reloj.
    */
   const clock = (w: number): Patch[] => {
     const t = Math.round(w / 2) - 3;
@@ -4652,17 +4685,14 @@ function paintCabildoOn(p: Pen, vw: number, vh: number): void {
       { t0: t, t1: t + 1, k0: k + 5, k1: k + 6, c: cal },
       { t0: t + 5, t1: t + 6, k0: k + 5, k1: k + 6, c: cal },
       { t0: t, t1: t + 6, k0: k, k1: k + 6, c: CLOCK_FACE },
-      // El cornisamento del cuerpo del reloj, en luz.
       { t0: 0, t1: w, k0: 7, k1: 8, c: shade(CABILDO_WALL[1], 1.16) },
     ];
   };
-  p.box(cx - tw, tv0, cx + tw, tv1, z0, tH - 8, CABILDO_WALL, 'plain');
-  // El cuerpo del reloj corona el fuste un poco más ancho.
-  p.box(cx - tw - 0.07, tv0 - 0.06, cx + tw + 0.07, tv1 + 0.06, z0 + tH - 8, 8, CABILDO_WALL, 'plain', clock(tfw + 2), clock(tsw + 2));
+  p.box(cx - tw - 0.05, tw0 - 0.05, cx + tw + 0.05, tw1 + 0.05, z0 + tH - 8, 8, CABILDO_WALL, 'plain', clock(tfw + 2), clock(tsw + 2));
   // Las agujas: dos píxeles oscuros en cada esfera, o el reloj es un cuadrado blanco.
   for (const [u, v] of [
-    [cx, tv1 + 0.06],
-    [cx + tw + 0.07, (tv0 + tv1) / 2],
+    [cx, tw1 + 0.05],
+    [cx + tw + 0.05, (tw0 + tw1) / 2],
   ]) {
     const [hx, hy] = p.P(u, v, z0 + tH - 4);
     const ix = Math.round(hx);
@@ -4672,9 +4702,9 @@ function paintCabildoOn(p: Pen, vw: number, vh: number): void {
   }
   // El remate: cornisamiento y un casquete de tejas. Un cornisamiento **con la losa gris a la vista**
   // deja un patio de cemento en la punta y la torre se lee como un bloque; el casquete la cierra.
-  p.cornice(cx - tw - 0.07, tv0 - 0.06, cx + tw + 0.07, tv1 + 0.06, z0 + tH, 1, CABILDO_WALL);
-  p.hip(cx - tw - 0.09, tv0 - 0.08, cx + tw + 0.09, tv1 + 0.08, z0 + tH + 1, 2.5, CABILDO_TILE);
-  p.flag(cx, (tv0 + tv1) / 2, z0 + tH + 3, 7);
+  p.cornice(cx - tw - 0.05, tw0 - 0.05, cx + tw + 0.05, tw1 + 0.05, z0 + tH, 1, CABILDO_WALL);
+  p.hip(cx - tw - 0.08, tw0 - 0.08, cx + tw + 0.08, tw1 + 0.08, z0 + tH + 1, 2.6, CABILDO_TILE);
+  p.flag(cx, (tw0 + tw1) / 2, z0 + tH + 3, 7);
 
   p.shadow(x0, y0, x1, y1);
 }
@@ -4705,6 +4735,10 @@ const PLANETARIO_MAX_Z = 44;
 const DRUM_WHITE: Ramp = [hex('#fdfaf2'), hex('#f5efe2'), hex('#ded6c4')];
 const DOME_SHELL: [RGB, RGB, RGB] = [hex('#dfe9ed'), hex('#c2d2da'), hex('#a5b6bf')];
 const GALLERY = hex('#4d5a64');
+/** El vidrio del anillo: azul más hondo que la cúpula, para que se lea como vidrio y no como cal. */
+const DRUM_GLASS: Ramp = [hex('#7fa8be'), hex('#5f8ba4'), hex('#48708a')];
+/** La carpintería del anillo: hierro claro, que es lo que dibuja la estructura circular. */
+const MULLION = hex('#f4efe2');
 const PARK: Ramp = ramp('#79a95f');
 
 /**
@@ -4736,7 +4770,7 @@ function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
   p.tree(0.3, 0.32);
 
   /** Un cilindro que arranca a la altura `z0`: el cuerpo columna por columna y la cara de arriba como elipse. */
-  const cyl = (ux: number, uy: number, z0: number, r: number, h: number, base: Ramp, ribs = false) => {
+  const cyl = (ux: number, uy: number, z0: number, r: number, h: number, base: Ramp, mullion: RGB | null = null, foot = true) => {
     const [bx, by] = p.P(ux, uy, z0);
     const ix = Math.round(bx);
     const iy = Math.round(by);
@@ -4745,19 +4779,16 @@ function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
       const e = Math.round(Math.sqrt(Math.max(0, 1 - (d / r) ** 2)) * ry);
       const lit = d < -r * 0.45 ? base[0] : d > r * 0.5 ? base[2] : base[1];
       p.px.rect(ix + d, iy - h - e, 1, h + 2 * e, lit);
-      // El zócalo tiene que seguir **el arco de abajo**, columna por columna. Pintado en la fila del
-      // centro, corta el tambor a media altura y el edificio se lee como una copa de vino.
-      p.px.rect(ix + d, iy + e - 1, 1, 2, e > 0 ? STONE_LIGHT[2] : shade(STONE_LIGHT[2], 0.9));
-      // Los nervios: sin las juntas verticales el tambor es un balde blanco.
-      // Los nervios son una junta y no una baranda: en oscuro pleno el tambor parece una cortina.
-      if (ribs && Math.abs(d) % 5 === 2) p.px.rect(ix + d, iy - h - e, 1, h + e - 1, shade(base[2], 0.96));
+      // El zócalo sigue **el arco de abajo**, columna por columna: pintado en la fila del centro corta
+      // el tambor a media altura y el edificio se lee como una copa de vino.
+      if (foot) p.px.rect(ix + d, iy + e - 1, 1, 2, shade(base[2], 0.9));
+      // Los parantes del anillo de vidrio: son la estructura circular, y sin ellos es un tambor pintado.
+      if (mullion && Math.abs(d) % 4 === 1) p.px.rect(ix + d, iy - h - e, 1, h + 2 * e, mullion);
     }
     for (let d = -ry; d <= ry; d++) {
       const w = Math.round(Math.sqrt(Math.max(0, 1 - (d / ry) ** 2)) * r);
       p.px.rect(ix - w, iy - h - d, w * 2, 1, d < 0 ? base[0] : base[1]);
     }
-    // el zócalo, que asienta el tambor en el parque
-    p.px.rect(ix - Math.round(r * 0.62), iy + Math.round(r * 0.5) - 1, Math.round(r * 1.24), 1, shade(STONE_LIGHT[2], 0.9));
   };
 
   // El tambor ocupa un cuarto del lote: más chico se pierde en el parque, y el lote es suyo.
@@ -4774,14 +4805,20 @@ function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
     }
   };
 
-  // El tambor es **bajo y ancho**, y la galería va fina y con el filo en piedra: un tambor alto con un
-  // collar oscuro grueso da un tarro con tapa, que es lo que era.
-  const r = 15;
-  const h = 17;
-  cyl(cx, cy, 0, r, h, DRUM_WHITE, true);
+  /**
+   * El Planetario es **un anillo de vidrio con un casquete arriba**, no un tambor macizo: la estructura
+   * circular de vidrio es la que lo identifica. Abajo un basamento de piedra, en medio la carpintería de
+   * hierro claro con los paños de vidrio azul, arriba el casquete de chapa y la linterna.
+   */
+  const r = 14;
+  const baseH = 4;
+  const h = 13;
+  cyl(cx, cy, 0, r + 1, baseH, DRUM_WHITE);
+  // El vidrio no lleva zócalo propio: se asienta sobre el basamento de piedra, que ya tiene el suyo.
+  cyl(cx, cy, baseH, r, h, DRUM_GLASS, MULLION, false);
   // La galería: el anillo que vuela alrededor del tambor. Se llena la elipse y la cúpula la tapa; una bola
   // entera, en cambio, se come el tambor y el planetario queda con la cúpula metida en el cuerpo.
-  const [gx0, gy0] = p.P(cx, cy, h);
+  const [gx0, gy0] = p.P(cx, cy, baseH + h);
   const gx = Math.round(gx0);
   const gy = Math.round(gy0);
   const ringRx = r + 1;
@@ -4789,7 +4826,7 @@ function paintPlanetarioOn(p: Pen, vw: number, vh: number): void {
   for (let d = -ringRy; d <= ringRy; d++) {
     const w = Math.round(ringRx * Math.sqrt(Math.max(0, 1 - (d / ringRy) ** 2)));
     // El filo de arriba en piedra clara y el resto en hierro: la galería es una baranda, no un zócalo.
-    p.px.rect(gx - w, gy + d, w * 2, 1, d < -1 ? shade(STONE_LIGHT[1], 1.06) : shade(GALLERY, 1.15));
+    p.px.rect(gx - w, gy + d, w * 2, 1, d < -1 ? DRUM_WHITE[0] : shade(GALLERY, 1.15));
   }
   // La cúpula va **más chata que una media naranja**: media esfera vista desde esta cámara es una bola
   // pesada, y una cúpula de planetario se lee justamente porque es un casquete ancho.

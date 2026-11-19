@@ -110,3 +110,26 @@ cuatro falla conviene saberlo antes de dibujar los otros dos.
   no permisos: si el dibujo cambia otra vez, la prueba tiene que volver a mirarlo.
 - **L17.** Evidencia: **1177 / 73** verdes · `tsc --noEmit` limpio · tablero regenerado · los tres
   revisados en pantalla.
+- **L18. El Cabildo: la torre estaba pegada adelante, y eran tres causas distintas.** Se probaron y
+  descartaron tres arreglos antes de dar con el bueno: (1) proyectarla más, que la afirmaba como losa;
+  (2) una **línea de sombra en la unión**, que es peor —a 1× ese filo oscuro se lee como el aire entre un
+  recorte y la pared—; (3) un pabellón ancho con la torrecita arriba, que da una lámpara sobre una
+  mesa. Lo que funciona es **una sola masa**: la torre *es la crujía del medio* del Cabildo, a ras de la
+  pared, del ancho de dos arcos, con las mismas bandas que el cuerpo —arquería, balcón, ventanas con
+  reja, cornisamento— y un hueco de campaña arriba del techo. Sin losa de cornisamiento propio.
+- **L19.** El cornisamiento del pabellón iba con la losa de piedra clara a la vista. En medio del techo
+  rojo se leía **una chapa apoyada**, y encima la torre parecía plantada sobre una placa. Cuando hace
+  falta, la tapa va en teja.
+- **L20. El Planetario es un anillo de vidrio con un casquete**, no un tambor macizo: la estructura
+  circular de vidrio es lo que lo identifica. Quedó así: basamento de piedra bajo y más ancho, **el
+  anillo de vidrio azul con los parantes en hierro claro**, la galería oscura, el casquete de chapa con
+  sus meridianos y la linterna. Los parantes van uno cada cuatro píxeles: son la estructura.
+- **L21.** El vidrio no lleva zócalo propio —se asienta sobre el de piedra, que ya tiene el suyo— y ese
+  detalle tenía además una consecuencia en las pruebas: el filo oscuro del vidrio entraba en el predicado
+  de la galería y la galería "estaba" veintiún píxeles más abajo de donde está.
+- **L22.** `tests/planetario-pixel.test.ts` reescrito (7 pruebas): la cúpula sigue siendo una cúpula, y
+  ahora se prueba además que **el vidrio esté entre el basamento y la cúpula**, que los parantes sean
+  varios y verticales (contando *columnas* con hierro claro, no píxeles) y que la cúpula esté centrada
+  sobre el anillo.
+- **L23.** Evidencia: **1178 / 73** verdes · `tsc --noEmit` limpio · tablero regenerado · los tres
+  revisados en pantalla.
