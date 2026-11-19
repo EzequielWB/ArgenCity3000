@@ -59,3 +59,11 @@ veces. El pedido es **modelos distintos**, no colores distintos.
   de renta y dos industriales, que arrastraban el mismo signo.
 - **L7.** Evidencia: **1203 / 77** verdes · `tsc --noEmit` limpio · `npm run arte` regenerado · las cuatro
   torres miradas en el tablero a 1× y a 1,7×.
+- **L8.** Mirados los ocho en el tablero, el **ala** era el más débil de los cuatro: la torre medía 0,44 del
+  lote y 54 de alto, o sea 14 píxeles de ancho contra 54 —una chimenea cuadrada, no una torre— y solo se
+  leía cuando la paleta separaba la torre del ala. La torre pasa a 0,56 del lote (de 0,10 a 0,66) y a 50 de
+  alto: misma altura relativa, masa de torre. Los números nuevos: esbeltez 0,70, corrimiento del eje 3,5 px.
+- **L9.** El tablero mostraba cuatro variantes por nivel, y con ocho la fila quedaba en dos colores: el
+  nivel 5 del residencial es el único que pide las ocho, porque ahí cada variante es un modelo distinto y
+  no un color. `scripts/arte-board.ts` lo hace con una condición sobre la zona y el nivel, no con un
+  parámetro nuevo.

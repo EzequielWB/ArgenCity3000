@@ -593,13 +593,15 @@ function bands(u0: number, u1: number, z0: number, z1: number): { front: Patch[]
  */
 function towerWing(p: Pen, wall: Ramp, base: Ramp): void {
   p.shadow(0.05, 0.07, 0.95, 0.93);
-  const H = 54;
-  // La torre primero, que está atrás: el ala la tapa abajo y así se lee que sale de ella.
-  const tb = bands(0.22, 0.66, 14, H);
-  p.box(0.22, 0.12, 0.66, 0.54, 0, H, wall, 'plain', tb.front, tb.side, ROOFTOP);
-  p.cornice(0.22, 0.12, 0.66, 0.54, H, 2, CONCRETE);
-  p.box(0.32, 0.24, 0.54, 0.42, H + 2, 4, CONCRETE, 'plain');
-  p.antenna(0.38, 0.32, H + 6, 8);
+  const H = 50;
+  // La torre primero, que está atrás: el ala la tapa abajo y así se lee que sale de ella. Va ancha —0,56
+  // del lote— porque con las cintas de vidrio y 54 de alto, una torre de 14 píxeles de ancho no es una
+  // torre, es una chimenea.
+  const tb = bands(0.1, 0.66, 14, H);
+  p.box(0.1, 0.1, 0.66, 0.56, 0, H, wall, 'plain', tb.front, tb.side, ROOFTOP);
+  p.cornice(0.1, 0.1, 0.66, 0.56, H, 2, CONCRETE);
+  p.box(0.22, 0.22, 0.54, 0.44, H + 2, 4, CONCRETE, 'plain');
+  p.antenna(0.3, 0.3, H + 6, 8);
   // El ala: local a la calle, una planta de oficinas arriba y la azotea con pretil.
   const ab = bands(0.06, 0.94, 9, 13);
   p.box(0.06, 0.56, 0.94, 0.94, 0, 13, base, 'plain', [

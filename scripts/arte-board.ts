@@ -385,15 +385,19 @@ const sections = FAMILIES.map(
         <h3>${level} · ${name}</h3>
         <p class="note">${note}</p>
         <div class="row">
-          ${[0, 1, 2, 3]
-            .map(
-              (variant) => `
+          ${
+            // El último nivel del residencial son cuatro modelos por dos paletas, y con cuatro variantes en
+            // la fila se verían siempre las mismas dos paletas: las ocho se muestran todas.
+            (f.zone === 'R' && level === 5 ? [0, 1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 3])
+              .map(
+                (variant) => `
           <figure>
             <canvas data-zone="${f.zone}" data-level="${level}" data-variant="${variant}"></canvas>
             <figcaption>variante ${variant}</figcaption>
           </figure>`,
-            )
-            .join('')}
+              )
+              .join('')
+          }
         </div>`,
           )
           .join('')}
