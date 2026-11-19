@@ -386,9 +386,9 @@ const sections = FAMILIES.map(
         <p class="note">${note}</p>
         <div class="row">
           ${
-            // El último nivel del residencial son cuatro modelos por dos paletas, y con cuatro variantes en
-            // la fila se verían siempre las mismas dos paletas: las ocho se muestran todas.
-            (f.zone === 'R' && level === 5 ? [0, 1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 3])
+            // El último nivel —de la casa y del comercio— es el que la partida guarda con ocho variantes, y
+            // con cuatro en la fila no se ven todas las paletas que el juego tiene: se muestran las ocho.
+            ((f.zone === 'R' || f.zone === 'C') && level === 5 ? [0, 1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 3])
               .map(
                 (variant) => `
           <figure>
