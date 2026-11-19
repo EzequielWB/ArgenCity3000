@@ -808,7 +808,19 @@ function storeWindow(p: Pen, wall: Ramp, sign: RGB, v: number): void {
   const u1 = 0.92;
   const v1 = 0.88;
   const w = faceW(u0, u1);
-  const h = 20;
+  // Cuatro píxeles más de alto que antes: con veinte, las ventanas de la planta alta tocaban el techo y
+  // la casa se leía como una franja de vidrio con un techo encima.
+  const h = 24;
+  /** Las ventanas de la casa, una por una y con su alféizar: una faja corrida es de oficinas, no de casa. */
+  const houseWindows = (): Patch[] => {
+    const out: Patch[] = [];
+    for (const t of [1, 6, 10]) {
+      out.push({ t0: t - 1, t1: t + 4, k0: 14, k1: 15, c: shade(wall[1], 1.16) });
+      out.push(pane(t, 15, 3, 4));
+      out.push({ t0: t - 1, t1: t + 4, k0: 19, k1: 20, c: shade(wall[1], 0.86) });
+    }
+    return out;
+  };
   const front: Patch[] = [
     ...mannequins(1, w, v),
     { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[1], 0.6) },
@@ -816,17 +828,14 @@ function storeWindow(p: Pen, wall: Ramp, sign: RGB, v: number): void {
     door(6, 3, 8),
     { t0: 0, t1: 99, k0: 9, k1: 12, c: sign },
     { t0: 0, t1: 99, k0: 12, k1: 13, c: shade(sign, 1.32) },
-    // La planta alta, con las ventanas de la casa y su antepecho: una casa reciclada no tiene una faja de
-    // oficinas, tiene ventanas con alféizar.
-    ...glazed(2, w - 2, 15, 4, 4),
-    { t0: 0, t1: 99, k0: 14, k1: 15, c: shade(wall[1], 1.16) },
-    { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 0.86) },
+    ...houseWindows(),
+    { t0: 0, t1: 99, k0: h - 1, k1: h, c: shade(wall[1], 0.9) },
   ];
   const side: Patch[] = [
     { t0: 0, t1: 99, k0: 0, k1: 1, c: shade(wall[2], 0.6) },
     ...ribbon(1, w - 1, 1, 8),
     { t0: 0, t1: 99, k0: 9, k1: 12, c: shade(sign, 0.72) },
-    ...glazed(2, w - 2, 15, 4, 4),
+    ...houseWindows(),
   ];
   p.shadow(u0, v0, u1, v1);
   p.box(u0, v0, u1, v1, 0, h, wall, 'plain', front, side, wall[0]);
@@ -934,9 +943,15 @@ function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
   p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
   // La caja del cartel sobre la azotea, de la marca, con su filo iluminado: el remate de la torre. Una
   // torre que termina en una losa es un edificio de oficinas; con la caja, es un local que creció.
-  p.box(0.38, 0.36, 0.62, 0.48, h + 3, 6, [sign, sign, shade(sign, 0.8)], 'plain', [
+  // El cartel de azotea, **alto y angosto**, con dos renglones claros: de seis píxeles de alto y con una
+  // sola franja en el medio parecía un moño rojo apoyado en la losa, no un cartel.
+  p.box(0.42, 0.38, 0.58, 0.46, h + 3, 9, [sign, sign, shade(sign, 0.84)], 'plain', [
     { t0: 0, t1: 99, k0: 2, k1: 3, c: hex('#f4ece0') },
-  ], [{ t0: 0, t1: 99, k0: 2, k1: 3, c: hex('#f4ece0') }], shade(sign, 1.3));
+    { t0: 0, t1: 99, k0: 5, k1: 6, c: hex('#f4ece0') },
+  ], [
+    { t0: 0, t1: 99, k0: 2, k1: 3, c: hex('#f4ece0') },
+    { t0: 0, t1: 99, k0: 5, k1: 6, c: hex('#f4ece0') },
+  ], shade(sign, 1.32));
 }
 
 /**

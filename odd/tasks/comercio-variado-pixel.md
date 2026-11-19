@@ -101,3 +101,9 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
   parejo, que es el paño del cartel y no una punta.
 - **L15.** Medidas finales, de arriba abajo del sprite: casona 36 de alto y 28 de ancho, galería 45 y 30,
   torre 55 y 26, nave 37 y 31.
+- **L16.** Dos detalles del dibujo aparecieron recién en el zoom de 1,9×, y los dos son de la casona y de
+  la torre. Las ventanas de la planta alta de la casona iban corridas con `glazed` y a cuatro píxeles de
+  paso: se veían como **una franja de vidrio** pegada al techo, no como ventanas —ahora son tres `pane`
+  con su alféizar y la casa ganó cuatro píxeles de alto para que el techo no las toque—. Y el cartel de
+  azotea de la torre, de seis píxeles y con una sola franja clara en el medio, parecía un **moño rojo**
+  apoyado en la losa: ahora es una caja alta y angosta con dos renglones.
