@@ -25,8 +25,11 @@ const isGlass = (c: C) => c[2] - c[0] > 15 && c[2] > 70;
 const sat = (c: C) => Math.max(...c) - Math.min(...c);
 const dist = (a: C, b: C) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
 
-/** La porcelana de la taza: un blanco roto que no usa ningún otro material del sprite. */
-const isPorcelana = (c: C) => Math.abs(c[0] - 0xf7) < 12 && Math.abs(c[1] - 0xf3) < 12 && Math.abs(c[2] - 0xe8) < 12;
+/** El blanco del texto del cartel de la cafetería. */
+const isBlancoCartel = (c: C) => Math.abs(c[0] - 0xf0) < 14 && Math.abs(c[1] - 0xea) < 14 && Math.abs(c[2] - 0xd8) < 14;
+/** El mantel de las mesas de la vereda, y la madera de sus sillas. */
+const isMantel = (c: C) => Math.abs(c[0] - 0x2f) < 8 && Math.abs(c[1] - 0x2a) < 8 && Math.abs(c[2] - 0x26) < 8;
+const isSilla = (c: C) => Math.abs(c[0] - 0xc9) < 12 && Math.abs(c[1] - 0xa0) < 12 && Math.abs(c[2] - 0x6a) < 12;
 
 interface Shape {
   /** El ancho de cada fila pintada, de arriba abajo: la punta del dibujo primero. */
@@ -107,16 +110,40 @@ function rayas(a: ReturnType<typeof art>): number {
   return best;
 }
 
-/** Los píxeles de porcelana: la taza del remate de la cafetería. */
-function porcelana(a: ReturnType<typeof art>): number {
+/** Cuenta los píxeles que cumplen un predicado. */
+function contar(a: ReturnType<typeof art>, f: (c: C) => boolean): number {
   let n = 0;
   for (let y = 0; y < a.px.h; y++) {
     for (let x = 0; x < a.px.w; x++) {
       const c = at(a, x, y);
-      if (c && isPorcelana(c)) n++;
+      if (c && f(c)) n++;
     }
   }
   return n;
+}
+
+/**
+ * Las letras del cartel: el máximo de **tramos blancos separados** que hay en una misma fila. La palabra
+ * CAFE da cinco —las letras y las contraformas de la A y la E—; una banda de color lisa, ninguno.
+ */
+function letras(a: ReturnType<typeof art>): number {
+  let best = 0;
+  for (let y = 0; y < a.px.h; y++) {
+    let runs = 0;
+    let prev = false;
+    let blancos = 0;
+    for (let x = 0; x < a.px.w; x++) {
+      const c = at(a, x, y);
+      const g = !!c && isBlancoCartel(c);
+      if (g) {
+        blancos++;
+        if (!prev) runs++;
+      }
+      prev = g;
+    }
+    if (blancos > 3) best = Math.max(best, runs);
+  }
+  return best;
 }
 
 /**
@@ -197,18 +224,29 @@ describe('el nivel 5 del comercio: cuatro locales', () => {
     expect(shadowRun(art(1))).toBeGreaterThanOrEqual(8);
   });
 
-  it('la cafetería: un solo piso y la taza de café sobre la azotea', () => {
+  it('la cafetería: un solo piso, el cartel con la palabra y las mesas en la vereda', () => {
     // **Un solo piso**: por encima del cartel no queda una sola fila de vidrio. La galería, que es la única
     // de las cuatro que es un edificio de oficinas, tiene diecisiete.
     expect(vidrioSobreElCartel(art(2))).toBe(0);
     expect(vidrioSobreElCartel(art(1))).toBeGreaterThan(10);
-    // Y el cuerpo bajo: más petiso que la galería, y la taza es lo que la levanta.
+
+    // **El cartel dice CAFE**: cinco tramos blancos en una misma fila son las letras y sus contraformas.
+    // Ninguna de las otras tres fachadas tiene una sola letra.
+    expect(letras(art(2))).toBeGreaterThanOrEqual(4);
+    for (const v of [0, 1, 3]) expect(letras(art(v)), `variant ${v}`).toBeLessThan(2);
+
+    // **Las mesas en la vereda**: los manteles oscuros y las sillas de madera clara. Son lo único de las
+    // cuatro fachadas que está afuera del local y no es pasto ni hormigón.
+    expect(contar(art(2), isMantel)).toBeGreaterThanOrEqual(10);
+    expect(contar(art(2), isSilla)).toBeGreaterThanOrEqual(8);
+    for (const v of [0, 1, 3]) {
+      expect(contar(art(v), isMantel), `variant ${v}`).toBe(0);
+      expect(contar(art(v), isSilla), `variant ${v}`).toBe(0);
+    }
+
+    // Y el cuerpo bajo: más petiso que la galería.
     expect(shape(art(2)).height).toBeLessThan(shape(art(1)).height - 6);
     expect(shape(art(2)).width).toBeLessThan(shape(art(0)).width);
-    // La taza: setenta y ocho píxeles de porcelana, contra ninguno de la heladería y diez de la nave. Es
-    // blanca y vacía, y lo que la nombra es la silueta: el cono del cuerpo, la elipse de la boca y el asa.
-    expect(porcelana(art(2))).toBeGreaterThanOrEqual(50);
-    for (const v of [0, 1]) expect(porcelana(art(v)), `variant ${v}`).toBeLessThan(11);
     // El vidrio oscuro de la planta baja: un café no tiene una ventanita, tiene vidriera.
     expect(tallestGlass(art(2))).toBeGreaterThanOrEqual(6);
   });

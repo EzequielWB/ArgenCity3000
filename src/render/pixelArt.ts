@@ -837,61 +837,61 @@ function toldo(
 }
 
 /**
- * La taza de café sobre la azotea: el remate y el nombre del local sin una letra. **Sin plato y con la
- * boca vacía**: lo que la nombra es la silueta —el cono del cuerpo, la elipse de la boca y el asa redonda—
- * y no lo que tiene adentro. El plato le comía cuatro filas abajo y la dejaba pegada al techo.
- *
- * Se dibuja en píxeles de pantalla, de abajo hacia arriba: el cuerpo, la boca y el asa.
+ * Los glifos de cinco filas del cartel de la cafetería. A 1× una letra no puede tener más de tres píxeles
+ * de ancho, así que se escriben a mano y en mayúsculas: la minúscula se cierra y no se lee.
  */
-function tazaDeCafe(p: Pen, u: number, v: number, z: number): void {
-  const [cx, cy] = p.P(u, v, z);
+const GLIFOS: Record<string, string[]> = {
+  C: ['###', '#..', '#..', '#..', '###'],
+  A: ['.#.', '#.#', '###', '#.#', '#.#'],
+  F: ['###', '#..', '##.', '#..', '#..'],
+  E: ['###', '#..', '##.', '#..', '###'],
+  ' ': ['...', '...', '...', '...', '...'],
+};
+
+/**
+ * El texto del cartel, en patches de la cara donde se pinta: cada letra son cinco filas de tres píxeles y
+ * una columna de aire. Se devuelve en coordenadas de la cara —`t` a lo largo del frente, `k` de altura—
+ * para que el escorzo de la isométrica lo haga el mismo motor que dibuja la pared, y el cartel quede
+ * **paralelo al frente del local** en vez de flotando torcido.
+ */
+function textoDeCartel(texto: string, t0: number, k0: number, c: RGB): Patch[] {
+  const out: Patch[] = [];
+  let t = t0;
+  for (const letra of texto) {
+    const glifo = GLIFOS[letra] ?? GLIFOS[' '];
+    for (let fila = 0; fila < glifo.length; fila++) {
+      for (let col = 0; col < 3; col++) {
+        if (glifo[fila][col] === '#') out.push({ t0: t + col, t1: t + col + 1, k0: k0 + (4 - fila), k1: k0 + (5 - fila), c });
+      }
+    }
+    t += 4;
+  }
+  return out;
+}
+
+/** Ancho en píxeles de un texto de cartel, con las columnas de aire. */
+const anchoDeCartel = (texto: string) => texto.length * 4 - 1;
+
+/**
+ * Una mesa de la vereda: el tablero con la pata y dos sillas. **Sin sombrilla**: a este tamaño una
+ * sombrilla mide más que la planta baja y su palo de un píxel no se lee. El tablero y las dos sillas sí, y
+ * dos mesas alineadas convierten una vereda vacía en la puerta de un café.
+ */
+function mesaDeVereda(p: Pen, u: number, v: number): void {
+  const [cx, cy] = p.P(u, v, 0);
   const x = Math.round(cx);
   const y = Math.round(cy);
-  const porcelana = hex('#f7f3e8');
-  const luz = hex('#fffdf6');
-  const sombra = shade(porcelana, 0.82);
-  const filo = shade(porcelana, 0.58);
-  const hueco = shade(porcelana, 0.72);
-
-  // El cuerpo: un cono esbelto de diez filas, más ancho arriba, con el brillo a la izquierda y la sombra a
-  // la derecha. Alto y angosto: con ocho filas y doce de ancho la taza se leía como un bowl.
-  const cono: [number, number][] = [
-    [6, -1],
-    [7, -2],
-    [8, -3],
-    [8, -4],
-    [9, -5],
-    [9, -6],
-    [10, -7],
-    [10, -8],
-    [11, -9],
-    [11, -10],
-  ];
-  for (const [w, dy] of cono) {
-    const left = x - Math.floor(w / 2);
-    p.px.rect(left, y + dy, w, 1, porcelana);
-    p.px.rect(left, y + dy, 1, 1, luz);
-    p.px.rect(left + w - 2, y + dy, 2, 1, sombra);
-  }
-  // La base: el filo que la apoya en el techo.
-  p.px.rect(x - 3, y, 7, 1, filo);
-
-  // La boca: la elipse de porcelana con el hueco adentro, **vacía**. Los dos bordes —el de atrás y el de
-  // adelante— son lo que hace que se lea una boca abierta y no una tapa.
-  p.px.rect(x - 3, y - 13, 7, 1, porcelana);
-  p.px.rect(x - 5, y - 12, 11, 1, porcelana);
-  p.px.rect(x - 6, y - 11, 13, 1, porcelana);
-  p.px.rect(x + 5, y - 11, 1, 1, sombra);
-  p.px.rect(x - 5, y - 10, 11, 1, hueco);
-  p.px.rect(x - 5, y - 9, 11, 1, hueco);
-  p.px.rect(x - 6, y - 8, 13, 1, porcelana);
-  p.px.rect(x - 5, y - 7, 11, 1, sombra);
-
-  // El asa: una C redondeada que **nace del borde del cuerpo**, del lado derecho, con el hueco abierto.
-  p.px.rect(x + 5, y - 10, 3, 1, porcelana);
-  p.px.rect(x + 8, y - 9, 1, 4, sombra);
-  p.px.rect(x + 7, y - 6, 1, 1, porcelana);
-  p.px.rect(x + 5, y - 6, 2, 1, porcelana);
+  // El mantel oscuro con el filo claro y **las sillas de madera clara**: sobre el hormigón de la vereda,
+  // con todo oscuro la mesa y las sillas se leían como una mancha de escombros.
+  const mantel = hex('#2f2a26');
+  const silla = hex('#c9a06a');
+  p.px.rect(x - 2, y - 3, 5, 2, mantel);
+  p.px.rect(x - 2, y - 3, 5, 1, shade(mantel, 1.9));
+  p.px.rect(x, y - 1, 1, 2, shade(LEG, 1.2));
+  p.px.rect(x - 4, y - 3, 2, 2, silla);
+  p.px.rect(x - 4, y - 1, 2, 1, shade(silla, 0.7));
+  p.px.rect(x + 3, y - 3, 2, 2, shade(silla, 0.88));
+  p.px.rect(x + 3, y - 1, 2, 1, shade(silla, 0.6));
 }
 
 function clothingStore(p: Pen, v: number): void {
@@ -1029,9 +1029,11 @@ function storeArcade(p: Pen, wall: Ramp, sign: RGB): void {
  */
 function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
   const u0 = 0.1;
-  const v0 = 0.1;
+  const v0 = 0.06;
   const u1 = 0.9;
-  const v1 = 0.9;
+  // **Corto de fondo**: el local se corre hacia atrás y deja una vereda de verdad adelante, que es donde
+  // van las mesas. Pegado al borde del lote no quedaba lugar ni para una silla.
+  const v1 = 0.56;
   const w = faceW(u0, u1);
   // **Un solo piso**: el café es una planta baja con la vidriera de bar y el cartel, y nada más. Todo el
   // volumen que se le sacó al edificio se fue a la taza de la azotea, que ahora es más alta que el local.
@@ -1071,9 +1073,28 @@ function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
   p.box(u0, v0, u1, v1, 0, h, wall, 'plain', front, side, ROOFTOP);
   p.cornice(u0, v0, u1, v1, h, 2, CONCRETE);
   p.parapet(u0, v0, u1, v1, h + 2, 1, wall);
-  // **La taza sobre la azotea**: es el remate y el nombre. Un café de un piso con un cartel podía ser un
-  // kiosco; con la taza de porcelana arriba no queda duda de qué se vende adentro.
-  tazaDeCafe(p, (u0 + u1) / 2, (v0 + v1) / 2, h + 2);
+  // **El cartel sobre la azotea, con la palabra escrita**: es el remate y el nombre. Va parado sobre el
+  // techo, **paralelo al frente** —su cara mira a la calle, como la fachada— y más ancho que el local, que
+  // es lo único que permite que las letras tengan tres píxeles y se lean.
+  const texto = 'CAFE';
+  // **Del ancho justo del texto**: cinco píxeles de alto y quince de ancho. Con siete de alto y todo el
+  // frente, el cartel se comía el techo y la fachada.
+  const medio = (u0 + u1) / 2;
+  const mediaCaña = (anchoDeCartel(texto) / 16 + 0.02) / 2;
+  p.box(medio - mediaCaña, v0 + 0.2, medio + mediaCaña, v0 + 0.34, h + 1, 5, [shade(sign, 1.1), sign, shade(sign, 0.8)], 'plain', [
+    ...textoDeCartel(texto, 1, 0, SOMBRILLA),
+  ], [
+    ...textoDeCartel(texto, 1, 0, SOMBRILLA),
+  ], shade(sign, 1.3));
+  // La vereda de hormigón delante del local, con la junta de las baldosas: sin ella las mesas quedaban
+  // plantadas sobre el pasto y parecían escombros.
+  p.poly([p.P(u0, v1), p.P(u1, v1), p.P(u1, 1), p.P(u0, 1)], (x, y) =>
+    (x + y) % 8 === 0 ? shade(CONCRETE[2], 0.86) : shade(CONCRETE[1], 1.06),
+  );
+  // Las mesas, tres, sobre la vereda y del lado de la puerta.
+  mesaDeVereda(p, 0.18, v1 + 0.24);
+  mesaDeVereda(p, 0.52, v1 + 0.24);
+  mesaDeVereda(p, 0.86, v1 + 0.24);
 }
 
 /**

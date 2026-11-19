@@ -194,3 +194,16 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
 - **L34.** La prueba de la taza pasa a la **porcelana** —setenta y ocho píxeles contra uno de la galería—
   porque el marrón del café ya no existe. Es el cambio de qué significa "correcto" otra vez: la taza sigue
   siendo el remate de la cafetería, y ahora se mide por su propio material y no por el contenido.
+- **L35.** *"sacale la taza y poné un cartel que diga 'Café' que esté en el techo, angulado para que respete
+  el frente del local, y de última hacé el local un poco más 'corto' y que tenga unas mesitas afuera con
+  sillas en la entrada"* — la taza se va entera y en su lugar va **el cartel con la palabra**, parado sobre
+  el techo y paralelo al frente. El local se hace **más corto de fondo** —de 0.06 a 0.56 del lote— y el
+  lugar que deja libre se llena con una **vereda de hormigón y tres mesas con sus sillas**.
+- **L36.** Las letras se escriben a mano en **glifos de 3×5** (C, A, F, E) y se pasan como patches de la
+  cara del cartel, no como píxeles de pantalla: así el escorzo lo hace el mismo motor que dibuja la pared y
+  el cartel queda **en el plano del frente** en vez de flotar torcido sobre la isométrica. El cartel es más
+  ancho que el local —quince píxeles de texto— porque con el ancho de la fachada las letras no llegan a
+  tres píxeles y no se leen. Con siete de alto y todo el frente se comía el techo; cinco alcanzan.
+- **L37.** Las mesas necesitaron las sillas **de madera clara** y el mantel oscuro: sobre el hormigón de la
+  vereda, con todo oscuro, la mesa y las sillas se leían como una mancha de escombros. Y la vereda hizo
+  falta: plantadas sobre el pasto, las mesas no eran mesas.
