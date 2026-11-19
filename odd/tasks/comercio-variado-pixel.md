@@ -207,3 +207,10 @@ acá se hace lo mismo, con un lenguaje que es de comercio y no de vivienda.
 - **L37.** Las mesas necesitaron las sillas **de madera clara** y el mantel oscuro: sobre el hormigón de la
   vereda, con todo oscuro, la mesa y las sillas se leían como una mancha de escombros. Y la vereda hizo
   falta: plantadas sobre el pasto, las mesas no eran mesas.
+- **L38.** *"fijate que no está bien del todo el letrero, pone 'Cafec' ya que pareciera que el costado como
+  que se repite"* — el cartel se leía **CAFEC**. La palabra estaba pintada en las **dos caras** del cajón y
+  el costado, de perfil, devolvía una letra más. Ahora la palabra va en **una sola cara**, la del frente, y
+  el costado es chapa lisa. Regla para todo cartel con texto: **una cara, la que mira a la calle**; el
+  canto no repite.
+- **L39.** Y el cartel agrandado un píxel a cada lado: con el ancho justo del texto, el canto derecho se
+  comía la última letra y la E quedaba partida.

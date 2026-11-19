@@ -1080,12 +1080,13 @@ function storeAtrium(p: Pen, wall: Ramp, sign: RGB): void {
   // **Del ancho justo del texto**: cinco píxeles de alto y quince de ancho. Con siete de alto y todo el
   // frente, el cartel se comía el techo y la fachada.
   const medio = (u0 + u1) / 2;
-  const mediaCaña = (anchoDeCartel(texto) / 16 + 0.02) / 2;
+  // Un píxel de aire a cada lado: con el ancho justo, la última letra se la comía el canto del cartel.
+  const mediaCaña = (anchoDeCartel(texto) + 2) / 16 / 2;
+  // **La palabra va en una sola cara**, la del frente. Repetida en el costado se leía "CAFEC": el lateral
+  // devuelve la última letra y el cartel parece decir una palabra que no es. El costado es chapa lisa.
   p.box(medio - mediaCaña, v0 + 0.2, medio + mediaCaña, v0 + 0.34, h + 1, 5, [shade(sign, 1.1), sign, shade(sign, 0.8)], 'plain', [
     ...textoDeCartel(texto, 1, 0, SOMBRILLA),
-  ], [
-    ...textoDeCartel(texto, 1, 0, SOMBRILLA),
-  ], shade(sign, 1.3));
+  ], [], shade(sign, 1.3));
   // La vereda de hormigón delante del local, con la junta de las baldosas: sin ella las mesas quedaban
   // plantadas sobre el pasto y parecían escombros.
   p.poly([p.P(u0, v1), p.P(u1, v1), p.P(u1, 1), p.P(u0, 1)], (x, y) =>
