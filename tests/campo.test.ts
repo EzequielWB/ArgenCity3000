@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CROPS, MERMA, PRICE_RANGE, harvestMonth, priceOf, priceTable, spoil, tonsToSell, type SellOrder } from '../src/sim/campo';
+import { CROPS, MERMA, PRICE_OFFER, PRICE_RANGE, harvestMonth, nextPressure, priceOf, priceTable, spoil, tonsToSell, type SellOrder } from '../src/sim/campo';
 
 const orden = (minPrice: number, keepTons: number): SellOrder => ({ minPrice, keepTons });
 
@@ -34,9 +34,57 @@ describe('el precio del trigo', () => {
   });
 
   it('el precio de un mes no depende de cuándo se pregunta', () => {
-    // La curva es del calendario, no del estado: si dependiera del tick, dos partidas con el mismo mes
-    // pagarían distinto y el jugador no podría aprender el ciclo.
+    // La forma es del calendario: dos partidas con el mismo mes y la misma oferta pagan lo mismo, y el
+    // jugador puede aprender el ciclo.
     expect(priceTable()).toEqual(Array.from({ length: 12 }, (_, k) => priceOf(k + 1)));
+  });
+});
+
+describe('la oferta', () => {
+  it('volcar mucho ablanda el precio del mismo mes', () => {
+    const tranquilo = priceOf(6, 0);
+    const cargado = priceOf(6, PRICE_OFFER.saturate);
+    expect(cargado).toBeLessThan(tranquilo);
+    expect(cargado).toBeGreaterThanOrEqual(Math.round(PRICE_RANGE.high * (1 - PRICE_OFFER.drop)) - 1);
+  });
+
+  it('la presión se acumula y decae sola', () => {
+    // Vender 500 este mes suma; un mes sin vender la deja caer, no la congela.
+    const uno = nextPressure(0, 500);
+    expect(uno).toBe(500);
+    expect(nextPressure(uno, 0)).toBeLessThan(uno);
+    expect(nextPressure(uno, 0)).toBeGreaterThan(0);
+  });
+
+  it('la presión no es para siempre: dos años sin vender limpian el mercado', () => {
+    let p = nextPressure(0, 5000);
+    for (let k = 0; k < 24; k++) p = nextPressure(p, 0);
+    expect(priceOf(6, p)).toBe(priceOf(6, 0));
+  });
+
+  it('por más oferta que haya, la tonelada no vale cero ni menos', () => {
+    expect(priceOf(12, 1_000_000)).toBeGreaterThan(0);
+  });
+
+  it('vender repartido paga más que volcarlo todo de una vez', () => {
+    // El criterio de aceptación de S4, y la razón de ser del silo: 900 toneladas cobran más en tres meses
+    // de 300 que en uno solo. El precio de la venta incluye la venta misma —el que vuelca cobra el mercado
+    // que él mismo ablandó—, así que el volcador no cobra el precio tranquilo de diciembre.
+    const deUna = 900 * priceOf(12, nextPressure(0, 900));
+    let presion = 0;
+    let repartido = 0;
+    for (const mes of [12, 1, 2]) {
+      presion = nextPressure(presion, 300);
+      repartido += 300 * priceOf(mes, presion);
+    }
+    expect(repartido).toBeGreaterThan(deUna);
+  });
+
+  it('el que vuelca cobra el mercado que él mismo ablandó', () => {
+    // 900 de una sola vez pagan menos por tonelada que las primeras 300, aunque sea el mismo diciembre.
+    const dia = priceOf(12, nextPressure(0, 300));
+    const volcado = priceOf(12, nextPressure(0, 900));
+    expect(volcado).toBeLessThan(dia);
   });
 });
 

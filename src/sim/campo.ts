@@ -43,7 +43,6 @@ export const CROPS: Record<CropKind, Crop> = {
  */
 export const PRICE_RANGE = { low: 120, high: 180 } as const;
 
-/** Share of the stored grain that spoils every month it waits. */
 /**
  * Lo que se estropea por mes de espera.
  *
@@ -52,6 +51,24 @@ export const PRICE_RANGE = { low: 120, high: 180 } as const;
  * 40 % del stock: esperar sigue conviniendo si la diferencia de precio es grande, y deja de convenir si no.
  */
 export const MERMA = 0.04;
+
+/**
+ * La oferta: cuánto ablanda el precio lo que la ciudad ya volcó al mercado.
+ *
+ * `saturate` son las toneladas que saturan el mercado local y `drop` cuánto cae el precio con el mercado
+ * saturado. `keep` es la parte de esa presión que sobrevive al mes siguiente: sin decaimiento, un diciembre
+ * de volquete castigaría para siempre y el jugador no tendría cómo recuperarse.
+ *
+ * La presión se cuenta por tonelada **con la venta incluida**: el que vuelca cobra el mercado que él mismo
+ * ablandó, y ahí está la razón de ser del silo. Con la presión del mes anterior, volcar todo de una vez
+ * cobraría el precio tranquilo y repartir no tendría ninguna ventaja.
+ */
+export const PRICE_OFFER = { saturate: 2000, drop: 0.45, keep: 0.5 } as const;
+
+/** La presión de oferta que deja el mes que viene: lo que había, con su decaimiento, más lo vendido. */
+export function nextPressure(prev: number, sold: number): number {
+  return Math.max(0, Math.max(0, prev) * PRICE_OFFER.keep + Math.max(0, sold));
+}
 
 /** ¿Este mes es el de la cosecha? El `month` va de 1 a 12, como `dateOf`. */
 export function harvestMonth(month: number): boolean {
@@ -71,16 +88,19 @@ function wrapMonth(month: number): number {
  * curva es continua a propósito —el precio de julio está entre el de junio y el de agosto— porque un salto
  * haría que el jugador vendiera siempre el mismo mes y el resto del calendario no existiera.
  */
-export function priceOf(month: number): number {
+export function priceOf(month: number, pressure = 0): number {
   const peak = wrapMonth(CROPS.trigo.harvest + 6);
   const t = Math.cos((2 * Math.PI * (wrapMonth(month) - peak)) / 12);
   const half = (PRICE_RANGE.high - PRICE_RANGE.low) / 2;
-  return Math.round(PRICE_RANGE.low + half * (t + 1));
+  const quieto = PRICE_RANGE.low + half * (t + 1);
+  // La oferta ablanda el precio, con techo: por más que se vuelque todo, la tonelada no vale cero.
+  const relief = Math.min(1, Math.max(0, pressure / PRICE_OFFER.saturate));
+  return Math.max(1, Math.round(quieto * (1 - PRICE_OFFER.drop * relief)));
 }
 
 /** Los doce precios del año, de enero a diciembre. Es lo que el panel dibuja. */
-export function priceTable(): number[] {
-  return Array.from({ length: 12 }, (_, k) => priceOf(k + 1));
+export function priceTable(pressure = 0): number[] {
+  return Array.from({ length: 12 }, (_, k) => priceOf(k + 1, pressure));
 }
 
 /**

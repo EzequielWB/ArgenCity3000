@@ -37,13 +37,19 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
 - Criterio de aceptación: en los once meses que no son diciembre el stock no sube por cosecha; en diciembre
   sube de golpe.
 
-### S4 — El precio tiene forma, no es ruido
+### S4 — El precio tiene forma **y responde a la oferta**
 - El precio de la tonelada **cae en cosecha** (todos venden) y **sube en invierno** (nadie tiene nada). Sin
   forma predecible, vender es una lotería y el silo es un adorno caro.
+- Rango del corte 1 (a calibrar con `npm run probe`): base $120/t en cosecha, hasta $180/t en invierno.
+- **Y la oferta lo mueve**: lo que la ciudad vuelca al mercado deja una presión que ablanda el precio, y esa
+  presión decae sola con los meses. Es el mecanismo que en la realidad hunde el precio en cosecha, y el que
+  evita que el campo sea una máquina de plata a escala grande.
+- La presión **decae**: un diciembre de volquete no arruina el junio siguiente. Si no decayera, una cosecha
+  grande castigaría para siempre y el jugador no tendría cómo recuperarse.
 - El precio del mes es visible antes de decidir, y el panel muestra el histórico para que la caída de
   diciembre se lea como estación y no como castigo.
-- Rango del corte 1 (a calibrar con `npm run probe`): base $120/t en cosecha, hasta $180/t en invierno.
-- Criterio de aceptación: el precio de diciembre es el más bajo del año y el de junio/julio el más alto.
+- Criterio de aceptación: (a) el precio de diciembre es el más bajo del año y el de junio el más alto;
+  (b) vender lo mismo repartido en tres meses paga más que venderlo todo en uno.
 
 ### S5 — La orden: el jugador fija la política, el sistema vende
 - *"Prefiero la (b), siento que va con la idea de estos juegos?"*. El jugador **no** aprieta "Vender" cada
@@ -87,8 +93,8 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
 
 ## Tasks
 
-- **T1** — `src/sim/campo.ts`, módulo puro: calendario por cultivo, precio del mes, merma, y la decisión de
-  cuánto vende la feria. Sin tocar nada más. `S3 S4 S5 S6`
+- **T1** — `src/sim/campo.ts`, módulo puro: calendario por cultivo, precio del mes **con la presión de
+  oferta**, merma, y la decisión de cuánto vende la feria. Sin tocar nada más. `S3 S4 S5 S6`
 - **T2** — Estado del campo en `World` (`farms`, `silos`, `markets`) con su serialización y `SAVE_VERSION`.
   Un guardado viejo crece, no se rompe. `S2`
 - **T3** — Colocación y costos: lote 2×2, silo, feria en `COSTS`, herramientas en `tools.ts`, y el requisito
@@ -118,14 +124,21 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   eligió la segunda, con una duda: *"Prefiero la (b), siento que va con la idea de estos juegos? o no?"*. La
   respuesta fue que sí, porque en estos juegos el jugador **regula y no opera**, y porque el juego ya está
   hecho de umbrales que el jugador fija y el sistema ejecuta. De ahí sale S5.
+- **L9** — **La oferta implementada** (T1 reabierta y vuelta a cerrar): `PRICE_OFFER = { saturate: 2000,
+  drop: 0.45, keep: 0.5 }` y `nextPressure(prev, sold)`. La presión se cuenta por tonelada **con la venta
+  incluida**: el que vuelca cobra el mercado que él mismo ablandó. Con la presión del mes anterior, volcar
+  todo de una vez cobraba el precio tranquilo y repartir no tenía ninguna ventaja — el primer test lo
+  mostró en rojo y obligó a corregir el modelo, no el test. Números: 900 t de una vez pagan $86.400 y las
+  mismas 900 repartidas en tres meses, $102.600 (+18,8 %). Mercado saturado, el precio cae 45 % en todos
+  los meses menos en su piso, que es 66.
 - **L7** — **T1 hecho**: `src/sim/campo.ts` con `CROPS`, `PRICE_RANGE`, `MERMA`, `harvestMonth`,
   `priceOf`, `priceTable`, `tonsToSell` y `spoil`. Trece tests en `tests/campo.test.ts`, escritos antes del
   módulo (RED: el import no existía). La curva quedó: diciembre $120 (piso, cosecha), junio $180 (techo),
   subiendo y bajando sin escalones. Un lote 2×2 rinde $3.600 en cosecha y $5.400 esperando a junio.
-- **L8** — Riesgo anotado para T5: el precio es **exógeno** —sólo lo mueve el calendario—, así que no
-  responde a la oferta. A escala chica el campo pierde por el costo fijo del silo y la feria; a escala
-  grande podría ser una máquina de plata. Hay que decidir en T5 si el precio baja cuando la ciudad vende
-  mucho, o si eso se resuelve con el tope de la feria y el mantenimiento.
+- **L8** — Se anotó que con el precio **exógeno** —sólo movido por el calendario— el campo podría ser una
+  máquina de plata a escala grande. Se le ofrecieron dos cierres: el precio responde a la oferta, o el freno
+  son los topes del silo y la feria. Eligió el primero: *"Me gusta lo de la oferta"*. De ahí sale el tramo
+  nuevo de S4, y T1 se reabre.
 - **L6** — Al aceptar la (b) se agregó la condición que la salva de ser obvia: si esperar es gratis, la
   jugada óptima es pedir el máximo y no vender nunca. Guardar tiene que costar (capacidad, mantenimiento,
   merma). De ahí sale S6.
