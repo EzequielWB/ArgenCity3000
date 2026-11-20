@@ -4,6 +4,10 @@
  * No va en el caché de chunks —se mueve y no es parte del terreno—, así que se pinta como los autos y los
  * barcos: arriba de todo, en cada frame, con el transform de la cámara. El recorrido lo da `sim/tornado.ts`,
  * el mismo módulo que decide qué se destruye, así que lo que se ve es exactamente lo que se lleva.
+ *
+ * La figura no es una silueta rellena sino una **pila de anillos**: cada uno es un disco con la cara de
+ * arriba blanca, el canto en sombra y el borde oscuro. Leídos en columna, los anillos son el embudo; leídos
+ * de a uno, son las vueltas del aire. Es lo que hace que se entienda de un vistazo y lo que se puede mover.
  */
 import { project, toView } from '../core/iso';
 import { tornadoCellsOf, type TornadoRun } from '../sim/tornado';
@@ -11,13 +15,17 @@ import type { World } from '../world/world';
 import { heightAt } from './traffic';
 import type { MapRenderer } from './mapRenderer';
 
-/** Los tonos del cuerpo, del borde en sombra al centro iluminado. */
-const BODY = ['#33363e', '#4b4f5b', '#636875', '#7d8492'];
-/** El contorno: sin él el embudo no se separa del pasto. */
-const EDGE = '#1b1d23';
-/** La nube que lo pare, del borde iluminado de arriba a la panza en sombra. */
-const CLOUD = ['#2a2d35', '#3a3e48', '#4c515c', '#656a76'];
-/** El polvo que levanta al tocar el suelo. */
+/** La cara de arriba de cada anillo: lo que la luz toca de frente. */
+const LIGHT = '#fbfdff';
+/** El canto iluminado, un tono abajo. */
+const MID = '#dde4ee';
+/** El canto en penumbra. */
+const SHADE = '#a9b5c6';
+/** La sombra que cada anillo le deja al de abajo. */
+const DARK = '#67728a';
+/** El contorno: sin él, en blanco, el tornado se deshilacha contra el pasto. */
+const EDGE = '#252b36';
+/** El polvo de la base. */
 const DUST = ['#8f7a5c', '#b09b7a', '#d3c3a4'];
 
 interface Pt {
@@ -38,167 +46,108 @@ function headOf(w: World, map: MapRenderer, run: TornadoRun): Pt {
   return { x: ox + map.originX, y: oy + map.originY };
 }
 
-/**
- * El radio del embudo a la altura `t` (0 en el suelo, 1 en la nube), en fracción de la boca.
- *
- * La forma es la de un tornado y no la de una seta: **ancho arriba** donde se funde con la nube, una
- * **cintura** fina arriba del polvo, y el **remolino** que se vuelve a abrir en el suelo. Al revés —fino
- * arriba, ancho abajo— el dibujo es un hongo atómico por más que tenga contorno y bandas.
- */
-function radiusAt(t: number): number {
-  // Punta fina, apertura pareja hacia la nube y una cintura apenas marcada. El ancho del remolino de abajo
-  // lo pone el polvo, no el cono: si el cono se abre en el suelo, la figura es un pedestal.
-  const open = 0.34 + 0.66 * Math.pow(t, 1.7) - 0.2 * Math.sin(Math.PI * t);
-  return Math.max(0.18, open);
+/** Un disco de la pila: la cara de arriba blanca, el canto en sombra y el borde oscuro a los costados. */
+function ring(g: CanvasRenderingContext2D, cx: number, y: number, half: number, tone: number): void {
+  const w = Math.round(half * 2) + 2;
+  const x0 = Math.round(cx - w / 2);
+  const body = tone > 0.72 ? LIGHT : tone > 0.42 ? MID : SHADE;
+  g.fillStyle = body;
+  g.fillRect(x0, y, w, 2);
+  g.fillStyle = LIGHT;
+  g.fillRect(x0 + 1, y, w - 2, 1);
+  g.fillStyle = SHADE;
+  g.fillRect(x0 + 1, y + 2, w - 2, 1);
+  g.fillStyle = DARK;
+  g.fillRect(x0 + 2, y + 3, Math.max(1, w - 4), 1);
+  g.fillStyle = EDGE;
+  g.fillRect(x0, y, 1, 3);
+  g.fillRect(x0 + w - 1, y, 1, 3);
 }
 
 /**
- * El embudo, de abajo hacia arriba: el cono, el polvo de la base y la nube que lo pare.
+ * La boca: una elipse vista desde abajo, con el interior en sombra. Es el rasgo que dice "embudo": si la
+ * punta de arriba se cierra, la pila de anillos es un árbol de Navidad.
+ */
+function mouthOf(g: CanvasRenderingContext2D, cx: number, y: number, half: number): void {
+  const rx = Math.round(half * 0.96);
+  const ry = Math.max(2, Math.round(half * 0.26));
+  for (let k = -ry; k <= ry; k++) {
+    const d = k / ry;
+    const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - d * d)));
+    if (w <= 0) continue;
+    const yy = y + k;
+    // Arriba el borde recibe la luz; el fondo es el hueco oscuro por donde baja el aire.
+    g.fillStyle = k <= -ry + 1 ? LIGHT : k >= ry - 1 ? SHADE : k < 0 ? DARK : MID;
+    g.fillRect(Math.round(cx - w), yy, w * 2 + 1, 1);
+    if (k > -ry + 1) {
+      g.fillStyle = DARK;
+      g.fillRect(Math.round(cx - w) - 1, yy, 1, 1);
+      g.fillRect(Math.round(cx + w) + 1, yy, 1, 1);
+    }
+  }
+}
+
+/**
+ * El embudo: la pila de anillos, de la boca a la punta.
  *
- * Lo que lo hace legible a un píxel, y eran las cuatro cosas que faltaban: la **silueta de doble curva**,
- * el **contorno oscuro** de un píxel a cada lado, las **bandas diagonales** que suben girando —sin ellas es
- * una columna gris— y la **nube de tres lóbulos con la panza rasgada** encima. Sin la nube, por más cono que
- * haya, la figura es un embudo de laboratorio.
+ * El giro se ve porque cada anillo está **corrido** respecto del de arriba y del de abajo: el desfase es una
+ * onda que viaja con el tiempo, así que la columna se retuerce y los anillos parecen subir. Un desplazamiento
+ * parejo sería una columna quieta.
  */
 function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, mouth: number, time: number): void {
-  const cloudH = Math.max(6, Math.round(height * 0.1));
-  const bodyH = height - cloudH + 10; // el cono sube diez píxeles dentro de la nube: así la atraviesa
-  const spin = time * 0.01;
+  const spin = time * 0.0042;
   const rMax = Math.max(4, mouth);
+  // Los anillos se tocan: el paso es el alto de un anillo y medio, así la pila es un cuerpo y no una
+  // escalera de barras flotantes.
+  const rings = Math.round(height / 3.2);
+  const gap = height / rings;
+  const yTop = base.y - height;
 
-  // 1. La nube, primero: el embudo se pinta encima y la cruza. Si la nube fuera después, su panza quedaría
-  // como una línea recta sobre el cono y la figura entera se leería como un hongo con tallo.
-  cloud(g, base, bodyH, cloudH, rMax, time, base.x + Math.sin(spin * 0.6 + 1.9) * rMax * 0.34);
-
-  // 2. El cono. Es un tubo, y un tubo se lee por el degradado y por los anillos que lo envuelven.
-  for (let k = 0; k < bodyH; k++) {
-    // `k` cuenta desde la boca hacia abajo; `t` al revés, de 0 en la punta a 1 en la nube.
-    const t = 1 - k / (bodyH - 1);
-    const r = rMax * radiusAt(t);
-    // El doblado: la columna no baja derecha, se mece. Es media lectura del dibujo.
-    const cx = base.x + Math.sin(spin * 0.6 + t * 1.9) * rMax * 0.34 * t;
-    const y = Math.round(base.y - bodyH + k);
-    const w = Math.max(3, Math.round(r * 2) + 1);
-    const x0 = Math.round(cx - w / 2);
-    // Los anillos: bandas que envuelven el tubo y suben en hélice. Sin ellos el cono es una silueta
-    // rellena; con ellos tiene cuerpo, porque cada anillo cruza la cara y se ve pasar por detrás.
-    const ring = (((k + Math.round(Math.sin(t * 5.5 + spin) * 3)) % 9) + 9) % 9 < 2;
-    for (let i = 0; i < w; i++) {
-      const nx = w === 1 ? 0 : (i / (w - 1)) * 2 - 1;
-      // La luz viene de arriba a la izquierda: el brillo no está en el centro sino corrido, y el borde
-      // derecho queda en el terminador. Ese degradado asimétrico es el volumen; uno simétrico es un tubo
-      // de cartón.
-      const lit = 1 - Math.abs(nx + 0.38) * 0.8;
-      let tone = Math.max(0, Math.min(1, lit));
-      if (ring) tone = Math.min(1, tone + 0.34 * Math.max(0, 1 - Math.abs(nx + 0.38)));
-      const idx = Math.max(0, Math.min(BODY.length - 1, Math.round(tone * (BODY.length - 1))));
-      g.fillStyle = BODY[idx];
-      g.fillRect(x0 + i, y, 1, 1);
-    }
-    // El contorno: fino del lado iluminado y doble del lado en sombra. El grosor también dice de dónde
-    // viene la luz.
-    if (y > base.y - bodyH + cloudH * 0.4) {
-      g.fillStyle = EDGE;
-      g.fillRect(x0 - 1, y, 1, 1);
-      g.fillRect(x0 + w, y, 1, 1);
-      g.fillRect(x0 + w + 1, y, 1, 1);
-    }
+  // De arriba hacia abajo: el anillo que sigue es más angosto y queda delante, así el contorno de cada uno
+  // sobrevive en vez de quedar tapado por el cuerpo del de arriba.
+  for (let i = 0; i < rings; i++) {
+    const t = i / (rings - 1);
+    // El ancho baja de la boca a la punta y se abre un poco en el suelo, donde el remolino agarra aire.
+    // Cóncava: el vaso de arriba se mantiene ancho y la punta se afina rápido. Lineal da un triángulo.
+    const r = rMax * (1 - 0.9 * Math.pow(t, 1.4)) * (1 + 0.14 * Math.sin(Math.PI * t));
+    const sway = Math.sin(t * 5.4 + spin * 2.1) * rMax * 0.5 * t;
+    const y = Math.round(yTop + i * gap + Math.sin(t * 5.2 + spin * 3.3) * 1.4);
+    ring(g, base.x + sway, y, r, 1 - t * 0.5);
   }
 
-  // 3. El polvo de la base: un remolino achatado y ancho que ancla el embudo al suelo. Sin esto el cono
-  // termina en una punta seca y el dibujo parece un embudo de cocina.
-  const dustW = Math.round(rMax * 1.9);
-  for (let k = 0; k < 8; k++) {
-    const t = k / 7;
-    // Ancho en el piso y angosto arriba: el polvo se apoya en el suelo y trepa por la punta. Al revés queda
-    // una tacita con el cono parado adentro.
-    const w = Math.round(dustW * (k === 0 ? 0.84 : 1 - t * 0.5) + Math.sin(k * 2.2 + time * 0.004) * 2);
-    const x0 = Math.round(base.x - w / 2 + Math.sin(k * 1.7 + time * 0.002) * 2.2);
-    g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(t * 2.4))];
-    g.fillRect(x0, Math.round(base.y - k), w, 1);
-  }
-  // Las volutas: dos brazos de polvo que suben enroscándose a los costados de la punta. Sin ellos el
-  // remolino es una franja plana en el piso y el embudo parece apoyado como un clavo.
-  const spin2 = Math.sin(time * 0.003);
-  for (const side of [-1, 1]) {
-    const bx = base.x + side * (rMax * 0.55 + spin2 * 2);
-    for (let k = 0; k < 5; k++) {
-      const w = Math.max(1, 4 - Math.floor(k / 2));
-      const x = Math.round(bx + side * (k * 1.4 + 1) - (side < 0 ? w : 0));
-      g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(k / 3))];
-      g.fillRect(x, Math.round(base.y - 2 - k), w, 1);
-    }
-  }
-}
-
-/**
- * La nube que pare el embudo: una banda baja y deshilachada que apenas sobresale de la boca.
- *
- * Una masa redondeada encima del cono es un sombrero, y un sombrero sobre un tallo es un hongo: por eso la
- * nube no es más ancha que el cono por más de unos píxeles, y su borde de arriba no es un arco cerrado sino
- * tres lomas chicas con jirones sueltos. Lo que hace de tornado es la trompa, no la nube.
- */
-function cloud(g: CanvasRenderingContext2D, base: Pt, bodyH: number, cloudH: number, rMax: number, time: number, cxTop: number): void {
-  const cx = cxTop + Math.sin(time * 0.0007) * 2;
-  const cy = base.y - bodyH - cloudH * 0.2;
-  const halfW = Math.min(30, rMax + 7);
-  for (let x = Math.round(cx - halfW); x <= Math.round(cx + halfW); x++) {
-    const edge = Math.min(1, Math.abs(x - cx) / halfW);
-    // Tres lomas: la del medio más alta, y las de los costados cayendo.
-    const loma = cloudH * (0.86 * Math.cos(edge * Math.PI * 0.5) + 0.24 * Math.abs(Math.sin(x * 0.55 + time * 0.0006)));
-    const up = Math.round(loma);
-    if (up <= 0) continue;
-    const down = Math.round(cloudH * (0.12 + 0.34 * edge));
-    const from = cy - up;
-    const to = cy + down;
-    for (let y = Math.round(from); y <= Math.round(to); y++) {
-      const f = (y - from) / Math.max(1, to - from);
-      const tone = f < 0.26 ? CLOUD[3] : f < 0.52 ? CLOUD[2] : f < 0.78 ? CLOUD[1] : CLOUD[0];
-      g.fillStyle = tone;
-      g.fillRect(x, y, 1, 1);
-    }
-    // Los jirones: uno de cada tres píxeles del borde de arriba se escapa un renglón más, y la nube deja de
-    // tener un contorno limpio contra el cielo.
-    if ((x + Math.round(time / 120)) % 3 === 0) {
-      g.fillStyle = CLOUD[2];
-      g.fillRect(x, Math.round(from) - 1, 1, 1);
-    }
-  }
+  // La boca va última, arriba de todo.
+  mouthOf(g, base.x + Math.sin(spin * 2.1) * rMax * 0.32, Math.round(yTop) - 1, rMax);
 }
 
 /** La sombra y el polvo de la base: sin esto el embudo parece pegado sobre el mapa, no apoyado. */
-function dust(g: CanvasRenderingContext2D, base: Pt, time: number): void {
+function dust(g: CanvasRenderingContext2D, base: Pt, rMax: number, time: number): void {
   g.globalAlpha = 0.26;
   g.fillStyle = '#1d2418';
   g.beginPath();
   g.ellipse(base.x, base.y + 1, 11, 4.5, 0, 0, Math.PI * 2);
   g.fill();
   g.globalAlpha = 1;
+  // El polvo que levanta la punta: un montículo bajo con dos volutas que trepan.
+  const dustW = Math.round(rMax * 1.1);
   for (let k = 0; k < 4; k++) {
-    const p = (time * 0.0012 + k * 0.25) % 1;
-    const r = 2 + p * 10;
-    const cx = base.x + Math.sin(k * 2.1 + time * 0.001) * (3 + p * 8);
-    const cy = base.y - 1 - p * 4;
-    g.fillStyle = DUST[Math.min(DUST.length - 1, Math.floor(p * DUST.length))];
-    g.globalAlpha = (1 - p) * 0.6;
-    g.beginPath();
-    g.ellipse(cx, cy, r, r * 0.45, 0, 0, Math.PI * 2);
-    g.fill();
+    const t = k / 3;
+    const w = Math.round(dustW * (k === 0 ? 0.84 : 1 - t * 0.5) + Math.sin(k * 2.2 + time * 0.004) * 2);
+    const x0 = Math.round(base.x - w / 2 + Math.sin(k * 1.7 + time * 0.002) * 2);
+    g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(t * 2))];
+    g.fillRect(x0, Math.round(base.y - k), w, 1);
   }
-  g.globalAlpha = 1;
 }
 
 /** El tornado sobre el mapa, con el embudo y el polvo. `time` es el reloj del render, en milisegundos. */
 export function drawTornado(g: CanvasRenderingContext2D, run: TornadoRun | null, w: World, map: MapRenderer, time: number): Pt | null {
   if (!run) return null;
   const base = headOf(w, map, run);
-  // Alto del embudo: dos lotes y medio. Más alto que el hospital de la ciudad y no lo tapa: un tornado se
-  // ve, no se confunde con la arquitectura.
-  const height = 86;
-  // **El ancho se ve.** Es lo que el impuesto promedio decide y el jugador tiene que poder leerlo de un
-  // vistazo: el tornado de la ciudad que no cobra entra gordo y el de la que cobra entra por una línea.
-  const mouth = 6 + run.width * 3.1;
-  dust(g, base, time);
+  // Dos lotes y medio de alto: más que el hospital de la ciudad, para que se vea venir.
+  const height = 78;
+  // **El ancho se ve.** Lo decide el impuesto promedio: el tornado de la ciudad que cobra entra por una
+  // línea y el de la que no cobra entra ancho.
+  const mouth = 8 + run.width * 2.6;
+  dust(g, base, mouth, time);
   funnel(g, base, height, mouth, time);
   return base;
 }
