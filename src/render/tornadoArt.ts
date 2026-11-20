@@ -70,7 +70,7 @@ function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, mouth: nu
   // como una línea recta sobre el cono y la figura entera se leería como un hongo con tallo.
   cloud(g, base, bodyH, cloudH, rMax, time, base.x + Math.sin(spin * 0.6 + 1.9) * rMax * 0.34);
 
-  // 2. El cono.
+  // 2. El cono. Es un tubo, y un tubo se lee por el degradado y por los anillos que lo envuelven.
   for (let k = 0; k < bodyH; k++) {
     // `k` cuenta desde la boca hacia abajo; `t` al revés, de 0 en la punta a 1 en la nube.
     const t = 1 - k / (bodyH - 1);
@@ -80,38 +80,40 @@ function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, mouth: nu
     const y = Math.round(base.y - bodyH + k);
     const w = Math.max(3, Math.round(r * 2) + 1);
     const x0 = Math.round(cx - w / 2);
-    // La banda clara: sube en espiral, así que en cada fila cae en otro lado. Es el giro.
-    const band = cx + Math.sin(t * 7.5 + spin * 2.4) * r * 0.72;
-    const bandW = Math.max(1, r * 0.5);
+    // Los anillos: bandas que envuelven el tubo y suben en hélice. Sin ellos el cono es una silueta
+    // rellena; con ellos tiene cuerpo, porque cada anillo cruza la cara y se ve pasar por detrás.
+    const ring = (((k + Math.round(Math.sin(t * 5.5 + spin) * 3)) % 9) + 9) % 9 < 2;
     for (let i = 0; i < w; i++) {
       const nx = w === 1 ? 0 : (i / (w - 1)) * 2 - 1;
-      // La cara del cilindro: el centro mira a la cámara y los bordes se van.
-      let tone = 0.2 + 0.8 * Math.cos(nx * Math.PI * 0.5);
-      if (Math.abs(x0 + i - band) < bandW) tone = 1;
-      // Estrías: por dentro del cilindro, bandas más oscuras que giran con la clara.
-      else if (Math.sin(t * 16 + spin * 3.1 + nx * 1.2) > 0.72) tone = Math.max(0, tone - 0.4);
+      // La luz viene de arriba a la izquierda: el brillo no está en el centro sino corrido, y el borde
+      // derecho queda en el terminador. Ese degradado asimétrico es el volumen; uno simétrico es un tubo
+      // de cartón.
+      const lit = 1 - Math.abs(nx + 0.38) * 0.8;
+      let tone = Math.max(0, Math.min(1, lit));
+      if (ring) tone = Math.min(1, tone + 0.34 * Math.max(0, 1 - Math.abs(nx + 0.38)));
       const idx = Math.max(0, Math.min(BODY.length - 1, Math.round(tone * (BODY.length - 1))));
       g.fillStyle = BODY[idx];
       g.fillRect(x0 + i, y, 1, 1);
     }
-    // El contorno sólo hasta donde la nube lo tapa: arriba el embudo se funde con ella.
+    // El contorno: fino del lado iluminado y doble del lado en sombra. El grosor también dice de dónde
+    // viene la luz.
     if (y > base.y - bodyH + cloudH * 0.4) {
       g.fillStyle = EDGE;
       g.fillRect(x0 - 1, y, 1, 1);
       g.fillRect(x0 + w, y, 1, 1);
+      g.fillRect(x0 + w + 1, y, 1, 1);
     }
   }
 
   // 3. El polvo de la base: un remolino achatado y ancho que ancla el embudo al suelo. Sin esto el cono
   // termina en una punta seca y el dibujo parece un embudo de cocina.
-  const dustW = Math.round(rMax * 2.9);
-  for (let k = 0; k < 7; k++) {
-    const t = k / 6;
-    // La primera fila es más corta que la segunda: si la base es la más ancha, el polvo arranca con una
-    // barra recta sobre el pasto y se lee como una tabla.
-    const base0 = k === 0 ? 0.8 : 1;
-    const w = Math.round(dustW * base0 * (1 - t * 0.5) + Math.sin(k * 2.2 + time * 0.004) * 2);
-    const x0 = Math.round(base.x - w / 2 + Math.sin(k * 1.7 + time * 0.002) * 2.5);
+  const dustW = Math.round(rMax * 1.9);
+  for (let k = 0; k < 8; k++) {
+    const t = k / 7;
+    // Ancho en el piso y angosto arriba: el polvo se apoya en el suelo y trepa por la punta. Al revés queda
+    // una tacita con el cono parado adentro.
+    const w = Math.round(dustW * (k === 0 ? 0.84 : 1 - t * 0.5) + Math.sin(k * 2.2 + time * 0.004) * 2);
+    const x0 = Math.round(base.x - w / 2 + Math.sin(k * 1.7 + time * 0.002) * 2.2);
     g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(t * 2.4))];
     g.fillRect(x0, Math.round(base.y - k), w, 1);
   }
@@ -119,12 +121,12 @@ function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, mouth: nu
   // remolino es una franja plana en el piso y el embudo parece apoyado como un clavo.
   const spin2 = Math.sin(time * 0.003);
   for (const side of [-1, 1]) {
-    const bx = base.x + side * (rMax * 0.72 + spin2 * 2);
+    const bx = base.x + side * (rMax * 0.55 + spin2 * 2);
     for (let k = 0; k < 5; k++) {
       const w = Math.max(1, 4 - Math.floor(k / 2));
       const x = Math.round(bx + side * (k * 1.4 + 1) - (side < 0 ? w : 0));
       g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(k / 3))];
-      g.fillRect(x, Math.round(base.y - 1 - k), w, 1);
+      g.fillRect(x, Math.round(base.y - 2 - k), w, 1);
     }
   }
 }
