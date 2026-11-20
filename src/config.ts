@@ -52,6 +52,14 @@ export interface Government {
   serviceCost: number;
   /** Budget of schools and university below which this form of government will not go. */
   fundingFloor: number;
+  /**
+   * Aprobación por debajo de la cual la calle saca al Intendente, o null si no hay nada que lo saque.
+   *
+   * Es la contracara de no tener elecciones: la dictadura no pierde en octubre, pero se cae cualquier mes
+   * en que el pueblo la odie lo suficiente. Las demás formas de gobierno no lo necesitan —la teocracia
+   * pelea con el favor divino y el comunismo responde en el congreso—, así que queda en null.
+   */
+  overthrowBelow: number | null;
 }
 
 export const GOVERNMENT_KINDS: readonly GovernmentKind[] = ['democracia', 'dictadura', 'tecnocracia', 'teocracia', 'comunismo'];
@@ -71,12 +79,13 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     taxIncome: { R: 1, C: 1, I: 1 },
     serviceCost: 1,
     fundingFloor: 0,
+    overthrowBelow: null,
   },
   dictadura: {
     label: 'Dictadura',
     blurb: 'Nadie te vota: el cargo es tuyo y no hay octubre que lo discuta.',
     pros: ['No hay elecciones: nunca perdés el poder', 'La ciudad crece con la plata que hacés vos'],
-    cons: ['Llega un 20 % menos de gente nueva', 'La Provincia no gira subsidios', 'La aprobación no pasa de 60'],
+    cons: ['Llega un 20 % menos de gente nueva', 'La Provincia no gira subsidios', 'La aprobación no pasa de 60', 'Si la aprobación baja del 20 %, la calle te saca del gobierno'],
     termYears: null,
     toWin: 0,
     migration: 0.8,
@@ -86,6 +95,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     taxIncome: { R: 1, C: 1, I: 1 },
     serviceCost: 1,
     fundingFloor: 0,
+    overthrowBelow: 20,
   },
   tecnocracia: {
     label: 'Tecnocracia',
@@ -111,6 +121,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     taxIncome: { R: 1.1, C: 1.1, I: 1.1 },
     serviceCost: 0.9,
     fundingFloor: 80,
+    overthrowBelow: null,
   },
   teocracia: {
     label: 'Teocracia',
@@ -126,6 +137,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     taxIncome: { R: 1, C: 1, I: 1 },
     serviceCost: 1,
     fundingFloor: 0,
+    overthrowBelow: null,
   },
   comunismo: {
     label: 'Comunismo',
@@ -141,6 +153,7 @@ export const GOVERNMENTS: Record<GovernmentKind, Government> = {
     taxIncome: { R: 1, C: 0.5, I: 1.25 },
     serviceCost: 0.7,
     fundingFloor: 0,
+    overthrowBelow: null,
   },
 };
 

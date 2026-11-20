@@ -1,5 +1,5 @@
 import type { Sound } from './audio/sound';
-import { POWER_REACH, TICKS_PER_MONTH, type GovernmentKind } from './config';
+import { GOVERNMENTS, POWER_REACH, TICKS_PER_MONTH, type GovernmentKind } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
 import { attachPointer, type PointerTarget } from './input/controls';
@@ -720,9 +720,13 @@ ${stalled}` : ''}`;
     box.title = divine ? 'Aprobación divina: clic para ver el detalle' : 'Aprobación de los vecinos: clic para ver el detalle';
     $('#approvalTag').textContent = divine ? 'Aprobación divina' : 'Aprobación';
     el.textContent = `${divine ? s.favor : s.approval} %`;
-    el.className = divine ? '' : s.approval >= APPROVAL.toWin ? 'tone-good' : s.approval >= APPROVAL.toWin - 10 ? 'tone-warn' : 'tone-bad';
-    // Nobody votes under a dictatorship: the line under the approval goes away instead of lying.
-    const vote = s.lostElection ? 'modo libre' : nextElectionYear(s.tick, s.government);
+    // El rojo empieza donde de verdad se juega el cargo: en la dictadura el piso es el 20 % de la calle,
+    // no el 50 % de las urnas.
+    const floor = GOVERNMENTS[s.government].overthrowBelow ?? APPROVAL.toWin;
+    el.className = divine ? '' : s.approval >= floor ? 'tone-good' : s.approval >= floor - 10 ? 'tone-warn' : 'tone-bad';
+    // Nobody votes under a dictatorship: the line under the approval says what does end the mandate.
+    const ledge = GOVERNMENTS[s.government].overthrowBelow;
+    const vote = s.lostElection ? 'modo libre' : ledge !== null ? `la calle, bajo ${ledge} %` : nextElectionYear(s.tick, s.government);
     const line = $('#election');
     line.textContent = divine ? `Vecinos ${s.approval} %` : vote === null ? '' : typeof vote === 'string' ? vote : s.government === 'comunismo' ? `congreso en oct ${vote}` : `vota en oct ${vote}`;
     line.classList.toggle('hidden', vote === null && !divine);

@@ -39,7 +39,7 @@ import { SMOKE_BUBBLE } from './warnings';
 import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDemand, educatedShare, isHoldout, levelCap, spawnLevel, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
-import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, misaHeadline, pollHeadline } from './mayor';
+import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, intendente, misaHeadline, pollHeadline } from './mayor';
 import { FAVOR, computeFavor, judgementChance, moodOf, stepFavor, wrathApproval, wrathFires, wrathSick, type FavorReport } from './favor';
 import { PLAN, newPlan, planPremium, type FivePlan } from './plan';
 import { advanceMilestones, nextMilestone, unlockNames } from './milestones';
@@ -1216,6 +1216,7 @@ export class Simulation {
     this.reachRunMarks();
     this.approval = this.judge();
     s.approval = stepApproval(s.approval, this.approval.target, s.government);
+    this.checkOverthrow();
     // The cabildo works the neighbourhoods all year, and doubles its effort in the month of the election.
     const cabildo = uniqueApproval(w, month);
     if (cabildo > 0) s.approval = Math.min(GOVERNMENTS[s.government].approvalCap, Math.round(s.approval + cabildo));
@@ -1243,6 +1244,26 @@ export class Simulation {
     // While the paper is closed the snapshot still advances: those events are never reported.
     this.prevSnapshot = snap;
     this.holdElection(snap.year);
+  }
+
+  /**
+   * La calle: la dictadura no pierde en octubre, pero se cae cualquier mes en que el pueblo la odie lo
+   * suficiente. Es la contracara de no tener elecciones, y por eso el umbral vive en la forma de gobierno
+   * y no en la campaña: sin elecciones no hay nada que esperar, la cuenta se cierra el mismo mes.
+   *
+   * No hay un segundo golpe sobre una partida ya perdida: el que se fue, se fue.
+   */
+  private checkOverthrow(): void {
+    const s = this.state;
+    if (s.lostElection) return;
+    const floor = GOVERNMENTS[s.government].overthrowBelow;
+    if (floor === null || s.approval >= floor) return;
+    s.lostElection = true;
+    const quien = this.mayor ? `al ${intendente(this.mayor)}` : 'al Intendente';
+    this.publish(
+      `Con ${s.approval} % de aprobación, una movilización popular tomó la Municipalidad y sacó ${quien} del gobierno: ${this.cityName} queda en modo libre`,
+      true,
+    );
   }
 
   /**

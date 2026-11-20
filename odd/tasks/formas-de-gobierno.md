@@ -85,3 +85,21 @@ Runner: `npm test` (Vitest), `npx tsc --noEmit`, `npm run build`. Balance: `npm 
   - **El acto eleccionario.** La dictadura no vota, pero el calendario igual tiene su octubre: cuando llegaría una elección democrática (`electionDue(tick, 'democracia')`), el diario publica dos titulares seguidos, y el segundo siempre es peor que el primero (`dictatorHeadline` y `DICTATOR_FOLLOWUPS` en `src/sim/mayor.ts`, elegido con el RNG de la partida). No toca aprobación, mandatos ni nada: es el diario mintiendo, que es lo que hace un régimen.
   - **La tecnocracia.** `toWin` 40 → 50: la ventana de fundación ya prometía "la mitad de la opinión en juego" y el número decía otra cosa. El mandato de 6 años ya estaba. Se actualizaron las tres copias del número (tarjeta de `GOVERNMENTS`, ayuda y tests).
   - Verificación: 700 tests, `tsc` limpio, `build` en 1,37 s. En el juego, con una partida de dictadura: la caja de aprobación quedó sin la línea de votación, y al cerrar octubre de 1993 el diario publicó "Acto eleccionario 1993: El partido Orden y Progreso gana por amplia mayoría, después de que sus contrincantes desaparecieran" y debajo "Hallaron tres cuerpos en el río, aguas abajo de la costanera: la Policía dice que no tienen relación con el acto".
+- **L12 (2026-11-20), pedido (verbatim):** "Tambien, en dictadura si estás por debajo del 20% la gente te saca de tu gobierno y perdes automaticamente".
+  - **El hueco que tapa.** La dictadura tenía `termYears: null`, así que `electionDue` siempre daba falso y
+    `holdElection` sólo publicaba el acto de octubre: el régimen **no se podía perder nunca**. La contra de
+    "No hay elecciones: nunca perdés el poder" era cierta al pie de la letra, y eso convertía a la dictadura
+    en el modo fácil: bajar impuestos, dejar que la ciudad se hunda y seguir igual.
+  - **Cómo queda.** `Government.overthrowBelow` (dictadura 20, las otras cuatro `null`) y `checkOverthrow()`
+    en `endOfMonth`, justo después de que la aprobación se mueva: si está por debajo del piso, `lostElection`
+    se pone en true y la ciudad queda en modo libre, igual que una elección perdida. El diario lo cuenta con
+    una movilización, no con un acto eleccionario, y no hay un segundo golpe sobre una partida ya perdida.
+  - **Por qué sólo la dictadura.** La teocracia ya pelea con el favor divino y sus catástrofes, y el comunismo
+    responde en el congreso cada cinco años: darles además un piso de aprobación habría sido castigarlas dos
+    veces por lo mismo.
+  - **La placa.** `updateApproval` pintaba el rojo con `APPROVAL.toWin` (50) para todas las formas de gobierno,
+    así que en dictadura —tope 60, piso 20— nunca se ponía roja. Ahora usa el piso de cada gobierno, y la
+    línea bajo la aprobación dice "la calle, bajo 20 %" en vez de una fecha de elección que no existe.
+  - **Verificación.** Cinco tests nuevos en `tests/dictadura.test.ts` (no cae con 40, se cae con la aprobación
+    por el piso, el diario habla de la calle y no de una elección, es la única forma con piso, no hay segundo
+    golpe). 1240 tests / 80 archivos verdes, `tsc` limpio.
