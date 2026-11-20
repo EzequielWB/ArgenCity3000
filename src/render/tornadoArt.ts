@@ -48,7 +48,7 @@ function headOf(w: World, map: MapRenderer, run: TornadoRun): Pt {
 function radiusAt(t: number): number {
   // Punta fina, apertura pareja hacia la nube y una cintura apenas marcada. El ancho del remolino de abajo
   // lo pone el polvo, no el cono: si el cono se abre en el suelo, la figura es un pedestal.
-  const open = 0.34 + 0.66 * Math.pow(t, 1.6) - 0.1 * Math.sin(Math.PI * t);
+  const open = 0.34 + 0.66 * Math.pow(t, 1.7) - 0.2 * Math.sin(Math.PI * t);
   return Math.max(0.18, open);
 }
 
@@ -61,14 +61,14 @@ function radiusAt(t: number): number {
  * haya, la figura es un embudo de laboratorio.
  */
 function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, mouth: number, time: number): void {
-  const cloudH = Math.round(height * 0.15);
+  const cloudH = Math.max(6, Math.round(height * 0.1));
   const bodyH = height - cloudH + 10; // el cono sube diez píxeles dentro de la nube: así la atraviesa
   const spin = time * 0.01;
   const rMax = Math.max(4, mouth);
 
   // 1. La nube, primero: el embudo se pinta encima y la cruza. Si la nube fuera después, su panza quedaría
   // como una línea recta sobre el cono y la figura entera se leería como un hongo con tallo.
-  cloud(g, base, bodyH, cloudH, rMax, time);
+  cloud(g, base, bodyH, cloudH, rMax, time, base.x + Math.sin(spin * 0.6 + 1.9) * rMax * 0.34);
 
   // 2. El cono.
   for (let k = 0; k < bodyH; k++) {
@@ -105,9 +105,12 @@ function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, mouth: nu
   // 3. El polvo de la base: un remolino achatado y ancho que ancla el embudo al suelo. Sin esto el cono
   // termina en una punta seca y el dibujo parece un embudo de cocina.
   const dustW = Math.round(rMax * 2.9);
-  for (let k = 0; k < 6; k++) {
-    const t = k / 5;
-    const w = Math.round(dustW * (1 - t * 0.55) + Math.sin(k * 2.2 + time * 0.004) * 2);
+  for (let k = 0; k < 7; k++) {
+    const t = k / 6;
+    // La primera fila es más corta que la segunda: si la base es la más ancha, el polvo arranca con una
+    // barra recta sobre el pasto y se lee como una tabla.
+    const base0 = k === 0 ? 0.8 : 1;
+    const w = Math.round(dustW * base0 * (1 - t * 0.5) + Math.sin(k * 2.2 + time * 0.004) * 2);
     const x0 = Math.round(base.x - w / 2 + Math.sin(k * 1.7 + time * 0.002) * 2.5);
     g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(t * 2.4))];
     g.fillRect(x0, Math.round(base.y - k), w, 1);
@@ -127,43 +130,46 @@ function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, mouth: nu
 }
 
 /**
- * La nube que pare el embudo: tres lóbulos arriba y una panza ondulada abajo, pintada **por columna**.
+ * La nube que pare el embudo: una banda baja y deshilachada que apenas sobresale de la boca.
  *
- * Filas de ancho parejo dan un disco, y un disco sobre un tallo es un hongo. Por columna, en cambio, el
- * borde de arriba son arcos —los lóbulos— y el de abajo sube hacia los costados, así que la silueta se lee
- * como una masa de aire y no como una mesa.
+ * Una masa redondeada encima del cono es un sombrero, y un sombrero sobre un tallo es un hongo: por eso la
+ * nube no es más ancha que el cono por más de unos píxeles, y su borde de arriba no es un arco cerrado sino
+ * tres lomas chicas con jirones sueltos. Lo que hace de tornado es la trompa, no la nube.
  */
-function cloud(g: CanvasRenderingContext2D, base: Pt, bodyH: number, cloudH: number, rMax: number, time: number): void {
-  const cx = base.x + Math.sin(time * 0.0007) * 2;
-  const cy = base.y - bodyH - cloudH * 0.15;
-  const halfW = Math.min(42, rMax + 12);
-  const lobe = (x: number, dx: number, rx: number, ry: number): number => {
-    const d = (x - (cx + dx)) / rx;
-    return Math.abs(d) >= 1 ? 0 : ry * Math.sqrt(1 - d * d);
-  };
+function cloud(g: CanvasRenderingContext2D, base: Pt, bodyH: number, cloudH: number, rMax: number, time: number, cxTop: number): void {
+  const cx = cxTop + Math.sin(time * 0.0007) * 2;
+  const cy = base.y - bodyH - cloudH * 0.2;
+  const halfW = Math.min(30, rMax + 7);
   for (let x = Math.round(cx - halfW); x <= Math.round(cx + halfW); x++) {
-    const up = Math.max(lobe(x, -halfW * 0.42, halfW * 0.56, cloudH * 0.86), lobe(x, 0, halfW * 0.72, cloudH * 1.05), lobe(x, halfW * 0.44, halfW * 0.54, cloudH * 0.8));
-    if (up <= 0) continue;
-    // La panza: honda en el centro, que es por donde entra el embudo, y alta en los costados.
     const edge = Math.min(1, Math.abs(x - cx) / halfW);
-    const belly = cloudH * (0.28 + 0.62 * edge);
-    const from = Math.round(cy - up);
-    const to = Math.round(cy + belly);
-    for (let y = from; y <= to; y++) {
+    // Tres lomas: la del medio más alta, y las de los costados cayendo.
+    const loma = cloudH * (0.86 * Math.cos(edge * Math.PI * 0.5) + 0.24 * Math.abs(Math.sin(x * 0.55 + time * 0.0006)));
+    const up = Math.round(loma);
+    if (up <= 0) continue;
+    const down = Math.round(cloudH * (0.12 + 0.34 * edge));
+    const from = cy - up;
+    const to = cy + down;
+    for (let y = Math.round(from); y <= Math.round(to); y++) {
       const f = (y - from) / Math.max(1, to - from);
-      const tone = f < 0.3 ? CLOUD[3] : f < 0.58 ? CLOUD[2] : f < 0.82 ? CLOUD[1] : CLOUD[0];
+      const tone = f < 0.26 ? CLOUD[3] : f < 0.52 ? CLOUD[2] : f < 0.78 ? CLOUD[1] : CLOUD[0];
       g.fillStyle = tone;
       g.fillRect(x, y, 1, 1);
+    }
+    // Los jirones: uno de cada tres píxeles del borde de arriba se escapa un renglón más, y la nube deja de
+    // tener un contorno limpio contra el cielo.
+    if ((x + Math.round(time / 120)) % 3 === 0) {
+      g.fillStyle = CLOUD[2];
+      g.fillRect(x, Math.round(from) - 1, 1, 1);
     }
   }
 }
 
 /** La sombra y el polvo de la base: sin esto el embudo parece pegado sobre el mapa, no apoyado. */
 function dust(g: CanvasRenderingContext2D, base: Pt, time: number): void {
-  g.globalAlpha = 0.32;
+  g.globalAlpha = 0.26;
   g.fillStyle = '#1d2418';
   g.beginPath();
-  g.ellipse(base.x, base.y + 1, 14, 6, 0, 0, Math.PI * 2);
+  g.ellipse(base.x, base.y + 1, 11, 4.5, 0, 0, Math.PI * 2);
   g.fill();
   g.globalAlpha = 1;
   for (let k = 0; k < 4; k++) {
