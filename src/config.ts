@@ -288,13 +288,18 @@ export interface Crop {
 /**
  * La tabla de cultivos.
  *
- * El trigo es el del corte 1: siembra en mayo, cosecha en diciembre. Las toneladas son el punto de partida y
- * se calibran contra `npm run probe`: un lote de 2×2 rinde hoy $3.600 al año contra los $2.952 de una manzana
- * de torres — parecido, y el campo no paga luz ni agua, así que si el probe muestra que conviene llenar el
- * mapa de trigo, baja acá y no en el precio.
+ * El trigo es el del corte 1: siembra en mayo, cosecha en diciembre. Las **toneladas** son la palanca de
+ * balance de todo el campo, y se calibran midiendo, no a ojo: con 30 toneladas un lote rendía $5.400 al año,
+ * o sea $1.262 por celda y año contra los $739 de una celda de torres y los $756 de una industrial, y encima
+ * sin pedir luz, agua, calles ni servicios. Llenar el mapa de trigo era la jugada óptima.
+ *
+ * Con 20 toneladas el campo queda a la altura de los edificios y conserva la ventaja que le toca —cobra una
+ * vez al año, con la merma comiéndose lo que se guarda, y no pide nada— sin pasarles por arriba. Si en otra
+ * medición vuelve a convenir llenar el mapa, se baja acá y no en el precio: el precio tiene forma de estación
+ * y la temporada no se toca para arreglar un número.
  */
 export const CROPS: Record<CropKind, Crop> = {
-  trigo: { label: 'Trigo', sow: 5, harvest: 12, tons: 30 },
+  trigo: { label: 'Trigo', sow: 5, harvest: 12, tons: 20 },
 };
 
 export const FARM_SIZE = 2;

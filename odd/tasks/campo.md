@@ -162,6 +162,15 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   celda de torres. O sea: hoy llenar el mapa de trigo es la jugada óptima, y S1 quería que el campo fuera una
   pieza de borde, no la ciudad entera. La palanca es `CROPS.trigo.tons` —no el precio—: bajarlo a **8** deja
   el payback en ~7 meses y el campo en ~$337/celda/año, en línea con los edificios. **No se cambió todavía.**
+- **L20** — **El nerfeo** (decisión del usuario: *"Metamos nerfeo entonces si es muy bueno"*). Primero se
+  midió en serio, porque el número de L19 estaba a ojo y **estaba mal**: el impuesto real de una celda de
+  nivel 5, medido con `monthlyBudget`, es **$739** residencial, **$756** industrial y **$631** comercial, no
+  $328. O sea el campo con 30 t rendía $1.262/celda contra $739: **1,7 veces** una torre, no cuatro.
+  `CROPS.trigo.tons` baja de **30 a 20**. El campo a pleno queda en **$607 por celda y año** aguantando la
+  cosecha hasta junio (contra $739 de una torre, que además paga luz, agua, calles y los seis servicios) y
+  **$516** vendiendo en diciembre. La cadena sigue teniendo sentido —una feria pide 48 lotes y la cosecha de
+  un solo mes obliga a **cinco silos**— y el campo deja de ser la jugada obvia. El payback de un lote sigue
+  en tres días porque **la tierra es barata a propósito** (S1): lo caro de verdad son el silo y la feria.
 - **L15** — **Verificación antes de probar local**, y trajo un bug: el `footprint` de las tres piezas **recortaba**
   contra el borde del mapa en vez de correr el ancla para adentro como la usina, el depósito y los servicios.
   Una feria puesta en la esquina pisaba **una** celda y se cobraban los $600 enteros, con el dibujo de 3×3
