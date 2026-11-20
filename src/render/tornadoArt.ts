@@ -12,11 +12,11 @@ import { heightAt } from './traffic';
 import type { MapRenderer } from './mapRenderer';
 
 /** Los tonos del cuerpo, del borde en sombra al centro iluminado. */
-const BODY = ['#33363e', '#484c57', '#5f646f', '#79808d'];
+const BODY = ['#33363e', '#4b4f5b', '#636875', '#7d8492'];
 /** El contorno: sin él el embudo no se separa del pasto. */
-const EDGE = '#1e2026';
-/** La nube de arriba, que es lo que hace que la figura se lea como un tornado y no como una torre. */
-const CLOUD = ['#26282f', '#31343c', '#41454f', '#565a66'];
+const EDGE = '#1b1d23';
+/** La nube que lo pare, del borde iluminado de arriba a la panza en sombra. */
+const CLOUD = ['#2a2d35', '#3a3e48', '#4c515c', '#656a76'];
 /** El polvo que levanta al tocar el suelo. */
 const DUST = ['#8f7a5c', '#b09b7a', '#d3c3a4'];
 
@@ -39,71 +39,122 @@ function headOf(w: World, map: MapRenderer, run: TornadoRun): Pt {
 }
 
 /**
- * El embudo, de abajo hacia arriba: el polvo, el cono y la nube que lo pare.
+ * El radio del embudo a la altura `t` (0 en el suelo, 1 en la nube), en fracción de la boca.
  *
- * Cuatro cosas lo hacen legible a un píxel, y eran las cuatro que faltaban: los **lados lisos** —un ancho
- * que crece parejo, porque cualquier ondulación se lee como escalones y el resultado parece una pila de
- * platos—, el **contorno oscuro** de un píxel a cada lado, la **banda clara** que sube girando, y la **nube**
- * encima. Sin la nube, por más cono que haya, la figura es un embudo de laboratorio.
+ * La forma es la de un tornado y no la de una seta: **ancho arriba** donde se funde con la nube, una
+ * **cintura** fina arriba del polvo, y el **remolino** que se vuelve a abrir en el suelo. Al revés —fino
+ * arriba, ancho abajo— el dibujo es un hongo atómico por más que tenga contorno y bandas.
  */
-function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, top: number, bottom: number, time: number): void {
-  const cloudH = Math.round(height * 0.3);
-  const bodyH = height - cloudH + 3; // el cono entra tres píxeles en la nube: así no hay costura
-  const spin = time * 0.012;
+function radiusAt(t: number): number {
+  // Punta fina, apertura pareja hacia la nube y una cintura apenas marcada. El ancho del remolino de abajo
+  // lo pone el polvo, no el cono: si el cono se abre en el suelo, la figura es un pedestal.
+  const open = 0.34 + 0.66 * Math.pow(t, 1.6) - 0.1 * Math.sin(Math.PI * t);
+  return Math.max(0.18, open);
+}
 
-  // 1. El cono. Se pinta primero: la nube lo tapa por arriba y el polvo lo tapa por abajo.
+/**
+ * El embudo, de abajo hacia arriba: el cono, el polvo de la base y la nube que lo pare.
+ *
+ * Lo que lo hace legible a un píxel, y eran las cuatro cosas que faltaban: la **silueta de doble curva**,
+ * el **contorno oscuro** de un píxel a cada lado, las **bandas diagonales** que suben girando —sin ellas es
+ * una columna gris— y la **nube de tres lóbulos con la panza rasgada** encima. Sin la nube, por más cono que
+ * haya, la figura es un embudo de laboratorio.
+ */
+function funnel(g: CanvasRenderingContext2D, base: Pt, height: number, mouth: number, time: number): void {
+  const cloudH = Math.round(height * 0.15);
+  const bodyH = height - cloudH + 10; // el cono sube diez píxeles dentro de la nube: así la atraviesa
+  const spin = time * 0.01;
+  const rMax = Math.max(4, mouth);
+
+  // 1. La nube, primero: el embudo se pinta encima y la cruza. Si la nube fuera después, su panza quedaría
+  // como una línea recta sobre el cono y la figura entera se leería como un hongo con tallo.
+  cloud(g, base, bodyH, cloudH, rMax, time);
+
+  // 2. El cono.
   for (let k = 0; k < bodyH; k++) {
-    const t = k / bodyH;
-    const half = bottom + (top - bottom) * Math.pow(t, 1.7);
+    // `k` cuenta desde la boca hacia abajo; `t` al revés, de 0 en la punta a 1 en la nube.
+    const t = 1 - k / (bodyH - 1);
+    const r = rMax * radiusAt(t);
+    // El doblado: la columna no baja derecha, se mece. Es media lectura del dibujo.
+    const cx = base.x + Math.sin(spin * 0.6 + t * 1.9) * rMax * 0.34 * t;
     const y = Math.round(base.y - bodyH + k);
-    const w = Math.max(3, Math.round(half * 2) + 1);
-    const x0 = Math.round(base.x - w / 2);
-    // La banda clara que sube serpenteando: es el giro.
-    const bx = base.x + Math.sin(k * 0.34 + spin) * half * 0.55;
+    const w = Math.max(3, Math.round(r * 2) + 1);
+    const x0 = Math.round(cx - w / 2);
+    // La banda clara: sube en espiral, así que en cada fila cae en otro lado. Es el giro.
+    const band = cx + Math.sin(t * 7.5 + spin * 2.4) * r * 0.72;
+    const bandW = Math.max(1, r * 0.5);
     for (let i = 0; i < w; i++) {
       const nx = w === 1 ? 0 : (i / (w - 1)) * 2 - 1;
       // La cara del cilindro: el centro mira a la cámara y los bordes se van.
-      let tone = 0.15 + 0.85 * Math.cos(nx * Math.PI * 0.5);
-      if (Math.abs(x0 + i - bx) < 1.6 + w * 0.08) tone = 1;
+      let tone = 0.2 + 0.8 * Math.cos(nx * Math.PI * 0.5);
+      if (Math.abs(x0 + i - band) < bandW) tone = 1;
+      // Estrías: por dentro del cilindro, bandas más oscuras que giran con la clara.
+      else if (Math.sin(t * 16 + spin * 3.1 + nx * 1.2) > 0.72) tone = Math.max(0, tone - 0.4);
       const idx = Math.max(0, Math.min(BODY.length - 1, Math.round(tone * (BODY.length - 1))));
       g.fillStyle = BODY[idx];
       g.fillRect(x0 + i, y, 1, 1);
     }
-    g.fillStyle = EDGE;
-    g.fillRect(x0 - 1, y, 1, 1);
-    g.fillRect(x0 + w, y, 1, 1);
+    // El contorno sólo hasta donde la nube lo tapa: arriba el embudo se funde con ella.
+    if (y > base.y - bodyH + cloudH * 0.4) {
+      g.fillStyle = EDGE;
+      g.fillRect(x0 - 1, y, 1, 1);
+      g.fillRect(x0 + w, y, 1, 1);
+    }
   }
 
-  // 2. El polvo de la base: un montón bajo y ancho que ancla el embudo al suelo. Sin esto el cono termina
-  // en una punta seca y el dibujo parece un embudo de cocina.
-  for (let k = 0; k < 7; k++) {
-    const t = k / 6;
-    const w = Math.round((bottom * 2 + 10) * (1 - t * 0.45) + Math.sin(k * 2.2 + time * 0.003) * 2);
-    const x0 = Math.round(base.x - w / 2 + Math.sin(k * 1.7 + time * 0.002) * 2);
-    g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(t * 2))];
+  // 3. El polvo de la base: un remolino achatado y ancho que ancla el embudo al suelo. Sin esto el cono
+  // termina en una punta seca y el dibujo parece un embudo de cocina.
+  const dustW = Math.round(rMax * 2.9);
+  for (let k = 0; k < 6; k++) {
+    const t = k / 5;
+    const w = Math.round(dustW * (1 - t * 0.55) + Math.sin(k * 2.2 + time * 0.004) * 2);
+    const x0 = Math.round(base.x - w / 2 + Math.sin(k * 1.7 + time * 0.002) * 2.5);
+    g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(t * 2.4))];
     g.fillRect(x0, Math.round(base.y - k), w, 1);
-    g.fillStyle = EDGE;
-    g.fillRect(x0 - 1, Math.round(base.y - k), 1, 1);
-    g.fillRect(x0 + w, Math.round(base.y - k), 1, 1);
   }
+  // Las volutas: dos brazos de polvo que suben enroscándose a los costados de la punta. Sin ellos el
+  // remolino es una franja plana en el piso y el embudo parece apoyado como un clavo.
+  const spin2 = Math.sin(time * 0.003);
+  for (const side of [-1, 1]) {
+    const bx = base.x + side * (rMax * 0.72 + spin2 * 2);
+    for (let k = 0; k < 5; k++) {
+      const w = Math.max(1, 4 - Math.floor(k / 2));
+      const x = Math.round(bx + side * (k * 1.4 + 1) - (side < 0 ? w : 0));
+      g.fillStyle = DUST[Math.min(DUST.length - 1, 2 - Math.floor(k / 3))];
+      g.fillRect(x, Math.round(base.y - 1 - k), w, 1);
+    }
+  }
+}
 
-  // 3. La nube. Más ancha que la boca del cono, redondeada y en dos tonos: el borde de arriba recibe la luz
-  // y el resto queda en sombra. Es lo que dice "tornado" y no "columna".
-  const cloudW = Math.round(top * 2 + 14);
-  for (let k = 0; k < cloudH; k++) {
-    const t = cloudH === 1 ? 0.5 : k / (cloudH - 1);
-    // El ancho de una elipse: la masa se abre en el medio y se cierra en los dos bordes.
-    const swell = Math.sqrt(Math.max(0, 1 - Math.pow((t - 0.42) / 0.72, 2)));
-    let w = Math.round(cloudW * swell);
-    // Los tres lóbulos: la nube no es un óvalo prolijo.
-    if (k === 1 || k === cloudH - 2) w = Math.round(w * 0.72);
-    const x0 = Math.round(base.x - w / 2 + Math.sin(k * 0.7 + time * 0.0008) * 1.5);
-    const y = Math.round(base.y - bodyH - cloudH + k + 3);
-    g.fillStyle = t < 0.3 ? CLOUD[3] : t < 0.55 ? CLOUD[2] : CLOUD[1];
-    g.fillRect(x0, y, w, 1);
-    g.fillStyle = EDGE;
-    g.fillRect(x0 - 1, y, 1, 1);
-    g.fillRect(x0 + w, y, 1, 1);
+/**
+ * La nube que pare el embudo: tres lóbulos arriba y una panza ondulada abajo, pintada **por columna**.
+ *
+ * Filas de ancho parejo dan un disco, y un disco sobre un tallo es un hongo. Por columna, en cambio, el
+ * borde de arriba son arcos —los lóbulos— y el de abajo sube hacia los costados, así que la silueta se lee
+ * como una masa de aire y no como una mesa.
+ */
+function cloud(g: CanvasRenderingContext2D, base: Pt, bodyH: number, cloudH: number, rMax: number, time: number): void {
+  const cx = base.x + Math.sin(time * 0.0007) * 2;
+  const cy = base.y - bodyH - cloudH * 0.15;
+  const halfW = Math.min(42, rMax + 12);
+  const lobe = (x: number, dx: number, rx: number, ry: number): number => {
+    const d = (x - (cx + dx)) / rx;
+    return Math.abs(d) >= 1 ? 0 : ry * Math.sqrt(1 - d * d);
+  };
+  for (let x = Math.round(cx - halfW); x <= Math.round(cx + halfW); x++) {
+    const up = Math.max(lobe(x, -halfW * 0.42, halfW * 0.56, cloudH * 0.86), lobe(x, 0, halfW * 0.72, cloudH * 1.05), lobe(x, halfW * 0.44, halfW * 0.54, cloudH * 0.8));
+    if (up <= 0) continue;
+    // La panza: honda en el centro, que es por donde entra el embudo, y alta en los costados.
+    const edge = Math.min(1, Math.abs(x - cx) / halfW);
+    const belly = cloudH * (0.28 + 0.62 * edge);
+    const from = Math.round(cy - up);
+    const to = Math.round(cy + belly);
+    for (let y = from; y <= to; y++) {
+      const f = (y - from) / Math.max(1, to - from);
+      const tone = f < 0.3 ? CLOUD[3] : f < 0.58 ? CLOUD[2] : f < 0.82 ? CLOUD[1] : CLOUD[0];
+      g.fillStyle = tone;
+      g.fillRect(x, y, 1, 1);
+    }
   }
 }
 
@@ -135,12 +186,11 @@ export function drawTornado(g: CanvasRenderingContext2D, run: TornadoRun | null,
   const base = headOf(w, map, run);
   // Alto del embudo: dos lotes y medio. Más alto que el hospital de la ciudad y no lo tapa: un tornado se
   // ve, no se confunde con la arquitectura.
-  const height = 50;
+  const height = 86;
   // **El ancho se ve.** Es lo que el impuesto promedio decide y el jugador tiene que poder leerlo de un
   // vistazo: el tornado de la ciudad que no cobra entra gordo y el de la que cobra entra por una línea.
-  const top = 8 + run.width * 3.6;
-  const bottom = 2.5 + run.width * 1.1;
+  const mouth = 6 + run.width * 3.1;
   dust(g, base, time);
-  funnel(g, base, height, top, bottom, time);
+  funnel(g, base, height, mouth, time);
   return base;
 }
