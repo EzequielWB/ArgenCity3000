@@ -6093,3 +6093,161 @@ export const residentialPixelSprite = (level: number, variant: number): Sprite =
 export const commercialPixelSprite = (level: number, variant: number): Sprite => spriteOf(paintCommercial(level, variant));
 export const lotPixelSprite = (kind: LotKind, variant: number): Sprite => spriteOf(paintLot(kind, variant));
 export const industrialPixelSprite = (level: number, variant: number): Sprite => spriteOf(paintIndustrial(level, variant));
+
+/* ---------- El campo ---------- */
+
+/**
+ * El campo, dibujado desde las plantas de acopio de verdad.
+ *
+ * Las referencias no son el silo de tambo aislado de las estampillas: son la planta de acopio pampeana —
+ * Eduardo Castex, Junín, San Pedro —, que es **dos cilindros de chapa galvanizada** con bandas horizontales,
+ * una **torre de noria** más alta que ellos y la **cinta inclinada** que sube el grano. Sin la noria y la
+ * cinta quedan dos latas paradas; con ellas se lee de un vistazo que ahí se acopia grano.
+ *
+ * El trigo del lote no se dibuja espiga por espiga: a 1× son franjas doradas separadas por el surco de
+ * tierra, y el surco es lo que da la escala.
+ */
+const TIERRA = ramp('#7d5c38');
+const TIERRA_SECA = hex('#96714a');
+const TRIGO = ['#c9a227', '#e0b542', '#f2d472'].map(hex);
+const TRIGO_SOMBRA = hex('#8f7420');
+const CHAPA_SILO = ramp('#c8d0d8');
+const CHAPA_VIEJA = ramp('#9aa4ae');
+const TINGLADO = ramp('#7f9cba');
+
+/**
+ * El lote de cultivo: tierra arada en franjas y el trigo encima.
+ *
+ * Las franjas van en la dirección de la `u` porque el arado sigue la pendiente del lote en isométrico: al
+ * revés, el dibujo se lee como una reja y no como un sembrado.
+ */
+function paintFarmLot(): { px: Pixels; ax: number; ay: number } {
+  const p = penLot(2, 16);
+  // El suelo del lote: tierra arada, con el borde en sombra para que se apoye y no flote.
+  p.poly([p.P(0.04, 0.04), p.P(1.96, 0.04), p.P(1.96, 1.96), p.P(0.04, 1.96)], (x, y) => (bayer(x, y) < 0.5 ? TIERRA[1] : TIERRA[0]));
+  p.px.line(p.P(0.04, 1.96), p.P(1.96, 1.96), TIERRA[0]);
+  // El trigo en franjas anchas, no en puntos: a 1× lo que se lee es la banda dorada, no la espiga.
+  for (let s = 0; s < 5; s++) {
+    const v0 = 0.1 + s * 0.38;
+    const v1 = v0 + 0.24;
+    // La franja: el surco de tierra a los dos lados y el trigo en el medio.
+    p.px.line(p.P(0.1, v0), p.P(1.9, v0), TIERRA_SECA);
+    p.poly([p.P(0.1, v0 + 0.03), p.P(1.9, v0 + 0.03), p.P(1.9, v1 - 0.03), p.P(0.1, v1 - 0.03)], (x, y) => {
+      // Rayas de espiga a lo largo: tres tonos que se alternan, así la franja tiene textura sin ser ruido.
+      return TRIGO[[0, 1, 1, 2, 1, 0][(x + 2 * y) % 6]];
+    });
+    // El borde de la franja que da al sur queda en sombra, y el de arriba se ilumina.
+    p.px.line(p.P(0.1, v1 - 0.03), p.P(1.9, v1 - 0.03), TRIGO_SOMBRA);
+    p.px.line(p.P(0.1, v0 + 0.03), p.P(1.9, v0 + 0.03), TRIGO[2]);
+  }
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+/**
+ * El silo: la planta de acopio.
+ *
+ * En las referencias argentinas —la de Eduardo Castex, la de Junín— lo que se ve de lejos **no** es un
+ * cilindro: es una **torre rectangular de chapa**, alta y angosta, con las virolas horizontales, y al lado
+ * la **noria** todavía más alta, que es la que sube el grano. El cilindro a 1× se lee como una lata y no
+ * dice nada; la torre con la noria dice "acá se acopia grano" desde el otro lado del mapa.
+ */
+function paintSilo(): { px: Pixels; ax: number; ay: number } {
+  const p = penLot(2, 52);
+  // La playa de maniobras: el silo no está en el pasto, está sobre un piso de tierra apisonada.
+  p.poly([p.P(0.04, 0.04), p.P(1.96, 0.04), p.P(1.96, 1.96), p.P(0.04, 1.96)], (x, y) => (bayer(x, y) < 0.5 ? GRAVEL[1] : GRAVEL[2]));
+  // Las virolas: una junta cada cuatro píxeles, que es lo que dice "chapa atornillada" y no "tanque liso".
+  const virolas = (h: number): Patch[] => {
+    const out: Patch[] = [];
+    for (let k = 4; k < h; k += 4) out.push({ t0: 0, t1: 99, k0: k, k1: k + 1, c: shade(CHAPA_SILO[1], 0.84) });
+    return out;
+  };
+  // La torre: alta y rectangular, con el techo a dos aguas bajo, que es el de la foto.
+  const h = 34;
+  p.box(0.14, 0.18, 1.5, 1.34, 0, h, CHAPA_SILO, 'plain', virolas(h), virolas(h), CHAPA_SILO[0]);
+  p.gable(0.1, 0.14, 1.54, 1.38, h, 5, CHAPA_VIEJA, shade(CHAPA_VIEJA[1], 0.75), 'sheet');
+  // La noria: más angosta y más alta que la torre, pegada al lado que da al fondo. Es el remate del dibujo.
+  const hn = 46;
+  p.box(1.12, 0.28, 1.46, 0.72, 0, hn, CHAPA_VIEJA, 'plain', virolas(hn), virolas(hn), CHAPA_VIEJA[0]);
+  p.gable(1.1, 0.26, 1.48, 0.74, hn, 4, CHAPA_VIEJA, shade(CHAPA_VIEJA[1], 0.7), 'sheet');
+  // La cabeza de la noria: la caja de mando con su tejadillo, siempre en otro tono para que se distinga.
+  p.box(1.16, 0.32, 1.44, 0.68, hn + 4, 3, CHAPA_VIEJA, 'plain', [], [], hex('#b8962f'));
+  // La puerta del pie y la escalera del costado: dan la escala de lo alto que es.
+  p.box(0.3, 1.34, 0.52, 1.34, 0, 7, ramp('#5a4a3a'), 'plain');
+  for (let k = 3; k < 30; k += 4) {
+    const [ex, ey] = p.P(1.5, 1.1, k);
+    p.px.rect(Math.round(ex) - 1, Math.round(ey), 3, 1, shade(CHAPA_SILO[1], 0.62));
+  }
+  p.px.line(p.P(1.5, 1.1, 1), p.P(1.5, 1.1, 30), shade(CHAPA_SILO[1], 0.5));
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+/**
+ * La feria: el tinglado de chapa con el techo a dos aguas, abierto de un lado, y los cajones en la playa.
+ *
+ * Es un mercado de concentración, no un local: por eso es un galpón abierto con la mercadería a la vista y
+ * no un edificio con puerta y vidriera. El techo azul es el de las referencias de Junín.
+ */
+function paintMarket(): { px: Pixels; ax: number; ay: number } {
+  const p = penLot(3, 44);
+  p.poly([p.P(0.04, 0.04), p.P(2.96, 0.04), p.P(2.96, 2.96), p.P(0.04, 2.96)], (x, y) => (bayer(x, y) < 0.5 ? GRAVEL[1] : GRAVEL[2]));
+  const WALL = ramp('#cbbfa4');
+  const VANO = ramp('#3d3630');
+  // El galpón: pared baja de ladrillo con el frente abierto en dos vanos, y el techo de chapa a dos aguas.
+  p.box(0.2, 0.2, 2.4, 1.7, 0, 16, WALL, 'brick');
+  p.gable(0.14, 0.14, 2.46, 1.76, 16, 10, TINGLADO, shade(TINGLADO[1], 0.78), 'sheet');
+  // Los vanos: van sobre la cara que da al frente y se pintan como cajas de altura distinta, no como
+  // parches, para que la sombra del dintel quede donde va.
+  for (const [u0, u1] of [
+    [0.42, 1.18],
+    [1.34, 2.12],
+  ] as const) {
+    p.box(u0, 1.7, u1, 1.7, 0, 11, VANO, 'plain');
+    p.box(u0, 1.7, u1, 1.7, 11, 2, WALL, 'plain', [], [], shade(WALL[1], 0.8));
+  }
+  // Los cajones de la cosecha, apilados en la playa: dos filas y una torre de tres.
+  const cajon = (u: number, v: number, alto: number): void => {
+    const [bx, by] = p.P(u, v, alto);
+    p.px.rect(Math.round(bx), Math.round(by) - 5, 7, 5, hex('#b98f52'));
+    p.px.rect(Math.round(bx), Math.round(by) - 5, 7, 1, hex('#d8b878'));
+    p.px.rect(Math.round(bx), Math.round(by) - 1, 7, 1, hex('#7a5a36'));
+    p.px.rect(Math.round(bx) + 3, Math.round(by) - 4, 1, 3, hex('#8f6b3c'));
+  };
+  cajon(0.5, 2.5, 0);
+  cajon(0.5, 2.5, 5);
+  cajon(1.1, 2.6, 0);
+  cajon(1.7, 2.5, 0);
+  cajon(2.3, 2.6, 0);
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+const campoCache = new Map<string, Sprite>();
+
+/** El sprite del lote de cultivo. */
+export function farmPixelSprite(): Sprite {
+  let sprite = campoCache.get('farm');
+  if (!sprite) {
+    sprite = spriteOf(paintFarmLot());
+    campoCache.set('farm', sprite);
+  }
+  return sprite;
+}
+
+/** El sprite del silo. */
+export function siloPixelSprite(): Sprite {
+  let sprite = campoCache.get('silo');
+  if (!sprite) {
+    sprite = spriteOf(paintSilo());
+    campoCache.set('silo', sprite);
+  }
+  return sprite;
+}
+
+/** El sprite de la feria. */
+export function marketPixelSprite(): Sprite {
+  let sprite = campoCache.get('market');
+  if (!sprite) {
+    sprite = spriteOf(paintMarket());
+    campoCache.set('market', sprite);
+  }
+  return sprite;
+}

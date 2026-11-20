@@ -1,10 +1,11 @@
-import { BUS, PARK, PLANT_SIZE, SERVICE_SIZE, UNIQUES } from '../config';
+import { BUS, FARM_SIZE, MARKET_SIZE, PARK, PLANT_SIZE, SERVICE_SIZE, SILO_SIZE, UNIQUES } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
 import { serviceAt, serviceFootprint } from '../world/services';
 import { busColorOf, depotAt } from '../world/transport';
 import { busFootprint } from '../world/tools';
+import { farmFootprint, marketFootprint, siloFootprint } from '../world/farms';
 import { HUBS, type HubKind } from '../config';
 import { facilityAt, hubFootprint } from '../world/hubs';
 import { uniqueFootprint } from '../world/uniques';
@@ -35,7 +36,7 @@ import { PAL, mix, rgb, toRgb } from './color';
 import { hubHeight, isPlatform, surfaceHeights, uniqueHeight, viewCornerHeights, plantHeight, type Pt } from './geometry';
 import { abandonedBuildingSprite, buildingSprite, burningBuildingSprite, routeSignSpriteFor, uniqueSprite, type Sprite } from './sprites';
 import { parkTreeHere } from './park';
-import { busDepotPixelSprite, coastPixelSprite, poleAttach, polePixelSprite, treePixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, servicePixelSprite, type HubView } from './pixelArt';
+import { busDepotPixelSprite, coastPixelSprite, farmPixelSprite, marketPixelSprite, poleAttach, polePixelSprite, siloPixelSprite, treePixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, servicePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
@@ -94,6 +95,13 @@ interface Chunk {
  * redraws only the regions around the changed cells in the chunks that are alive, in painter's
  * order.
  */
+/** Las celdas de la pieza del campo, según el tile que pisa. */
+function campoFootprintOf(tile: number, n: number, x: number, y: number): [number, number][] {
+  if (tile === TILE.FARM) return farmFootprint(n, x, y);
+  if (tile === TILE.SILO) return siloFootprint(n, x, y);
+  return marketFootprint(n, x, y);
+}
+
 export class MapRenderer {
   /** Size of the cache space (the map plus room for tall buildings and the walls). */
   readonly width: number;
@@ -563,6 +571,19 @@ export class MapRenderer {
       const cells: [number, number][] = [];
       for (let cy = view.minVy; cy <= view.maxVy; cy++) for (let cx = view.minVx; cx <= view.maxVx; cx++) cells.push([cx, cy]);
       return { sprite: hubPixelSprite(piece.kind, level, view, this.hubWaterSide(cells)), ax, ay };
+    }
+    if (tile === TILE.FARM || tile === TILE.SILO || tile === TILE.MARKET) {
+      // El campo se dibuja una sola vez, en la celda de adelante de su recuadro, como una usina: si se
+      // dibujara en las cuatro celdas habría cuatro galpones apilados.
+      const size = tile === TILE.FARM ? FARM_SIZE : tile === TILE.SILO ? SILO_SIZE : MARKET_SIZE;
+      const pieza = tile === TILE.FARM ? w.farmAt(x, y) : tile === TILE.SILO ? w.siloAt(x, y) : w.marketAt(x, y);
+      if (!pieza) return null;
+      const foot = campoFootprintOf(tile, n, pieza.x, pieza.y).map(([cx, cy]) => toView(cx, cy, rot, n));
+      const [minVx, minVy] = [Math.min(...foot.map((c) => c[0])), Math.min(...foot.map((c) => c[1]))];
+      const [maxVx, maxVy] = [Math.max(...foot.map((c) => c[0])), Math.max(...foot.map((c) => c[1]))];
+      if (vx !== maxVx || vy !== maxVy) return null;
+      const [ax2, ay2] = this.toCache(minVx, minVy, hubHeight(w, pieza.x, pieza.y, size, size));
+      return { sprite: tile === TILE.FARM ? farmPixelSprite() : tile === TILE.SILO ? siloPixelSprite() : marketPixelSprite(), ax: ax2, ay: ay2 };
     }
     if (tile === TILE.UNIQUE) {
       // A monument is drawn once, at the cell in front of its footprint, like a piece of an airport.

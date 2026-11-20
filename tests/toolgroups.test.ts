@@ -10,11 +10,13 @@ describe('tool groups', () => {
     expect(new Set(grouped).size).toBe(grouped.length);
   });
 
-  it('has the eight categories of the toolbar, in order', () => {
+  it('has the nine categories of the toolbar, in order', () => {
     expect(TOOL_GROUPS.map((g) => [g.label, g.tools])).toEqual([
       ['Consulta', ['query', 'bulldoze']],
       ['Calles y luz', ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line', 'lineConcrete']],
       ['Zonas', ['zoneR', 'zoneC', 'zoneI', 'park']],
+      // El campo va después de las zonas: es la categoría que no es ni casa, ni calle, ni servicio.
+      ['Campo', ['farm', 'silo', 'market']],
       ['Servicios', ['school', 'clinic', 'police', 'fire', 'hospital', 'university']],
       ['Usinas', ['plant', 'plantGas', 'plantWind']],
       ['Costa', ['fishing', 'promenade', 'port', 'resort', 'lighthouse']],

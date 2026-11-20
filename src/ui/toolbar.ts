@@ -54,6 +54,10 @@ const GROUP_ICONS: Record<ToolGroup['id'], string> = {
   query: pixelIcon(px(3, 1, 4, 4, '#bcd3ee') + px(4, 2, 2, 2, '#1f4f8a') + px(6, 5, 1, 1, '#e0a526') + px(7, 6, 1, 1, '#e0a526') + px(8, 7, 1, 2, '#e0a526')),
   network: pixelIcon(px(0, 4, 10, 3, '#5a5560') + px(1, 5, 2, 1, '#f6f2e8') + px(5, 5, 2, 1, '#f6f2e8') + px(7, 0, 1, 4, '#6b4a2e') + px(5, 1, 5, 1, '#ffd84a')),
   zones: pixelIcon(px(0, 1, 4, 4, '#7cc06a') + px(5, 1, 4, 4, '#6fb7e0') + px(0, 6, 4, 3, '#e0b542') + px(5, 6, 4, 3, '#8e6cc2')),
+  // Una espiga: el campo, que es la categoría que no es ni calle ni zona ni servicio.
+  campo: pixelIcon(
+    px(4, 0, 2, 2, '#e0b542') + px(3, 2, 4, 1, '#e0b542') + px(4, 3, 2, 1, '#c99a2e') + px(4, 4, 2, 2, '#c99a2e') + px(2, 5, 6, 1, '#e0b542') + px(4, 6, 2, 1, '#8d6b45') + px(4, 7, 2, 3, '#8d6b45'),
+  ),
   services: pixelIcon(
     px(1, 4, 8, 5, '#f4f0e6') + px(0, 3, 10, 1, '#b4532f') + px(4, 5, 2, 4, '#2f9a55') + px(3, 6, 4, 2, '#2f9a55') + px(2, 0, 1, 3, '#d9d4cc') + px(3, 0, 3, 1, '#74acdf'),
   ),

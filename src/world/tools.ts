@@ -6,9 +6,10 @@ import { serviceAt, serviceFootprint } from './services';
 import { depotAt, freeBusNumber, packBusLine } from './transport';
 import { hubFootprint, hubRefusal, markHubsDirty } from './hubs';
 import { uniqueFootprint, uniqueRefusal } from './uniques';
+import { farmFootprint, marketFootprint, siloFootprint } from './farms';
 import { TILE, World, coastTile, hubOf, hubTile, serviceOf, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'lineConcrete' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind | UniqueKind;
+export type ToolId = 'query' | 'bulldoze' | 'farm' | 'silo' | 'market' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'lineConcrete' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind | UniqueKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -55,6 +56,28 @@ const ALL_TOOLS: readonly ToolInfo[] = [
     shape: 'rect',
     // Three cells is the smallest plaza that lifts the land value; the bigger the patch, the further it reaches.
     help: 'Desde 3 celdas sube el valor del suelo alrededor y limpia el humo de las fábricas: cuanto más grande, más lejos llega. Si el presupuesto de espacios verdes baja del 50 %, la plaza se descuida y no hace ninguna de las dos cosas.',
+  },
+  {
+    id: 'farm',
+    label: 'Lote de trigo',
+    key: '<',
+    shape: 'anchor',
+    // El tamaño es el argumento: 2×2 no entra entre dos casas, y con calle de tierra alcanza.
+    help: 'Lote de cultivo de 2×2. Siembra en mayo y cosecha en diciembre. Sólo pide calle de tierra, no luz: por eso conviene lejos del centro.',
+  },
+  {
+    id: 'silo',
+    label: 'Silo',
+    key: '>',
+    shape: 'anchor',
+    help: 'Guarda 200 toneladas de 2×2. Sin silo la cosecha no entra y se pierde; con silo podés esperar el precio bueno, pero cada mes guardado merma el grano.',
+  },
+  {
+    id: 'market',
+    label: 'Feria',
+    key: '%',
+    shape: 'anchor',
+    help: 'De 3×3, convierte hasta 120 toneladas por mes en pesos. Sin feria el campo produce y la ciudad no cobra: es el único lugar donde la cosecha se vuelve plata.',
   },
   { id: 'plant', label: 'Usina a carbón', key: '9', shape: 'anchor', help: 'Usina térmica de 2×2. Barata, pero contamina mucho.' },
   { id: 'plantGas', label: 'Usina a gas', key: 'j', shape: 'anchor', help: 'Usina de 2×2. Más cara de construir y de mantener, casi no contamina.' },
@@ -107,6 +130,26 @@ export function isForeignUnique(tool: ToolId, government: GovernmentKind): boole
 
 const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
 
+/**
+ * Las tres piezas del campo: cuánto ocupan y cuánto cuestan.
+ *
+ * El lote es barato porque es tierra; lo caro es acopiar y vender. Por eso el jugador puede sembrar mucho y
+ * descubrir que no tiene dónde guardarlo, que es la trampa buena de esta cadena.
+ */
+type CampoFoot = (n: number, x: number, y: number) => Cell[];
+const CAMPO_TOOLS: Partial<Record<ToolId, { foot: CampoFoot; cost: number }>> = {
+  farm: { foot: farmFootprint, cost: COSTS.farm },
+  silo: { foot: siloFootprint, cost: COSTS.silo },
+  market: { foot: marketFootprint, cost: COSTS.market },
+};
+
+/** Las celdas de la pieza del campo que se demuele en (x, y), según el tile que pisa. */
+function campoFootAt(tile: number, n: number, x: number, y: number): Cell[] {
+  if (tile === TILE.FARM) return farmFootprint(n, x, y);
+  if (tile === TILE.SILO) return siloFootprint(n, x, y);
+  return marketFootprint(n, x, y);
+}
+
 /** The kind of power plant a tool builds, or null for any other tool. */
 export function plantKindOfTool(tool: ToolId): PlantKind | null {
   return PLANT_TOOLS[tool] ?? null;
@@ -127,7 +170,7 @@ export function toolInfo(id: ToolId): ToolInfo {
 }
 
 export interface ToolGroup {
-  id: 'query' | 'network' | 'zones' | 'services' | 'plants' | 'coast' | 'transport' | 'uniques';
+  id: 'query' | 'network' | 'zones' | 'campo' | 'services' | 'plants' | 'coast' | 'transport' | 'uniques';
   label: string;
   tools: readonly ToolId[];
 }
@@ -142,6 +185,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'query', label: 'Consulta', tools: ['query', 'bulldoze'] },
   { id: 'network', label: 'Calles y luz', tools: ['roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line', 'lineConcrete'] },
   { id: 'zones', label: 'Zonas', tools: ['zoneR', 'zoneC', 'zoneI', 'park'] },
+  { id: 'campo', label: 'Campo', tools: ['farm', 'silo', 'market'] },
   { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire', 'hospital', 'university'] },
   { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
   { id: 'coast', label: 'Costa', tools: ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] },
@@ -213,6 +257,7 @@ export function footprintOfTool(tool: ToolId, n: number, x: number, y: number): 
   if (plantKindOfTool(tool)) return plantFootprint(n, x, y);
   const hub = hubKindOfTool(tool);
   if (hub) return hubFootprint(hub, n, x, y);
+  if (CAMPO_TOOLS[tool]) return CAMPO_TOOLS[tool]!.foot(n, x, y);
   if (tool === 'bus') return busFootprint(n, x, y);
   if (isServiceTool(tool)) return serviceFootprint(tool, n, x, y);
   const unique = uniqueKindOfTool(tool);
@@ -335,6 +380,15 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     const foot = plantFootprint(w.n, ax, ay);
     const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.isWater(x, y) && !w.route[w.idx(x, y)] && isFreeLot(w, x, y));
     return ok ? { tool, cells: foot, cost: PLANTS[plantKind].cost } : { tool, cells: [], cost: 0 };
+  }
+
+  if (CAMPO_TOOLS[tool]) {
+    const [ax, ay] = cells[0] ?? [-1, -1];
+    const foot = CAMPO_TOOLS[tool]!.foot(w.n, ax, ay);
+    // El lote, el silo y la feria van sobre tierra libre y no sobre la ruta provincial. **No piden tendido**:
+    // un lote de trigo no tiene heladera, y ése es el motivo por el que conviene lejos del centro.
+    const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.isWater(x, y) && !w.route[w.idx(x, y)] && isFreeLot(w, x, y));
+    return ok ? { tool, cells: foot, cost: CAMPO_TOOLS[tool]!.cost } : { tool, cells: [], cost: 0 };
   }
 
   if (tool === 'bus') {
@@ -482,6 +536,17 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
             out.push([cx, cy]);
           }
           cost += COSTS.bulldozePlant;
+        } else if (t === TILE.FARM || t === TILE.SILO || t === TILE.MARKET) {
+          // Una pieza del campo se lleva entera: medio lote de trigo no es un lote, y un silo a medio
+          // demoler seguiría guardando grano sin existir.
+          const pieza = t === TILE.FARM ? w.farmAt(x, y) : t === TILE.SILO ? w.siloAt(x, y) : w.marketAt(x, y);
+          if (!pieza || plantsSeen.has(pieza)) break;
+          plantsSeen.add(pieza);
+          for (const [cx, cy] of campoFootAt(t, w.n, pieza.x, pieza.y)) {
+            seen.add(w.idx(cx, cy));
+            out.push([cx, cy]);
+          }
+          cost += COSTS.bulldozePlant;
         } else if (t !== TILE.EMPTY || w.terrain.trees[i]) {
           out.push([x, y]);
           cost += COSTS.bulldoze + w.level[i] * COSTS.bulldozeLevel;
@@ -557,6 +622,18 @@ export function applyPlan(w: World, plan: Plan): void {
         w.setTile(x, y, TILE.PLANT);
         w.terrain.trees[i] = 0;
         break;
+      case 'farm':
+        w.setTile(x, y, TILE.FARM);
+        w.terrain.trees[i] = 0;
+        break;
+      case 'silo':
+        w.setTile(x, y, TILE.SILO);
+        w.terrain.trees[i] = 0;
+        break;
+      case 'market':
+        w.setTile(x, y, TILE.MARKET);
+        w.terrain.trees[i] = 0;
+        break;
       case 'bulldoze':
         if (w.tiles[i] === TILE.PLANT) {
           w.plants = w.plants.filter((p) => p !== w.plantAt(x, y));
@@ -568,6 +645,24 @@ export function applyPlan(w: World, plan: Plan): void {
         if (w.tiles[i] === TILE.UNIQUE) {
           const monument = w.uniqueAt(x, y);
           w.uniques = w.uniques.filter((u) => u !== monument);
+        }
+        if (w.tiles[i] === TILE.FARM) {
+          const lote = w.farmAt(x, y);
+          if (lote) {
+            // Lo que estaba guardado en el lote no existe: el stock vive en el silo, no acá.
+            w.farms = w.farms.filter((f) => f !== lote);
+          }
+        }
+        if (w.tiles[i] === TILE.SILO) {
+          const dep = w.siloAt(x, y);
+          if (dep) {
+            // Demoler un silo tira lo que tenía adentro: si no, la cuenta no cierra.
+            w.silos = w.silos.filter((s) => s !== dep);
+          }
+        }
+        if (w.tiles[i] === TILE.MARKET) {
+          const feria = w.marketAt(x, y);
+          if (feria) w.markets = w.markets.filter((m) => m !== feria);
         }
         w.setTile(x, y, TILE.EMPTY);
         w.terrain.trees[i] = 0;
@@ -601,6 +696,12 @@ export function applyPlan(w: World, plan: Plan): void {
   if (uniqueKind) {
     const [x, y] = plan.cells[0];
     w.uniques.push({ x, y, kind: uniqueKind });
+  }
+  if (CAMPO_TOOLS[plan.tool]) {
+    const [x, y] = plan.cells[0];
+    if (plan.tool === 'farm') w.farms.push({ x, y, crop: 'trigo' });
+    else if (plan.tool === 'silo') w.silos.push({ x, y, tons: 0 });
+    else w.markets.push({ x, y });
   }
   // Zoning or placing a service levels the block it belongs to (see `levelBlocks`).
   if (zone || isServiceTool(plan.tool) || hubKind) levelBlocks(w, plan.cells);

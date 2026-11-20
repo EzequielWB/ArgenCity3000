@@ -40,6 +40,18 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   park: svg(
     '<path d="M3 21l13-6.5L29 21l-13 6.5z" fill="#7fb55a"/><path d="M9 17.5l14 7M23 17.5l-14 7" stroke="#e3d2a6" stroke-width="2"/><rect x="15" y="11" width="2" height="9" fill="#6b4a2e"/><circle cx="16" cy="9" r="6" fill="#8e6cc2"/><circle cx="14" cy="7.5" r="2.5" fill="#b49ae2"/>',
   ),
+  // Un surco de trigo visto en isométrico: la tierra arada y tres matas doradas.
+  farm: svg(
+    '<path d="M2 22L16 15l14 7-14 7z" fill="#8d6b45"/><path d="M5 22L16 16.5 27 22 16 27.5z" fill="#a8834f"/><path d="M8 21.6l4-2M14 24.6l4-2M20 20.6l4-2" stroke="#6f5232" stroke-width="1.4"/><g stroke="#e0b542" stroke-width="1.6" stroke-linecap="round"><path d="M10 19v-5M14 21v-5M20 19v-5"/></g><g fill="#f2c94c"><circle cx="10" cy="13" r="1.6"/><circle cx="14" cy="15" r="1.6"/><circle cx="20" cy="13" r="1.6"/></g>',
+  ),
+  // Tres tubos de chapa con su techo cónico: el silo de chapa del campo argentino, no el de mampostería.
+  silo: svg(
+    '<path d="M6 26V12l5-3 5 3v14z" fill="#b8bec6" stroke="#5a6068" stroke-width="1"/><path d="M6 12l5-3 5 3-5 3z" fill="#d6dbe2" stroke="#5a6068" stroke-width="1"/><path d="M9 9.6V26M13 11.2V26" stroke="#8b929b" stroke-width="0.9"/><path d="M17 26V14l4-2.4 4 2.4v12z" fill="#a7aeb7" stroke="#5a6068" stroke-width="1"/><path d="M17 14l4-2.4 4 2.4-4 2.4z" fill="#c8ced6" stroke="#5a6068" stroke-width="1"/><path d="M21 11.6V26" stroke="#818892" stroke-width="0.9"/><rect x="4" y="26" width="24" height="3" rx="1" fill="#6f5232"/>',
+  ),
+  // El tinglado de la feria: techo a dos aguas, tablones y los cajones apilados en la puerta.
+  market: svg(
+    '<path d="M3 14l13-7 13 7" fill="none" stroke="#b4532f" stroke-width="2.4"/><path d="M4 14h24v12H4z" fill="#e7dcc4" stroke="#8a7a5c" stroke-width="1"/><path d="M4 14l12 6 12-6" fill="#c8663a" stroke="#8a4a2c" stroke-width="1"/><rect x="7" y="19" width="6" height="7" fill="#6f5232"/><rect x="17" y="20" width="7" height="4" fill="#a8834f"/><path d="M17 24h7" stroke="#6f5232" stroke-width="1"/>',
+  ),
   plant: svg(
     '<path d="M3 23l13-6.5L29 23l-13 6.5z" fill="#b9b2a4"/><rect x="7" y="4" width="4" height="16" fill="#c8462f"/><rect x="7" y="8" width="4" height="2.5" fill="#efe6d8"/><rect x="7" y="14" width="4" height="2.5" fill="#efe6d8"/><path d="M12 24V15l7-3.5 8 4V24l-7.5 3.5z" fill="#b36a45"/><path d="M20 14l-3 5h3l-2 5 5-7h-3l2-3z" fill="#ffd84a"/>',
   ),

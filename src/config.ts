@@ -231,6 +231,10 @@ export const COSTS = {
   line: LINE_TIERS[WOODEN_LINE].cost,
   zone: 5,
   park: 20,
+  /** El campo: la tierra es barata, lo que cuesta es acopiar y vender. */
+  farm: 30,
+  silo: 300,
+  market: 600,
   plant: 3000,
   bulldoze: 2,
   bulldozeLevel: 10,
@@ -244,6 +248,9 @@ export const UPKEEP = {
   line: LINE_TIERS[WOODEN_LINE].upkeep,
   /** Per cell of plaza, at the "Espacios verdes" budget in full. A 4×4 costs $80 a month. */
   park: 5,
+  /** El silo y la feria cobran todos los meses, vendan o no: es lo que hace que guardar cueste. */
+  silo: 15,
+  market: 25,
   plant: 260,
   /**
    * Administration per resident. Raised from 0.06 when service upkeep started to depend on use

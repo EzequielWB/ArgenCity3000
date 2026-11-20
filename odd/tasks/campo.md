@@ -124,6 +124,24 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   eligió la segunda, con una duda: *"Prefiero la (b), siento que va con la idea de estos juegos? o no?"*. La
   respuesta fue que sí, porque en estos juegos el jugador **regula y no opera**, y porque el juego ya está
   hecho de umbrales que el jugador fija y el sistema ejecuta. De ahí sale S5.
+- **L12** — **T3 hecho**: las tres herramientas (`farm` `<`, `silo` `>`, `market` `%`), el grupo **Campo** en
+  la barra con su ícono, los costos en `COSTS` ($30, $300, $600), y la demolición que se lleva la pieza
+  entera. Las tres se desbloquean juntas en el hito de Caserío (100 habitantes): un lote sin silo ni feria
+  produce y no cobra, y esa trampa no se le hace a un jugador que recién arranca. Las teclas son símbolos
+  porque las letras están todas tomadas por las herramientas viejas o por los atajos globales (`g` guardar,
+  `h` ayuda, `m` sonido).
+- **L13** — **Referencias para el arte** (pedidas por el usuario: *"busca referencias en internet de como son
+  esas cosas acá"*). De Wikimedia Commons, categorías `Silos in Argentina` y `Grain elevators in Argentina`:
+  `Silo de cereal en Eduardo Castex.JPG`, `JUNIN Campo 001.jpg`, `Planta de Silos - panoramio.jpg`,
+  `Elevador de granos de San Pedro (1).jpg`. Lo que dicen, y que cambió el dibujo: en el campo argentino lo
+  que se ve de lejos **no es el silo de tambo cilíndrico** sino la **planta de acopio** — una torre de chapa
+  rectangular y alta con las virolas horizontales— más la **noria** todavía más alta que sube el grano, el
+  **tinglado de chapa a dos aguas** (azul en la de Junín) y la **playa de maniobras de ripio**. El primer
+  intento dibujó dos cilindros y se leyó como dos latas: por eso el silo pasó a ser la torre.
+- **L14** — Deudas del arte, para T7: el lote está siempre con el trigo crecido porque el sprite no sabe en
+  qué mes está la partida (el rastrojo de mayo y el rastrojo después de cosechar quedan pendientes); el techo
+  del galpón de la feria tiene la textura de chapa demasiado marcada y a 1× se lee como azulejo; y el lote no
+  avisa en el dibujo si le falta el silo o la feria para vender.
 - **L10** — **T2 hecho**: el campo existe en el mundo y en el archivo. Tiles nuevos `TILE.FARM`,
   `TILE.SILO` y `TILE.MARKET` (23, 24 y 25); listas `World.farms`, `World.silos`, `World.markets` y
   `World.farmPressure`; helpers en `world/farms.ts` (`storeTons` devuelve lo que no entró, en vez de

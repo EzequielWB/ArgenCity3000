@@ -1,4 +1,4 @@
-import { HUBS, PLANT_SIZE, UNIQUES, type CoastKind, type CropKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
+import { FARM_SIZE, HUBS, MARKET_SIZE, PLANT_SIZE, SILO_SIZE, UNIQUES, type CoastKind, type CropKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
 import { isWaterCell, cellMinMax, type Terrain } from './terrain';
 
 /** What occupies a cell. Zones keep their building level in `World.level`. */
@@ -304,6 +304,21 @@ export class World {
 
   plantAt(x: number, y: number): Plant | undefined {
     return this.plants.find((p) => x >= p.x && x < p.x + PLANT_SIZE && y >= p.y && y < p.y + PLANT_SIZE);
+  }
+
+  /** El lote de cultivo que cubre la celda, si hay. */
+  farmAt(x: number, y: number): Farm | undefined {
+    return this.farms.find((f) => x >= f.x && x < f.x + FARM_SIZE && y >= f.y && y < f.y + FARM_SIZE);
+  }
+
+  /** El silo que cubre la celda, si hay. */
+  siloAt(x: number, y: number): Silo | undefined {
+    return this.silos.find((s) => x >= s.x && x < s.x + SILO_SIZE && y >= s.y && y < s.y + SILO_SIZE);
+  }
+
+  /** La feria que cubre la celda, si hay. */
+  marketAt(x: number, y: number): Market | undefined {
+    return this.markets.find((m) => x >= m.x && x < m.x + MARKET_SIZE && y >= m.y && y < m.y + MARKET_SIZE);
   }
 
   /** The piece of an airport or a harbour that covers the cell, if any. */
