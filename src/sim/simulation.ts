@@ -1,4 +1,5 @@
 import {
+  BANKRUPT_MONTHS,
   CAPACITY,
   DEFAULT_FUNDING,
   DEFAULT_TAX,
@@ -51,7 +52,7 @@ import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, eventOfMonth, type CityEvent } from './events';
 import { advanceTornado, newTornado, tornadoAllowedAt, tornadoCellsOf, tornadoDone, tornadoWidthFor, type TornadoRun } from './tornado';
-import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type PickResult, type RunMods, type RunState } from './roguelike';
+import { NO_MODS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type PickResult, type RunMods, type RunState } from './roguelike';
 import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
 
 export interface SimState {
@@ -96,6 +97,11 @@ export interface SimState {
   terms: number;
   /** True once an election was lost: the city goes on in free mode, with no more elections. */
   lostElection: boolean;
+  /**
+   * Meses seguidos con la caja en rojo. A `BANKRUPT_MONTHS` la Provincia interviene el municipio y la
+   * partida termina, cualquiera sea el gobierno. Un mes en negro lo devuelve a cero.
+   */
+  dry: number;
   /** The municipal loan being paid off, or null. One at a time. */
   loan: Loan | null;
   /** The form of government chosen when founding the city. */
@@ -138,6 +144,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     approval: APPROVAL.start,
     terms: 0,
     lostElection: false,
+    dry: 0,
     loan: null,
     favor: FAVOR.start,
     plan: government === 'comunismo' ? newPlan(0, 0) : null,
@@ -1151,7 +1158,7 @@ export class Simulation {
       return;
     }
     // One draft at a time: the card on the table is answered before the next mark deals.
-    if (run.offer || this.state.lostElection || run.dry >= RUN_DRY_MONTHS) return;
+    if (run.offer || this.state.lostElection || this.state.dry >= BANKRUPT_MONTHS) return;
     if (dueMark(run, this.totals.pop) === null) return;
     openOffer(run);
   }
@@ -1205,8 +1212,10 @@ export class Simulation {
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;
     s.crisis = s.cash < 0;
-    // Two years in the red sink a run; one month in the black starts the count again.
-    if (s.run) s.run.dry = s.cash < 0 ? s.run.dry + 1 : 0;
+    // A year in the red sinks the city, whatever the government; one month in the black starts the
+    // count again.
+    s.dry = s.cash < 0 ? s.dry + 1 : 0;
+    this.checkBankruptcy();
     // The patience of the neighbours is read with the month it just had: who loses their home over it.
     this.stepAnger();
     this.advanceLoan();
@@ -1254,6 +1263,23 @@ export class Simulation {
    *
    * No hay un segundo golpe sobre una partida ya perdida: el que se fue, se fue.
    */
+  /**
+   * La caja: doce meses seguidos en rojo y la Provincia interviene el municipio. No distingue gobierno —al
+   * que no puede pagar los sueldos no lo salva ni la fe ni el Partido— y no tiene segunda vuelta.
+   *
+   * Con la ciudad en modo libre la partida ya está perdida, así que no hay una segunda intervención.
+   */
+  private checkBankruptcy(): void {
+    const s = this.state;
+    if (s.lostElection || s.dry < BANKRUPT_MONTHS) return;
+    s.lostElection = true;
+    const quien = this.mayor ? `al ${intendente(this.mayor)}` : 'al Intendente';
+    this.publish(
+      `${BANKRUPT_MONTHS} meses con la caja en rojo: la Provincia intervino ${this.cityName} y sacó ${quien} del gobierno: la ciudad queda en modo libre`,
+      true,
+    );
+  }
+
   private checkOverthrow(): void {
     const s = this.state;
     if (s.lostElection) return;

@@ -1,5 +1,5 @@
 import { TILE } from '../world/world';
-import { GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, SERVICE_KINDS, type GovernmentKind, type ServiceKind } from '../config';
+import { BANKRUPT_MONTHS, GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, SERVICE_KINDS, type GovernmentKind, type ServiceKind } from '../config';
 import type { Simulation } from '../sim/simulation';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
@@ -96,7 +96,7 @@ function money(v: number, sign = false): string {
   return `<span class="${cls}">${sign && v > 0 ? '+' : ''}${formatMoney(v)}</span>`;
 }
 
-function budgetTable(b: BudgetReport): string {
+function budgetTable(b: BudgetReport, dry = 0): string {
   const row = (label: string, v: number, cls = '') => `<tr class="${cls}"><td>${label}</td><td>${money(v)}</td></tr>`;
   return `<div class="planilla"><table class="budget">
     ${row('Impuestos residenciales', b.taxR)}
@@ -124,7 +124,19 @@ function budgetTable(b: BudgetReport): string {
     ${row('Administración municipal', b.services)}
     ${row('Total gastos', b.expenses, 'total')}
     <tr class="total"><td>Saldo del mes</td><td>${money(b.balance, true)}</td></tr>
-  </table></div>`;
+  </table>
+  ${dryLine(dry)}</div>`;
+}
+
+/**
+ * Cuántos meses lleva la caja en rojo y cuánto falta para que la Provincia intervenga el municipio.
+ *
+ * Va sin barra ni adorno: perder la partida por algo que el jugador no puede ver es una trampa. Mientras la
+ * cuenta está en cero no hay línea, porque un cero permanente es ruido.
+ */
+function dryLine(dry: number): string {
+  if (dry <= 0) return '';
+  return `<p class="dry">La caja lleva <strong>${dry}</strong> ${dry === 1 ? 'mes' : 'meses'} en rojo: a los ${BANKRUPT_MONTHS} la Provincia interviene el municipio y se termina la partida.</p>`;
 }
 
 export function openBudget(game: Game): void {
@@ -171,7 +183,7 @@ export function openBudget(game: Game): void {
   const refresh = () => {
     const boost = factorOf(sim.state.effects, COAST_BOOST);
     const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods);
-    $('#budgetNow').innerHTML = budgetTable(b);
+    $('#budgetNow').innerHTML = budgetTable(b, sim.state.dry);
     // The year is the average of the seasons, not the month in course.
     $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods).balance * 12, true);
     const d = sim.demand;

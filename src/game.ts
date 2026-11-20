@@ -1,5 +1,5 @@
 import type { Sound } from './audio/sound';
-import { GOVERNMENTS, POWER_REACH, TICKS_PER_MONTH, type GovernmentKind } from './config';
+import { BANKRUPT_MONTHS, GOVERNMENTS, POWER_REACH, TICKS_PER_MONTH, type GovernmentKind } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
 import { attachPointer, type PointerTarget } from './input/controls';
@@ -24,7 +24,7 @@ import { transitBuses } from './sim/transit';
 import { describeCell } from './sim/report';
 import { Simulation } from './sim/simulation';
 import { APPROVAL, nextElectionYear } from './sim/politics';
-import { RUN_DRY_MONTHS, RUN_GOAL, RUN_PICKS, runOver } from './sim/roguelike';
+import { RUN_GOAL, RUN_PICKS, runOver } from './sim/roguelike';
 import { openApproval, openElectionLost, openElectionWon, openEvent, openMilestone } from './ui/panels';
 import { openRunOver, openUpgrades } from './ui/upgrades';
 import { $, escapeHtml, toast } from './ui/dom';
@@ -750,9 +750,9 @@ ${stalled}` : ''}`;
     const run = s.run;
     if (!run) return;
     const goal = $('#goal');
-    goal.innerHTML = `→ <span class="goal-name">La meta: </span>${formatNumber(RUN_GOAL)}${run.dry > 0 ? ` · <span class="tone-bad">rojo ${run.dry}/${RUN_DRY_MONTHS}</span>` : ''}`;
+    goal.innerHTML = `→ <span class="goal-name">La meta: </span>${formatNumber(RUN_GOAL)}${s.dry > 0 ? ` · <span class="tone-bad">rojo ${s.dry}/${BANKRUPT_MONTHS}</span>` : ''}`;
     goal.title = `Modo roguelike: ganás con ${formatNumber(RUN_GOAL)} habitantes. Mejoras elegidas: ${run.picks.length} de ${RUN_PICKS}.`;
-    const over = runOver(s);
+    const over = runOver(s, BANKRUPT_MONTHS);
     if (over) {
       if (this.shownRunOver || this.hooks.isModalOpen()) return;
       this.shownRunOver = over;

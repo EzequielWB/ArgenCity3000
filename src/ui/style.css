@@ -371,6 +371,17 @@ button.chapa:focus-visible {
   color: #ffb3a8;
 }
 
+/* La cuenta atrás de la caja en rojo, en el pie del presupuesto. */
+.dry {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid #ffb3a8;
+  background: rgba(255, 179, 168, 0.08);
+  color: #ffd9d2;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 /* Estimated monthly balance under the cash, and the runway when the cash will not last. */
 #balance,
 #goal {

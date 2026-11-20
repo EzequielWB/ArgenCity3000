@@ -361,6 +361,15 @@ export const EVENT = {
 /** Power units consumed per building level. */
 export const POWER_USE = { R: 2, C: 3, I: 5 } as const;
 
+/**
+ * Meses seguidos con la caja en rojo que aguanta el municipio antes de que la Provincia lo intervenga.
+ *
+ * Es la derrota por plata, y vale para todos los gobiernos: un año sin poder pagar los sueldos y no queda
+ * quién firme. Antes la caja en rojo sólo hundía las partidas del modo roguelike, y a los dos años; dos
+ * reglas distintas para lo mismo, y ninguna de las dos se sentía.
+ */
+export const BANKRUPT_MONTHS = 12;
+
 /** The first four are the services of a village; the hospital and the university are the second level, for the tallest buildings. */
 export type ServiceKind = 'school' | 'clinic' | 'police' | 'fire' | 'hospital' | 'university';
 export const SERVICE_KINDS: readonly ServiceKind[] = ['school', 'clinic', 'police', 'fire', 'hospital', 'university'];

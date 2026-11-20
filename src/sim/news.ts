@@ -86,7 +86,7 @@ export function headlinesFor(prev: CitySnapshot, next: CitySnapshot, city: strin
   if (before !== after && next.pop > prev.pop) out.push(`Es oficial: ${city} ya es ${article(after)} ${after}`);
   if (!prev.shortage && next.shortage) out.push('Apagones en los barrios: la usina no da abasto');
   if (prev.shortage && !next.shortage) out.push('Volvió la luz: se normalizó el suministro eléctrico');
-  if (!prev.crisis && next.crisis) out.push('Crisis en la Municipalidad: la caja quedó en rojo y se frenan las obras');
+  if (!prev.crisis && next.crisis) out.push(`Crisis en la Municipalidad: la caja quedó en rojo y se frenan las obras. Doce meses seguidos así y la Provincia interviene el municipio`);
   if (prev.crisis && !next.crisis) out.push('La Municipalidad salió del rojo: vuelven las obras');
   // A change of kind is one loan ending and another starting, so both pieces of news go out.
   if (next.loan !== prev.loan) {

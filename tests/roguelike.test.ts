@@ -3,7 +3,8 @@ import { CAPACITY, DEFAULT_FUNDING, MAX_FUNDING, SERVICE_SIZE, TICKS_PER_MONTH }
 import { deserialize, serialize } from '../src/save/save';
 import { monthlyBudget } from '../src/sim/budget';
 import { addBuilding, cityTotals } from '../src/sim/demand';
-import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, RUN_MARKS, RUN_PICKS, markOf, type RunMods, UPGRADES, dueMark, newRun, openOffer, runMods, runOver, takeUpgrade, upgradeById } from '../src/sim/roguelike';
+import { BANKRUPT_MONTHS } from '../src/config';
+import { NO_MODS, RUN_GOAL, RUN_MARKS, RUN_PICKS, markOf, type RunMods, UPGRADES, dueMark, newRun, openOffer, runMods, runOver, takeUpgrade, upgradeById } from '../src/sim/roguelike';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { upgradeCardsHtml } from '../src/ui/upgrades';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
@@ -190,17 +191,17 @@ describe('roguelike', () => {
     expect(plain).toBeGreaterThan(reformed * 3);
   });
 
-  it('se pierde con la elección y con dos años seguidos en rojo', () => {
+  it('se pierde con la elección y con un año seguido en rojo', () => {
+    // El contador ya no vive en la run: es el mismo de la partida clásica y lo pasa el que llama.
     const run = newRun(1);
-    expect(runOver({ run, lostElection: false })).toBeNull();
-    expect(runOver({ run, lostElection: true })).toBe('eleccion');
-    run.dry = RUN_DRY_MONTHS - 1;
-    expect(runOver({ run, lostElection: false })).toBeNull();
-    run.dry = RUN_DRY_MONTHS;
-    expect(runOver({ run, lostElection: false })).toBe('caja');
+    const at = (dry: number, lostElection = false) => runOver({ run, lostElection, dry }, BANKRUPT_MONTHS);
+    expect(at(0)).toBeNull();
+    expect(runOver({ run, lostElection: true, dry: 0 }, BANKRUPT_MONTHS)).toBe('eleccion');
+    expect(at(BANKRUPT_MONTHS - 1)).toBeNull();
+    expect(at(BANKRUPT_MONTHS)).toBe('caja');
     run.wonAt = 10;
-    expect(runOver({ run, lostElection: true })).toBe('ganada');
-    expect(runOver({ run: null, lostElection: true })).toBeNull();
+    expect(runOver({ run, lostElection: true, dry: 0 }, BANKRUPT_MONTHS)).toBe('ganada');
+    expect(runOver({ run: null, lostElection: true, dry: 0 }, BANKRUPT_MONTHS)).toBeNull();
   });
 
   it('se gana al llegar a la meta', () => {

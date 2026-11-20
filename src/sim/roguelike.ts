@@ -138,9 +138,6 @@ export interface RunPick {
   outcome?: string;
 }
 
-/** Months in a row with the cash in the red that sink a run. */
-export const RUN_DRY_MONTHS = 24;
-
 export interface RunState {
   picks: RunPick[];
   /** The three upgrades offered while the window is open, or null. Saved, so a loaded game reopens it. */
@@ -149,8 +146,6 @@ export interface RunState {
   next: number;
   /** Tick at which the city reached the goal, or null. */
   wonAt: number | null;
-  /** Months in a row with the cash in the red: at `RUN_DRY_MONTHS` the run is over. */
-  dry: number;
   /** The draft's own random state: same seed, same decisions, same offers. */
   rng: number;
   /**
@@ -163,7 +158,7 @@ export interface RunState {
 
 /** A run starts with a card in hand: the city is founded with one of three upgrades already. */
 export function newRun(seed: number): RunState {
-  const run: RunState = { picks: [], offer: null, next: -1, wonAt: null, dry: 0, rng: (seed ^ 0x9e3779b9) >>> 0, seen: [] };
+  const run: RunState = { picks: [], offer: null, next: -1, wonAt: null, rng: (seed ^ 0x9e3779b9) >>> 0, seen: [] };
   openOffer(run);
   return run;
 }
@@ -301,12 +296,17 @@ export function takeUpgrade(run: RunState, id: string, tick: number): PickResult
   return result;
 }
 
-/** Whether the run is won, lost (by the mandate or by the till), or still going. */
-export function runOver(state: { run: RunState | null; lostElection: boolean }): 'ganada' | 'eleccion' | 'caja' | null {
+/**
+ * Whether the run is won, lost (by the mandate or by the till), or still going.
+ *
+ * La caja ya no es una regla del roguelike: `state.dry` es el mismo contador que interviene el municipio en
+ * una partida clásica, así que las dos formas de juego pierden igual.
+ */
+export function runOver(state: { run: RunState | null; lostElection: boolean; dry: number }, months: number): 'ganada' | 'eleccion' | 'caja' | null {
   if (!state.run) return null;
   if (state.run.wonAt !== null) return 'ganada';
   if (state.lostElection) return 'eleccion';
-  return state.run.dry >= RUN_DRY_MONTHS ? 'caja' : null;
+  return state.dry >= months ? 'caja' : null;
 }
 
 /** The upgrades taken, oldest first, with the label the summary prints and what a roll did. */

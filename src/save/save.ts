@@ -418,7 +418,6 @@ function parseRun(raw: unknown): RunState | null {
   );
   need(isInt(r.next) && (r.next as number) >= -1 && (r.next as number) <= RUN_MARKS.length, 'La run de la partida es inválida');
   need(r.wonAt === null || r.wonAt === undefined || (isInt(r.wonAt) && (r.wonAt as number) >= 0), 'La run de la partida es inválida');
-  need(r.dry === undefined || (isInt(r.dry) && (r.dry as number) >= 0), 'La run de la partida es inválida');
   need(isInt(r.rng), 'La run de la partida es inválida');
   // What the run has already put on the table: a game saved before it existed opens with an empty deck.
   const rawSeen = r.seen;
@@ -431,10 +430,24 @@ function parseRun(raw: unknown): RunState | null {
     offer: (rawOffer as string[] | null | undefined) ?? null,
     next: r.next as number,
     wonAt: (r.wonAt as number | undefined) ?? null,
-    dry: (r.dry as number | undefined) ?? 0,
     rng: (r.rng as number) >>> 0,
     seen: (rawSeen as string[] | undefined) ?? [],
   };
+}
+
+/**
+ * Los meses seguidos con la caja en rojo, de cualquier lado donde estén.
+ *
+ * El contador se mudó de la run al estado cuando la quiebra dejó de ser una regla del roguelike y pasó a ser
+ * la derrota por plata de cualquier partida. Un save anterior a la mudanza lo tiene adentro de `run`; uno
+ * posterior, en el estado. Se leen los dos para que cargar no reinicie la cuenta de nadie.
+ */
+function dryOf(s: Record<string, unknown>): number {
+  const own = s.dry;
+  if (isInt(own) && (own as number) >= 0) return own as number;
+  const r = s.run as Record<string, unknown> | null | undefined;
+  const old = r?.dry;
+  return isInt(old) && (old as number) >= 0 ? (old as number) : 0;
 }
 
 /** The effects running, in months. A city saved before them opens with none. */
@@ -505,6 +518,9 @@ function parseCommitment(raw: unknown): Commitment | null {
     approval: (s.approval as number | undefined) ?? APPROVAL.start,
     terms: (s.terms as number | undefined) ?? 0,
     lostElection: (s.lostElection as boolean | undefined) ?? false,
+    // Los meses en rojo vivían dentro de la run hasta la version 22. Un save viejo los trae ahí; se leen de
+    // los dos lados para que el que venía con la cuenta empezada no la reinicie al cargar.
+    dry: dryOf(s),
     loan,
     government: (s.government as GovernmentKind | undefined) ?? 'democracia',
     party: (s.party as string | undefined) ?? '',
