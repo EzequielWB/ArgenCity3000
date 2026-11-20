@@ -3,6 +3,7 @@ import {
   DEFAULT_FUNDING,
   DEFAULT_TAX,
   DEMOLITION,
+  DESASTRE,
   EVENT,
   FIRE_SAFE_COVER,
   GOVERNMENTS,
@@ -11,6 +12,8 @@ import {
   MAX_FUNDING,
   MAX_TAX,
   MIN_TAX,
+  PLANTS,
+  PLANT_LIFE,
   PROMISE,
   ANGER,
   CRIME_ABANDON,
@@ -220,6 +223,11 @@ export class Simulation {
   /** Counters for this session (not saved). */
   stats = { firesStarted: 0, firesSaved: 0, buildingsBurned: 0 };
   private burning = new Set<number>();
+  /**
+   * Los focos del incendio grande. No se guardan: un incendio grande que se corta a mitad, se guarda y se
+   * carga vuelve a ser uno común, y eso es lo más benigno que se puede hacer con él.
+   */
+  private bigFire = new Set<number>();
   private fireNews = 0;
 
   /** What this month's weekly settlements have already moved (not saved; see the constructor). */
@@ -860,16 +868,21 @@ export class Simulation {
     const n = w.n;
     for (const i of Array.from(this.burning)) {
       w.fire[i]--;
-      const covered = w.fireCover[i] >= FIRE_SAFE_COVER;
+      // Un foco grande arde hasta el final: la cobertura no lo salva. Los demás, sí.
+      const big = this.bigFire.has(i);
+      const covered = !big && w.fireCover[i] >= FIRE_SAFE_COVER;
       if (!covered && w.fire[i] % 15 === 0) {
         const x = i % n;
         const y = (i - x) / n;
         for (const j of [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < n - 1 ? i + n : -1]) {
-          if (j >= 0 && w.isOccupied(j) && zoneOf(w.tiles[j]) && w.fireCover[j] < FIRE_SAFE_COVER && this.rng.chance(FIRE_SPREAD)) this.ignite(j);
+          // Un foco grande prende a sus vecinos aunque estén cubiertos: la cobertura apaga el fuego del
+          // vecino, pero no impide que se prenda. El que se prende es un fuego común, no un foco grande.
+          if (j >= 0 && w.isOccupied(j) && zoneOf(w.tiles[j]) && (big || w.fireCover[j] < FIRE_SAFE_COVER) && this.rng.chance(FIRE_SPREAD)) this.ignite(j);
         }
       }
       if (w.fire[i] > 0) continue;
       this.burning.delete(i);
+      this.bigFire.delete(i);
       if (covered) {
         addBuilding(this.totals, w.tiles[i], w.level[i], 1, this.mods);
         this.stats.firesSaved++;
@@ -912,6 +925,112 @@ export class Simulation {
       // Coverage makes fires rarer but never impossible; covered ones get put out (see `burn`).
       const exposure = 1 - (0.7 * w.fireCover[i]) / 100;
       if (this.rng.chance(((FIRE_RATE * risk) / 10) * cityFactor * exposure * exposure)) this.ignite(i);
+    }
+  }
+
+  /**
+   * Un foco de incendio grande: se prende igual que cualquier fuego, pero **los bomberos no lo apagan**.
+   *
+   * Si la cobertura lo salvara, el incendio grande sería un incendio común con otro nombre. La cobertura
+   * sigue sirviendo para lo demás: para que no se prenda nada más en el barrio, y para que los focos
+   * vecinos, que son fuegos comunes, se apaguen antes de que el edificio se pierda.
+   */
+  private igniteGrande(i: number): void {
+    const w = this.world;
+    if (w.fire[i] || !w.isOccupied(i)) return;
+    addBuilding(this.totals, w.tiles[i], w.level[i], -1, this.mods);
+    w.fire[i] = 90;
+    w.markDirty(i);
+    this.burning.add(i);
+    this.bigFire.add(i);
+    this.stats.firesStarted++;
+    this.recomputeDemand();
+  }
+
+  /**
+   * Un incendio grande: varios focos a la vez en un barrio. El jugador lo corta como puede —demoliendo una
+   * franja para que el fuego no tenga por dónde seguir, o rodeando el barrio de cuarteles—, y después
+   * reconstruye lo que quedó baldío.
+   */
+  private incendioGrande(): void {
+    const centre = this.anyBuilding();
+    if (centre < 0) return;
+    const hit = this.builtAround(centre, DESASTRE.radio).slice(0, DESASTRE.focos);
+    if (hit.length === 0) return;
+    for (const i of hit) this.igniteGrande(i);
+    this.publish(`Incendio grande en ${this.cityName}: se prende un barrio entero y los bomberos no dan abasto`, true);
+  }
+
+  /**
+   * Si el tornado puede pasar este mes, por calendario nomás: la chance se tira aparte.
+   *
+   * Los primeros diez años de la ciudad están a salvo. No hay ninguna otra condición, y esa es la idea: no
+   * se puede prevenir, ni comprar, ni apagar.
+   */
+  tornadoAllowed(): boolean {
+    return this.state.tick >= TICKS_PER_MONTH * DESASTRE.firstAt;
+  }
+
+  /**
+   * El tornado: entra por un borde del mapa, cruza en línea recta y sale por el otro, dejando el camino
+   * destruido. **No se frena**: la cobertura de bomberos no lo desvía ni lo acorta, porque un tornado no es
+   * un incendio y el juego no tiene con qué pelearle. Pasa por X zona y listo.
+   */
+  private tornado(): void {
+    const w = this.world;
+    const horizontal = this.rng.chance(0.5);
+    const fixed = this.rng.int(w.n);
+    const dir = this.rng.chance(0.5) ? 1 : -1;
+    const start = dir > 0 ? 0 : w.n - 1;
+    const half = Math.floor(DESASTRE.tornadoWidth / 2);
+    let off = 0;
+    let lost = 0;
+    for (let k = 0; k < w.n; k++) {
+      // El camino no es perfectamente recto: cada tres celdas se corre una, como el de un tornado de verdad.
+      if (k > 0 && k % 3 === 0) off = Math.max(-2, Math.min(2, off + (this.rng.chance(0.5) ? 1 : -1)));
+      const along = start + dir * k;
+      for (let d = -half; d <= half; d++) {
+        const x = horizontal ? along : fixed + off + d;
+        const y = horizontal ? fixed + off + d : along;
+        if (!w.inBounds(x, y)) continue;
+        const i = w.idx(x, y);
+        if (w.level[i] === 0) continue;
+        if (!w.abandoned[i]) addBuilding(this.totals, w.tiles[i], w.level[i], -1, this.mods);
+        w.level[i] = 0;
+        w.abandoned[i] = 0;
+        w.fire[i] = 0;
+        this.burning.delete(i);
+        w.markDirty(i);
+        lost++;
+      }
+    }
+    this.powerDirty = true;
+    this.stats.buildingsBurned += lost;
+    this.recomputeDemand();
+    if (lost > 0) {
+      this.publish(`Un tornado cruzó ${this.cityName} de punta a punta y se llevó ${lost} ${lost === 1 ? 'edificio' : 'edificios'}: no hubo bomberos que lo pararan`, true);
+    }
+  }
+
+  /** Los dos desastres que pasan sin pedir permiso. Cada uno tira su propia chance, una vez por mes. */
+  private desastres(): void {
+    if (this.totals.pop >= DESASTRE.fireFrom && this.rng.chance(DESASTRE.fireChance)) this.incendioGrande();
+    if (this.tornadoAllowed() && this.rng.chance(DESASTRE.tornadoChance)) this.tornado();
+  }
+
+  /**
+   * Un mes más de servicio para cada usina. Cuando pasa los cincuenta años avisa una vez en el diario: el
+   * aviso no se repite porque lo que hay que hacer ya se dijo, y el jugador que no quiere oírlo no tiene por
+   * qué leerlo doce veces por año.
+   */
+  private agePlants(): void {
+    for (const p of this.world.plants) {
+      const age = (p.age ?? 0) + 1;
+      p.age = age;
+      if (age > PLANT_LIFE.full && !p.warned) {
+        p.warned = true;
+        this.publish(`La ${PLANTS[p.kind].label.toLowerCase()} cumplió ${Math.floor(age / 12)} años y ya no rinde como antes: conviene levantar una nueva`, true);
+      }
     }
   }
 
@@ -1008,6 +1127,8 @@ export class Simulation {
     this.fireNews = 0;
     this.openPaper(); // before the month's fires, so the opening month can report them
     this.igniteFires();
+    this.desastres();
+    this.agePlants();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
     const month = dateOf(s.tick - 1).month;
     const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods);

@@ -79,6 +79,13 @@ export interface Plant {
   x: number;
   y: number;
   kind: PlantKind;
+  /**
+   * Meses de servicio. Ausente en las partidas viejas, y ahí vale cero: una usina sin edad es una usina
+   * nueva, y el archivo se lee igual sin subir la versión.
+   */
+  age?: number;
+  /** Ya avisó en el diario que entró en declive (para no repetirlo todos los meses). */
+  warned?: boolean;
 }
 
 /** One piece of an airport or a harbour: its top-left cell, in world coordinates (its size is in `HUBS`). */

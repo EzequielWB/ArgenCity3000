@@ -434,6 +434,45 @@ export const MAX_FUNDING = 120;
 export const FIRE_SAFE_COVER = 50;
 
 /**
+ * Los desastres que pasan sin pedir permiso: el incendio grande y el tornado.
+ *
+ * No son eventos con decisión —esos entran por `EVENT` y piden que el Intendente elija—: son cosas que
+ * ocurren, se anuncian en el diario y el jugador se arregla con lo que tiene. Por eso tienen su propia
+ * chance, mucho más baja, y su propio ritmo.
+ */
+export const DESASTRE = {
+  /** Vecinos que se prenden a la vez en un incendio grande. */
+  focos: 4,
+  /** Radio del barrio que se prende, en lotes. */
+  radio: 4,
+  /** Chance por mes de un incendio grande: uno cada ocho años, y sólo en una ciudad de verdad. */
+  fireChance: 0.01,
+  /** Meses entre dos incendios grandes. */
+  fireGap: 36,
+  /** Habitantes a partir de los cuales la ciudad puede tener uno. */
+  fireFrom: 1500,
+  /** Meses que la ciudad tiene que vivir antes del primer tornado: diez años. */
+  firstAt: 120,
+  /**
+   * Chance por mes de que pase un tornado. Uno cada doscientos años, en promedio: el usuario lo pidió
+   * así —"pasa muy poco"—. No es un evento de gestión, es el día que se lleva el barrio.
+   */
+  tornadoChance: 0.0005,
+  /** Meses entre dos tornados: veinte años. */
+  tornadoGap: 240,
+  /** Ancho del tornado, en celdas: con una sola, el paso no se lee en el mapa. */
+  tornadoWidth: 3,
+} as const;
+
+/**
+ * La vida útil de una usina: a los 50 años empieza a decaer y en diez años más entrega la mitad.
+ *
+ * Nunca llega a cero. Una usina que se apaga sola deja al jugador con la ciudad a oscuras y sin forma de
+ * salir; una que rinde la mitad le deja el tiempo de construir la nueva.
+ */
+export const PLANT_LIFE = { full: 600, decay: 120, floor: 0.5 } as const;
+
+/**
  * Estimated congestion (see sim/congestion.ts). `laneCapacity` is how many commuting residents
  * one lane of street carries before it saturates (100 %). A lot on a street loaded above
  * `valueFrom` percent loses `valuePerPoint` of land value per point, and above `slowFrom` it

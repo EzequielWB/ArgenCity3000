@@ -36,7 +36,7 @@ import { SERVICE_NAMES } from '../sim/report';
 import { serviceBlocks, serviceFootprint } from '../world/services';
 import { busLineProblem, busStations } from '../world/transport';
 import { busFootprint } from '../world/tools';
-import { MAX_TILE, TILE, World, hubOf, hubTile, serviceOf, serviceTile, zoneOf } from '../world/world';
+import { MAX_TILE, TILE, World, hubOf, hubTile, serviceOf, serviceTile, zoneOf, type Plant } from '../world/world';
 import { ALL_UNIQUE_KINDS, UNIQUES, type UniqueKind } from '../config';
 
 export const SAVE_VERSION = 21;
@@ -232,13 +232,21 @@ export function deserialize(text: string): SaveData {
   need(Array.isArray(data.plants), 'Faltan las usinas');
   let plantCells = 0;
   for (const p of data.plants as unknown[]) {
-    const { x, y, kind } = (p ?? {}) as { x?: unknown; y?: unknown; kind?: unknown };
+    const { x, y, kind, age, warned } = (p ?? {}) as { x?: unknown; y?: unknown; kind?: unknown; age?: unknown; warned?: unknown };
     need(kind === undefined || PLANT_KINDS.includes(kind as PlantKind), 'Hay una usina de un tipo desconocido');
     need(isInt(x) && isInt(y) && x >= 0 && y >= 0 && x <= (n as number) - PLANT_SIZE && y <= (n as number) - PLANT_SIZE, 'Hay una usina fuera del mapa');
     for (let dy = 0; dy < PLANT_SIZE; dy++) {
       for (let dx = 0; dx < PLANT_SIZE; dx++) need(world.tileAt((x as number) + dx, (y as number) + dy) === TILE.PLANT, 'Hay una usina sin terreno');
     }
-    world.plants.push({ x: x as number, y: y as number, kind: (kind as PlantKind | undefined) ?? 'coal' });
+    // La edad de la usina existe desde la versión 22, y el archivo no subió de versión por ella: una usina
+    // que no la trae es una usina nueva, y las viejas partidas se leen igual.
+    need(age === undefined || (isInt(age) && (age as number) >= 0), 'Hay una usina con una edad imposible');
+    // Una usina nueva se escribe igual que antes: los campos de la edad sólo aparecen cuando hay algo que
+    // decir, así el archivo de una ciudad recién empezada no cambia ni un byte.
+    const plant: Plant = { x: x as number, y: y as number, kind: (kind as PlantKind | undefined) ?? 'coal' };
+    if (age !== undefined && (age as number) > 0) plant.age = age as number;
+    if (warned === true) plant.warned = true;
+    world.plants.push(plant);
     plantCells += PLANT_SIZE * PLANT_SIZE;
   }
   let tilePlants = 0;

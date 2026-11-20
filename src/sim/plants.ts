@@ -1,5 +1,5 @@
 /** What each kind of power plant gives and costs. Pure functions of the world. */
-import { PLANTS, PLANT_SIZE, WIND } from '../config';
+import { PLANTS, PLANT_LIFE, PLANT_SIZE, WIND } from '../config';
 import type { Plant, World } from '../world/world';
 
 /**
@@ -33,9 +33,24 @@ export function windOutput(w: World, x: number, y: number): number {
   return Math.round(Math.max(WIND.min, Math.min(WIND.max, mw)));
 }
 
-/** Output in MW of a plant where it stands. */
+/**
+ * Qué tanto de su capacidad nominal entrega una usina de `age` meses de servicio.
+ *
+ * Entera mientras es nueva, y desde los cincuenta años cae de a poco hasta la mitad, donde se queda. No
+ * baja a cero a propósito: una usina que se apaga sola deja la ciudad a oscuras y sin salida, y el punto
+ * de la obsolescencia es que el jugador tenga que gastar, no que pierda la partida por no haber mirado
+ * la edad de una máquina que compró hace cincuenta años.
+ */
+export function ageFactor(age: number): number {
+  if (age <= PLANT_LIFE.full) return 1;
+  const t = Math.min(1, (age - PLANT_LIFE.full) / PLANT_LIFE.decay);
+  return 1 - (1 - PLANT_LIFE.floor) * t;
+}
+
+/** Output in MW of a plant where it stands: what its kind gives, less what its age took away. */
 export function plantCapacity(w: World, p: Plant): number {
-  return p.kind === 'wind' ? windOutput(w, p.x, p.y) : PLANTS[p.kind].capacity;
+  const base = p.kind === 'wind' ? windOutput(w, p.x, p.y) : PLANTS[p.kind].capacity;
+  return Math.max(0, Math.round(base * ageFactor(p.age ?? 0)));
 }
 
 /** Monthly upkeep of every plant of the city. */
