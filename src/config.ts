@@ -454,14 +454,20 @@ export const DESASTRE = {
   /** Meses que la ciudad tiene que vivir antes del primer tornado: diez años. */
   firstAt: 120,
   /**
-   * Chance por mes de que pase un tornado. Uno cada doscientos años, en promedio: el usuario lo pidió
-   * así —"pasa muy poco"—. No es un evento de gestión, es el día que se lleva el barrio.
+   * Chance por mes de que pase un tornado. Uno cada cien años, en promedio: el usuario lo pidió así
+   * —"pasa muy poco"—. No es un evento de gestión, es el día que se lleva el barrio.
    */
-  tornadoChance: 0.0005,
-  /** Meses entre dos tornados: veinte años. */
-  tornadoGap: 240,
-  /** Ancho del tornado, en celdas: con una sola, el paso no se lee en el mapa. */
-  tornadoWidth: 3,
+  tornadoChance: 1 / 1200,
+  /**
+   * El ancho del tornado, en celdas. No es fijo: lo decide el impuesto promedio de la ciudad (ver
+   * `tornadoWidthFor`). Con los impuestos por el piso entra ancho, con los impuestos al tope entra angosto.
+   */
+  tornadoWidth: { wide: 6, narrow: 1 },
+  /**
+   * Distancia, en celdas al centro del mapa, a la que la alarma del tornado suena: más lejos no se oye, y
+   * el susto sin sonido no se siente.
+   */
+  tornadoAlarmAt: 10,
 } as const;
 
 /**

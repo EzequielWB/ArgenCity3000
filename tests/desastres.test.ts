@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DESASTRE, PLANT_LIFE, TICKS_PER_MONTH } from '../src/config';
 import { ageFactor, plantCapacity } from '../src/sim/plants';
+import { tornadoWidthFor } from '../src/sim/tornado';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { TILE, World, type World as WorldType } from '../src/world/world';
@@ -35,10 +36,18 @@ type Internals = {
   igniteGrande(i: number): void;
   burn(): void;
   incendioGrande(): void;
-  tornado(): void;
+  startTornado(): void;
+  stepTornado(): void;
 };
 
 const inner = (sim: Simulation): Internals => sim as unknown as Internals;
+
+/** Hace pasar un tornado entero: lo arranca y lo deja cruzar el mapa, celda por celda. */
+function cruza(sim: Simulation): void {
+  const sim2 = inner(sim);
+  sim2.startTornado();
+  for (let k = 0; k < sim.world.n + 2 && sim.tornado; k++) sim2.stepTornado();
+}
 
 /** Corre el fuego hasta que se apaga o se pierde, sin dejar que el mes cambie nada. */
 function arde(sim: Simulation, i: number): void {
@@ -114,7 +123,7 @@ describe('el tornado', () => {
   it('cruza el mapa y deja el camino destruido', () => {
     const { w, sim } = barrio(100);
     const antes = standing(w);
-    inner(sim).tornado();
+    cruza(sim);
     expect(standing(w)).toBeLessThan(antes);
     // Tocó los dos bordes del eje por el que entró: no se quedó en un rincón.
     const cols = new Set<number>();
@@ -132,7 +141,7 @@ describe('el tornado', () => {
   it('no lo frena la cobertura de bomberos: pasa igual con la ciudad cubierta al cien', () => {
     const corrida = (cover: number): number => {
       const { w, sim } = barrio(cover);
-      inner(sim).tornado();
+      cruza(sim);
       return w.level.filter((l) => l === 0).length;
     };
     // La misma semilla da el mismo tornado: lo único que cambia entre las dos es la cobertura.
@@ -148,16 +157,73 @@ describe('el tornado', () => {
     expect(sim.tornadoAllowed()).toBe(true);
   });
 
-  it('pasa muy poco: una chance mensual muy por debajo de la de los eventos comunes', () => {
+  it('pasa muy poco: una vez cada cien años, en promedio', () => {
     expect(DESASTRE.tornadoChance).toBeLessThan(0.005);
-    // En años: una vez cada doscientos, en promedio.
-    expect(1 / (DESASTRE.tornadoChance * 12)).toBeGreaterThan(100);
+    const years = 1 / (DESASTRE.tornadoChance * 12);
+    expect(years).toBeGreaterThan(90);
+    expect(years).toBeLessThan(110);
   });
 
-  it('anuncia el tornado en el diario', () => {
+  it('anuncia la entrada y la salida en el diario', () => {
     const { sim } = barrio();
-    inner(sim).tornado();
-    expect(sim.state.news.map((n) => n.text).join(' ')).toMatch(/tornado/i);
+    cruza(sim);
+    const diario = sim.state.news.map((n) => n.text).join(' ');
+    expect(diario).toMatch(/tornado entró/i);
+    expect(diario).toMatch(/salió/i);
+  });
+
+  it('cruza de a una celda por tick: el embudo se ve venir', () => {
+    const { w, sim } = barrio();
+    inner(sim).startTornado();
+    expect(sim.tornado).not.toBeNull();
+    const primera = sim.tornado!.step;
+    inner(sim).stepTornado();
+    expect(sim.tornado?.step).toBe(primera + 1);
+    // Sigue en el mapa: un tornado no se resuelve de un golpe.
+    expect(sim.tornado).not.toBeNull();
+    expect(w.n).toBeGreaterThan(1);
+  });
+
+  it('dura lo que el mapa: al salir por el otro lado, se termina', () => {
+    const { w, sim } = barrio();
+    inner(sim).startTornado();
+    for (let k = 0; k < w.n; k++) inner(sim).stepTornado();
+    expect(sim.tornado).toBeNull();
+  });
+
+  it('el ancho lo decide el impuesto promedio: al tope pasa por una línea, por el piso se lleva la manzana', () => {
+    const ancho = (r: number, c: number, i: number): number => tornadoWidthFor({ R: r, C: c, I: i });
+    expect(ancho(20, 20, 20)).toBe(DESASTRE.tornadoWidth.narrow);
+    expect(ancho(0, 0, 0)).toBe(DESASTRE.tornadoWidth.wide);
+    // Con la mitad de los impuestos, un ancho intermedio: ni una línea ni la manzana entera.
+    const medio = ancho(10, 10, 10);
+    expect(medio).toBeGreaterThan(DESASTRE.tornadoWidth.narrow);
+    expect(medio).toBeLessThan(DESASTRE.tornadoWidth.wide);
+    // Y cuanto más cobra la ciudad, más angosto entra.
+    expect(ancho(15, 15, 15)).toBeLessThan(medio);
+  });
+
+  it('el tornado sale con el ancho que dicen los impuestos de la ciudad', () => {
+    const { sim } = barrio();
+    sim.state.taxes = { R: 0, C: 0, I: 0 };
+    inner(sim).startTornado();
+    expect(sim.tornado?.width).toBe(DESASTRE.tornadoWidth.wide);
+    sim.state.taxes = { R: 20, C: 20, I: 20 };
+    inner(sim).startTornado();
+    expect(sim.tornado?.width).toBe(DESASTRE.tornadoWidth.narrow);
+  });
+
+  it('la alarma suena una sola vez, cuando el embudo entra al radio de la ciudad', () => {
+    const { sim } = barrio();
+    inner(sim).startTornado();
+    // Al entrar por un borde todavía está lejos del centro: no suena.
+    expect(sim.takeTornadoAlarm()).toBe(false);
+    // Cruzando el centro, suena.
+    const mitad = sim.world.n / 2;
+    while (sim.tornado && sim.tornado.step < Math.ceil(mitad)) inner(sim).stepTornado();
+    expect(sim.takeTornadoAlarm()).toBe(true);
+    // Y no vuelve a sonar para el mismo tornado.
+    expect(sim.takeTornadoAlarm()).toBe(false);
   });
 });
 

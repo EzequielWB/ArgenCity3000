@@ -25,15 +25,31 @@ tecnológico: el incendio grande con cortafuegos, el tornado, y la obsolescencia
 - **No se frena.** *"este no deberia poderse frenar, simplemente pasa por X zona y listo"*. La cobertura de
   bomberos **no** cambia nada: no lo desvía, no lo acorta, no lo apaga. Es la diferencia con el fuego, y por
   eso no se implementa ninguna defensa contra él.
-- **Pasa por X zona y listo**: entra por un borde del mapa y cruza en línea recta hasta el borde opuesto,
-  dejando destruido lo que pisa. Un ancho de tres celdas para que el paso se lea en el mapa.
-- **Pasa muy poco.** *"pasa muy poco"*. Es un desastre, no un evento de gestión: no pide una decisión, se
-  anuncia en el diario y sigue de largo. Su chance mensual es una fracción de la de los eventos comunes.
-- **No rompe la partida sin aviso**: no arranca en los primeros diez años, y entre dos tornados tienen que
-  pasar veinte.
+- **Pasa por X zona y listo**: entra por un borde del mapa, cruza hasta el borde opuesto y se va. Cruza **de
+  a una celda por tick**, no de un golpe: el embudo se ve venir y lo que se lleva lo va tirando a la vista.
+- **Pasa muy poco, y una vez cada cien años**: *"Uno en 200 años me parece demasiado, lo bajaria a 100
+  años."* Es un desastre, no un evento de gestión: no pide una decisión, se anuncia en el diario y sigue de
+  largo. Su chance mensual es una fracción de la de los eventos comunes.
+- **No rompe la partida sin aviso**: no arranca en los primeros diez años.
+- **Se ve.** *"El tornado tiene que ser algo visual, se tiene que ver el tornado pasando"*: un embudo de dos
+  lotes y medio de alto, con las bandas que giran, el polvo de la base y su sombra en el suelo, arriba de
+  todo y sin que ningún edificio lo tape.
+- **Suena.** *"un sonido de alarma cuando pasa cerca de la ciudad"*: la sirena de ataque aéreo —grave, larga,
+  un barrido de tres subidas y bajadas— suena una sola vez por tornado, cuando el embudo entra en el radio
+  del centro.
 - Lo que destruye queda igual que lo quemado: el lote en cero y el jugador a reconstruir.
 
-### S3 — Obsolescencia programada de las usinas
+### S3 — El ancho del tornado lo decide el impuesto promedio
+- **El ancho no es fijo**: va de una a seis celdas, y lo decide el promedio de los tres impuestos. *"si por
+  ejemplo alguien tiene todos los impuestos al 100% se 'entiende' como que es alguien que pone dinero en el
+  beneficio del pueblo por tanto ve una mejor linea (...) en cambio el de 50% tiene un area mas amplia"*.
+- **Al tope de impuestos el tornado entra por una línea**; **por el piso se lleva la manzana entera**. La
+  ciudad que se paga cara tiene con qué mirar el cielo —aunque los meteorólogos no existan como edificio— y
+  la que se paga barata se entera cuando ya pasó.
+- **Y se ve**: el embudo del tornado angosto es flaco y el del ancho es gordo. Si los dos se dibujaran
+  iguales, el jugador no tendría forma de leer la diferencia que el sistema le está cobrando.
+
+### S4 — Obsolescencia programada de las usinas
 - **Cada usina tiene `age`**, en meses de servicio. *"Cada usina tiene 'age' (en meses o ticks)."*
 - **A los ~50 años empieza a decaer**: la capacidad baja de a poco hasta la mitad. *"Cuando cumple ~50 anos
   (600 meses aprox), output baja o la usina abandonada/desmantelada."*
@@ -63,6 +79,14 @@ tecnológico: el incendio grande con cortafuegos, el tornado, y la obsolescencia
   declive. `src/save/save.ts`: leer `age` de la usina (la que no lo trae queda en 0). Commit:
   `feat(sim): el incendio grande, el tornado y la usina que se pone vieja`.
 - [x] **T6** — `odd/tasks/incendio-y-tornado.md` completo y pusheado junto a T2–T5.
+- [x] **T7** — `src/sim/tornado.ts`: el recorrido como módulo puro (`newTornado`, `tornadoCellsOf`,
+  `advanceTornado`, `tornadoDone`, `tornadoWidthFor`), que comparten el que destruye y el que dibuja.
+- [x] **T8** — `src/sim/simulation.ts`: el tornado pasa a durar (un paso por tick en `tick()`), el ancho sale
+  de los impuestos y la alarma se consume una vez (`takeTornadoAlarm`).
+- [x] **T9** — `src/render/tornadoArt.ts`: el embudo. Enganchado en `src/render/view.ts` (`view.tornado`), que
+  el juego actualiza antes de cada frame.
+- [x] **T10** — `src/audio/sound.ts`: `play('tornado')`, la sirena de ataque aéreo, disparada desde
+  `src/game.ts` cuando `sim.takeTornadoAlarm()` lo pide.
 
 ## Log
 
@@ -102,3 +126,29 @@ tecnológico: el incendio grande con cortafuegos, el tornado, y la obsolescencia
 - **L9.** El tornado **no toca la infraestructura**: se lleva edificios (`level > 0`) y deja calles, tendido,
   usinas y plazas. Es el mismo criterio que el fuego, y evita el estado imposible de una usina sin terreno.
   1230 tests / 79 archivos verdes, `tsc` limpio.
+- **L10.** Tres requisitos nuevos del usuario, y los tres cambian lo que ya estaba:
+  - **La frecuencia baja de 200 a 100 años**: `tornadoChance = 1 / 1200`. Se va también el `tornadoGap`, que ya
+    no hacía falta: con una chance mensual así, el espaciado sale solo.
+  - **El tornado pasa a ser visual**: deja de resolverse de un golpe y cruza de a una celda por tick, con un
+    embudo dibujado en cada frame y una alarma sonora.
+  - **El ancho lo decide el impuesto promedio**: `tornadoWidthFor(taxes)` interpola entre 6 celdas (impuestos
+    por el piso) y 1 (impuestos al tope).
+- **L11.** El recorrido vive en `src/sim/tornado.ts` y **no** en la simulación: lo necesitan los dos, el que
+  destruye y el que dibuja, y si cada uno lo calculara por su cuenta el embudo y el daño se desincronizarían.
+  Es la primera vez en el proyecto que un módulo de simulación lo importa el render, y es a propósito.
+- **L12.** El ancho **se dibuja**. `top = 12 + width * 4.5` y `bottom = 3.5 + width * 1.4`: el tornado de la
+  ciudad que no cobra entra gordo y el de la que cobra entra por una línea, y eso se ve en el mapa. Si los
+  dos se pintaran iguales, el sistema de impuestos estaría cobrando una diferencia invisible.
+- **L13.** Lo que costó que el embudo leyera como embudo: con un degradé de tono por renglón y sin textura
+  era **una escalera gris**; lo que lo resuelve son las **bandas diagonales** que suben por el cono con el
+  tiempo. A un píxel, la banda tiene que ser ancha y contrastada: una suave no se ve. Y el radio ondulado
+  (`waver`) le saca la geometría de cono perfecto.
+- **L14.** El embudo **necesita su sombra**: sin la mancha oscura en el suelo parecía pegado sobre el mapa en
+  vez de apoyado. Es la misma lección del Calvario, otra vez: a un píxel, lo que no toca el suelo flota.
+- **L15.** Tres trampas del test: la alarma sonaba **al entrar** en un mapa de veinte celdas, porque el radio
+  fijo de 10 es medio mapa — se topa con `n * 0.2`; `tornado()` dejó de existir y los tests pasaron a
+  `startTornado()` + `stepTornado()`; y la aserción de "una vez cada doscientos" quedó como estaba cuando la
+  frecuencia cambió, así que ahora comprueba un rango de 90 a 110 años en vez de "más de 100".
+- **L16.** 1235 tests / 79 archivos verdes, `tsc` limpio. La captura del embudo se hizo con el tablero de
+  ciudad (`arte.html?solo=city`) dibujando dos tornados a mano, uno de ancho 1 y otro de 6, para comparar; el
+  cambio en `scripts/board-city.ts` se revirtió después.

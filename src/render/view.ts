@@ -10,6 +10,8 @@ import { FRAME_BUDGET_MS, MapRenderer } from './mapRenderer';
 import { drawBubble } from './bubbles';
 import { Traffic, drawTraffic } from './traffic';
 import { Vessels, drawBoats, drawPlanes } from './vessels';
+import { drawTornado } from './tornadoArt';
+import type { TornadoRun } from '../sim/tornado';
 
 export type Layer = 'none' | 'power' | 'traffic' | 'pollution' | 'landValue' | 'crime' | 'edu' | 'health' | 'fireCover';
 
@@ -61,6 +63,11 @@ export class View {
   private lastTime = 0;
   private lastCam = { x: -1, y: -1, zoom: 0 };
   readonly traffic: Traffic;
+  /**
+   * El tornado que está pasando, o null. Lo pone el juego antes de renderizar: la vista no conoce la
+   * simulación, y el embudo es lo único de la simulación que se dibuja en cada frame.
+   */
+  tornado: TornadoRun | null = null;
   /** The planes and boats of the airports and harbours. */
   readonly vessels: Vessels;
 
@@ -233,6 +240,8 @@ export class View {
     if (z >= 0.5) drawBoats(g, this.vessels, this.map, [vx0, vy0, vx1, vy1]);
     if (z >= 1) drawTraffic(g, this.traffic, this.map, [vx0, vy0, vx1, vy1]);
     if (z >= 0.5) drawPlanes(g, this.vessels, this.map, [vx0, vy0, vx1, vy1]);
+    // El tornado se dibuja arriba de todo: es lo único del juego que no tiene que quedar tapado por nada.
+    if (this.tornado) drawTornado(g, this.tornado, this.world, this.map, time);
     if (z >= 0.5) this.drawSmoke(g, time, visible);
     this.drawBubbles(g, time, visible);
     this.drawPreview(g);

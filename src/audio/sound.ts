@@ -5,7 +5,7 @@
  * until `unlock` is called from one.
  */
 
-export type Sfx = 'build' | 'bulldoze' | 'deny' | 'undo' | 'news' | 'fire';
+export type Sfx = 'build' | 'bulldoze' | 'deny' | 'undo' | 'news' | 'fire' | 'tornado';
 
 export interface AmbienceInput {
   pop: number;
@@ -156,6 +156,9 @@ export class Sound {
         this.siren();
         break;
       }
+      case 'tornado':
+        this.alarm();
+        break;
     }
   }
 
@@ -252,6 +255,41 @@ export class Sound {
     const n = 2 + Math.floor(Math.random() * 2);
     const base = 2600 + Math.random() * 900;
     for (let k = 0; k < n; k++) this.tone(k * 0.11, 0.07, 'sine', 0.035, base, base * 1.35);
+  }
+
+  /**
+   * La alarma de tornado: la sirena de ataque aéreo de las ciudades del interior, que sube y baja despacio y
+   * no se parece a la de los bomberos. Es grave, larga y se come el resto del ambiente mientras suena.
+   */
+  private alarm(): void {
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
+    const dur = 5.5;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    // Tres subidas y bajadas lentas entre 300 y 700 Hz: el barrido que hace que el cuerpo se ponga tenso.
+    const low = 300;
+    const high = 700;
+    const steps = 6;
+    osc.frequency.setValueAtTime(low, t);
+    for (let k = 0; k < steps; k++) {
+      osc.frequency.linearRampToValueAtTime(k % 2 === 0 ? high : low, t + (dur / steps) * (k + 1));
+    }
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 1800;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.14, t + 0.6);
+    gain.gain.setValueAtTime(0.14, t + dur - 0.8);
+    gain.gain.linearRampToValueAtTime(0.0001, t + dur);
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.master!);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+    // El retumbo del viento abajo de la sirena: sin esto la alarma suena a juguete.
+    this.burst(0, dur, 'lowpass', 320, 120, 0.16);
   }
 
   /** A fire engine siren in the distance. */

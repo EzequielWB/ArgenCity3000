@@ -50,6 +50,7 @@ import { APPROVAL, approvalAppetite, computeApproval, demolitionPoints, election
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, eventOfMonth, type CityEvent } from './events';
+import { advanceTornado, newTornado, tornadoCellsOf, tornadoDone, tornadoWidthFor, type TornadoRun } from './tornado';
 import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type PickResult, type RunMods, type RunState } from './roguelike';
 import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
 
@@ -228,6 +229,15 @@ export class Simulation {
    * carga vuelve a ser uno común, y eso es lo más benigno que se puede hacer con él.
    */
   private bigFire = new Set<number>();
+  /**
+   * El tornado en curso, o null. Se guarda acá y no en el estado porque **no se guarda en disco**: el que
+   * se corta a mitad no sigue al cargar, y arrancar un desastre a medias es peor que no tenerlo.
+   */
+  tornado: TornadoRun | null = null;
+  /** Cuántos edificios se llevó el tornado que está pasando (o el último, hasta el aviso del diario). */
+  private tornadoLost = 0;
+  /** La alarma ya sonó para este tornado: suena una vez, no en cada celda. */
+  private tornadoAlarmHeard = false;
   private fireNews = 0;
 
   /** What this month's weekly settlements have already moved (not saved; see the constructor). */
@@ -789,6 +799,7 @@ export class Simulation {
     }
     s.crisis = s.cash < 0;
     this.burn();
+    this.stepTornado();
     this.grow();
     this.reachMilestones();
     this.reachRunMarks();
@@ -975,47 +986,104 @@ export class Simulation {
    * El tornado: entra por un borde del mapa, cruza en línea recta y sale por el otro, dejando el camino
    * destruido. **No se frena**: la cobertura de bomberos no lo desvía ni lo acorta, porque un tornado no es
    * un incendio y el juego no tiene con qué pelearle. Pasa por X zona y listo.
+   *
+   * Cruza **de a una celda por tick**, no de un golpe: el embudo tiene que verse venir, y lo que se lleva lo
+   * tiene que ir tirando a la vista. El ancho no lo decide el azar, lo decide el impuesto promedio de la
+   * ciudad: al tope entra angosto, por el piso se lleva la manzana entera.
    */
-  private tornado(): void {
+  private startTornado(): void {
+    const n = this.world.n;
+    this.tornado = newTornado(n, tornadoWidthFor(this.state.taxes), this.rng);
+    this.tornadoLost = 0;
+    this.tornadoAlarmHeard = false;
+    const { wide, narrow } = DESASTRE.tornadoWidth;
+    this.publish(
+      this.tornado.width <= narrow
+        ? `Un tornado entró a ${this.cityName} por el ${this.tornadoSide()}: los impuestos altos pagaron el radar y la ciudad se enteró a tiempo, así que el embudo pasa por una línea`
+        : this.tornado.width >= wide
+          ? `Un tornado entró a ${this.cityName} por el ${this.tornadoSide()}: sin plata para mirar el cielo nadie lo vio venir y el embudo entra ancho, con toda la manzana adentro`
+          : `Un tornado entró a ${this.cityName} por el ${this.tornadoSide()}: viene ancho y no hay bomberos que lo paren`,
+      true,
+    );
+  }
+
+  /** Por dónde entró, en palabras: el diario no dice "por el borde 0". */
+  private tornadoSide(): string {
+    const t = this.tornado;
+    if (!t) return 'sur';
+    if (t.horizontal) return t.dir > 0 ? 'oeste' : 'este';
+    return t.dir > 0 ? 'norte' : 'sur';
+  }
+
+  /**
+   * Un paso del tornado: se lleva lo que pisa en la celda que está cruzando y avanza una.
+   *
+   * Se llama en cada tick. Cuando sale por el otro lado, el tornado se termina y el diario cuenta lo que
+   * costó. El recorrido y las celdas los resuelve `sim/tornado.ts`, que es el mismo módulo que usa el
+   * render para dibujar el embudo: si se calcularan por separado, el dibujo y el daño se desincronizarían.
+   */
+  private stepTornado(): void {
+    const run = this.tornado;
+    if (!run) return;
     const w = this.world;
-    const horizontal = this.rng.chance(0.5);
-    const fixed = this.rng.int(w.n);
-    const dir = this.rng.chance(0.5) ? 1 : -1;
-    const start = dir > 0 ? 0 : w.n - 1;
-    const half = Math.floor(DESASTRE.tornadoWidth / 2);
-    let off = 0;
-    let lost = 0;
-    for (let k = 0; k < w.n; k++) {
-      // El camino no es perfectamente recto: cada tres celdas se corre una, como el de un tornado de verdad.
-      if (k > 0 && k % 3 === 0) off = Math.max(-2, Math.min(2, off + (this.rng.chance(0.5) ? 1 : -1)));
-      const along = start + dir * k;
-      for (let d = -half; d <= half; d++) {
-        const x = horizontal ? along : fixed + off + d;
-        const y = horizontal ? fixed + off + d : along;
-        if (!w.inBounds(x, y)) continue;
-        const i = w.idx(x, y);
-        if (w.level[i] === 0) continue;
-        if (!w.abandoned[i]) addBuilding(this.totals, w.tiles[i], w.level[i], -1, this.mods);
-        w.level[i] = 0;
-        w.abandoned[i] = 0;
-        w.fire[i] = 0;
-        this.burning.delete(i);
-        w.markDirty(i);
-        lost++;
-      }
+    const n = w.n;
+    for (const [x, y] of tornadoCellsOf(run, n)) {
+      if (!w.inBounds(x, y)) continue;
+      const i = w.idx(x, y);
+      if (w.level[i] === 0) continue;
+      if (!w.abandoned[i]) addBuilding(this.totals, w.tiles[i], w.level[i], -1, this.mods);
+      w.level[i] = 0;
+      w.abandoned[i] = 0;
+      w.fire[i] = 0;
+      this.burning.delete(i);
+      w.markDirty(i);
+      this.tornadoLost++;
+      this.stats.buildingsBurned++;
     }
     this.powerDirty = true;
-    this.stats.buildingsBurned += lost;
-    this.recomputeDemand();
-    if (lost > 0) {
-      this.publish(`Un tornado cruzó ${this.cityName} de punta a punta y se llevó ${lost} ${lost === 1 ? 'edificio' : 'edificios'}: no hubo bomberos que lo pararan`, true);
+    advanceTornado(run, this.rng);
+    if (!tornadoDone(run, n)) {
+      this.recomputeDemand();
+      return;
     }
+    this.tornado = null;
+    this.recomputeDemand();
+    const lost = this.tornadoLost;
+    this.publish(
+      lost === 0
+        ? `El tornado cruzó ${this.cityName} sin tocar nada: pasó por el campo y se fue`
+        : `El tornado salió de ${this.cityName} y dejó ${lost} ${lost === 1 ? 'edificio' : 'edificios'} en el piso: no hubo bomberos que lo pararan`,
+      true,
+    );
+  }
+
+  /**
+   * Si hay que sonar la alarma ahora: una sola vez por tornado, y sólo cuando el embudo entra en el radio.
+   * La consume el que la hace sonar, así que dos llamadas seguidas no la repiten.
+   */
+  takeTornadoAlarm(): boolean {
+    if (this.tornadoAlarmHeard || !this.tornadoNear()) return false;
+    this.tornadoAlarmHeard = true;
+    return true;
+  }
+
+  /** Si el embudo está lo bastante cerca del centro para que suene la alarma. */
+  tornadoNear(): boolean {
+    const run = this.tornado;
+    if (!run) return false;
+    const n = this.world.n;
+    const [x, y] = tornadoCellsOf(run, n)[0] ?? [0, 0];
+    const half = n / 2;
+    // El radio se mide sobre el mapa, así que en un mapa chico no puede ser más grande que él: sin el tope,
+    // en un pueblo de veinte celdas la alarma sonaba desde que el embudo asomaba.
+    const reach = Math.min(DESASTRE.tornadoAlarmAt, n * 0.2);
+    return Math.hypot(x - half, y - half) <= reach;
   }
 
   /** Los dos desastres que pasan sin pedir permiso. Cada uno tira su propia chance, una vez por mes. */
   private desastres(): void {
     if (this.totals.pop >= DESASTRE.fireFrom && this.rng.chance(DESASTRE.fireChance)) this.incendioGrande();
-    if (this.tornadoAllowed() && this.rng.chance(DESASTRE.tornadoChance)) this.tornado();
+    if (this.tornadoAllowed() && this.rng.chance(DESASTRE.tornadoChance)) this.startTornado();
   }
 
   /**

@@ -226,6 +226,7 @@ export class Game implements PointerTarget {
       }
     }
     this.repaintChanges();
+    this.view.tornado = this.sim.tornado;
     this.view.render(t);
     if (t - this.lastHud > 250) {
       const since = this.lastHud ? (t - this.lastHud) / 1000 : 0;
@@ -277,6 +278,8 @@ export class Game implements PointerTarget {
     sound.update({ pop: this.sim.totals.pop, cars: this.view.traffic.cars.length, running }, dt);
     if (this.sim.stats.firesStarted > this.firesHeard) sound.play('fire');
     this.firesHeard = this.sim.stats.firesStarted;
+    // La alarma del tornado suena una vez, cuando el embudo entra en el radio de la ciudad.
+    if (this.sim.takeTornadoAlarm()) sound.play('tornado');
   }
 
   /** Recounts the traffic; the buses of the lines run as often as the budget for transport says. */
