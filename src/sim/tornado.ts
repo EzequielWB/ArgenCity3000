@@ -5,7 +5,7 @@
  * tiene que estar en algún lado mientras cruza, y ese lado lo leen los dos, el que destruye y el que pinta.
  * Si el recorrido se calculara de nuevo en el render, el dibujo y el daño se desincronizarían.
  */
-import { DESASTRE, MAX_TAX } from '../config';
+import { DESASTRE, MAX_TAX, TICKS_PER_MONTH } from '../config';
 import type { Rng } from '../core/rng';
 import { averageTax } from './demand';
 import type { ZoneTaxes } from '../config';
@@ -64,6 +64,18 @@ export function tornadoCellsOf(run: TornadoRun, n: number): [number, number][] {
     out.push(run.horizontal ? [head, across] : [across, head]);
   }
   return out;
+}
+
+/**
+ * Si el tornado puede pasar este mes. Mientras `DESASTRE.tornadoEnabled` siga en `false` la respuesta es
+ * no, por más años que tenga la ciudad: el desastre está parado y no se puede disparar ni esperando.
+ *
+ * El `enabled` se puede pasar a mano para los tests y para cuando se vuelva a prender sin depender de una
+ * constante que se lee en el import.
+ */
+export function tornadoAllowedAt(tick: number, enabled: boolean = DESASTRE.tornadoEnabled): boolean {
+  if (!enabled) return false;
+  return tick >= TICKS_PER_MONTH * DESASTRE.firstAt;
 }
 
 /** Un paso más: la cabeza avanza una celda y, cada tres, el recorrido se corre de costado. */

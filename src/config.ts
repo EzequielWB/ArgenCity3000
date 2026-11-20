@@ -464,6 +464,12 @@ export const DESASTRE = {
   fireGap: 36,
   /** Habitantes a partir de los cuales la ciudad puede tener uno. */
   fireFrom: 1500,
+  /**
+   * El tornado está **apagado**: el desarrollo del embudo quedó parado y no queremos que cruce el mapa un
+   * desastre que todavía no está terminado. La maquinaria entera sigue en su lugar —`startTornado`,
+   * `stepTornado`, el arte, la alarma, los tests—, así que volver a prenderlo es poner `true` acá.
+   */
+  tornadoEnabled: false,
   /** Meses que la ciudad tiene que vivir antes del primer tornado: diez años. */
   firstAt: 120,
   /**

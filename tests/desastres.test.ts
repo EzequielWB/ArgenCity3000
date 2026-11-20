@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DESASTRE, PLANT_LIFE, TICKS_PER_MONTH } from '../src/config';
 import { ageFactor, plantCapacity } from '../src/sim/plants';
-import { tornadoWidthFor } from '../src/sim/tornado';
+import { tornadoAllowedAt, tornadoWidthFor } from '../src/sim/tornado';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { TILE, World, type World as WorldType } from '../src/world/world';
@@ -149,12 +149,20 @@ describe('el tornado', () => {
     expect(corrida(100)).toBeGreaterThan(0);
   });
 
-  it('no arranca en los primeros diez años', () => {
+  it('está apagado: ni el mismo año del Juicio Final lo trae', () => {
     const { sim } = barrio();
-    sim.state.tick = TICKS_PER_MONTH * (DESASTRE.firstAt - 1);
+    // El desarrollo del embudo quedó parado. Lo que se prueba acá es que el interruptor manda sobre el
+    // calendario, no al revés.
+    expect(DESASTRE.tornadoEnabled).toBe(false);
+    sim.state.tick = TICKS_PER_MONTH * (DESASTRE.firstAt + 12_000);
     expect(sim.tornadoAllowed()).toBe(false);
-    sim.state.tick = TICKS_PER_MONTH * (DESASTRE.firstAt + 1);
-    expect(sim.tornadoAllowed()).toBe(true);
+  });
+
+  it('prendido, no arranca en los primeros diez años', () => {
+    // La regla del calendario sigue viva del otro lado del interruptor: cuando se vuelva a prender, la
+    // ciudad tiene sus primeros diez años de paz.
+    expect(tornadoAllowedAt(TICKS_PER_MONTH * (DESASTRE.firstAt - 1), true)).toBe(false);
+    expect(tornadoAllowedAt(TICKS_PER_MONTH * (DESASTRE.firstAt + 1), true)).toBe(true);
   });
 
   it('pasa muy poco: una vez cada cien años, en promedio', () => {

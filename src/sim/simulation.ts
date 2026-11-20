@@ -50,7 +50,7 @@ import { APPROVAL, approvalAppetite, computeApproval, demolitionPoints, election
 import { computePower, type PowerReport } from './power';
 import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, eventOfMonth, type CityEvent } from './events';
-import { advanceTornado, newTornado, tornadoCellsOf, tornadoDone, tornadoWidthFor, type TornadoRun } from './tornado';
+import { advanceTornado, newTornado, tornadoAllowedAt, tornadoCellsOf, tornadoDone, tornadoWidthFor, type TornadoRun } from './tornado';
 import { NO_MODS, RUN_DRY_MONTHS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type PickResult, type RunMods, type RunState } from './roguelike';
 import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
 
@@ -973,13 +973,14 @@ export class Simulation {
   }
 
   /**
-   * Si el tornado puede pasar este mes, por calendario nomás: la chance se tira aparte.
+   * Si el tornado puede pasar este mes.
    *
-   * Los primeros diez años de la ciudad están a salvo. No hay ninguna otra condición, y esa es la idea: no
-   * se puede prevenir, ni comprar, ni apagar.
+   * Hoy la respuesta es que no: el desastre está parado desde `DESASTRE.tornadoEnabled` (ver el comentario
+   * ahí). Cuando se vuelva a prender, la regla es que los primeros diez años de la ciudad están a salvo y no
+   * hay ninguna otra condición: no se puede prevenir, ni comprar, ni apagar.
    */
   tornadoAllowed(): boolean {
-    return this.state.tick >= TICKS_PER_MONTH * DESASTRE.firstAt;
+    return tornadoAllowedAt(this.state.tick);
   }
 
   /**
