@@ -118,6 +118,14 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   eligió la segunda, con una duda: *"Prefiero la (b), siento que va con la idea de estos juegos? o no?"*. La
   respuesta fue que sí, porque en estos juegos el jugador **regula y no opera**, y porque el juego ya está
   hecho de umbrales que el jugador fija y el sistema ejecuta. De ahí sale S5.
+- **L7** — **T1 hecho**: `src/sim/campo.ts` con `CROPS`, `PRICE_RANGE`, `MERMA`, `harvestMonth`,
+  `priceOf`, `priceTable`, `tonsToSell` y `spoil`. Trece tests en `tests/campo.test.ts`, escritos antes del
+  módulo (RED: el import no existía). La curva quedó: diciembre $120 (piso, cosecha), junio $180 (techo),
+  subiendo y bajando sin escalones. Un lote 2×2 rinde $3.600 en cosecha y $5.400 esperando a junio.
+- **L8** — Riesgo anotado para T5: el precio es **exógeno** —sólo lo mueve el calendario—, así que no
+  responde a la oferta. A escala chica el campo pierde por el costo fijo del silo y la feria; a escala
+  grande podría ser una máquina de plata. Hay que decidir en T5 si el precio baja cuando la ciudad vende
+  mucho, o si eso se resuelve con el tope de la feria y el mantenimiento.
 - **L6** — Al aceptar la (b) se agregó la condición que la salva de ser obvia: si esperar es gratis, la
   jugada óptima es pedir el máximo y no vender nunca. Guardar tiene que costar (capacidad, mantenimiento,
   merma). De ahí sale S6.
