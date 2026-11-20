@@ -28,6 +28,7 @@ import {
   type ZoneTaxes,
 } from '../config';
 import type { BudgetReport } from '../sim/budget';
+import type { HarvestReport, SellOrder } from '../sim/campo';
 import type { Commitment } from '../sim/commitments';
 import type { Effects } from '../sim/effects';
 import type { Loan } from '../sim/loans';
@@ -436,9 +437,9 @@ function parseSim(raw: unknown): SimState {
   let lastBudget: BudgetReport | null = null;
   if (s.lastBudget !== null && s.lastBudget !== undefined) {
     const b = s.lastBudget as Record<string, unknown>;
-    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'uniques', 'uniqueIncome', 'income', 'expenses', 'balance'];
+    const keys: (keyof BudgetReport)[] = ['taxR', 'taxC', 'taxI', 'roads', 'lines', 'parks', 'plants', 'services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'uniques', 'uniqueIncome', 'farmIncome', 'farmUpkeep', 'income', 'expenses', 'balance'];
     // Older budgets had no lines for services, the loan instalment, the coast or the uniques; they count as zero.
-    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'uniques', 'uniqueIncome']) if (b[k] === undefined) b[k] = 0;
+    for (const k of ['services', 'schools', 'clinics', 'police', 'firefighters', 'hospitals', 'universities', 'loan', 'coast', 'transport', 'hubs', 'hubIncome', 'coastIncome', 'uniques', 'uniqueIncome', 'farmIncome', 'farmUpkeep']) if (b[k] === undefined) b[k] = 0;
     for (const k of keys) need(isInt(b[k]), 'El presupuesto de la partida está dañado');
     lastBudget = Object.fromEntries(keys.map((k) => [k, b[k]])) as unknown as BudgetReport;
   }
@@ -504,6 +505,36 @@ function dryOf(s: Record<string, unknown>): number {
   return isInt(old) && (old as number) >= 0 ? (old as number) : 0;
 }
 
+/**
+ * La orden de venta del campo. Un guardado viejo no la tiene y abre vendiendo todo apenas la feria puede, que
+ * es lo que hace el default: no se pierde ninguna partida por no haber elegido una política que todavía no
+ * existía.
+ */
+function parseOrder(raw: unknown): SellOrder {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const minPrice = isInt(r.minPrice) && (r.minPrice as number) >= 0 ? (r.minPrice as number) : 0;
+  const keepTons = isInt(r.keepTons) && (r.keepTons as number) >= 0 ? (r.keepTons as number) : 0;
+  return { minPrice, keepTons };
+}
+
+/** El recibo del último cierre del campo; un guardado viejo no lo tiene y el panel no lo muestra. */
+function parseHarvest(raw: unknown): HarvestReport | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const nums = ['month', 'price', 'grown', 'lost', 'spoiled', 'sold', 'income'] as const;
+  for (const k of nums) need(isInt(r[k]) || typeof r[k] === 'number', 'El recibo de la cosecha es inválido');
+  for (const k of nums) if (!Number.isFinite(r[k] as number)) return null;
+  return {
+    month: r.month as number,
+    price: r.price as number,
+    grown: r.grown as number,
+    lost: r.lost as number,
+    spoiled: r.spoiled as number,
+    sold: r.sold as number,
+    income: r.income as number,
+  };
+}
+
 /** The effects running, in months. A city saved before them opens with none. */
 function parseEffects(raw: unknown): Effects {
   const effects: Effects = {};
@@ -556,6 +587,8 @@ function parseCommitment(raw: unknown): Commitment | null {
     transport: (s.transport as number | undefined) ?? 100,
     roads: (s.roads as number | undefined) ?? 100,
     plants: (s.plants as number | undefined) ?? 100,
+    order: parseOrder(s.order),
+    harvest: parseHarvest(s.harvest),
     grief: (s.grief as number | undefined) ?? 0,
     commitment,
     pendingEvent: (s.pendingEvent as string | null | undefined) ?? null,

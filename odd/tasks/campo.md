@@ -99,7 +99,8 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   Un guardado viejo crece, no se rompe. `S2`
 - **T3** — Colocación y costos: lote 2×2, silo, feria en `COSTS`, herramientas en `tools.ts`, y el requisito
   de calle de tierra sin tendido. `S1`
-- **T4** — `endOfMonth`: cosecha en el mes que corresponde, merma, y la venta que decide la orden. `S3 S5 S6`
+- **T4** — ~~`endOfMonth`: cosecha en el mes que corresponde, merma, y la venta que decide la orden.~~ **Hecho.**
+  `settleHarvest` + el ingreso en `monthlyBudget` + la noticia del diario. `S3 S5 S6` `ae4fa08`…
 - **T5** — `monthlyBudget`: `farmIncome` y `farmUpkeep` en `BudgetReport`, con su línea en el panel de
   presupuesto. `S7`
 - **T6** — Panel del campo: precio del mes, stock por silo, y los dos campos de la orden. `S4 S5`
@@ -138,6 +139,29 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   rectangular y alta con las virolas horizontales— más la **noria** todavía más alta que sube el grano, el
   **tinglado de chapa a dos aguas** (azul en la de Junín) y la **playa de maniobras de ripio**. El primer
   intento dibujó dos cilindros y se leyó como dos latas: por eso el silo pasó a ser la torre.
+- **L17** — **T4 hecho**: `settleHarvest(w, month, order)` en `src/sim/campo.ts` cierra el mes del campo en
+  tres pasos y **en este orden**, que es el de la realidad: primero la **merma** sobre lo que ya estaba
+  guardado (lo viejo se estropea, no lo que entra hoy), después la **cosecha** repartiendo los lotes entre los
+  silos y perdiendo lo que no entra, y al final la **venta**, que es lo único que convierte toneladas en
+  pesos. El precio se lee **antes** de anotar la presión de esta venta: el jugador cobra el mercado que
+  encontró, y el que vuelca mucho lo ablanda para el mes que viene.
+  `SimState` gana `order` (la política del jugador) y `harvest` (el recibo del cierre); los dos se guardan y
+  un guardado viejo abre vendiendo todo y sin recibo. La cosecha se resuelve **antes** del presupuesto, así
+  el ingreso entra por la misma caja que el impuesto. `BudgetReport` gana `farmIncome` y `farmUpkeep`, y el
+  diario publica la noticia del campo: un salto de miles de pesos sin explicación es peor que un impuesto
+  caro. 21 tests en `tests/campo-cosecha.test.ts`.
+- **L18** — Dos cosas que aparecieron escribiendo T4 y que quedan dichas:
+  1. **Un bug propio, cazado por los tests**: la venta era `Math.min(tonsToSell(...), takeTons(w, Infinity))`,
+     y `takeTons` se ejecuta antes del `Math.min`, así que vaciaba los silos aunque la orden no vendiera
+     nada. Ahora se calcula `want` y después se saca.
+  2. **La merma corre antes de la venta**, y eso mueve todos los números de los tests: 100 t con la retención
+     en 70 venden 26, no 30. Las expectativas se corrigieron con la cuenta a la vista, no al revés.
+- **L19** — **El campo está desbalanceado y hay que decidirlo en T5**, con el número: un lote cuesta **$30** y
+  da **30 t × $180 = $5.400 por año**: se paga en **dos días** de juego. Una feria trabajando a full pide 48
+  lotes (205 celdas con el silo y la feria) y rinde **$1.262 por celda y año**, contra los ~$328 que deja una
+  celda de torres. O sea: hoy llenar el mapa de trigo es la jugada óptima, y S1 quería que el campo fuera una
+  pieza de borde, no la ciudad entera. La palanca es `CROPS.trigo.tons` —no el precio—: bajarlo a **8** deja
+  el payback en ~7 meses y el campo en ~$337/celda/año, en línea con los edificios. **No se cambió todavía.**
 - **L15** — **Verificación antes de probar local**, y trajo un bug: el `footprint` de las tres piezas **recortaba**
   contra el borde del mapa en vez de correr el ancla para adentro como la usina, el depósito y los servicios.
   Una feria puesta en la esquina pisaba **una** celda y se cobraban los $600 enteros, con el dibujo de 3×3

@@ -1,6 +1,7 @@
 import { DEFAULT_FUNDING, FIXED_SHARE, GOVERNMENTS, LINE_TIERS, MAX_FUNDING, ROAD_REACH, ROAD_TIERS, SERVICES, UPKEEP, type GovernmentKind, type ServiceFunding, type ServiceKind, type ZoneTaxes } from '../config';
 import { serviceAnchorIndex } from '../world/services';
 import { TILE, World, serviceOf, zoneOf } from '../world/world';
+import type { HarvestReport } from './campo';
 import { coastBudget, portTaxBoost } from './coast';
 import { cityTotals, zoneTaxes } from './demand';
 import { utilization } from './fields';
@@ -43,6 +44,10 @@ export interface BudgetReport {
   uniques: number;
   /** What the unique buildings add to the tourism of the city this month: a share of the coast and the hubs. */
   uniqueIncome: number;
+  /** Lo que la feria cobró este mes por la cosecha. Es de golpe: once meses en cero y uno grande. */
+  farmIncome: number;
+  /** El mantenimiento del silo y de la feria, que se cobra vendan o no: guardar cuesta. */
+  farmUpkeep: number;
   income: number;
   expenses: number;
   balance: number;
@@ -99,6 +104,9 @@ export function monthlyBudget(
   roadsFunding = 100,
   plantsFunding = 100,
   mods: RunMods = NO_MODS,
+  // El recibo del cierre del campo. Viene calculado del mes que terminó: acá no se cosecha, para que la
+  // previsión del panel y el cierre no muevan los silos dos veces.
+  farm: HarvestReport | null = null,
 ): BudgetReport {
   const taxes = zoneTaxes(tax);
   const gov = GOVERNMENTS[government];
@@ -165,8 +173,10 @@ export function monthlyBudget(
     coastIncome: Math.round(coastRaw),
     uniques: uniqueUpkeep(w),
     uniqueIncome,
+    farmIncome: Math.round(farm?.income ?? 0),
+    farmUpkeep: w.silos.length * UPKEEP.silo + w.markets.length * UPKEEP.market,
   };
-  const income = r.taxR + r.taxC + r.taxI + r.coastIncome + r.hubIncome + r.uniqueIncome;
-  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.hospitals + r.universities + r.loan + r.coast + r.transport + r.hubs + r.uniques;
+  const income = r.taxR + r.taxC + r.taxI + r.coastIncome + r.hubIncome + r.uniqueIncome + r.farmIncome;
+  const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.hospitals + r.universities + r.loan + r.coast + r.transport + r.hubs + r.uniques + r.farmUpkeep;
   return { ...r, income, expenses, balance: income - expenses };
 }

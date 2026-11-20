@@ -17,9 +17,9 @@ import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools'
 import { World } from '../src/world/world';
 
 function report(over: Partial<BudgetReport> = {}): BudgetReport {
-  const b = { taxR: 0, taxC: 0, taxI: 0, roads: 0, lines: 0, parks: 0, plants: 0, services: 0, schools: 0, clinics: 0, police: 0, firefighters: 0, hospitals: 0, universities: 0, loan: 0, coast: 0, transport: 0, hubs: 0, hubIncome: 0, coastIncome: 0, uniques: 0, uniqueIncome: 0, income: 0, expenses: 0, balance: 0, ...over };
-  b.income = b.taxR + b.taxC + b.taxI + b.coastIncome + b.hubIncome + b.uniqueIncome;
-  b.expenses = b.roads + b.lines + b.parks + b.plants + b.services + b.schools + b.clinics + b.police + b.firefighters + b.hospitals + b.universities + b.loan + b.coast + b.transport + b.hubs + b.uniques;
+  const b = { taxR: 0, taxC: 0, taxI: 0, roads: 0, lines: 0, parks: 0, plants: 0, services: 0, schools: 0, clinics: 0, police: 0, firefighters: 0, hospitals: 0, universities: 0, loan: 0, coast: 0, transport: 0, hubs: 0, hubIncome: 0, coastIncome: 0, uniques: 0, uniqueIncome: 0, farmIncome: 0, farmUpkeep: 0, income: 0, expenses: 0, balance: 0, ...over };
+  b.income = b.taxR + b.taxC + b.taxI + b.coastIncome + b.hubIncome + b.uniqueIncome + b.farmIncome;
+  b.expenses = b.roads + b.lines + b.parks + b.plants + b.services + b.schools + b.clinics + b.police + b.firefighters + b.hospitals + b.universities + b.loan + b.coast + b.transport + b.hubs + b.uniques + b.farmUpkeep;
   b.balance = b.income - b.expenses;
   return b;
 }

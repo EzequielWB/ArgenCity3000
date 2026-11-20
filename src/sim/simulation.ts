@@ -32,6 +32,7 @@ import { Rng } from '../core/rng';
 import { toolInfo } from '../world/tools';
 import { TILE, World, coastOf, serviceOf, zoneOf, type ZoneKind } from '../world/world';
 import { buildingName } from './report';
+import { harvestNews, settleHarvest, type HarvestReport, type SellOrder } from './campo';
 import { monthlyBudget, type BudgetReport } from './budget';
 import { cumulativeShare, dateLabel, dateOf } from './calendar';
 import { countCoast } from './coast';
@@ -60,6 +61,10 @@ export interface SimState {
   cash: number;
   taxes: ZoneTaxes;
   funding: ServiceFunding;
+  /** La orden de venta del campo: el jugador fija los umbrales y el sistema vende. */
+  order: SellOrder;
+  /** El recibo del último cierre del campo; null hasta la primera cosecha. */
+  harvest: HarvestReport | null;
   /** Budget for green spaces (plazas), 0 to `MAX_FUNDING`. It decides how well plazas are kept. */
   green: number;
   /** Budget for the bus lines (percent of their standard upkeep), 0 to `MAX_FUNDING`: it sets the frequency. */
@@ -124,6 +129,8 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     cash: INITIAL_CASH,
     taxes: { R: DEFAULT_TAX, C: DEFAULT_TAX, I: DEFAULT_TAX },
     funding: { ...DEFAULT_FUNDING },
+    order: { minPrice: 0, keepTons: 0 },
+    harvest: null,
     green: 100,
     transport: 100,
     roads: 100,
@@ -790,6 +797,17 @@ export class Simulation {
     this.updateFields();
   }
 
+  /**
+   * La orden de venta del campo. El jugador fija los dos umbrales y el sistema los ejecuta en el cierre del
+   * mes: no hay un botón de "Vender", por la misma razón que no lo hay de "Subir el impuesto".
+   */
+  setSellOrder(order: SellOrder): void {
+    this.state.order = {
+      minPrice: Math.max(0, Math.round(order.minPrice)),
+      keepTons: Math.max(0, Math.round(order.keepTons)),
+    };
+  }
+
   tick(): void {
     const w = this.world;
     const s = this.state;
@@ -1117,7 +1135,7 @@ export class Simulation {
   private settleWeek(): void {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
-    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods).balance, week);
+    const due = cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods, s.harvest).balance, week);
     s.cash += due - this.monthPaid;
     this.monthPaid = due;
     s.crisis = s.cash < 0;
@@ -1131,7 +1149,7 @@ export class Simulation {
     const s = this.state;
     const week = Math.floor((s.tick % TICKS_PER_MONTH) / TICKS_PER_WEEK);
     if (week === 0) return 0;
-    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods).balance, Math.min(week, WEEKS_PER_MONTH - 1));
+    return cumulativeShare(monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods, s.harvest).balance, Math.min(week, WEEKS_PER_MONTH - 1));
   }
 
   /** Counts the instalment this month paid, and closes the loan once the term is done. */
@@ -1207,7 +1225,14 @@ export class Simulation {
     this.agePlants();
     // The tick already belongs to the next month: the season is the one of the month that just ended.
     const month = dateOf(s.tick - 1).month;
-    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods);
+    // La cosecha se resuelve antes del presupuesto: el ingreso de la feria es plata de este mes y tiene que
+    // entrar por la misma caja que el impuesto, no por un costado.
+    s.harvest = settleHarvest(w, month, s.order);
+    // La cosecha entra de golpe y sin aviso sería un misterio en la caja: el diario dice qué pasó con las
+    // toneladas, que es lo único que explica un salto de miles de pesos en un mes.
+    const harvestLine = harvestNews(s.harvest);
+    if (harvestLine) this.publish(harvestLine, true);
+    const budget = monthlyBudget(w, s.taxes, s.funding, s.loan, month, s.green, factorOf(s.effects, COAST_BOOST), s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.mods, s.harvest);
     s.lastBudget = budget;
     s.cash += budget.balance - this.monthPaid; // the 4th week pays whatever the first three left
     this.monthPaid = 0;

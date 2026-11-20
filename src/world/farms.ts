@@ -79,3 +79,24 @@ export function storeTons(w: World, tons: number): number {
   }
   return left;
 }
+
+/**
+ * Saca `tons` toneladas de los silos, de a una, y devuelve **lo que sacó**.
+ *
+ * Vacía el primer silo que tiene carga antes de pasar al siguiente, al revés que `storeTons`: así el stock
+ * que queda arriba de todo sigue siendo igual de viejo y la merma no castiga a un silo distinto cada mes.
+ */
+export function takeTons(w: World, tons: number): number {
+  let left = Math.max(0, tons);
+  let took = 0;
+  for (const silo of w.silos) {
+    if (left <= 0) break;
+    const have = Math.max(0, silo.tons);
+    if (have <= 0) continue;
+    const out = Math.min(have, left);
+    silo.tons -= out;
+    took += out;
+    left -= out;
+  }
+  return took;
+}
