@@ -6144,40 +6144,58 @@ function paintFarmLot(): { px: Pixels; ax: number; ay: number } {
 }
 
 /**
+ * Un cilindro de chapa.
+ *
+ * En isométrico un cilindro no tiene curva: tiene **dos bordes en sombra y una tapa ovalada**. Eso es todo
+ * lo que hace falta a 1× — con el `box` pelado el silo se lee como una torre de departamentos, y con dos
+ * franjas oscuras en las esquinas y la virola marcada se lee como un tanque de chapa.
+ */
+function cylinder(p: Pen, u0: number, v0: number, u1: number, v1: number, h: number, base: Ramp): void {
+  p.box(u0, v0, u1, v1, 0, h, base, 'plain');
+  // Las dos esquinas verticales, en sombra: es lo que redondea la silueta.
+  p.px.line(p.P(u0, v1, 0), p.P(u0, v1, h), shade(base[1], 0.74));
+  p.px.line(p.P(u1, v0, 0), p.P(u1, v0, h), shade(base[2], 0.7));
+  p.px.line(p.P(u1, v1, 0), p.P(u1, v1, h), shade(base[2], 0.78));
+  // Las virolas: una junta cada tres píxeles, más clara arriba y más oscura abajo.
+  for (let k = 3; k < h; k += 3) {
+    p.px.line(p.P(u0, v1, k), p.P(u1, v1, k), shade(base[1], 0.89));
+    p.px.line(p.P(u1, v0, k), p.P(u1, v1, k), shade(base[2], 0.86));
+  }
+  // El techo: el cono de chapa, que es la única curva que hace falta. El óvalo de la tapa sobraba: a 1×
+  // se leía como un parche claro flotando sobre el borde del cilindro.
+  p.hip(u0, v0, u1, v1, h, 4, [shade(base[0], 0.94), shade(base[1], 0.92), shade(base[2], 0.88)]);
+}
+
+/**
  * El silo: la planta de acopio.
  *
- * En las referencias argentinas —la de Eduardo Castex, la de Junín— lo que se ve de lejos **no** es un
- * cilindro: es una **torre rectangular de chapa**, alta y angosta, con las virolas horizontales, y al lado
- * la **noria** todavía más alta, que es la que sube el grano. El cilindro a 1× se lee como una lata y no
- * dice nada; la torre con la noria dice "acá se acopia grano" desde el otro lado del mapa.
+ * Las referencias argentinas —Eduardo Castex, Junín, San Pedro— muestran siempre lo mismo: **cilindros de
+ * chapa galvanizada** parados en fila, con las virolas, el cono de chapa arriba, la **noria** más alta y
+ * fina al costado y la playa de ripio. Sin los cilindros queda una torre de oficinas gris; el cilindro es
+ * lo que dice "acá se guarda grano".
  */
 function paintSilo(): { px: Pixels; ax: number; ay: number } {
   const p = penLot(2, 52);
-  // La playa de maniobras: el silo no está en el pasto, está sobre un piso de tierra apisonada.
   p.poly([p.P(0.04, 0.04), p.P(1.96, 0.04), p.P(1.96, 1.96), p.P(0.04, 1.96)], (x, y) => (bayer(x, y) < 0.5 ? GRAVEL[1] : GRAVEL[2]));
-  // Las virolas: una junta cada cuatro píxeles, que es lo que dice "chapa atornillada" y no "tanque liso".
-  const virolas = (h: number): Patch[] => {
-    const out: Patch[] = [];
-    for (let k = 4; k < h; k += 4) out.push({ t0: 0, t1: 99, k0: k, k1: k + 1, c: shade(CHAPA_SILO[1], 0.84) });
-    return out;
-  };
-  // La torre: alta y rectangular, con el techo a dos aguas bajo, que es el de la foto.
-  const h = 34;
-  p.box(0.14, 0.18, 1.5, 1.34, 0, h, CHAPA_SILO, 'plain', virolas(h), virolas(h), CHAPA_SILO[0]);
-  p.gable(0.1, 0.14, 1.54, 1.38, h, 5, CHAPA_VIEJA, shade(CHAPA_VIEJA[1], 0.75), 'sheet');
-  // La noria: más angosta y más alta que la torre, pegada al lado que da al fondo. Es el remate del dibujo.
-  const hn = 46;
-  p.box(1.12, 0.28, 1.46, 0.72, 0, hn, CHAPA_VIEJA, 'plain', virolas(hn), virolas(hn), CHAPA_VIEJA[0]);
-  p.gable(1.1, 0.26, 1.48, 0.74, hn, 4, CHAPA_VIEJA, shade(CHAPA_VIEJA[1], 0.7), 'sheet');
-  // La cabeza de la noria: la caja de mando con su tejadillo, siempre en otro tono para que se distinga.
-  p.box(1.16, 0.32, 1.44, 0.68, hn + 4, 3, CHAPA_VIEJA, 'plain', [], [], hex('#b8962f'));
-  // La puerta del pie y la escalera del costado: dan la escala de lo alto que es.
-  p.box(0.3, 1.34, 0.52, 1.34, 0, 7, ramp('#5a4a3a'), 'plain');
-  for (let k = 3; k < 30; k += 4) {
-    const [ex, ey] = p.P(1.5, 1.1, k);
+  // Los dos cilindros: el de atrás primero, que queda tapado a medias, y el de adelante después.
+  cylinder(p, 0.78, 0.12, 1.5, 0.82, 32, CHAPA_VIEJA);
+  cylinder(p, 0.12, 0.42, 0.94, 1.12, 27, CHAPA_SILO);
+  // La noria: la torre fina y alta que sube el grano, pegada al fondo. Es el remate del dibujo.
+  const hn = 44;
+  p.box(1.44, 0.3, 1.76, 0.66, 0, hn, CHAPA_VIEJA, 'plain');
+  for (let k = 3; k < hn; k += 3) {
+    p.px.line(p.P(1.44, 0.66, k), p.P(1.76, 0.66, k), shade(CHAPA_VIEJA[1], 0.82));
+    p.px.line(p.P(1.76, 0.3, k), p.P(1.76, 0.66, k), shade(CHAPA_VIEJA[2], 0.78));
+  }
+  // La casilla de mando arriba de la noria, en ocre, que es lo único con color de toda la planta.
+  p.box(1.42, 0.28, 1.78, 0.68, hn, 4, ramp('#b8962f'), 'plain', [], [], hex('#c9a63c'));
+  // La puerta al pie del cilindro de adelante y la escalera del costado.
+  p.box(0.3, 1.12, 0.54, 1.12, 0, 7, ramp('#5a4a3a'), 'plain');
+  p.px.line(p.P(0.94, 0.9, 1), p.P(0.94, 0.9, 24), shade(CHAPA_SILO[1], 0.5));
+  for (let k = 3; k < 24; k += 4) {
+    const [ex, ey] = p.P(0.94, 0.9, k);
     p.px.rect(Math.round(ex) - 1, Math.round(ey), 3, 1, shade(CHAPA_SILO[1], 0.62));
   }
-  p.px.line(p.P(1.5, 1.1, 1), p.P(1.5, 1.1, 30), shade(CHAPA_SILO[1], 0.5));
   return { px: p.px, ax: p.ax, ay: p.ay };
 }
 

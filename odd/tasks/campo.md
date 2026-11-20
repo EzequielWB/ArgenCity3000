@@ -138,6 +138,16 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   rectangular y alta con las virolas horizontales— más la **noria** todavía más alta que sube el grano, el
   **tinglado de chapa a dos aguas** (azul en la de Junín) y la **playa de maniobras de ripio**. El primer
   intento dibujó dos cilindros y se leyó como dos latas: por eso el silo pasó a ser la torre.
+- **L15** — **Verificación antes de probar local**, y trajo un bug: el `footprint` de las tres piezas **recortaba**
+  contra el borde del mapa en vez de correr el ancla para adentro como la usina, el depósito y los servicios.
+  Una feria puesta en la esquina pisaba **una** celda y se cobraban los $600 enteros, con el dibujo de 3×3
+  colgado fuera del mapa. Corregido en `src/world/farms.ts` y con tres tests nuevos que fallaban antes.
+  Los tests viejos no lo veían porque probaban centros, no bordes.
+- **L16** — El primer silo se leyó como **una torre de oficinas gris**: era una caja con virolas y un techo a dos
+  aguas, sin nada redondo. Se rehizo con la pieza que la referencia muestra y el primer intento no tenía:
+  **dos cilindros de chapa** con el cono encima, la noria fina al costado y la casilla de mando en ocre. El
+  cilindro se hace con dos franjas en sombra en las esquinas verticales y las virolas, no con una curva: a 1×
+  no hay curva. El óvalo de la tapa se probó y se sacó, se leía como un parche claro flotando en el borde.
 - **L14** — Deudas del arte, para T7: el lote está siempre con el trigo crecido porque el sprite no sabe en
   qué mes está la partida (el rastrojo de mayo y el rastrojo después de cosechar quedan pendientes); el techo
   del galpón de la feria tiene la textura de chapa demasiado marcada y a 1× se lee como azulejo; y el lote no

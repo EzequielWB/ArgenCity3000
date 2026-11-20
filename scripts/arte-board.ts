@@ -15,7 +15,7 @@ declare const process: { cwd(): string };
 
 const entry = `
 import './scripts/board-city';
-import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, coastPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite } from './src/render/pixelArt';
+import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, coastPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite, farmPixelSprite, siloPixelSprite, marketPixelSprite } from './src/render/pixelArt';
 import { boatPixelSprite, carPixelSprite, planePixelSprite } from './src/render/vehicleArt';
 import type { CoastKind, HubKind, ServiceKind } from './src/config';
 
@@ -124,6 +124,21 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-coast]'))) {
   const g = el.getContext('2d');
   g.clearRect(0, 0, el.width, el.height);
   place(g, sprite, el.width / 2, sprite.ay * k, k);
+}
+
+for (const el of Array.from(document.querySelectorAll('canvas[data-campo]'))) {
+  const kind = String(el.dataset.campo);
+  const n = Number(el.dataset.n || 2);
+  const k = Number(el.dataset.k || 3);
+  const sprite = kind === 'farm' ? farmPixelSprite() : kind === 'silo' ? siloPixelSprite() : marketPixelSprite();
+  el.width = (16 * n + 40) * k;
+  el.height = (16 * n + 62) * k;
+  const g = el.getContext('2d');
+  g.clearRect(0, 0, el.width, el.height);
+  const cx = el.width / 2;
+  const ground = 40 * k;
+  lotBig(g, cx, ground, k, n);
+  place(g, sprite, cx, ground, k);
 }
 
 for (const el of Array.from(document.querySelectorAll('canvas[data-plant]'))) {
@@ -452,6 +467,29 @@ const page = `<!doctype html>
       Es el arte del juego: lo que pinta el mapa es exactamente esto.
     </p>
     ${sections}
+    <section id="campo">
+      <h2>El campo</h2>
+      <p class="note">
+        El lote, el silo y la feria: la cadena que convierte tierra en pesos. Lo que se dibuja no es el
+        silo de tambo de las estampillas sino la <b>planta de acopio</b> del campo argentino —la torre
+        de chapa con las virolas y la noria más alta al lado, el tinglado a dos aguas y la playa de
+        ripio—, que es lo que se ve en las fotos de Eduardo Castex y de Junín.
+      </p>
+      <div class="row">
+        <figure>
+          <canvas data-campo="farm" data-n="2" data-k="3"></canvas>
+          <figcaption>lote de trigo 2×2</figcaption>
+        </figure>
+        <figure>
+          <canvas data-campo="silo" data-n="2" data-k="3"></canvas>
+          <figcaption>silo 2×2</figcaption>
+        </figure>
+        <figure>
+          <canvas data-campo="market" data-n="3" data-k="3"></canvas>
+          <figcaption>feria 3×3</figcaption>
+        </figure>
+      </div>
+    </section>
     <section id="energia">
       <h2>Usinas</h2>
       <p class="note">
@@ -527,7 +565,7 @@ const page = `<!doctype html>
           .join('')}
       </div>
     </section>
-    <section id="campo">
+    <section id="tendido">
       <h2>El tendido y los árboles</h2>
       <p class="note">
         Las dos últimas piezas que estaban en canvas. El <b>tendido</b> es la otra mitad de la

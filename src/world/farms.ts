@@ -10,16 +10,19 @@ import type { Farm, Market, Silo, World } from './world';
 
 export type Cell = [number, number];
 
-/** Las celdas que ocupa una pieza anclada en (x, y), recortadas al mapa. */
+/**
+ * Las celdas que ocupa una pieza anclada en (x, y): siempre `size * size`, y el ancla **se corre hacia
+ * adentro** si la pieza no entra, como la de una usina, un depósito o un servicio.
+ *
+ * Recortar en vez de correr era un bug caro: la feria puesta en la esquina pisaba una sola celda y se cobraba
+ * los $600 enteros, y el dibujo de 3×3 quedaba colgado fuera del mapa. Con el ancla corrida, el plano que
+ * devuelve `planTool` tiene las nueve celdas o se rechaza entero.
+ */
 function footprint(n: number, x: number, y: number, size: number): Cell[] {
+  const fx = Math.min(Math.max(x, 0), n - size);
+  const fy = Math.min(Math.max(y, 0), n - size);
   const cells: Cell[] = [];
-  for (let dy = 0; dy < size; dy++) {
-    for (let dx = 0; dx < size; dx++) {
-      const cx = x + dx;
-      const cy = y + dy;
-      if (cx >= 0 && cx < n && cy >= 0 && cy < n) cells.push([cx, cy]);
-    }
-  }
+  for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) cells.push([fx + dx, fy + dy]);
   return cells;
 }
 

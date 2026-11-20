@@ -135,3 +135,47 @@ describe('las herramientas del campo en la barra', () => {
     expect(footprintOfTool('zoneR', N, 5, 5)).toBeNull();
   });
 });
+
+describe('el borde del mapa', () => {
+  // El ancla de una pieza de varias celdas se corre hacia adentro hasta que la pieza entra entera, que es lo
+  // que ya hacen la usina, el depósito y los servicios. Acá se recortaba: la feria puesta en la esquina pisaba
+  // **una** celda y se cobraba igual los $600 enteros.
+  it('una feria en la esquina ocupa las nueve celdas, no una', () => {
+    const w = new World({ n: N, corners: new Uint8Array((N + 1) * (N + 1)).fill(SEA_LEVEL + 1), trees: new Uint8Array(N * N) });
+    const p = plan(w, 'market', N - 1, N - 1);
+    expect(p.cells.length).toBe(MARKET_SIZE * MARKET_SIZE);
+    expect(p.cost).toBe(COSTS.market);
+    for (const [cx, cy] of p.cells) expect(w.inBounds(cx, cy)).toBe(true);
+    // El ancla se corrió, así que la pieza toca el borde sin salirse.
+    expect(p.cells.some(([cx]) => cx === N - 1)).toBe(true);
+    expect(p.cells.some(([, cy]) => cy === N - 1)).toBe(true);
+    poner(w, 'market', N - 1, N - 1);
+    expect(celdasDe(w, TILE.MARKET)).toBe(MARKET_SIZE * MARKET_SIZE);
+  });
+
+  it('el lote y el silo también entran enteros pegados al borde', () => {
+    const w = new World({ n: N, corners: new Uint8Array((N + 1) * (N + 1)).fill(SEA_LEVEL + 1), trees: new Uint8Array(N * N) });
+    expect(plan(w, 'farm', N - 1, 0).cells.length).toBe(FARM_SIZE * FARM_SIZE);
+    expect(plan(w, 'silo', 0, N - 1).cells.length).toBe(SILO_SIZE * SILO_SIZE);
+    poner(w, 'farm', N - 1, 0);
+    expect(celdasDe(w, TILE.FARM)).toBe(FARM_SIZE * FARM_SIZE);
+    expect(w.farms[0]!.x).toBe(N - FARM_SIZE);
+  });
+
+  it('el recuadro de la herramienta no se recorta contra el borde', () => {
+    for (const [tool, size] of [
+      ['farm', FARM_SIZE],
+      ['silo', SILO_SIZE],
+      ['market', MARKET_SIZE],
+    ] as const) {
+      const foot = footprintOfTool(tool, N, N - 1, N - 1)!;
+      expect(foot.length, tool).toBe(size * size);
+      for (const [cx, cy] of foot) {
+        expect(cx, tool).toBeLessThan(N);
+        expect(cy, tool).toBeLessThan(N);
+        expect(cx).toBeGreaterThanOrEqual(0);
+        expect(cy).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+});
