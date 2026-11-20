@@ -257,6 +257,46 @@ export const UPKEEP = {
 
 /** Power plant footprint, and the output of the coal plant. */
 export const PLANT_SIZE = 2;
+
+/**
+ * Los tamaños del campo, en lotes.
+ *
+ * El lote de cultivo es 2×2 y no entra entre dos casas: es la mitad del motivo por el que el campo termina
+ * afuera. El silo es 2×2 y la feria 3×3, y los tres se piden con una sola verdad acá para que el arte, el
+ * plano y el guardado no se desincronicen.
+ */
+/** Los cultivos que el jugador puede sembrar. */
+export type CropKind = 'trigo';
+
+export interface Crop {
+  label: string;
+  /** Mes de siembra (1 a 12). */
+  sow: number;
+  /** Mes de cosecha (1 a 12). Es el mes en que entra todo el stock del año. */
+  harvest: number;
+  /** Toneladas que entrega un lote de 2×2 en su cosecha. */
+  tons: number;
+}
+
+/**
+ * La tabla de cultivos.
+ *
+ * El trigo es el del corte 1: siembra en mayo, cosecha en diciembre. Las toneladas son el punto de partida y
+ * se calibran contra `npm run probe`: un lote de 2×2 rinde hoy $3.600 al año contra los $2.952 de una manzana
+ * de torres — parecido, y el campo no paga luz ni agua, así que si el probe muestra que conviene llenar el
+ * mapa de trigo, baja acá y no en el precio.
+ */
+export const CROPS: Record<CropKind, Crop> = {
+  trigo: { label: 'Trigo', sow: 5, harvest: 12, tons: 30 },
+};
+
+export const FARM_SIZE = 2;
+export const SILO_SIZE = 2;
+export const MARKET_SIZE = 3;
+/** Toneladas que acopia un silo. Si no vendés, la cosecha del año que viene no entra. */
+export const SILO_CAPACITY = 200;
+/** Toneladas que una feria convierte en pesos por mes. */
+export const MARKET_THROUGHPUT = 120;
 export const PLANT_CAPACITY = 600;
 
 /**

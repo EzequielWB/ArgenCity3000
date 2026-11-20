@@ -117,7 +117,11 @@ describe('the coast tools', () => {
     expect(TILE.AIRPORT).toBe(TILE.BUS + 1);
     expect(TILE.HARBOR).toBe(TILE.AIRPORT + 1);
     expect(TILE.UNIQUE).toBe(TILE.UNIVERSITY + 1);
-    expect(MAX_TILE).toBe(TILE.UNIQUE);
+    // El campo se agregó después de los únicos: el último id pasó a ser el de la feria, y el plano sigue
+    // validándose contra el último tile, no contra el que era el último cuando se escribió esto.
+    expect(TILE.FARM).toBe(TILE.UNIQUE + 1);
+    expect(TILE.MARKET).toBe(TILE.SILO + 1);
+    expect(MAX_TILE).toBe(TILE.MARKET);
     for (const k of COAST_TOOLS) expect(coastOf(coastTile(k))).toBe(k);
     expect(coastOf(TILE.FIREHOUSE)).toBeNull();
     expect(coastOf(TILE.EMPTY)).toBeNull();

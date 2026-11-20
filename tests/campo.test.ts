@@ -1,4 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { FARM_SIZE, MARKET_SIZE, SILO_CAPACITY, SILO_SIZE } from '../src/config';
+import { deserialize, fromBase64, serialize, toBase64 } from '../src/save/save';
+import { newSimState } from '../src/sim/simulation';
+import { SEA_LEVEL } from '../src/world/terrain';
+import { marketAt, siloAt, siloRoom, storedTons, storeTons } from '../src/world/farms';
+import { TILE, World } from '../src/world/world';
 import { CROPS, MERMA, PRICE_OFFER, PRICE_RANGE, harvestMonth, nextPressure, priceOf, priceTable, spoil, tonsToSell, type SellOrder } from '../src/sim/campo';
 
 const orden = (minPrice: number, keepTons: number): SellOrder => ({ minPrice, keepTons });
@@ -132,5 +138,106 @@ describe('la merma', () => {
     for (let m = 0; m < 12; m++) stock = spoil(stock);
     expect(stock).toBeLessThan(1000);
     expect(stock).toBeGreaterThan(500);
+  });
+});
+
+const N = 40;
+
+/** Un campo con un lote, un silo y una feria puestos a mano: T3 trae la colocación, acá se prueba el estado. */
+function conCampo(): World {
+  const w = new World({ n: N, corners: new Uint8Array((N + 1) * (N + 1)).fill(SEA_LEVEL + 1), trees: new Uint8Array(N * N) });
+  const paint = (x: number, y: number, size: number, tile: number): void => {
+    for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) w.tiles[(y + dy) * N + x + dx] = tile;
+  };
+  paint(4, 4, FARM_SIZE, TILE.FARM);
+  paint(10, 4, SILO_SIZE, TILE.SILO);
+  paint(16, 4, MARKET_SIZE, TILE.MARKET);
+  w.farms.push({ x: 4, y: 4, crop: 'trigo' });
+  w.silos.push({ x: 10, y: 4, tons: 120 });
+  w.markets.push({ x: 16, y: 4 });
+  w.farmPressure = 340;
+  return w;
+}
+
+describe('el campo en el mundo', () => {
+  it('encuentra cada pieza por la celda que pisa', () => {
+    const w = conCampo();
+    expect(w.farms.length).toBe(1);
+    expect(w.silos.length).toBe(1);
+    expect(w.markets.length).toBe(1);
+    expect(siloAt(w, 11, 5)?.tons).toBe(120);
+    expect(siloAt(w, 12, 5)).toBeNull();
+    expect(marketAt(w, 18, 6)).not.toBeNull();
+  });
+
+  it('un lote de 2×2 ocupa cuatro celdas, no una', () => {
+    // La regla de S1: el tamaño es lo que empuja el campo afuera. Si el lote fuera de una celda, el jugador
+    // lo pondría entre dos casas y el alejamiento dejaría de existir.
+    const w = conCampo();
+    let celdas = 0;
+    for (const t of w.tiles) if (t === TILE.FARM) celdas++;
+    expect(celdas).toBe(FARM_SIZE * FARM_SIZE);
+  });
+
+  it('el stock es lo que suman los silos, y el lugar lo que suman sus capacidades', () => {
+    const w = conCampo();
+    expect(storedTons(w)).toBe(120);
+    expect(siloRoom(w)).toBe(SILO_CAPACITY);
+  });
+
+  it('guardar más de lo que entra no pierde en silencio: devuelve lo que no entró', () => {
+    const w = conCampo();
+    const sobro = storeTons(w, 500);
+    expect(w.silos[0].tons).toBe(SILO_CAPACITY);
+    expect(sobro).toBe(500 - (SILO_CAPACITY - 120));
+  });
+
+  it('sin silos no entra nada y todo sobra', () => {
+    const w = conCampo();
+    w.silos = [];
+    expect(storeTons(w, 100)).toBe(100);
+    expect(storedTons(w)).toBe(0);
+  });
+});
+
+describe('el campo en el guardado', () => {
+  it('vuelve igual: lote, silo, feria, carga y presión de oferta', () => {
+    const w = conCampo();
+    const back = deserialize(serialize({ name: 'Campo', seed: 1, world: w, sim: newSimState(1) })).world;
+    expect(back.farms).toEqual(w.farms);
+    expect(back.silos).toEqual(w.silos);
+    expect(back.markets).toEqual(w.markets);
+    expect(back.farmPressure).toBe(340);
+  });
+
+  it('una ciudad guardada antes del campo carga con el campo vacío', () => {
+    // El archivo crece, no se rompe: sacar las claves es lo que ve el guardado viejo.
+    const w = conCampo();
+    const data = JSON.parse(serialize({ name: 'Viejo', seed: 1, world: w, sim: newSimState(1) })) as Record<string, unknown>;
+    delete data.farms;
+    delete data.silos;
+    delete data.markets;
+    delete data.farmPressure;
+    const back = deserialize(JSON.stringify(data)).world;
+    expect(back.farms).toEqual([]);
+    expect(back.silos).toEqual([]);
+    expect(back.markets).toEqual([]);
+    expect(back.farmPressure).toBe(0);
+  });
+
+  it('un lote sin sus cuatro celdas se rechaza', () => {
+    const w = conCampo();
+    const data = JSON.parse(serialize({ name: 'Roto', seed: 1, world: w, sim: newSimState(1) })) as Record<string, unknown>;
+    // Se borra una celda del plano: el lote queda con tres y el archivo no cierra.
+    const raw = fromBase64(data.tiles, N * N, 255, 'el plano');
+    raw[4 * N + 5] = TILE.EMPTY;
+    data.tiles = toBase64(raw);
+    expect(() => deserialize(JSON.stringify(data))).toThrow(/cultivo|plano/i);
+  });
+
+  it('un silo con más carga de la que entra se rechaza', () => {
+    const w = conCampo();
+    w.silos[0].tons = SILO_CAPACITY + 1;
+    expect(() => deserialize(serialize({ name: 'Roto', seed: 1, world: w, sim: newSimState(1) }))).toThrow(/silo/i);
   });
 });

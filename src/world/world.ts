@@ -1,4 +1,4 @@
-import { HUBS, PLANT_SIZE, UNIQUES, type CoastKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
+import { HUBS, PLANT_SIZE, UNIQUES, type CoastKind, type CropKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
 import { isWaterCell, cellMinMax, type Terrain } from './terrain';
 
 /** What occupies a cell. Zones keep their building level in `World.level`. */
@@ -26,8 +26,11 @@ export const TILE = {
   HOSPITAL: 20,
   UNIVERSITY: 21,
   UNIQUE: 22,
+  FARM: 23,
+  SILO: 24,
+  MARKET: 25,
 } as const;
-export const MAX_TILE = TILE.UNIQUE;
+export const MAX_TILE = TILE.MARKET;
 export type TileId = (typeof TILE)[keyof typeof TILE];
 
 export type ZoneKind = 'R' | 'C' | 'I';
@@ -95,6 +98,26 @@ export interface Hub {
   kind: HubKind;
 }
 
+/** Un lote de cultivo: su esquina de arriba a la izquierda (es de `FARM_SIZE`) y qué se sembró. */
+export interface Farm {
+  x: number;
+  y: number;
+  crop: CropKind;
+}
+
+/** Un silo: su esquina, y las toneladas que tiene guardadas. */
+export interface Silo {
+  x: number;
+  y: number;
+  tons: number;
+}
+
+/** Una feria: una sola por ciudad en el corte 1, pero la lista deja lugar a más. */
+export interface Market {
+  x: number;
+  y: number;
+}
+
 /** A unique building: its top-left cell (its size is in `UNIQUES`) and which monument it is. */
 export interface Unique {
   x: number;
@@ -158,6 +181,18 @@ export class World {
   hubs: Hub[] = [];
   /** The unique buildings of the city, at most one of each kind, each with its anchor. */
   uniques: Unique[] = [];
+  /** Los lotes de cultivo, cada uno con su esquina y su cultivo. */
+  farms: Farm[] = [];
+  /** Los silos, con lo que tienen guardado. El stock del campo es la suma de todos. */
+  silos: Silo[] = [];
+  /** Las ferias: lo único que convierte toneladas en pesos. */
+  markets: Market[] = [];
+  /**
+   * La presión de oferta: cuánto ablanda el precio lo que la ciudad ya volcó al mercado (ver
+   * `sim/campo.ts`). Vive acá y no en la simulación porque el presupuesto la lee del mundo, igual que la
+   * costa, y porque así se guarda con el resto del terreno.
+   */
+  farmPressure = 0;
 
   readonly powered: Uint8Array;
   readonly pollution: Uint8Array;

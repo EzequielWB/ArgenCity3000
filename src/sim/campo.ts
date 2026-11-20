@@ -1,3 +1,10 @@
+import { CROPS, type Crop, type CropKind } from '../config';
+
+// La tabla de cultivos vive en `config.ts`, con los demás catálogos del juego; se reexporta para que el que
+// piensa en el campo no tenga que saber dónde está guardada.
+export { CROPS };
+export type { Crop, CropKind };
+
 /**
  * El campo: el calendario, el precio y las cuentas del silo, como funciones puras.
  *
@@ -8,31 +15,6 @@
  * El corte 1 tiene un solo cultivo. Maíz y soja son la misma pieza con otra fila en `CROPS`; el tambo no,
  * porque produce todos los meses y no tiene pico — ése va por su lado.
  */
-
-/** Los cultivos que el jugador puede sembrar. */
-export type CropKind = 'trigo';
-
-export interface Crop {
-  label: string;
-  /** Mes de siembra (1 a 12). */
-  sow: number;
-  /** Mes de cosecha (1 a 12). Es el mes en que entra todo el stock del año. */
-  harvest: number;
-  /** Toneladas que entrega un lote de 2×2 en su cosecha. */
-  tons: number;
-}
-
-/**
- * La tabla de cultivos.
- *
- * El trigo es el del corte 1: siembra en mayo, cosecha en diciembre. Las toneladas son el punto de partida y
- * se calibran en T5 contra `npm run probe`: un lote de 2×2 rinde hoy $3.600 al año contra los $2.952 de una
- * manzana de torres — parecido, y el campo no paga luz ni agua, así que si el probe muestra que conviene
- * llenar el mapa de trigo, baja acá y no en el precio.
- */
-export const CROPS: Record<CropKind, Crop> = {
-  trigo: { label: 'Trigo', sow: 5, harvest: 12, tons: 30 },
-};
 
 /**
  * El precio de la tonelada, en pesos, entre la cosecha y el invierno.

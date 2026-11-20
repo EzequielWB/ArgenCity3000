@@ -10,11 +10,17 @@ import {
   MAX_LEVEL,
   MAX_LINE_TIER,
   MAX_ROAD_TIER,
+  CROPS,
+  FARM_SIZE,
+  MARKET_SIZE,
   MAX_TAX,
   MIN_TAX,
   PLANT_KINDS,
   PLANT_SIZE,
+  SILO_CAPACITY,
+  SILO_SIZE,
   SERVICE_KINDS,
+  type CropKind,
   type GovernmentKind,
   type HubKind,
   type PlantKind,
@@ -115,6 +121,10 @@ export function serialize(d: SaveData): string {
     plants: w.plants,
     hubs: w.hubs,
     uniques: w.uniques,
+    farms: w.farms,
+    silos: w.silos,
+    markets: w.markets,
+    farmPressure: w.farmPressure,
     sim: d.sim,
   });
 }
@@ -306,6 +316,50 @@ export function deserialize(text: string): SaveData {
   let tileUniques = 0;
   for (let i = 0; i < size; i++) if (tiles[i] === TILE.UNIQUE) tileUniques++;
   need(tileUniques === uniqueCells, 'Los edificios únicos no coinciden con el plano');
+
+  // El campo es nuevo: una ciudad guardada antes no tiene lotes, silos ni ferias, y se lee
+  // con las tres listas vacías: el archivo crece, no se rompe.
+  const anchorsOf = (key: string, size: number, tile: number, what: string): { x: number; y: number }[] => {
+    const raw = data[key];
+    if (raw === undefined) return [];
+    need(Array.isArray(raw), `Faltan los ${what}`);
+    const out: { x: number; y: number }[] = [];
+    for (const item of raw as unknown[]) {
+      const { x, y } = (item ?? {}) as { x?: unknown; y?: unknown };
+      need(isInt(x) && isInt(y) && x >= 0 && y >= 0 && x <= (n as number) - size && y <= (n as number) - size, `Hay un lote de ${what} fuera del mapa`);
+      for (let dy = 0; dy < size; dy++) {
+        for (let dx = 0; dx < size; dx++) need(world.tileAt((x as number) + dx, (y as number) + dy) === tile, `Hay un lote de ${what} sin terreno`);
+      }
+      out.push({ x: x as number, y: y as number });
+    }
+    let inPlan = 0;
+    for (let i = 0; i < tiles.length; i++) if (tiles[i] === tile) inPlan++;
+    need(inPlan === out.length * size * size, `Los lotes de ${what} no coinciden con el plano`);
+    return out;
+  };
+
+  const rawFarms = (data.farms as { crop?: unknown }[] | undefined) ?? [];
+  const farmAnchors = anchorsOf('farms', FARM_SIZE, TILE.FARM, 'cultivo');
+  for (let k = 0; k < farmAnchors.length; k++) {
+    const crop = rawFarms[k]?.crop;
+    need(typeof crop === 'string' && crop in CROPS, 'Hay un lote de cultivo de un tipo desconocido');
+    world.farms.push({ ...farmAnchors[k], crop: crop as CropKind });
+  }
+
+  const rawSilos = (data.silos as { tons?: unknown }[] | undefined) ?? [];
+  const siloAnchors = anchorsOf('silos', SILO_SIZE, TILE.SILO, 'silo');
+  for (let k = 0; k < siloAnchors.length; k++) {
+    const tons = rawSilos[k]?.tons;
+    need(tons === undefined || (typeof tons === 'number' && Number.isFinite(tons) && tons >= 0 && tons <= SILO_CAPACITY), 'Hay un silo con una carga imposible');
+    world.silos.push({ ...siloAnchors[k], tons: (tons as number | undefined) ?? 0 });
+  }
+
+  for (const anchor of anchorsOf('markets', MARKET_SIZE, TILE.MARKET, 'feria')) world.markets.push(anchor);
+
+  // La presión de oferta: sin ella, el precio de una ciudad guardada volvería al de un mercado vacío.
+  const rawPressure = data.farmPressure;
+  need(rawPressure === undefined || (typeof rawPressure === 'number' && Number.isFinite(rawPressure) && rawPressure >= 0), 'La presión de oferta del campo es inválida');
+  world.farmPressure = (rawPressure as number | undefined) ?? 0;
 
   return {
     name: typeof data.name === 'string' ? data.name.slice(0, 40) : 'Ciudad sin nombre',

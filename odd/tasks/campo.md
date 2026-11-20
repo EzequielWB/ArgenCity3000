@@ -124,6 +124,16 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   eligió la segunda, con una duda: *"Prefiero la (b), siento que va con la idea de estos juegos? o no?"*. La
   respuesta fue que sí, porque en estos juegos el jugador **regula y no opera**, y porque el juego ya está
   hecho de umbrales que el jugador fija y el sistema ejecuta. De ahí sale S5.
+- **L10** — **T2 hecho**: el campo existe en el mundo y en el archivo. Tiles nuevos `TILE.FARM`,
+  `TILE.SILO` y `TILE.MARKET` (23, 24 y 25); listas `World.farms`, `World.silos`, `World.markets` y
+  `World.farmPressure`; helpers en `world/farms.ts` (`storeTons` devuelve lo que no entró, en vez de
+  perderlo en silencio). Tamaños y capacidades en `config.ts` (`FARM_SIZE`, `SILO_SIZE`, `MARKET_SIZE`,
+  `SILO_CAPACITY`, `MARKET_THROUGHPUT`). `CROPS` se mudó de `sim/campo.ts` a `config.ts` — es un catálogo,
+  como `PLANTS` y `HUBS`, y `world.ts` no debe importar de `sim/` — y `campo.ts` lo reexporta.
+  `SAVE_VERSION` no se movió: un archivo viejo carga con las tres listas vacías y la presión en cero.
+- **L11** — El test de la costa tenía clavado `MAX_TILE === TILE.UNIQUE`. Con el campo el último id pasó a
+  ser el de la feria: el test cambió para decir lo que sigue siendo cierto —el plano se valida contra el
+  último tile— y no lo que era cierto cuando se escribió.
 - **L9** — **La oferta implementada** (T1 reabierta y vuelta a cerrar): `PRICE_OFFER = { saturate: 2000,
   drop: 0.45, keep: 0.5 }` y `nextPressure(prev, sold)`. La presión se cuenta por tonelada **con la venta
   incluida**: el que vuelca cobra el mercado que él mismo ablandó. Con la presión del mes anterior, volcar
