@@ -15,6 +15,7 @@ import { moodOf } from './sim/favor';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
 import { dateLabel, dateOf, weekLabel } from './sim/calendar';
 import { coastRefusal } from './sim/coast';
+import { grantLine } from './sim/mayor';
 import { isUnlocked, nextMilestone, unlockNames } from './sim/milestones';
 import { describeOutlook, placementNote, placementUpkeep } from './sim/outlook';
 import { windOutput } from './sim/plants';
@@ -799,7 +800,7 @@ ${stalled}` : ''}`;
     }
     if (next) {
       const opens = unlockNames(next, label);
-      goal.title = `Próximo hito: ${next.name}, con ${formatNumber(next.pop)} habitantes. La Provincia gira ${formatMoney(next.grant)}${opens ? ` y se habilita ${opens}` : ''}.`;
+      goal.title = `Próximo hito: ${next.name}, con ${formatNumber(next.pop)} habitantes. ${grantLine(this.sim.state.government, next.grant)}${opens ? ` y se habilita ${opens}` : ''}.`;
     }
     this.view.bubbleKinds = { health: isUnlocked('clinic', reached), crime: isUnlocked('police', reached), school: isUnlocked('school', reached) };
     this.toolbar.showLocks(reached);

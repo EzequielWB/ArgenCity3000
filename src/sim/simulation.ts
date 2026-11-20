@@ -39,7 +39,7 @@ import { SMOKE_BUBBLE } from './warnings';
 import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDemand, educatedShare, isHoldout, levelCap, spawnLevel, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
-import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, intendente, misaHeadline, pollHeadline } from './mayor';
+import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, intendente, milestoneHeadline, misaHeadline, pollHeadline } from './mayor';
 import { FAVOR, computeFavor, judgementChance, moodOf, stepFavor, wrathApproval, wrathFires, wrathSick, type FavorReport } from './favor';
 import { PLAN, newPlan, planPremium, type FivePlan } from './plan';
 import { advanceMilestones, nextMilestone, unlockNames } from './milestones';
@@ -1183,7 +1183,7 @@ export class Simulation {
     for (const m of advanceMilestones(s, this.totals.pop, GOVERNMENTS[s.government].grants)) {
       if (!this.paperOpen()) continue;
       const opens = unlockNames(m, (t) => toolInfo(t).label.toLowerCase());
-      this.publish(`${this.cityName} ya es ${m.name}: la Provincia gira ${formatMoney(m.grant)}${opens ? ` y habilita ${opens}` : ''}`, true);
+      this.publish(milestoneHeadline(this.cityName, m.name, opens, s.government, m.grant), true);
     }
   }
 

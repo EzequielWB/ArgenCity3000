@@ -5,6 +5,7 @@
  */
 
 import { GOVERNMENTS, type GovernmentKind } from '../config';
+import { formatMoney } from '../core/format';
 
 /** Names the start screen draws from; short enough for the name field (32 characters). */
 export const MAYOR_NAMES: readonly string[] = [
@@ -64,6 +65,27 @@ export function electionHeadline(year: number, approval: number, won: boolean, m
 export function dictatorHeadline(year: number, party: string, mayor: string): string {
   const winner = party ? `El partido ${party}` : `El ${intendente(mayor)}`;
   return `Acto eleccionario ${year}: ${winner} gana por amplia mayoría, después de que sus contrincantes desaparecieran`;
+}
+
+/**
+ * Quién pone la plata de un hito, con el monto que **este** gobierno cobra de verdad.
+ *
+ * La dictadura y el comunismo no reciben un peso de la Provincia: decir que "la Provincia gira" un subsidio
+ * que no llega es mentirle al jugador en el titular del diario y en el globo del próximo hito. Y el monto
+ * tampoco es el nominal: la teocracia cobra la mitad, así que el número que se anuncia es la mitad del que
+ * figura en la tabla de hitos.
+ */
+export function grantLine(government: GovernmentKind, grant: number): string {
+  const paid = Math.round(grant * GOVERNMENTS[government].grants);
+  if (paid <= 0) return government === 'dictadura' ? 'la Provincia no gira nada: lo paga el pueblo' : 'la Provincia no gira nada';
+  const from = government === 'teocracia' ? 'la Iglesia' : 'la Provincia';
+  return `${from} gira ${formatMoney(paid)}`;
+}
+
+/** El titular de un hito alcanzado: lo que se abrió y quién puso la plata (o quién no puso nada). */
+export function milestoneHeadline(city: string, name: string, opens: string, government: GovernmentKind, grant: number): string {
+  const line = grantLine(government, grant);
+  return `${city} ya es ${name}: ${opens ? `se habilita ${opens} y ` : ''}${line}`;
 }
 
 /** October under a theocracy: nobody votes, the city goes to Mass. */

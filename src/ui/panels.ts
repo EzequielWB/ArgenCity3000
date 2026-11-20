@@ -4,6 +4,7 @@ import type { Simulation } from '../sim/simulation';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
 import { formatMoney, formatNumber } from '../core/format';
+import { grantLine } from '../sim/mayor';
 import type { Game } from '../game';
 import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
@@ -563,7 +564,7 @@ export function openMilestone(game: Game, reached: number): void {
       <p>${escapeHtml(game.name)} alcanzó la categoría de</p>
       <h2>${escapeHtml(m.name)}</h2>
       <p>con ${formatNumber(m.pop)} habitantes · ${MONTH_NAMES[month - 1]} de ${year}</p>
-      <p>La Provincia gira ${formatMoney(m.grant)}</p>
+      <p>${grantLine(game.sim.state.government, m.grant)}</p>
       ${opens ? `<p>Se habilita: ${escapeHtml(opens)}</p>` : ''}
       <div class="row"><button id="plaqueOk" class="primary" type="button">Seguir construyendo</button></div>
     </div>`,
