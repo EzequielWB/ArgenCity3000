@@ -29,6 +29,12 @@ export function toolPrice(tool: ToolId): number | null {
       return HUBS[tool].cost;
     case 'park':
       return COSTS.park;
+    case 'farm':
+      return COSTS.farm;
+    case 'silo':
+      return COSTS.silo;
+    case 'market':
+      return COSTS.market;
     case 'bulldoze':
       return COSTS.bulldoze;
     case 'zoneR':
