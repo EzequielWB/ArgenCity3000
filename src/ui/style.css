@@ -2547,7 +2547,12 @@ table.precios td.tags {
   white-space: nowrap;
 }
 
-.tag {
+/*
+ * Los sellos del panel del campo. La clase se llama `campo-tag` y no `tag` porque la barra de arriba ya
+ * tiene su propio `.tag` (las etiquetas de las chapas): con el mismo nombre, este borde negro de 2 px se
+ * colaba en «Caja», «Población» y «Aprobación» y les dibujaba un recuadro que nadie pidió.
+ */
+.campo-tag {
   display: inline-block;
   margin-left: 6px;
   padding: 1px 6px;
@@ -2558,12 +2563,12 @@ table.precios td.tags {
   letter-spacing: 0.04em;
 }
 
-.tag.cosecha {
+.campo-tag.cosecha {
   background: #f2c14e;
   color: #1b2a4a;
 }
 
-.tag.ahora {
+.campo-tag.ahora {
   background: #7f9cba;
   color: #0b1524;
 }

@@ -159,3 +159,16 @@ describe('qué le falta a la cadena', () => {
     expect(campoBroken(campo(0, 1, 0))).toBeNull();
   });
 });
+
+describe('las clases del panel no pisan la barra de arriba', () => {
+  /**
+   * La chapa de la top bar usa `.tag` para sus etiquetas («Caja», «Población», «Aprobación»). Los sellos
+   * del campo nacieron con la misma clase y su `border: 2px solid #000` se aplicó a las tres chapas, que
+   * quedaron con un recuadro negro que nadie pidió. La clase es `campo-tag` y no puede volver a `tag`.
+   */
+  it('los sellos de la tabla de precios usan su propia clase', () => {
+    const html = priceTableHtml(12, 7);
+    expect(html).toContain('campo-tag');
+    expect(html).not.toMatch(/class="tag[ "]/);
+  });
+});

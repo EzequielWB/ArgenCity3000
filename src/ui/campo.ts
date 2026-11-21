@@ -80,7 +80,7 @@ export function priceTableHtml(month: number, pressure: number): string {
   const filas = precios
     .map((precio, i) => {
       const mes = i + 1;
-      const marcas = [mes === cosecha ? '<span class="tag cosecha">cosecha</span>' : '', mes === month ? '<span class="tag ahora">ahora</span>' : ''].join('');
+      const marcas = [mes === cosecha ? '<span class="campo-tag cosecha">cosecha</span>' : '', mes === month ? '<span class="campo-tag ahora">ahora</span>' : ''].join('');
       return `<tr class="${mes === month ? 'now' : ''}"><td>${MESES[i]}</td><td>${formatMoney(precio)}</td><td class="tags">${marcas}</td></tr>`;
     })
     .join('');
