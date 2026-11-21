@@ -45,10 +45,10 @@ Conclusiones:
 
 ## Tasks
 
-- T1 · `EVENT.minPop` y el gate en `eventOfMonth` — `src/config.ts`, `src/sim/events.ts` — commit `PEND`
-- T2 · `World.powerNet` / `World.powerShort`, marcados en `computePower` — `src/world/world.ts`, `src/sim/power.ts` — commit `PEND`
-- T3 · `noLightHint` por celda, con las tres causas y los números — `src/sim/report.ts` — commit `PEND`
-- T4 · Tests de las dos cosas — `tests/eventos-vacio.test.ts`, `tests/luz-causas.test.ts` — commit `PEND`
+- T1 · `EVENT.minPop` y el gate en `eventOfMonth` — `src/config.ts`, `src/sim/events.ts` — commit `e567688`
+- T2 · `World.powerNet` / `World.powerShort`, marcados en `computePower` — `src/world/world.ts`, `src/sim/power.ts` — commit `e567688`
+- T3 · `noLightHint` por celda, con las tres causas y los números — `src/sim/report.ts` — commit `e567688`
+- T4 · Tests de las dos cosas — `tests/eventos-vacio.test.ts`, `tests/luz-causas.test.ts` — commit `e567688`
 
 ## Log
 
