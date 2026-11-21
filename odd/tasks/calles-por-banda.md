@@ -40,10 +40,10 @@ entrecortado. No es un problema de dibujo: es que el dato admite un estado que n
 
 ## Tasks
 
-- T1 · `crossSection`: la sección transversal de una calle, acotada por `MAX_BAND` — `src/world/roads.ts` — commit `PEND`
-- T2 · `planTool`: el upgrade recorre la sección y cobra cada calzada — `src/world/tools.ts` — commit `PEND`
-- T3 · El consultar de una calle lee el tier efectivo de la banda — `src/sim/report.ts` — commit `PEND`
-- T4 · Tests — `tests/calles-banda.test.ts` — commit `PEND`
+- T1 · `crossSection`: la sección transversal de una calle, acotada por `MAX_BAND` — `src/world/roads.ts` — commit `00e483b`
+- T2 · `planTool`: el upgrade recorre la sección y cobra cada calzada — `src/world/tools.ts` — commit `00e483b`
+- T3 · El consultar de una calle lee el tier efectivo de la banda — `src/sim/report.ts` — commit `00e483b`
+- T4 · Tests — `tests/calles-banda.test.ts` — commit `00e483b`
 
 ## Log
 
