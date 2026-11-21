@@ -107,9 +107,9 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
 - **T7** — ~~Arte pixel: lote de trigo (2×2, con el rastrojo del mes), silo y feria, con su fila en el board y
   su test de estructura.~~ **Hecho**, ver L23–L25 (el test de estructura del techo no existe, y por qué). `S2`
 - **T8** — ~~Nerfeo medido: `tons` 6, silo y feria en proporción, y el tope de la feria a 240 t/mes para que la
-  orden de S5 decida de verdad.~~ **Hecho**, ver L26. `S4 S5 S6` `5bc872c`… `1d`-pendiente
+  orden de S5 decida de verdad.~~ **Hecho**, ver L26. `S4 S5 S6` `12095c9`
 - **T9** — ~~Las tres piezas tienen ficha: rinde, stock, precio del mes y el aviso de cadena cortada.~~
-  **Hecho**, ver L27. `S3 S4`
+  **Hecho**, ver L27. `S3 S4` `e91334b`
 
 ## Log
 
