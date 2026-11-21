@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CROPS, MARKET_THROUGHPUT, SILO_CAPACITY, TICKS_PER_MONTH, UPKEEP } from '../src/config';
 import { campoStatusHtml, campoAdviceHtml, priceTableHtml } from '../src/ui/campo';
+import { campoBroken } from '../src/world/farms';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { SEA_LEVEL } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
@@ -128,5 +129,33 @@ describe('la orden decide la venta y se puede cambiar', () => {
     const w = campo(4, 1, 1);
     const html = campoStatusHtml(w);
     expect(html).toContain(`$${UPKEEP.silo + UPKEEP.market}`);
+  });
+});
+
+describe('qué le falta a la cadena', () => {
+  it('sin campo no falta nada', () => {
+    expect(campoBroken(campo(0, 0, 0))).toBeNull();
+  });
+
+  it('con lotes y sin silo, falta el silo', () => {
+    expect(campoBroken(campo(4, 0, 1))).toBe('silo');
+  });
+
+  it('con lotes y sin feria, falta la feria', () => {
+    expect(campoBroken(campo(4, 1, 0))).toBe('feria');
+  });
+
+  it('con trigo guardado y sin feria, también falta la feria', () => {
+    const w = campo(0, 1, 0);
+    w.silos[0]!.tons = 50;
+    expect(campoBroken(w)).toBe('feria');
+  });
+
+  it('la cadena completa no debe nada', () => {
+    expect(campoBroken(campo(4, 1, 1))).toBeNull();
+  });
+
+  it('el silo sin feria y sin lotes ni trigo no es un problema todavía', () => {
+    expect(campoBroken(campo(0, 1, 0))).toBeNull();
   });
 });

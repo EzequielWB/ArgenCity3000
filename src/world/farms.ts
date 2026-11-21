@@ -26,6 +26,26 @@ export interface Markets {
   markets: Market[];
 }
 
+/** Lo mínimo para saber si la cadena está cortada: los lotes, los silos y las ferias. */
+export interface Campo {
+  farms: Farm[];
+  silos: Silo[];
+  markets: Market[];
+}
+
+/**
+ * Qué le falta a la cadena para que el campo sirva: `'silo'`, `'feria'` o nada.
+ *
+ * Es una sola pregunta y no dos porque el aviso del mapa es uno solo: la estaca dice "acá hay un problema" y
+ * el panel del campo dice cuál. Devuelve `null` en una ciudad sin campo, donde no hay cadena que cortar.
+ */
+export function campoBroken(w: Campo): 'silo' | 'feria' | null {
+  if (w.farms.length === 0 && w.silos.length === 0 && w.markets.length === 0) return null;
+  if (w.farms.length > 0 && w.silos.length === 0) return 'silo';
+  if (w.markets.length === 0 && (w.farms.length > 0 || storedTons(w) > 0)) return 'feria';
+  return null;
+}
+
 /**
  * Las celdas que ocupa una pieza anclada en (x, y): siempre `size * size`, y el ancla **se corre hacia
  * adentro** si la pieza no entra, como la de una usina, un depósito o un servicio.

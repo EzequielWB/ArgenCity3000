@@ -646,6 +646,9 @@ export class Game implements PointerTarget {
 
   updateHud(force: boolean): void {
     const s = this.sim.state;
+    // El mapa se entera del mes: el lote se dibuja arado, crecido o con rastrojo. `setMonth` no hace nada si
+    // el mes es el mismo que ya está pintado, así que llamarlo por cuadro sale gratis.
+    this.map.setMonth(dateOf(s.tick).month);
     $('#date').textContent = weekLabel(s.tick);
     const cash = $('#cash');
     // On a phone the box is narrow: from a million up the amount is shown in millions, the whole figure stays in the tooltip.

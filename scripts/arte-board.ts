@@ -15,7 +15,7 @@ declare const process: { cwd(): string };
 
 const entry = `
 import './scripts/board-city';
-import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, coastPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite, farmPixelSprite, siloPixelSprite, marketPixelSprite } from './src/render/pixelArt';
+import { residentialPixelSprite, commercialPixelSprite, industrialPixelSprite, lotPixelSprite, lotSize, paintPlaza, coastPixelSprite, busDepotPixelSprite, plantPixelSprite, paintHub, polePixelSprite, servicePixelSprite, treePixelSprite, farmPixelSprite, siloPixelSprite, marketPixelSprite, type FarmState } from './src/render/pixelArt';
 import { boatPixelSprite, carPixelSprite, planePixelSprite } from './src/render/vehicleArt';
 import type { CoastKind, HubKind, ServiceKind } from './src/config';
 
@@ -130,7 +130,9 @@ for (const el of Array.from(document.querySelectorAll('canvas[data-campo]'))) {
   const kind = String(el.dataset.campo);
   const n = Number(el.dataset.n || 2);
   const k = Number(el.dataset.k || 3);
-  const sprite = kind === 'farm' ? farmPixelSprite() : kind === 'silo' ? siloPixelSprite() : marketPixelSprite();
+  const estado = (el.dataset.state || 'crecido') as FarmState;
+  const alerta = el.dataset.alerta === '1';
+  const sprite = kind === 'farm' ? farmPixelSprite(estado, alerta) : kind === 'silo' ? siloPixelSprite() : marketPixelSprite();
   el.width = (16 * n + 40) * k;
   el.height = (16 * n + 62) * k;
   const g = el.getContext('2d');
@@ -477,8 +479,20 @@ const page = `<!doctype html>
       </p>
       <div class="row">
         <figure>
-          <canvas data-campo="farm" data-n="2" data-k="3"></canvas>
-          <figcaption>lote de trigo 2×2</figcaption>
+          <canvas data-campo="farm" data-n="2" data-k="3" data-state="crecido"></canvas>
+          <figcaption>lote en pie (jun–nov)</figcaption>
+        </figure>
+        <figure>
+          <canvas data-campo="farm" data-n="2" data-k="3" data-state="arado"></canvas>
+          <figcaption>arado (mayo)</figcaption>
+        </figure>
+        <figure>
+          <canvas data-campo="farm" data-n="2" data-k="3" data-state="rastrojo"></canvas>
+          <figcaption>rastrojo (dic–abr)</figcaption>
+        </figure>
+        <figure>
+          <canvas data-campo="farm" data-n="2" data-k="3" data-state="crecido" data-alerta="1"></canvas>
+          <figcaption>con la estaca, cadena cortada</figcaption>
         </figure>
         <figure>
           <canvas data-campo="silo" data-n="2" data-k="3"></canvas>

@@ -5,7 +5,7 @@ import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
 import { serviceAt, serviceFootprint } from '../world/services';
 import { busColorOf, depotAt } from '../world/transport';
 import { busFootprint } from '../world/tools';
-import { farmFootprint, marketFootprint, siloFootprint } from '../world/farms';
+import { campoBroken, farmFootprint, marketFootprint, siloFootprint } from '../world/farms';
 import { HUBS, type HubKind } from '../config';
 import { facilityAt, hubFootprint } from '../world/hubs';
 import { uniqueFootprint } from '../world/uniques';
@@ -36,7 +36,7 @@ import { PAL, mix, rgb, toRgb } from './color';
 import { hubHeight, isPlatform, surfaceHeights, uniqueHeight, viewCornerHeights, plantHeight, type Pt } from './geometry';
 import { abandonedBuildingSprite, buildingSprite, burningBuildingSprite, routeSignSpriteFor, uniqueSprite, type Sprite } from './sprites';
 import { parkTreeHere } from './park';
-import { busDepotPixelSprite, coastPixelSprite, farmPixelSprite, marketPixelSprite, poleAttach, polePixelSprite, siloPixelSprite, treePixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, servicePixelSprite, type HubView } from './pixelArt';
+import { busDepotPixelSprite, coastPixelSprite, farmPixelSprite, farmStateOf, marketPixelSprite, poleAttach, polePixelSprite, siloPixelSprite, treePixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, servicePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */
@@ -119,6 +119,13 @@ export class MapRenderer {
   /** Whether each chunk can hold any drawing at all (the corners of the cache space cannot). */
   private readonly hasContent: Uint8Array;
   private tick = 0;
+  /**
+   * El mes del calendario, para el campo: el lote se dibuja arado, crecido o con rastrojo según la estación.
+   *
+   * Se guarda acá y no se lee del mundo porque el mapa no conoce la simulación, y se invalida sólo cuando
+   * cambia: doce redibujos por año de juego, no uno por cuadro.
+   */
+  private month = 1;
   /** The next frame may spend a long time drawing the view (after a full invalidation). */
   private urgent = true;
   /** Chunks in or near the view at the last `ensure`. */
@@ -155,6 +162,13 @@ export class MapRenderer {
     };
     this.hasContent = new Uint8Array(this.grid.cols * this.grid.rows);
     for (let id = 0; id < this.hasContent.length; id++) this.hasContent[id] = chunkMayHaveContent(this.shape, chunkRect(this.grid, id)) ? 1 : 0;
+  }
+
+  /** Puts the map in a month; redraws everything only when the month is not the one on screen. */
+  setMonth(month: number): void {
+    if (month === this.month) return;
+    this.month = month;
+    this.redrawAll();
   }
 
   /** Visible chunks that are still being drawn: 0 when the last frame showed the whole view. */
@@ -583,7 +597,15 @@ export class MapRenderer {
       const [maxVx, maxVy] = [Math.max(...foot.map((c) => c[0])), Math.max(...foot.map((c) => c[1]))];
       if (vx !== maxVx || vy !== maxVy) return null;
       const [ax2, ay2] = this.toCache(minVx, minVy, hubHeight(w, pieza.x, pieza.y, size, size));
-      return { sprite: tile === TILE.FARM ? farmPixelSprite() : tile === TILE.SILO ? siloPixelSprite() : marketPixelSprite(), ax: ax2, ay: ay2 };
+      // Cada lote del mapa lleva el mes del calendario y la estaca del aviso: si la cadena está cortada, el
+      // dibujo lo dice sin que haya que abrir el panel.
+      const sprite =
+        tile === TILE.FARM
+          ? farmPixelSprite(farmStateOf(this.month), campoBroken(w) !== null)
+          : tile === TILE.SILO
+            ? siloPixelSprite()
+            : marketPixelSprite();
+      return { sprite, ax: ax2, ay: ay2 };
     }
     if (tile === TILE.UNIQUE) {
       // A monument is drawn once, at the cell in front of its footprint, like a piece of an airport.

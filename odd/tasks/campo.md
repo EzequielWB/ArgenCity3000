@@ -104,8 +104,8 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
 - **T5** — ~~`monthlyBudget`: `farmIncome` y `farmUpkeep` en `BudgetReport`, con su línea en el panel de
   presupuesto. `S7`
 - **T6** — ~~Panel del campo: precio del mes, stock por silo, y los dos campos de la orden.~~ **Hecho**, ver L22. `S4 S5`
-- **T7** — Arte pixel: lote de trigo (2×2, con el rastrojo del mes), silo y feria, con su fila en el board y
-  su test de estructura. `S2`
+- **T7** — ~~Arte pixel: lote de trigo (2×2, con el rastrojo del mes), silo y feria, con su fila en el board y
+  su test de estructura.~~ **Hecho**, ver L23–L25 (el test de estructura del techo no existe, y por qué). `S2`
 
 ## Log
 
@@ -200,6 +200,34 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   dos sliders existen y mueven su output, el consejo se vacía sin campo, el botón está oculto sin campo, y la
   consola no tira un solo error. El atajo respeta el modal abierto y el foco en un input (`handleKey` sale antes),
   así que escribir "b" en el nombre del partido no abre nada.
+- **L23** — **T7 hecho: el lote cambia con el año.** `farmStateOf(month)` decide tres estados —**arado** en mayo,
+  **crecido** de junio a noviembre, **rastrojo** de diciembre a abril— y `paintFarm(state, alerta)` los dibuja.
+  El renderer lo sabe por `setMonth`, que se llama desde `updateHud` y **sólo redibuja cuando el mes cambia**:
+  doce redibujos por año de juego, no uno por cuadro. Un lote que se ve igual todo el año hace que la
+  cosecha —el momento que el jugador espera— no se note en el mapa.
+  El **aviso** es una estaca en el lote: chapa amarilla con la barra y el punto. Se dibuja cuando `campoBroken(w)`
+  devuelve algo —lotes sin silo, o trigo sin feria—, y es un cartel en el mundo y no un ícono de pantalla porque
+  el resto del juego avisa en el mundo; los rayos de la falta de luz son la excepción. El cartel costó tres
+  intentos: a 1×, uno de 6×6 con la raya adentro se lee como un **agujero negro**, y el que funciona tiene 7 de
+  ancho, borde claro arriba, sombra abajo, y el punto del signo en su propia fila.
+- **L24** — **El techo de la feria, y un test que no se pudo escribir.** `sheet` pintaba un rombo cada cuatro
+  píxeles y a 1× eso es cerámica. La primera corrección fue sacarlo, y el techo quedó liso como un toldo de
+  lona; la segunda fue agregar las ondas de la chapa encima, y con las horizontales del `gable` abajo el techo
+  se volvió una **red de gallinero**. Lo que funciona es **una sola dirección**: repintar la cara de adelante
+  lisa y encima las ondas del valle y de la cresta, que es como se ve una chapa acanalada.
+  Y acá va lo incómodo: **no hay test de eso**. Probé tres métricas —el tono dominante, las transiciones por
+  columna y la "linealidad" de las franjas— y **las tres pasaban igual con el bug puesto**. Un test que no
+  distingue el dibujo bueno del malo es peor que ninguno, porque da permiso. Se verificó con los ojos: captura
+  del harness y captura del juego. La decisión queda escrita acá para que el próximo no invente el test de
+  cartón que yo no escribí.
+- **L25** — **La verificación en el juego, y cómo se hizo.** El lote se desbloquea en Caserío (100 habitantes),
+  así que una ciudad recién fundada no sirve para verlo. Se generó una partida con `serialize` —calle, luz,
+  usina pegada al tendido, zona residencial y dos lotes **sin silo** para que la estaca esté puesta—, se
+  guardaron tres copias con el `tick` movido a marzo, mayo y julio, se inyectaron en `localStorage` y se
+  cargaron con puppeteer sobre el dev server. Los tres lotes se ven distintos y los tres llevan la estaca.
+  Dos trampas del camino: la usina tiene que **tocar** el tendido (una separada por dos celdas deja la zona sin
+  luz y la ciudad no crece ni un lote), y el `tick` de un mes es `(m - 1) * TICKS_PER_MONTH`, no
+  `(m - 1) * 4 * TICKS_PER_MONTH`.
 - **L15** — **Verificación antes de probar local**, y trajo un bug: el `footprint` de las tres piezas **recortaba**
   contra el borde del mapa en vez de correr el ancla para adentro como la usina, el depósito y los servicios.
   Una feria puesta en la esquina pisaba **una** celda y se cobraban los $600 enteros, con el dibujo de 3×3

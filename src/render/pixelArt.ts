@@ -13,7 +13,7 @@
  */
 import { Pixels, bayer, hex, noise, shade, type Paint, type Pt, type RGB, type WallPaint } from './pixel';
 import type { Sprite } from './sprites';
-import { BUS_COLORS, SERVICE_SIZE, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
+import { BUS_COLORS, CROPS, SERVICE_SIZE, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
 
 /** Face tones measured on the reference. */
 const LEFT = 0.69;
@@ -6115,30 +6115,82 @@ const CHAPA_SILO = ramp('#c8d0d8');
 const CHAPA_VIEJA = ramp('#9aa4ae');
 const TINGLADO = ramp('#7f9cba');
 
+/** En qué anda el lote: la tierra pelada, el trigo en pie o el rastrojo que queda después de la cosecha. */
+export type FarmState = 'arado' | 'crecido' | 'rastrojo';
+
 /**
- * El lote de cultivo: tierra arada en franjas y el trigo encima.
+ * El estado del lote en un mes del año.
+ *
+ * Sale del calendario del cultivo y no de un contador propio: la siembra es en mayo y la cosecha en diciembre,
+ * así que en mayo el lote está recién arado, de junio a noviembre el trigo está en pie, y de diciembre a abril
+ * queda el rastrojo. Un lote que se ve igual todo el año hace que la cosecha —que es el momento que el jugador
+ * espera— no se note en el mapa.
+ */
+export function farmStateOf(month: number): FarmState {
+  const crop = CROPS.trigo;
+  const m = ((Math.floor(month) - 1) % 12 + 12) % 12 + 1;
+  if (m === crop.sow) return 'arado';
+  if (m > crop.sow && m < crop.harvest) return 'crecido';
+  return 'rastrojo';
+}
+
+/** La paja del rastrojo: el trigo cortado, más pálido y más seco que la espiga. */
+const PAJA = ['#b79a5a', '#cdb072', '#ddc48c'].map(hex);
+
+/**
+ * El lote de cultivo: tierra arada en franjas, y encima lo que diga el mes.
  *
  * Las franjas van en la dirección de la `u` porque el arado sigue la pendiente del lote en isométrico: al
- * revés, el dibujo se lee como una reja y no como un sembrado.
+ * revés, el dibujo se lee como una reja y no como un sembrado. Arado no tiene ninguna franja de color: es
+ * tierra y surcos, y esa ausencia es la que hace que el trigo en pie se note.
+ *
+ * `alerta` clava la estaca del aviso: pasa cuando la cadena está cortada y el jugador no se enteraría hasta
+ * abrir el panel. Es un cartel en el lote y no un ícono de pantalla porque el resto del juego avisa en el
+ * mundo —los rayos de la falta de luz son la excepción, no la regla—.
  */
-function paintFarmLot(): { px: Pixels; ax: number; ay: number } {
+export function paintFarm(state: FarmState = 'crecido', alerta = false): { px: Pixels; ax: number; ay: number } {
   const p = penLot(2, 16);
   // El suelo del lote: tierra arada, con el borde en sombra para que se apoye y no flote.
   p.poly([p.P(0.04, 0.04), p.P(1.96, 0.04), p.P(1.96, 1.96), p.P(0.04, 1.96)], (x, y) => (bayer(x, y) < 0.5 ? TIERRA[1] : TIERRA[0]));
   p.px.line(p.P(0.04, 1.96), p.P(1.96, 1.96), TIERRA[0]);
-  // El trigo en franjas anchas, no en puntos: a 1× lo que se lee es la banda dorada, no la espiga.
-  for (let s = 0; s < 5; s++) {
-    const v0 = 0.1 + s * 0.38;
-    const v1 = v0 + 0.24;
-    // La franja: el surco de tierra a los dos lados y el trigo en el medio.
-    p.px.line(p.P(0.1, v0), p.P(1.9, v0), TIERRA_SECA);
-    p.poly([p.P(0.1, v0 + 0.03), p.P(1.9, v0 + 0.03), p.P(1.9, v1 - 0.03), p.P(0.1, v1 - 0.03)], (x, y) => {
-      // Rayas de espiga a lo largo: tres tonos que se alternan, así la franja tiene textura sin ser ruido.
-      return TRIGO[[0, 1, 1, 2, 1, 0][(x + 2 * y) % 6]];
-    });
-    // El borde de la franja que da al sur queda en sombra, y el de arriba se ilumina.
-    p.px.line(p.P(0.1, v1 - 0.03), p.P(1.9, v1 - 0.03), TRIGO_SOMBRA);
-    p.px.line(p.P(0.1, v0 + 0.03), p.P(1.9, v0 + 0.03), TRIGO[2]);
+  if (state === 'arado') {
+    // La tierra recién dada vuelta: los surcos del arado, sin un solo tallo. El surco se marca con la tierra
+    // seca y la cresta con la húmeda, que es como se ve un lote pasado el disco.
+    for (let v = 0.24; v < 1.9; v += 0.34) {
+      p.px.line(p.P(0.1, v), p.P(1.9, v), TIERRA_SECA);
+      p.px.line(p.P(0.1, v + 0.1), p.P(1.9, v + 0.1), shade(TIERRA[1], 1.16));
+    }
+  } else {
+    const alto = state === 'crecido';
+    // El trigo en pie ocupa la franja entera; el rastrojo es bajo y ralo, y deja ver la tierra entre las cañas.
+    for (let s = 0; s < 5; s++) {
+      const v0 = 0.1 + s * 0.38;
+      const v1 = v0 + (alto ? 0.24 : 0.16);
+      p.px.line(p.P(0.1, v0), p.P(1.9, v0), TIERRA_SECA);
+      p.poly([p.P(0.1, v0 + 0.03), p.P(1.9, v0 + 0.03), p.P(1.9, v1 - 0.03), p.P(0.1, v1 - 0.03)], (x, y) => {
+        if (alto) return TRIGO[[0, 1, 1, 2, 1, 0][(x + 2 * y) % 6]];
+        // El rastrojo se lee por el raleo: una caña cada tres píxeles y tierra a la vista en el medio.
+        return (x + 2 * y) % 3 === 0 ? PAJA[1] : (x + 2 * y) % 3 === 1 ? PAJA[0] : TIERRA[1];
+      });
+      p.px.line(p.P(0.1, v1 - 0.03), p.P(1.9, v1 - 0.03), alto ? TRIGO_SOMBRA : PAJA[0]);
+      p.px.line(p.P(0.1, v0 + 0.03), p.P(1.9, v0 + 0.03), alto ? TRIGO[2] : PAJA[2]);
+    }
+  }
+  if (alerta) {
+    // La estaca del aviso, en la esquina de adelante para que no tape el sembrado: poste de madera y el
+    // cartel de chapa amarilla con el signo. **El cartel necesita ancho**: a 1× un cuadrado de seis píxeles
+    // con una raya adentro se lee como un agujero negro, y el amarillo es lo único que dice "mirá acá".
+    const [bx, by] = p.P(1.72, 1.74, 0);
+    const x0 = Math.round(bx);
+    const y0 = Math.round(by);
+    p.px.rect(x0, y0 - 13, 1, 13, hex('#6b4f2a'));
+    p.px.rect(x0 - 3, y0 - 20, 7, 7, hex('#f2c14e'));
+    p.px.rect(x0 - 3, y0 - 20, 7, 1, hex('#ffe9a3'));
+    p.px.rect(x0 - 3, y0 - 14, 7, 1, hex('#a8801f'));
+    // El signo: la barra, el aire y el punto. Que el punto tenga su fila libre es lo que lo vuelve un signo
+    // y no una raya.
+    p.px.rect(x0, y0 - 19, 1, 3, hex('#241a08'));
+    p.px.rect(x0, y0 - 15, 1, 1, hex('#241a08'));
   }
   return { px: p.px, ax: p.ax, ay: p.ay };
 }
@@ -6205,14 +6257,27 @@ function paintSilo(): { px: Pixels; ax: number; ay: number } {
  * Es un mercado de concentración, no un local: por eso es un galpón abierto con la mercadería a la vista y
  * no un edificio con puerta y vidriera. El techo azul es el de las referencias de Junín.
  */
-function paintMarket(): { px: Pixels; ax: number; ay: number } {
+export function paintMarket(): { px: Pixels; ax: number; ay: number } {
   const p = penLot(3, 44);
   p.poly([p.P(0.04, 0.04), p.P(2.96, 0.04), p.P(2.96, 2.96), p.P(0.04, 2.96)], (x, y) => (bayer(x, y) < 0.5 ? GRAVEL[1] : GRAVEL[2]));
   const WALL = ramp('#cbbfa4');
   const VANO = ramp('#3d3630');
   // El galpón: pared baja de ladrillo con el frente abierto en dos vanos, y el techo de chapa a dos aguas.
   p.box(0.2, 0.2, 2.4, 1.7, 0, 16, WALL, 'brick');
-  p.gable(0.14, 0.14, 2.46, 1.76, 16, 10, TINGLADO, shade(TINGLADO[1], 0.78), 'sheet');
+  // El techo va 'plain' y no 'sheet': la textura de chapa pinta un rombo cada cuatro píxeles y a 1× se lee
+  // como un techo de azulejo. Sin ella quedan las líneas horizontales cada tres filas, que es la onda de la
+  // chapa acanalada vista de frente, y la cumbrera hace el resto.
+  p.gable(0.14, 0.14, 2.46, 1.76, 16, 10, TINGLADO, shade(TINGLADO[1], 0.78), 'plain');
+  // Las ondas de la chapa corren de la cumbrera al alero, y en isométrico son líneas en diagonal. Para que
+  // se lean hay **una sola dirección**: con las horizontales del `gable` abajo, las diagonales encima
+  // formaban una red de rombos —el azulejo con otro dibujo— y el techo volvía a leerse como una malla. Así
+  // que la cara de adelante se repinta lisa y encima van las ondas, la oscura del valle y la clara de la
+  // cresta, que es lo que le da relieve a la chapa.
+  p.poly([p.P(0.14, 1.76, 16), p.P(2.46, 1.76, 16), p.P(2.46, 0.95, 26), p.P(0.14, 0.95, 26)], () => TINGLADO[0]);
+  for (let u = 0.3; u < 2.44; u += 0.26) {
+    p.px.line(p.P(u, 1.74, 16), p.P(u, 0.97, 26), shade(TINGLADO[0], 0.8));
+    p.px.line(p.P(u + 0.05, 1.74, 16), p.P(u + 0.05, 0.97, 26), shade(TINGLADO[2], 1.06));
+  }
   // Los vanos: van sobre la cara que da al frente y se pintan como cajas de altura distinta, no como
   // parches, para que la sombra del dintel quede donde va.
   for (const [u0, u1] of [
@@ -6240,12 +6305,19 @@ function paintMarket(): { px: Pixels; ax: number; ay: number } {
 
 const campoCache = new Map<string, Sprite>();
 
-/** El sprite del lote de cultivo. */
-export function farmPixelSprite(): Sprite {
-  let sprite = campoCache.get('farm');
+/**
+ * El sprite del lote de cultivo, por estado y con el aviso puesto o no.
+ *
+ * Son seis dibujos cacheados: tres estados del año por dos de la estaca. Se cachean aparte y no dentro de uno
+ * solo porque el mes cambia doce veces por año y el aviso aparece y desaparece cuando el jugador construye el
+ * silo: repintar en cada cambio sería tirar el trabajo hecho.
+ */
+export function farmPixelSprite(state: FarmState = 'crecido', alerta = false): Sprite {
+  const key = `farm:${state}:${alerta ? '!' : ''}`;
+  let sprite = campoCache.get(key);
   if (!sprite) {
-    sprite = spriteOf(paintFarmLot());
-    campoCache.set('farm', sprite);
+    sprite = spriteOf(paintFarm(state, alerta));
+    campoCache.set(key, sprite);
   }
   return sprite;
 }
