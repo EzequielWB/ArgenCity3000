@@ -11,7 +11,20 @@ import { World, TILE } from '../src/world/world';
 import { generateTerrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools';
 import { Simulation, newSimState } from '../src/sim/simulation';
-import { DEFAULT_TAX, SERVICES, TICKS_PER_MONTH, type ServiceKind } from '../src/config';
+import { COSTS, DEFAULT_TAX, SERVICES, TICKS_PER_MONTH, type ServiceKind } from '../src/config';
+
+declare const process: { env: Record<string, string | undefined> };
+
+/**
+ * Las palancas del probe, para poder comparar sin mover la vara de todos los días.
+ *
+ * `BOT=avenidas` le enseña al jugador automático lo que el probe clásico no sabía: el tránsito. Sin eso la
+ * ciudad se satura al 178 %, la mitad de las calles quedan atascadas y la aprobación se hunde en «Tránsito
+ * −12», así que el probe mide el agujero del bot y no el balance del juego. `CAMPO=1` le suma la cadena del
+ * trigo, que hasta ahora el bot nunca construía y por eso el campo no aparecía en ninguna medición.
+ */
+const AVENIDAS = !!process.env['BOT'];
+const CAMPO = !!process.env['CAMPO'];
 
 const N = 128;
 const w = new World(generateTerrain(7, N));
@@ -46,8 +59,8 @@ const addRow = () => {
     build('road', 7, row, 64, row);
     build('line', 6, row, 6, row + 2);
     build('line', 4, row + 3, 64, row + 3);
-  } else build('road', 4, row, 64, row);
-  build('road', 4, row + 6, 64, row + 6);
+  } else build(AVENIDAS ? 'roadPaved' : 'road', 4, row, 64, row);
+  build(AVENIDAS ? 'roadPaved' : 'road', 4, row + 6, 64, row + 6);
   for (let x = 4; x <= 64; x += 12) {
     if (rows === 0) {
       build('road', x, row, x, row + 2);
@@ -71,6 +84,23 @@ function buildServices(): void {
     build('bulldoze', s.x, s.y);
     build(s.kind, s.x, s.y);
     pending.splice(k--, 1);
+  }
+}
+
+/** El campo, si `CAMPO=1`: silo antes que feria, y un lote por vez mientras haya caja. */
+function buildCampo(): void {
+  if (!CAMPO) return;
+  const caja = sim.state.cash;
+  // Un silo cada diez lotes: la cosecha de un solo mes son 20 t por lote y el silo aguanta 200, así que con
+  // menos silos la mitad del trigo se pierde en el lote.
+  const silos = Math.ceil(w.farms.length / 10);
+  if (w.silos.length < silos && caja > COSTS.silo + 4000) return void build('silo', 68 + w.silos.length * 3, 22);
+  if (w.markets.length === 0 && caja > COSTS.market + 4000) return void build('market', 74, 22);
+  // Hasta 48 lotes: es lo que una feria necesita para no estar de adorno (120 t/mes de tope y 20 t por
+  // lote), así que el probe mide el campo **a pleno** y no un adorno de ocho lotes.
+  if (w.farms.length < 48 && caja > COSTS.farm + 4000) {
+    const k = w.farms.length;
+    build('farm', 68 + (k % 8) * 3, 28 + Math.floor(k / 8) * 3);
   }
 }
 
@@ -98,6 +128,7 @@ for (let year = 1; year <= 15; year++) {
       plantX += 3;
     }
     buildServices();
+    buildCampo();
     manageBudget();
     // Zone more land when lots run out, or when homes are wanted and no free home lot is left
     // (free commerce and industry lots alone must not hide that).
@@ -115,6 +146,12 @@ for (let year = 1; year <= 15; year++) {
   const b = sim.state.lastBudget!;
   const f = sim.state.funding;
   console.log(
-    `año ${year}: pop ${sim.totals.pop} caja ${sim.state.cash} saldo ${b.balance}/mes servicios ${b.schools + b.clinics + b.police + b.firefighters} tasa ${sim.state.taxes.R} % policía/bomberos ${f.police}/${f.fire} % usinas ${w.plants.length} niveles ${levels.slice(1).join('/')} abandonados ${sim.abandonedCount} incendios ${sim.stats.firesStarted}/${sim.stats.buildingsBurned} tránsito peor ${sim.congestion.worst} % atascados ${Math.round(sim.congestion.jammedShare * 100)} % aprobación ${sim.state.approval} % (merece ${sim.approval.target}) mandatos ${sim.state.terms}${sim.state.lostElection ? ' PERDIÓ' : ''} hito ${sim.state.milestone}`,
+    `año ${year}: pop ${sim.totals.pop} caja ${sim.state.cash} saldo ${b.balance}/mes ing ${b.income} gasto ${b.expenses} campo ${b.farmIncome} servicios ${b.schools + b.clinics + b.police + b.firefighters} tasa ${sim.state.taxes.R} % policía/bomberos ${f.police}/${f.fire} % usinas ${w.plants.length} niveles ${levels.slice(1).join('/')} abandonados ${sim.abandonedCount} incendios ${sim.stats.firesStarted}/${sim.stats.buildingsBurned} tránsito peor ${sim.congestion.worst} % atascados ${Math.round(sim.congestion.jammedShare * 100)} % aprobación ${sim.state.approval} % (merece ${sim.approval.target}) mandatos ${sim.state.terms}${sim.state.lostElection ? ' PERDIÓ' : ''} hito ${sim.state.milestone}`,
   );
+  // Con `FACTORES=1` el probe dice además **por qué** merece esa aprobación: sin esto, un 22 % es un
+  // número sin causa y no se sabe si el culpable es el tránsito, los servicios o los impuestos.
+  if (process.env['FACTORES']) {
+    console.log(`  factores: ${sim.approval.factors.map((f) => `${f.label} ${f.points > 0 ? '+' : ''}${f.points}`).join(' · ')}`);
+    console.log(`  tránsito: peor ${sim.congestion.worst} % · atascados ${Math.round(sim.congestion.jammedShare * 100)} % · transporte ${b.transport}/mes · abandonados ${sim.abandonedCount}`);
+  }
 }
