@@ -677,6 +677,10 @@ ${stalled}` : ''}`;
       stall.textContent = `⚠ No llega gente nueva: ${STALL_LABELS[this.sim.stall!]}`;
       stall.title = stalled;
     }
+    // El botón del campo aparece cuando hay algo que mirar: en una ciudad sin un solo lote es una puerta al
+    // vacío, y el menú ya tiene cinco entradas.
+    const hayCampo = this.world.farms.length + this.world.silos.length + this.world.markets.length > 0;
+    $('#btnFarm').classList.toggle('hidden', !hayCampo);
     const promise = this.sim.commitmentText();
     const warning = $('#promise');
     warning.classList.toggle('hidden', !promise);

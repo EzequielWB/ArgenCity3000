@@ -11,7 +11,7 @@ import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
 import { installOrnaments } from './ui/filete';
 import { PHRASES, nextPhrase } from './ui/phrases';
-import { closeModal, dismissModal, initModal, isModalOpen, openBudget, openGovernment, openHelp, openSaves } from './ui/panels';
+import { closeModal, dismissModal, initModal, isModalOpen, openBudget, openFarm, openGovernment, openHelp, openSaves } from './ui/panels';
 import { openTutorialAsk } from './ui/tutorial';
 import { MAP_KINDS, generateMap, type MapKind } from './world/mapkinds';
 import type { Terrain } from './world/terrain';
@@ -219,6 +219,7 @@ $('#startName').addEventListener('keydown', (e) => {
 // ---------------------------------------------------------------- top bar
 
 $('#btnBudget').addEventListener('click', () => game && openBudget(game));
+$('#btnFarm').addEventListener('click', () => game && openFarm(game));
 $('#btnSave').addEventListener('click', () => game && openSaves(game, launch));
 /** The newspaper on a phone: the button opens it as a sheet right under itself; it closes with the button or a tap on the map. */
 const diarioBtn = $('#btnDiario');
@@ -365,6 +366,9 @@ window.addEventListener('keydown', (e) => {
       break;
     case 'p':
       openBudget(game);
+      break;
+    case 'b':
+      openFarm(game);
       break;
     case 'g':
       openSaves(game, launch);

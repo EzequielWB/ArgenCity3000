@@ -103,7 +103,7 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   `settleHarvest` + el ingreso en `monthlyBudget` + la noticia del diario. `S3 S5 S6` `ae4fa08`…
 - **T5** — ~~`monthlyBudget`: `farmIncome` y `farmUpkeep` en `BudgetReport`, con su línea en el panel de
   presupuesto. `S7`
-- **T6** — Panel del campo: precio del mes, stock por silo, y los dos campos de la orden. `S4 S5`
+- **T6** — ~~Panel del campo: precio del mes, stock por silo, y los dos campos de la orden.~~ **Hecho**, ver L22. `S4 S5`
 - **T7** — Arte pixel: lote de trigo (2×2, con el rastrojo del mes), silo y feria, con su fila en el board y
   su test de estructura. `S2`
 
@@ -186,6 +186,20 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   El pronóstico entró en **tres** lugares, no en uno: la planilla del mes, el "saldo anual estimado" (con la
   cosecha del mes que corresponde, a precio de cosecha: es el piso, no el techo) y la barra de arriba del
   juego, que si no estimaba el mes sin el campo y en diciembre aparecía un regalo.
+- **L22** — **T6 hecho: el panel del campo.** `src/ui/campo.ts` nuevo, con las tres piezas como markup puro —
+  `campoStatusHtml` (qué hay y cuánto cuesta mantenerlo), `campoAdviceHtml` (el mes, con el cierre pronosticado)
+  y `priceTableHtml` (los doce precios, con el mes que corre y el de cosecha marcados)—, y `openFarm` en
+  `panels.ts` que le pone los dos sliders. Se abre con **B** y con el botón **El campo** del menú, que aparece
+  recién cuando hay un lote, un silo o una feria: en una ciudad sin campo es una puerta al vacío y el menú ya
+  tiene cinco entradas.
+  El consejo no repite la cuenta: llama a `previewHarvest`, así que soltar el slider muestra **el número que el
+  cierre va a pagar**. Y dice las dos cosas que hacen la decisión —cuánto paga aguantar hasta junio y cuánto se
+  come la merma por esperarlo (el 22 % en seis meses)— porque un panel que sólo muestra el precio alto empuja a
+  guardar sin decir el precio de guardar.
+  Verificado en el juego real con puppeteer sobre el dev server, no sólo con tests: el panel abre con **B**, los
+  dos sliders existen y mueven su output, el consejo se vacía sin campo, el botón está oculto sin campo, y la
+  consola no tira un solo error. El atajo respeta el modal abierto y el foco en un input (`handleKey` sale antes),
+  así que escribir "b" en el nombre del partido no abre nada.
 - **L15** — **Verificación antes de probar local**, y trajo un bug: el `footprint` de las tres piezas **recortaba**
   contra el borde del mapa en vez de correr el ancla para adentro como la usina, el depósito y los servicios.
   Una feria puesta en la esquina pisaba **una** celda y se cobraban los $600 enteros, con el dibujo de 3×3

@@ -1,4 +1,5 @@
 import { TILE } from '../world/world';
+import { marketRoom } from '../world/farms';
 import { BANKRUPT_MONTHS, CROPS, GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, SERVICE_KINDS, type GovernmentKind, type ServiceKind } from '../config';
 import type { Simulation } from '../sim/simulation';
 import { averageTax } from '../sim/demand';
@@ -9,7 +10,8 @@ import type { Game } from '../game';
 import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
-import { previewHarvest } from '../sim/campo';
+import { MERMA, previewHarvest } from '../sim/campo';
+import { campoAdviceHtml, campoStatusHtml, lastHarvestHtml, priceTableHtml } from './campo';
 import { dateOf } from '../sim/calendar';
 import { COAST_BOOST, factorOf, incomeFactor, lockOf } from '../sim/effects';
 import { detailOf } from '../sim/events';
@@ -408,6 +410,57 @@ function factorRows(factors: readonly ApprovalFactor[]): string {
  * The founding window: it opens as soon as the city does, because there is no city without a
  * party and a way of governing. The name is mandatory, so the window comes back if it is closed.
  */
+/**
+ * El panel del campo: lo que la ciudad tiene, lo que el mes va a pagar y la orden de venta.
+ *
+ * La orden no es un botón de vender. Son dos umbrales que el jugador fija y que el cierre del mes obedece solo:
+ * **no vender por debajo de** (`minPrice`) y **no bajar de** (`keepTons`). Es el mismo idioma que el
+ * presupuesto de servicios: el jugador regula, el sistema ejecuta.
+ *
+ * Los dos sliders redibujan el consejo con `previewHarvest`, así que el número que el jugador ve al soltar el
+ * slider es el que el cierre le va a pagar, no una estimación parecida.
+ */
+export function openFarm(game: Game): void {
+  const sim = game.sim;
+  const s = sim.state;
+  const w = game.world;
+  const tope = Math.max(100, marketRoom(w) * 6, s.order.keepTons);
+  const body = openModal(`
+    <h2>El campo</h2>
+    <p><small>El trigo se siembra en mayo y se cosecha en diciembre. La feria vende todos los meses hasta su tope,
+    y lo que queda en el silo se estropea: esperar paga más caro, pero no es gratis.</small></p>
+    <div id="campoStatus">${campoStatusHtml(w)}</div>
+    <h3>Este mes</h3>
+    <div id="campoAdvice"></div>
+    <h3>La orden de venta</h3>
+    <div class="tax"><label for="campoMin">No vender por debajo de</label><input type="range" id="campoMin" min="0" max="200" step="5" value="${s.order.minPrice}"><output id="outMin">${formatMoney(s.order.minPrice)}</output></div>
+    <div class="tax"><label for="campoKeep">No bajar de</label><input type="range" id="campoKeep" min="0" max="${tope}" step="10" value="${s.order.keepTons}"><output id="outKeep">${formatNumber(s.order.keepTons)} t</output></div>
+    <p><small>Guardar cuesta: la merma se lleva el ${Math.round(MERMA * 100)} % por mes, y el silo tiene que aguantar
+    lo que espera. Con la orden en cero, la feria vende todo lo que hay todos los meses.</small></p>
+    <h3>Cómo se mueve el precio en el año</h3>
+    ${priceTableHtml(dateOf(s.tick).month, w.farmPressure)}
+    <h3>El último cierre</h3>
+    ${lastHarvestHtml(s.harvest)}
+  `);
+  const refresh = () => {
+    const month = dateOf(sim.state.tick).month;
+    $('#campoAdvice').innerHTML = campoAdviceHtml(w, month, sim.state.order);
+    $('#campoStatus').innerHTML = campoStatusHtml(w);
+    body.querySelector<HTMLOutputElement>('#outMin')!.textContent = formatMoney(sim.state.order.minPrice);
+    body.querySelector<HTMLOutputElement>('#outKeep')!.textContent = `${formatNumber(sim.state.order.keepTons)} t`;
+  };
+  const read = () => {
+    sim.setSellOrder({
+      minPrice: Number(body.querySelector<HTMLInputElement>('#campoMin')!.value),
+      keepTons: Number(body.querySelector<HTMLInputElement>('#campoKeep')!.value),
+    });
+    refresh();
+  };
+  body.querySelector<HTMLInputElement>('#campoMin')!.addEventListener('input', read);
+  body.querySelector<HTMLInputElement>('#campoKeep')!.addEventListener('input', read);
+  refresh();
+}
+
 export function openGovernment(game: Game): void {
   const state = game.sim.state;
   // While the papers are unsigned there is no way out: the close button is not an option.
@@ -715,6 +768,12 @@ export function openHelp(): void {
         <strong>escuela</strong> (Y) no hay torres ni oficinas. La <strong>comisaría</strong> (I) baja el delito de los barrios densos y los
         <strong>bomberos</strong> (O) apagan los incendios antes de que se pierda el edificio. Al elegirlos se ve la capa de cobertura.</li>
       <li><strong>Casas, comercios y fábricas</strong> arrancan humildes (casa de chapa, kiosco o verdulería, tinglado). Con los años la mayoría mejora sola, pero algunas no: sus dueños no las tocan y quedan en pie al lado de los edificios nuevos. Si querés renovar, demolé la humilde: lo que se construya después nace acorde a lo que ya es la ciudad.</li>
+      <li><strong>El campo.</strong> Tres piezas que no son una zona: el <strong>lote de trigo</strong> (&lt;), el <strong>silo</strong> (&gt;) y la
+        <strong>feria</strong> (%). El lote siembra en mayo y cosecha en diciembre, y no necesita luz, agua ni calle: lo que
+        cuesta es la cadena. Sin silo la cosecha se pierde; sin feria el trigo no se convierte en plata. En
+        <strong>El campo</strong> (B) se ve el precio del mes y lo que hay guardado, y se fija la orden de venta: no vender
+        por debajo de un precio y no bajar de ciertas toneladas. Guardar paga más caro, pero la merma se lleva una
+        parte todos los meses.</li>
       <li><strong>Tránsito.</strong> Cada vecino va a trabajar al comercio y a la industria más cercanos por las calles. Si pasa más gente de la que la calle aguanta, se satura (rojo en la capa Tránsito): baja el valor del suelo, los lotes crecen despacio y los vecinos se quejan. Se arregla con avenidas, con más caminos o acercando el trabajo a las casas.</li>
       <li><strong>Transportes</strong> (desde Ciudad, con 1.000 habitantes). Una <strong>línea de colectivos</strong> (Ñ) se puede poner en cualquier lote de tierra, pero solo funciona con una calle a 3 lotes o menos: al colocarla elegís su color y un número que no puede repetirse. Sus colectivos se llevan 500 viajeros de cada calle que queda a 9 lotes a la redonda (varias líneas suman, y una calle que carga más de lo que llevan sigue cargada) y se ven andar por el mapa. Cuesta mantenerla cada mes, así que sirve para destrabar una calle sin ensancharla. En el Presupuesto, el control de <strong>Transporte</strong> regula cuántos colectivos andan y a cuántos se llevan (al 50 % pasan la mitad); si recortás mucho el transporte o las escuelas, los choferes y los maestros pueden hacer paro.</li>
       <li><strong>Puerto de paseos</strong> (. , desde Ciudad pujante) y <strong>aeropuerto</strong> (, , desde Gran ciudad): se construyen por piezas, el puerto de 2×2 pegado al agua y el aeropuerto de 3×2 en tierra, y se pueden poner donde quieras, aunque funcionan solo con una calle a 3 lotes o menos de alguna pieza. Las piezas que se tocan por un lado forman una sola instalación y su tamaño sube con la cantidad: un muelle con un barco de paseos, un puerto (2 piezas) y un puerto con cruceros (3 o más); un hangar, un aeródromo (2 o 3 piezas) y un aeropuerto internacional (4 o más). Dan empleos comerciales e ingresos por turismo, y se ven los aviones despegar y los barcos pasear. El aeropuerto hace ruido y baja el valor del suelo alrededor. El "Puerto de carga" de Costa sigue siendo el industrial.</li>
@@ -736,6 +795,7 @@ export function openHelp(): void {
       <span>Rueda: zoom · <kbd>+</kbd> <kbd>−</kbd></span>
       <span><kbd>Q</kbd> <kbd>E</kbd> rotar la vista</span>
       <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o flechas: mover</span>
+      <span><kbd>P</kbd> presupuesto · <kbd>B</kbd> el campo · <kbd>G</kbd> partidas · <kbd>H</kbd> ayuda</span>
       <span><kbd>Espacio</kbd> pausa</span>
       <span><kbd>C</kbd> cambiar capa</span>
       <span><kbd>P</kbd> presupuesto · <kbd>G</kbd> partidas</span>
