@@ -233,8 +233,8 @@ export const COSTS = {
   park: 20,
   /** El campo: la tierra es barata, lo que cuesta es acopiar y vender. */
   farm: 30,
-  silo: 300,
-  market: 600,
+  silo: 90,
+  market: 180,
   plant: 3000,
   bulldoze: 2,
   bulldozeLevel: 10,
@@ -249,8 +249,8 @@ export const UPKEEP = {
   /** Per cell of plaza, at the "Espacios verdes" budget in full. A 4×4 costs $80 a month. */
   park: 5,
   /** El silo y la feria cobran todos los meses, vendan o no: es lo que hace que guardar cueste. */
-  silo: 15,
-  market: 25,
+  silo: 5,
+  market: 8,
   plant: 260,
   /**
    * Administration per resident. Raised from 0.06 when service upkeep started to depend on use
@@ -299,16 +299,16 @@ export interface Crop {
  * y la temporada no se toca para arreglar un número.
  */
 export const CROPS: Record<CropKind, Crop> = {
-  trigo: { label: 'Trigo', sow: 5, harvest: 12, tons: 20 },
+  trigo: { label: 'Trigo', sow: 5, harvest: 12, tons: 6 },
 };
 
 export const FARM_SIZE = 2;
 export const SILO_SIZE = 2;
 export const MARKET_SIZE = 3;
 /** Toneladas que acopia un silo. Si no vendés, la cosecha del año que viene no entra. */
-export const SILO_CAPACITY = 200;
+export const SILO_CAPACITY = 60;
 /** Toneladas que una feria convierte en pesos por mes. */
-export const MARKET_THROUGHPUT = 120;
+export const MARKET_THROUGHPUT = 240;
 export const PLANT_CAPACITY = 600;
 
 /**

@@ -11,7 +11,7 @@ import { World, TILE } from '../src/world/world';
 import { generateTerrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools';
 import { Simulation, newSimState } from '../src/sim/simulation';
-import { COSTS, DEFAULT_TAX, SERVICES, TICKS_PER_MONTH, type ServiceKind } from '../src/config';
+import { COSTS, DEFAULT_TAX, SERVICES, SILO_CAPACITY, TICKS_PER_MONTH, type ServiceKind } from '../src/config';
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -91,15 +91,15 @@ function buildServices(): void {
 function buildCampo(): void {
   if (!CAMPO) return;
   const caja = sim.state.cash;
-  // Un silo cada diez lotes: la cosecha de un solo mes son 20 t por lote y el silo aguanta 200, así que con
-  // menos silos la mitad del trigo se pierde en el lote.
+  // Un silo cada diez lotes: la cosecha de un solo mes son las toneladas del lote y el silo aguanta diez
+  // cosechas, así que con menos silos la mitad del trigo se pierde en el lote.
   const silos = Math.ceil(w.farms.length / 10);
   if (w.silos.length < silos && caja > COSTS.silo + 4000) return void build('silo', 66 + w.silos.length * 3, 22);
   // La feria va lejos de la fila de silos: pegada, el silo que seguía no entraba, `build` fallaba en silencio
   // y el bot se quedaba en 21 lotes para siempre.
   if (w.markets.length === 0 && caja > COSTS.market + 4000) return void build('market', 68, 46);
-  // Hasta 48 lotes: es lo que una feria necesita para no estar de adorno (120 t/mes de tope y 20 t por
-  // lote), así que el probe mide el campo **a pleno** y no un adorno de ocho lotes.
+  // Hasta 48 lotes: es lo que la feria necesita para no estar de adorno, así que el probe mide el campo **a
+  // pleno** y no un adorno de ocho lotes.
   if (w.farms.length < 48 && caja > COSTS.farm + 4000) {
     const k = w.farms.length;
     build('farm', 68 + (k % 8) * 3, 28 + Math.floor(k / 8) * 3);
@@ -176,7 +176,7 @@ for (let year = 1; year <= 15; year++) {
     const k = campoYear;
     const porTonelada = k.sold > 0 ? Math.round(k.income / k.sold) : 0;
     console.log(
-      `  campo: ${w.farms.length} lotes · ${w.silos.length} silos (${w.silos.length * 200} t) · ${w.markets.length} feria(s) · ` +
+      `  campo: ${w.farms.length} lotes · ${w.silos.length} silos (${w.silos.length * SILO_CAPACITY} t) · ${w.markets.length} feria(s) · ` +
         `cosecha ${k.grown} t · vendió ${k.sold} t a $${porTonelada} promedio · perdió ${k.lost} t por falta de silo · merma ${k.spoiled} t · ` +
         `ingreso $${k.income}/año · caja ${cajaAlEmpezar} → ${sim.state.cash}`,
     );

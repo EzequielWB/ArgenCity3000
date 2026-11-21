@@ -68,7 +68,7 @@ describe('la cosecha', () => {
   });
 
   it('lo que no entra en los silos no se guarda y queda contado como perdido', () => {
-    // Treinta lotes son 900 t y un silo guarda 200: entran 200 y el resto se pierde.
+    // Treinta lotes son 180 t y un silo guarda 60: entran 60 y el resto se pierde.
     const w = campo(30, 1, 0);
     const r = settleHarvest(w, HARVEST, VENDER_SIEMPRE);
     expect(r.grown).toBe(30 * TONS);
@@ -77,15 +77,13 @@ describe('la cosecha', () => {
   });
 
   it('la feria no convierte más de lo que puede por mes', () => {
-    const w = campo(4, 3, 1);
-    w.silos[0]!.tons = SILO_CAPACITY;
-    w.silos[1]!.tons = SILO_CAPACITY;
-    w.silos[2]!.tons = SILO_CAPACITY;
+    const w = campo(4, 5, 1);
+    for (const silo of w.silos) silo.tons = SILO_CAPACITY;
     const r = settleHarvest(w, 2, VENDER_SIEMPRE);
     expect(r.sold).toBe(MARKET_THROUGHPUT);
     expect(r.income).toBe(MARKET_THROUGHPUT * r.price);
-    // La merma del mes se comió su parte antes de vender: 600 llenos pierden 24 y el resto se vende.
-    expect(storedTons(w)).toBe(3 * SILO_CAPACITY - r.spoiled - r.sold);
+    // La merma del mes se comió su parte antes de vender: los silos llenos pierden su 4 % y el resto se vende.
+    expect(storedTons(w)).toBe(5 * SILO_CAPACITY - r.spoiled - r.sold);
   });
 });
 
@@ -111,14 +109,15 @@ describe('la orden de venta', () => {
   });
 
   it('la retención no puede ser más grande que la capacidad del silo', () => {
-    // Si el jugador retiene 500 t y el silo guarda 200, la orden no vende nunca y la cosecha no entra: con la
-    // merma, al silo lleno sólo le quedan ocho toneladas de lugar y el resto se pierde.
+    // Si el jugador retiene 500 t y el silo guarda 60, la orden no vende nunca y la cosecha no entra: con la
+    // merma, al silo lleno sólo le queda la merma de lugar y el resto se pierde.
     const w = campo(2, 1, 1);
     w.silos[0]!.tons = SILO_CAPACITY;
     const r = settleHarvest(w, HARVEST, { minPrice: 0, keepTons: 500 });
-    expect(r.spoiled).toBe(8);
+    expect(r.spoiled).toBe(Math.round(SILO_CAPACITY * MERMA));
     expect(r.sold).toBe(0);
-    expect(r.lost).toBe(2 * TONS - (SILO_CAPACITY - 192));
+    // La merma abre el único lugar que hay: lo que cabe es exactamente lo que se estropeó.
+    expect(r.lost).toBe(2 * TONS - Math.round(SILO_CAPACITY * MERMA));
   });
 });
 

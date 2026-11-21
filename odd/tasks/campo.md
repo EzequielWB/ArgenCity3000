@@ -106,6 +106,10 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
 - **T6** — ~~Panel del campo: precio del mes, stock por silo, y los dos campos de la orden.~~ **Hecho**, ver L22. `S4 S5`
 - **T7** — ~~Arte pixel: lote de trigo (2×2, con el rastrojo del mes), silo y feria, con su fila en el board y
   su test de estructura.~~ **Hecho**, ver L23–L25 (el test de estructura del techo no existe, y por qué). `S2`
+- **T8** — ~~Nerfeo medido: `tons` 6, silo y feria en proporción, y el tope de la feria a 240 t/mes para que la
+  orden de S5 decida de verdad.~~ **Hecho**, ver L26. `S4 S5 S6` `5bc872c`… `1d`-pendiente
+- **T9** — ~~Las tres piezas tienen ficha: rinde, stock, precio del mes y el aviso de cadena cortada.~~
+  **Hecho**, ver L27. `S3 S4`
 
 ## Log
 
@@ -166,7 +170,7 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   midió en serio, porque el número de L19 estaba a ojo y **estaba mal**: el impuesto real de una celda de
   nivel 5, medido con `monthlyBudget`, es **$739** residencial, **$756** industrial y **$631** comercial, no
   $328. O sea el campo con 30 t rendía $1.262/celda contra $739: **1,7 veces** una torre, no cuatro.
-  `CROPS.trigo.tons` baja de **30 a 20**. El campo a pleno queda en **$607 por celda y año** aguantando la
+  `CROPS.trigo.tons` baja de **30 a 20** (y después a **6**, ver L26). El campo a pleno queda en **$607 por celda y año** aguantando la
   cosecha hasta junio (contra $739 de una torre, que además paga luz, agua, calles y los seis servicios) y
   **$516** vendiendo en diciembre. La cadena sigue teniendo sentido —una feria pide 48 lotes y la cosecha de
   un solo mes obliga a **cinco silos**— y el campo deja de ser la jugada obvia. El payback de un lote sigue
@@ -228,6 +232,46 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   Dos trampas del camino: la usina tiene que **tocar** el tendido (una separada por dos celdas deja la zona sin
   luz y la ciudad no crece ni un lote), y el `tick` de un mes es `(m - 1) * TICKS_PER_MONTH`, no
   `(m - 1) * 4 * TICKS_PER_MONTH`.
+- **L26** — **El segundo nerfeo, y la orden que por fin decide.** La medición año a año (el promedio de
+  quince años mezclaba el arranque con el régimen: el bot llega a 48 lotes recién en el año 4) dio el techo
+  real con `tons` 20: **960 t cosechadas → 847 vendidas a $144 → $122.009 por año**, contra $31.824 de
+  impuestos. **3,8 veces la ciudad**, y $552 por celda contra $68. Peor: el campo se clavaba en 21 lotes porque
+  la feria se construía encima del tercer silo y `build` fallaba en silencio.
+  Y peor todavía: **ninguna orden de venta mejoraba el default**. Con la feria a 120 t/mes y 960 t de stock,
+  tardaba ocho meses en vaciar el silo y vendía sola en los meses caros: el buffer ya esperaba por el jugador.
+  **S5 estaba muerta** —no había ninguna decisión, el sistema la tomaba óptima y gratis—.
+  Los tres cambios, juntos porque uno solo no alcanza:
+  1. `CROPS.trigo.tons` **20 → 6**, y silo y feria en la misma proporción para no romper la cadena:
+     capacidad **200 → 60**, costos **$300 → $90** y **$600 → $180**, mantenimiento **$15 → $5** y **$25 → $8**.
+  2. `MARKET_THROUGHPUT` **120 → 240**: la feria tiene que poder vaciar el silo **más rápido** para que el
+     default venda en diciembre al piso y esperar sea una apuesta de verdad.
+  3. Las fichas de las tres piezas (L27).
+  Medido en régimen, con 48 lotes · 5 silos (300 t) · 1 feria · inversión **$2.070**:
+
+  | orden | ingreso anual | vendió | precio | merma | perdió |
+  |---|---|---|---|---|---|
+  | vender todo ya (**default**) | $34.182 | 286 t | $120 | 2 t | 0 t |
+  | no bajar de $130 | $36.234 | 267 t | $136 | 21 t | 0 t |
+  | no bajar de $150 | $38.652 | 257 t | $150 | 31 t | 0 t |
+  | **no bajar de $170** | **$41.888** | 238 t | $176 | 50 t | 0 t |
+  | guardar 120 t | $21.600 | 180 t | $120 | 42 t | 66 t |
+  | no bajar de $170 y guardar 120 | $20.768 | 118 t | $176 | 79 t | 79 t |
+
+  Ahora hay decisión y con el trade-off en el lugar correcto: **el que estudia la curva gana 22 %** y el que
+  guarda de más se funde —el silo se llena, la cosecha siguiente no entra y se pierde en el lote—. El default
+  quedó simple y seguro a propósito.
+  El balance cierra: **$34.182 contra $31.452 de impuestos**, parejo, con 221 celdas de campo contra 468 de
+  ciudad. Los otros dos escenarios del probe no se movieron un peso (3.913 hab y caja 30.097; con bot 5.155 y
+  68.834): el nerfeo tocó el campo y nada más.
+- **L27** — **La ficha de cada pieza.** `describeCell` no tenía ninguna rama para `TILE.FARM`, `TILE.SILO` ni
+  `TILE.MARKET`: hacer clic con Consulta sobre un lote de trigo contestaba «Terreno libre · Valor del suelo:
+  27/100». Tres fichas nuevas con el formato de las demás. La del lote dice el rinde, los meses, en qué anda
+  hoy y que no pide luz, agua ni calle; la del silo, lo que tiene de lo que guarda y la merma; la de la feria,
+  **el precio del trigo del mes** con el mismo `priceOf` que cobra la caja. Los tres avisan cuando la cadena
+  está cortada, que es el dato que importa: sin silo la cosecha se pierde en el lote, sin feria el trigo no se
+  vuelve plata. De paso, `farmStateOf` se mudó de `pixelArt.ts` a `sim/campo.ts` —el estado del lote es una
+  regla del cultivo: el mapa y la ficha tienen que decir lo mismo— y `MONTH_NAMES` agregó los meses enteros
+  para prosa, que `MONTHS` es abreviado porque es una fecha.
 - **L15** — **Verificación antes de probar local**, y trajo un bug: el `footprint` de las tres piezas **recortaba**
   contra el borde del mapa en vez de correr el ancla para adentro como la usina, el depósito y los servicios.
   Una feria puesta en la esquina pisaba **una** celda y se cobraban los $600 enteros, con el dibujo de 3×3

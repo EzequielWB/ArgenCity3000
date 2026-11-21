@@ -153,7 +153,7 @@ function conCampo(): World {
   paint(10, 4, SILO_SIZE, TILE.SILO);
   paint(16, 4, MARKET_SIZE, TILE.MARKET);
   w.farms.push({ x: 4, y: 4, crop: 'trigo' });
-  w.silos.push({ x: 10, y: 4, tons: 120 });
+  w.silos.push({ x: 10, y: 4, tons: 40 });
   w.markets.push({ x: 16, y: 4 });
   w.farmPressure = 340;
   return w;
@@ -165,7 +165,7 @@ describe('el campo en el mundo', () => {
     expect(w.farms.length).toBe(1);
     expect(w.silos.length).toBe(1);
     expect(w.markets.length).toBe(1);
-    expect(siloAt(w, 11, 5)?.tons).toBe(120);
+    expect(siloAt(w, 11, 5)?.tons).toBe(40);
     expect(siloAt(w, 12, 5)).toBeNull();
     expect(marketAt(w, 18, 6)).not.toBeNull();
   });
@@ -181,7 +181,7 @@ describe('el campo en el mundo', () => {
 
   it('el stock es lo que suman los silos, y el lugar lo que suman sus capacidades', () => {
     const w = conCampo();
-    expect(storedTons(w)).toBe(120);
+    expect(storedTons(w)).toBe(40);
     expect(siloRoom(w)).toBe(SILO_CAPACITY);
   });
 
@@ -189,7 +189,7 @@ describe('el campo en el mundo', () => {
     const w = conCampo();
     const sobro = storeTons(w, 500);
     expect(w.silos[0].tons).toBe(SILO_CAPACITY);
-    expect(sobro).toBe(500 - (SILO_CAPACITY - 120));
+    expect(sobro).toBe(500 - (SILO_CAPACITY - 40));
   });
 
   it('sin silos no entra nada y todo sobra', () => {
