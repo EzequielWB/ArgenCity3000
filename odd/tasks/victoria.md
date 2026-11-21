@@ -21,11 +21,11 @@ la deuda más vieja del proyecto.
 
 ## Tasks
 
-- T1 · `CITY_GOAL` y el último hito `500.000` «Medio millón» — `src/config.ts`, `src/sim/milestones.ts` — commit `…`
-- T2 · `openEndScreen`: una sola pantalla para el roguelike y el clásico, con rama de resumen — `src/ui/upgrades.ts` — commit `…`
-- T3 · `game.ts`: victoria clásica y el hito final — `src/game.ts` — commit `…`
-- T4 · Contraste de la plaqueta: el kicker, la fecha y el `h3` se leen sobre el marrón — `src/ui/style.css` — commit `…`
-- T5 · Tests (5 de la meta + 3 de la pantalla) — `tests/victoria.test.ts`, `tests/hitos-grandes.test.ts` — commit `…`
+- T1 · `CITY_GOAL` y el último hito `500.000` «Medio millón» — `src/config.ts`, `src/sim/milestones.ts` — commit `82ed439`
+- T2 · `openEndScreen`: una sola pantalla para el roguelike y el clásico, con rama de resumen — `src/ui/upgrades.ts` — commit `82ed439`
+- T3 · `game.ts`: victoria clásica y el hito final — `src/game.ts` — commit `82ed439`
+- T4 · Contraste de la plaqueta: el kicker, la fecha y el `h3` se leen sobre el marrón — `src/ui/style.css` — commit `82ed439`
+- T5 · Tests (5 de la meta + 3 de la pantalla) — `tests/victoria.test.ts`, `tests/hitos-grandes.test.ts` — commit `82ed439`
 
 ## Log
 
