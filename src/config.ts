@@ -605,7 +605,15 @@ export const ROAD_REACH = 3;
  * street within ROAD_REACH to work, and `buses` of the line run on it.
  */
 export const BUS_SIZE = 2;
-export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 9, trips: 500, buses: 3 } as const;
+/**
+ * Una línea de colectivos: una cochera de 2×2 y los colectivos que salen de ahí.
+ *
+ * El radio es el rombo de lotes que la línea atiende. Estaba en 9 y dejaba barrios enteros afuera en una
+ * ciudad mediana: con 14 una línea cubre el doble de manzanas y el jugador necesita la mitad de cocheras
+ * para el mismo agujero de tránsito. `trips` se descuenta de **cada** calle del área, no se reparte, así
+ * que el radio más grande no debilita el alivio: lo lleva más lejos.
+ */
+export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 14, trips: 500, buses: 3 } as const;
 /**
  * The commercial hubs of the transport category: an airport and a harbour for walks and cruises. A
  * piece takes `w`×`h` lots, always the same way round, and pieces that share an edge are one

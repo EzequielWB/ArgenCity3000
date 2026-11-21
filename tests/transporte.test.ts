@@ -260,13 +260,15 @@ describe('what the bus lines do for the traffic', () => {
   it('takes its commuters off the streets of its area, and only of those', () => {
     const w = commuterTown();
     computeCongestion(w);
-    const [outsideWest, middle, outsideEast] = [at(w, 5), at(w, 15), at(w, 28)];
+    // Los puntos de control están fuera del rombo de `BUS.radius` medido desde el depósito (15, 8):
+    // x=0 queda a 17 lotes y x=28 a 15, los dos más lejos que el alcance de la línea.
+    const [outsideWest, middle, outsideEast] = [at(w, 0), at(w, 15), at(w, 28)];
     expect(middle).toBeGreaterThan(outsideWest); // the first towers' share has not joined the street yet
-    depot(w, 15, 8, 0, 60); // two lots from the street, nine lots of reach
+    depot(w, 15, 8, 0, 60); // two lots from the street, `BUS.radius` lots of reach
     computeCongestion(w);
     expect(at(w, 15)).toBeLessThan(middle);
     expect(at(w, 9)).toBeLessThan(middle); // inside the diamond
-    expect(at(w, 5)).toBe(outsideWest); // outside it
+    expect(at(w, 0)).toBe(outsideWest); // outside it
     expect(at(w, 28)).toBe(outsideEast);
   });
 
@@ -408,7 +410,7 @@ describe('the card of a bus depot', () => {
     sim.refresh();
     const ok = describeCell(w, sim, 4, 7);
     expect(ok.title).toBe('Línea 148 (azul)');
-    expect(ok.lines.join(' ')).toMatch(/Cubre 9 lotes/);
+    expect(ok.lines.join(' ')).toContain(`Cubre ${BUS.radius} lotes`);
     expect(ok.lines.join(' ')).toMatch(/\$90 por mes/);
     expect(ok.hint).toBeUndefined();
 
