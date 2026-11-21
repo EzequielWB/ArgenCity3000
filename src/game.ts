@@ -1,4 +1,6 @@
 import type { Sound } from './audio/sound';
+import { vecinosButtonLabel } from './ui/vecinos';
+import { vecinosCount } from './sim/vecinos';
 import { BANKRUPT_MONTHS, GOVERNMENTS, POWER_REACH, TICKS_PER_MONTH, type GovernmentKind } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
@@ -128,7 +130,9 @@ export class Game implements PointerTarget {
   private raf = 0;
   private detach: () => void;
   private shownNews = '';
-  /** The month's estimated budget shown in the top bar: recomputed a few times per second and after edits. */
+  /** Último mes en que se contaron las quejas de los vecinos: el botón del menú no se recuenta por cuadro. */
+  private troubleMonth = -1;
+    /** The month's estimated budget shown in the top bar: recomputed a few times per second and after edits. */
   private outlookBudget: BudgetReport | null = null;
   private outlookAt = 0;
   private keyboardPan = { x: 0, y: 0 };
@@ -535,6 +539,13 @@ export class Game implements PointerTarget {
     this.renderInfo();
   }
 
+  /** Abre la tarjeta de un lote sin pasar por el mouse: lo usa el panel de los vecinos, que sabe la celda. */
+  inspect(x: number, y: number): void {
+    if (!this.world.inBounds(x, y)) return;
+    this.queried = [x, y];
+    this.renderInfo();
+  }
+
   pan(dx: number, dy: number): void {
     this.view.pan(dx, dy);
     this.minimapDirty = true;
@@ -686,6 +697,16 @@ ${stalled}` : ''}`;
     // vacío, y el menú ya tiene cinco entradas.
     const hayCampo = this.world.farms.length + this.world.silos.length + this.world.markets.length > 0;
     $('#btnFarm').classList.toggle('hidden', !hayCampo);
+    // El contador de vecinos se recalcula una vez por mes: recorrer la ciudad cuatro veces por segundo no paga
+    // un número que cambia en el cierre, y con `force` (cargar, construir) se refresca igual al instante.
+    const month = Math.floor(s.tick / TICKS_PER_MONTH);
+    if (force || month !== this.troubleMonth) {
+      this.troubleMonth = month;
+      const quejas = vecinosCount(this.world);
+      const btn = $('#btnVecinos');
+      btn.textContent = vecinosButtonLabel(quejas);
+      btn.classList.toggle('unread', quejas > 0);
+    }
     const promise = this.sim.commitmentText();
     const warning = $('#promise');
     warning.classList.toggle('hidden', !promise);

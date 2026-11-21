@@ -2587,3 +2587,160 @@ table.precios td.tags {
 .campo-uptime {
   margin-top: -4px;
 }
+
+/* ---------- Los vecinos ---------- */
+
+/* El botón del menú avisa con un punto, igual que el diario en el teléfono. */
+#btnVecinos {
+  position: relative;
+}
+
+#btnVecinos.unread::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f2c230;
+  border: 2px solid #000;
+}
+
+.vec-lede {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.vec-empty {
+  margin: 10px 0;
+  padding: 12px;
+  text-align: center;
+  background: var(--deep);
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.vec-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vec {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #26543f;
+}
+
+.vec:first-child {
+  border-top: 0;
+}
+
+.vec-face {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--raised);
+  border: 2px solid var(--deep);
+  box-shadow: var(--bevel);
+  color: var(--gold-light);
+  font-family: var(--font-title);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.vec-body {
+  min-width: 0;
+}
+
+.vec-name {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.vec-addr {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.vec-say {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--cream);
+}
+
+.vec-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.vec-anger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.vec-bar {
+  display: block;
+  width: 64px;
+  height: 8px;
+  background: var(--deep);
+  border: 1px solid #26543f;
+}
+
+.vec-bar b {
+  display: block;
+  height: 100%;
+}
+
+.vec-go {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.vec-more {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  background: var(--deep);
+  border-left: 3px solid var(--gold);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.vec-done .vec-say {
+  font-style: italic;
+  color: #a8cfa8;
+}
+
+.vec-stamp {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: var(--r);
+  color: var(--deep);
+  border: 2px solid var(--deep);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
