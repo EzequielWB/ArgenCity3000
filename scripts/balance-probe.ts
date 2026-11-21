@@ -94,8 +94,10 @@ function buildCampo(): void {
   // Un silo cada diez lotes: la cosecha de un solo mes son 20 t por lote y el silo aguanta 200, así que con
   // menos silos la mitad del trigo se pierde en el lote.
   const silos = Math.ceil(w.farms.length / 10);
-  if (w.silos.length < silos && caja > COSTS.silo + 4000) return void build('silo', 68 + w.silos.length * 3, 22);
-  if (w.markets.length === 0 && caja > COSTS.market + 4000) return void build('market', 74, 22);
+  if (w.silos.length < silos && caja > COSTS.silo + 4000) return void build('silo', 66 + w.silos.length * 3, 22);
+  // La feria va lejos de la fila de silos: pegada, el silo que seguía no entraba, `build` fallaba en silencio
+  // y el bot se quedaba en 21 lotes para siempre.
+  if (w.markets.length === 0 && caja > COSTS.market + 4000) return void build('market', 68, 46);
   // Hasta 48 lotes: es lo que una feria necesita para no estar de adorno (120 t/mes de tope y 20 t por
   // lote), así que el probe mide el campo **a pleno** y no un adorno de ocho lotes.
   if (w.farms.length < 48 && caja > COSTS.farm + 4000) {
@@ -120,7 +122,19 @@ function manageBudget(): void {
   }
 }
 
+/**
+ * El año del campo, sumado mes a mes.
+ *
+ * Un promedio de quince años no sirve para juzgar la rentabilidad: el bot empieza con cero lotes y llega a la
+ * cadena completa recién en el año cuatro, así que el promedio mezcla el arranque con el régimen. Lo que hay que
+ * mirar es **un año entero en régimen**, con las toneladas, el precio que se cobró y lo que se perdió.
+ */
+const campoYear = { grown: 0, sold: 0, lost: 0, spoiled: 0, income: 0 };
+let cajaAlEmpezar = 0;
+
 for (let year = 1; year <= 15; year++) {
+  cajaAlEmpezar = sim.state.cash;
+  campoYear.grown = campoYear.sold = campoYear.lost = campoYear.spoiled = campoYear.income = 0;
   for (let m = 0; m < 12; m++) {
     for (let i = 0; i < TICKS_PER_MONTH; i++) sim.tick();
     if (sim.power.shortage && sim.state.cash > 4000) {
@@ -129,6 +143,14 @@ for (let year = 1; year <= 15; year++) {
     }
     buildServices();
     buildCampo();
+    if (CAMPO && sim.state.harvest) {
+      const r = sim.state.harvest;
+      campoYear.grown += r.grown;
+      campoYear.sold += r.sold;
+      campoYear.lost += r.lost;
+      campoYear.spoiled += r.spoiled;
+      campoYear.income += r.income;
+    }
     manageBudget();
     // Zone more land when lots run out, or when homes are wanted and no free home lot is left
     // (free commerce and industry lots alone must not hide that).
@@ -150,6 +172,15 @@ for (let year = 1; year <= 15; year++) {
   );
   // Con `FACTORES=1` el probe dice además **por qué** merece esa aprobación: sin esto, un 22 % es un
   // número sin causa y no se sabe si el culpable es el tránsito, los servicios o los impuestos.
+  if (CAMPO) {
+    const k = campoYear;
+    const porTonelada = k.sold > 0 ? Math.round(k.income / k.sold) : 0;
+    console.log(
+      `  campo: ${w.farms.length} lotes · ${w.silos.length} silos (${w.silos.length * 200} t) · ${w.markets.length} feria(s) · ` +
+        `cosecha ${k.grown} t · vendió ${k.sold} t a $${porTonelada} promedio · perdió ${k.lost} t por falta de silo · merma ${k.spoiled} t · ` +
+        `ingreso $${k.income}/año · caja ${cajaAlEmpezar} → ${sim.state.cash}`,
+    );
+  }
   if (process.env['FACTORES']) {
     console.log(`  factores: ${sim.approval.factors.map((f) => `${f.label} ${f.points > 0 ? '+' : ''}${f.points}`).join(' · ')}`);
     console.log(`  tránsito: peor ${sim.congestion.worst} % · atascados ${Math.round(sim.congestion.jammedShare * 100)} % · transporte ${b.transport}/mes · abandonados ${sim.abandonedCount}`);
