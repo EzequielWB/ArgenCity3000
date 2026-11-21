@@ -133,6 +133,10 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
   const n = w.n;
   const powered = w.powered;
   powered.fill(0);
+  // El consultar necesita saber, celda por celda, si el problema es el tendido o la capacidad: la bandera
+  // `shortage` es de toda la ciudad y manda a construir una usina aunque el edificio no esté en ninguna red.
+  w.powerNet.fill(0);
+  w.powerShort.fill(0);
   const visited = new Uint8Array(n * n);
   let capacity = 0;
   let use = 0;
@@ -195,6 +199,13 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
     for (let k = 0; k < tail; k++) {
       const i = queue[k];
       if (needOf(i) === 0) powered[i] = remaining > 0 ? 1 : 0;
+    }
+    // Toda la red queda marcada, y si la capacidad no alcanzó para lo que pide, con la causa anotada.
+    const short = cap < netUse;
+    for (let k = 0; k < tail; k++) {
+      const i = queue[k];
+      w.powerNet[i] = 1;
+      if (short) w.powerShort[i] = 1;
     }
     capacity += cap;
     use += netUse;

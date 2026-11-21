@@ -11,11 +11,25 @@ import { World } from '../src/world/world';
 const N = 16;
 const flat = () => new World({ n: N, corners: new Uint8Array((N + 1) * (N + 1)).fill(30), trees: new Uint8Array(N * N) });
 
+/**
+ * Una ciudad con vecinos: desde que no hay eventos con la ciudad vacía (`EVENT.minPop`), un mapa pelado ya no
+ * festeja nada. Alcanza con pintar casas de nivel máximo para pasar el umbral.
+ */
+function settled(): World {
+  const w = flat();
+  for (let i = 0; i < w.tiles.length; i++) {
+    if (w.tiles[i] !== 0) continue;
+    w.tiles[i] = 3;
+    w.level[i] = 5;
+  }
+  return w;
+}
+
 /** Tick of the first week of a month of a year, counted from the founding. */
 const tickOf = (year: number, month: number, week = 0) => ((year - START_YEAR) * 12 + month - 1) * TICKS_PER_MONTH + week * TICKS_PER_WEEK;
 
 function simAt(year: number, month: number): Simulation {
-  const sim = new Simulation(flat(), newSimState(3), 'Villa Feriado');
+  const sim = new Simulation(settled(), newSimState(3), 'Villa Feriado');
   sim.state.tick = tickOf(year, month);
   return sim;
 }

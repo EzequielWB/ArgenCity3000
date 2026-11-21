@@ -172,9 +172,17 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
       lines: [
         kind === 'wind' ? `Capacidad: ${capacity} MW de ${WIND.max} posibles (rinde más en lomas y cerca del agua)` : `Capacidad: ${capacity} MW`,
         `Mantenimiento: $${formatNumber(PLANTS[kind].upkeep)} por mes`,
-        `Alumbra hasta ${POWER_REACH} lotes a su alrededor`, `Red de la ciudad: ${formatNumber(p.use)} de ${formatNumber(p.capacity)} MW`, `Contaminación local: ${w.pollution[i]}/100`,
+        `Alumbra hasta ${POWER_REACH} lotes a su alrededor`,
+        // Los MW se leen en el orden en que el jugador piensa: lo que se pide y lo que hay. Cuando falta,
+        // el número del faltante es lo que explica los edificios a oscuras sin mandarlo a adivinar.
+        p.shortage
+          ? `Red de la ciudad: pide ${formatNumber(p.use)} MW y hay ${formatNumber(p.capacity)} · faltan ${formatNumber(Math.max(0, p.use - p.capacity))} MW`
+          : `Red de la ciudad: ${formatNumber(p.use)} de ${formatNumber(p.capacity)} MW, alcanza`,
+        `Contaminación local: ${w.pollution[i]}/100`,
       ],
-      hint: p.shortage ? 'La red no da abasto: construí otra usina conectada.' : undefined,
+      hint: p.shortage
+        ? 'La red no da abasto: los edificios más lejanos de la usina se quedan sin luz. Construí otra usina conectada o subí el presupuesto de usinas.'
+        : undefined,
     };
   }
   if (tile === TILE.LINE) return { title: LINE_TIERS[w.lineTier[i]].label, lines: [height, w.powered[i] ? 'Con energía' : 'Sin energía', `Alumbra hasta ${LINE_TIERS[w.lineTier[i]].reach} lotes a su alrededor`, `Mantenimiento: $${formatNumber(LINE_TIERS[w.lineTier[i]].upkeep)} por mes`] };
@@ -194,7 +202,7 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
         ...lots,
         SERVICE_ROLE[service],
       ],
-      hint: w.powered[at] ? undefined : noLightHint(sim, 'Necesita luz', 'la'),
+      hint: w.powered[at] ? undefined : noLightHint(sim, at, 'la'),
     };
   }
   const hubKind = hubOf(tile);
@@ -329,7 +337,7 @@ function describeUnique(w: World, u: Unique, sim: Simulation): CellReport {
     return {
       title: info.label,
       lines: [noStreet ? `Sin calle a menos de ${ROAD_REACH} lotes: no lo visita nadie` : 'Sin luz: no funciona', size, upkeep],
-      hint: noStreet ? 'Un edificio único sólo rinde si una calle llega hasta él: trazá una calle cerca.' : noLightHint(sim, 'No funciona sin luz', 'lo'),
+      hint: noStreet ? 'Un edificio único sólo rinde si una calle llega hasta él: trazá una calle cerca.' : noLightHint(sim, w.idx(u.x, u.y), 'lo'),
     };
   }
   return { title: info.label, lines: [uniqueEffect(u.kind), owner, size, upkeep] };
@@ -348,7 +356,7 @@ function describeCoast(w: World, sim: Simulation, i: number, kind: CoastKind): C
     return {
       title: info.label,
       lines: [noStreet ? 'Sin calle cerca: no funciona' : 'Sin luz: no funciona', upkeep],
-      hint: noStreet ? `Sin una calle a menos de ${ROAD_REACH} lotes no da trabajo ni rinde nada. Trazá una calle que llegue hasta acá.` : noLightHint(sim, 'No funciona sin luz', 'la'),
+      hint: noStreet ? `Sin una calle a menos de ${ROAD_REACH} lotes no da trabajo ni rinde nada. Trazá una calle que llegue hasta acá.` : noLightHint(sim, i, 'la'),
     };
   }
   const lines: string[] = [];
@@ -383,11 +391,23 @@ function describeCoast(w: World, sim: Simulation, i: number, kind: CoastKind): C
   return { title: info.label, lines };
 }
 
-/** What to do about a cell with no light: it must be within the reach of the plant or of a lit building, or get a power line. */
-function noLightHint(sim: Simulation, lead: string, pronoun: 'lo' | 'la'): string {
-  if (sim.world.plants.length === 0) return `${lead}: construí una usina.`;
-  const near = `acerca${pronoun} a la usina o a un edificio con luz (alcance de ${POWER_REACH} lotes), o tendé un tendido eléctrico`;
-  return sim.power.shortage ? `${lead}: ${near}; o la usina no da abasto, y hace falta otra.` : `${lead}: ${near}.`;
+/**
+ * Qué hacer con una celda sin luz. Son tres causas distintas y el jugador necesita saber cuál le tocó:
+ * que no haya usina, que el tendido no llegue hasta acá, o que la red exista pero no dé abasto. La bandera
+ * `shortage` es de toda la ciudad —con una red corta en cualquier lado marcaba todas las celdas— así que
+ * la causa se lee de `powerNet` / `powerShort`, que son por celda.
+ */
+function noLightHint(sim: Simulation, i: number, pronoun: 'lo' | 'la'): string {
+  const w = sim.world;
+  if (w.plants.length === 0) return 'No hay ninguna usina: construí una.';
+  if (!w.powerNet[i] || !w.powerShort[i]) {
+    // Fuera de toda red, o en una red con capacidad de sobra: lo que falta es el tendido, no la corriente.
+    // El estado ya lo dice la lista de la tarjeta («Sin luz»), así que acá va la causa y la salida.
+    return `No le llega el tendido: acerca${pronoun} a la usina o a otro edificio con luz (alcance de ${POWER_REACH} lotes), o tendé un tendido eléctrico.`;
+  }
+  const { use, capacity } = sim.power;
+  const falta = Math.max(0, use - capacity);
+  return `La red no da abasto: la ciudad pide ${formatNumber(use)} MW y hay ${formatNumber(capacity)} · faltan ${formatNumber(falta)} MW. Hace falta otra usina conectada.`;
 }
 
 const ZONE_TAX_NAME: Record<ZoneKind, string> = { R: 'residencial', C: 'comercial', I: 'industrial' };
@@ -419,7 +439,7 @@ const VACANCY_ADVICE: Record<Cause, string> = {
 };
 
 function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level: number): string | undefined {
-  if (!w.powered[i]) return noLightHint(sim, 'Sin luz', 'lo');
+  if (!w.powered[i]) return noLightHint(sim, i, 'lo');
   if (!w.roadAccess[i]) return 'Falta una calle cerca para que llegue la gente.';
   if (sim.state.crisis) return 'Con la caja en rojo no se construye nada.';
   if (w.jam[i] > TRAFFIC.slowFrom + 30) return 'La calle de acceso está saturada y el lote crece despacio: ensanchala o abrí otro camino.';

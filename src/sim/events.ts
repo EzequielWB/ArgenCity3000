@@ -884,6 +884,9 @@ export function eventOfMonth(sim: Simulation, rng: Rng): CityEvent | null {
   const rolled = pickEvent(sim, rng);
   const s = sim.state;
   if (s.tick < TICKS_PER_MONTH * EVENT.firstAt) return null;
+  // Una ciudad sin vecinos no festeja ni discute nada: el feriado entra por calendario y se salteaba el
+  // gate de `pickEvent`, así que aparecía en medio del trazado, con el mapa todavía vacío.
+  if (sim.totals.pop < EVENT.minPop) return null;
   const { month, year } = dateOf(s.tick);
   return celebratedHolidayOf(year, month) ? holidayEventOf(month) : rolled;
 }

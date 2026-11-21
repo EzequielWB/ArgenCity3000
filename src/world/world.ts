@@ -195,6 +195,13 @@ export class World {
   farmPressure = 0;
 
   readonly powered: Uint8Array;
+  /**
+   * 1 en las celdas que caen dentro de alguna red eléctrica, tengan luz o no. Sirve para separar «no me
+   * llega el tendido» de «la red no da abasto» en el consultar. Se recalcula en `computePower`, no se guarda.
+   */
+  readonly powerNet: Uint8Array;
+  /** 1 en las celdas cuya red no da abasto: lo que falta es capacidad, no tendido. Se recalcula igual. */
+  readonly powerShort: Uint8Array;
   readonly pollution: Uint8Array;
   readonly landValue: Uint8Array;
   readonly roadAccess: Uint8Array;
@@ -250,6 +257,8 @@ export class World {
     this.parkArea = new Uint16Array(size);
     this.parkCare = new Uint8Array(size);
     this.powered = new Uint8Array(size);
+    this.powerNet = new Uint8Array(size);
+    this.powerShort = new Uint8Array(size);
     this.pollution = new Uint8Array(size);
     this.landValue = new Uint8Array(size);
     this.roadAccess = new Uint8Array(size);

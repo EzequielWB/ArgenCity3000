@@ -114,7 +114,9 @@ describe('describeCell', () => {
     const off = describeCell(w, sim, 8, 8);
     expect(off.title).toBe('Escuela');
     expect(off.lines.join(' ')).toMatch(/Sin luz/);
-    expect(off.hint).toMatch(/luz/);
+    // El estado ya está en la lista: el consejo nombra la causa, sin repetir «sin luz» una tercera vez.
+    expect(off.hint).toMatch(/usina/i);
+    expect(off.hint).not.toMatch(/sin luz/i);
     b('plant', 0, 0);
     b('line', 2, 0, 2, 8); // roads carry no light
     b('line', 3, 8, 7, 8);

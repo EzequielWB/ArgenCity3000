@@ -415,6 +415,12 @@ export const EVENT = {
   cooldown: 3,
   /** A strike (teachers, bus drivers) only comes when its budget has been cut below this percent. */
   strikeBelow: 80,
+  /**
+   * Residentes que la ciudad necesita para que le pasen cosas. Sin esto, el feriado —que entra por
+   * calendario y no por el pool de eventos— aparecía con la ciudad vacía, en medio del trazado.
+   * Cien es el Caserío: el primer pueblo con gente que puede festejar algo.
+   */
+  minPop: 100,
 } as const;
 
 /** Power units consumed per building level. */
