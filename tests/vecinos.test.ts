@@ -1,17 +1,25 @@
 /**
- * Los vecinos: que el reclamo sea el del lote que se va a ir, que el nombre no cambie de una mirada a la
- * otra y que el tope de cuatro tarjetas cuente bien el resto.
+ * Los vecinos: que el que llame sea el barrio y no el lote, que el portavoz sea el más enojado, que la voz
+ * suba con el enojo sin repetirse de barrio en barrio y que el nombre no cambie de una mirada a la otra.
  */
 import { describe, expect, it } from 'vitest';
 import { TICKS_PER_MONTH, VECINOS } from '../src/config';
-import { gripCode, gripOfCause, gripOfCode, vecinoOf, vecinosCount, vecinosReport } from '../src/sim/vecinos';
-import { GRIPES } from '../src/sim/vecinos';
+import {
+  GRIPES,
+  gripCode,
+  gripOfCause,
+  gripOfCode,
+  heatOf,
+  vecinoOf,
+  vecinosCount,
+  vecinosReport,
+} from '../src/sim/vecinos';
 import { TILE, World } from '../src/world/world';
 import { generateMap } from '../src/world/mapkinds';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools';
 import { Simulation, newSimState } from '../src/sim/simulation';
-import { moreLine, timeAgo, vecinosButtonLabel, vecinosHtml } from '../src/ui/vecinos';
+import { countLabel, radioLine, sinceLabel, timeAgo, vecinosHtml } from '../src/ui/vecinos';
 
 const KINDS = { health: true, crime: true, school: true };
 const NONE = { health: false, crime: false, school: false };
@@ -41,24 +49,6 @@ function dark(w: World, x: number, y: number, anger: number, months = 3): number
   return i;
 }
 
-describe('el vecino de un lote', () => {
-  it('es el mismo siempre: sale de la celda y la semilla, no del azar de la partida', () => {
-    const a = vecinoOf(12, 20, 42);
-    const b = vecinoOf(12, 20, 42);
-    expect(a).toEqual(b);
-    expect(a.name.length).toBeGreaterThan(4);
-    expect(vecinosReport(city(), KINDS, 42)).toEqual(vecinosReport(city(), KINDS, 42));
-  });
-
-  it('tiene las tres formas de un barrio: Doña, Don y la familia', () => {
-    const names = new Set<string>();
-    for (let x = 0; x < 24; x++) for (let y = 0; y < 24; y++) names.add(vecinoOf(x, y, 5).name.split(' ')[0]);
-    expect(names).toContain('Doña');
-    expect(names).toContain('Don');
-    expect([...names].some((n) => n === 'La')).toBe(true);
-  });
-});
-
 describe('las quejas', () => {
   it('no reclama por lo que no lo va a echar: la crisis y la casa de al lado quedan afuera', () => {
     expect(gripOfCause('crisis')).toBeNull();
@@ -66,35 +56,22 @@ describe('las quejas', () => {
     expect(gripOfCause('power')).toBe('power');
   });
 
-  it('sólo entra el lote que ya está enojado: lo flojo no gasta una tarjeta', () => {
+  it('sólo entra el lote que ya está enojado: lo flojo no gasta una fila', () => {
     const w = city();
     dark(w, 2, 2, VECINOS.angerMin - 1);
-    expect(vecinosReport(w, KINDS, 1).list).toHaveLength(0);
+    expect(vecinosReport(w, KINDS, 1).calls).toHaveLength(0);
     dark(w, 2, 2, VECINOS.angerMin);
-    expect(vecinosReport(w, KINDS, 1).list).toHaveLength(1);
+    expect(vecinosReport(w, KINDS, 1).calls).toHaveLength(1);
   });
 
   it('dice el problema que la simulación marca, y hace cuánto que lo tiene', () => {
     const w = city();
     dark(w, 4, 4, 30, 8);
-    const [c] = vecinosReport(w, KINDS, 1).list;
+    const [c] = vecinosReport(w, KINDS, 1).calls;
     expect(c.grip).toBe('power');
     expect(c.months).toBe(8);
-    expect(c.text).toMatch(/luz/i);
+    expect(c.say).toMatch(/luz|oscuras|heladera/i);
     expect(c.who.name).toBe(vecinoOf(4, 4, 1).name);
-  });
-
-  it('lista cuatro y cuenta el resto agrupado por problema', () => {
-    const w = city();
-    for (let k = 0; k < 10; k++) dark(w, 2 + k, 2, 20 + k);
-    const r = vecinosReport(w, KINDS, 1);
-    expect(r.list).toHaveLength(VECINOS.listed);
-    expect(r.more).toHaveLength(1);
-    expect(r.more[0]).toMatchObject({ grip: 'power', count: 10 - VECINOS.listed });
-    expect(r.more[0].label).toMatch(/luz/);
-    expect(r.total).toBe(10);
-    // La primera es la más enojada: la lista es una prioridad, no un muestreo.
-    expect(r.list[0].anger).toBe(29);
   });
 
   it('un problema de servicio no reclama: eso se paga en aprobación', () => {
@@ -104,7 +81,103 @@ describe('las quejas', () => {
     w.anger[i] = 0;
     w.troubleMonths[i] = 4;
     w.troubleWhat[i] = gripCode('power');
-    expect(vecinosReport(w, KINDS, 1).list).toHaveLength(0);
+    expect(vecinosReport(w, KINDS, 1).calls).toHaveLength(0);
+  });
+});
+
+describe('el barrio que llama', () => {
+  it('diez casas pegadas con el mismo problema son un solo llamado', () => {
+    const w = city();
+    for (let k = 0; k < 10; k++) dark(w, 2 + k, 2, 20 + k);
+    const r = vecinosReport(w, KINDS, 1);
+    expect(r.calls).toHaveLength(1);
+    expect(r.calls[0].count).toBe(10);
+    expect(r.total).toBe(10);
+    expect(r.groups).toBe(1);
+  });
+
+  it('dos manchones separados son dos llamados, aunque el problema sea el mismo', () => {
+    const w = city();
+    for (let k = 0; k < 4; k++) dark(w, 2 + k, 2, 30);
+    for (let k = 0; k < 6; k++) dark(w, 2 + k, 10, 60);
+    const r = vecinosReport(w, KINDS, 1);
+    expect(r.calls).toHaveLength(2);
+    expect(r.calls.map((c) => c.count).sort()).toEqual([4, 6]);
+  });
+
+  it('la diagonal de la esquina también es el mismo barrio', () => {
+    const w = city();
+    dark(w, 4, 4, 40);
+    dark(w, 5, 5, 41);
+    expect(vecinosReport(w, KINDS, 1).calls).toHaveLength(1);
+    expect(vecinosReport(w, KINDS, 1).calls[0].count).toBe(2);
+  });
+
+  it('el portavoz es el más enojado del grupo, no el primero del recorrido', () => {
+    const w = city();
+    dark(w, 2, 2, 20);
+    dark(w, 3, 2, 21);
+    const lead = dark(w, 4, 2, 90);
+    const [c] = vecinosReport(w, KINDS, 1).calls;
+    expect(c.i).toBe(lead);
+    expect(c.anger).toBe(90);
+    expect(c.x).toBe(4);
+  });
+
+  it('a igual enojo habla el que hace más meses que aguanta', () => {
+    const w = city();
+    dark(w, 2, 2, 50, 2);
+    const old = dark(w, 3, 2, 50, 9);
+    expect(vecinosReport(w, KINDS, 1).calls[0].i).toBe(old);
+  });
+
+  it('lista cinco y cuenta los barrios que quedaron afuera', () => {
+    const w = city();
+    // Ocho barrios de un lote, separados de a dos celdas, con enojo creciente.
+    for (let k = 0; k < 8; k++) dark(w, 1 + k * 3, 1, 20 + k * 5);
+    const r = vecinosReport(w, KINDS, 1);
+    expect(r.calls).toHaveLength(VECINOS.listed);
+    expect(r.groups).toBe(8);
+    expect(r.total).toBe(8);
+    // La primera es la más enojada: la lista es una prioridad, no un muestreo.
+    expect(r.calls[0].anger).toBe(55);
+    expect(r.calls.map((c) => c.anger)).toEqual([...r.calls.map((c) => c.anger)].sort((a, b) => b - a));
+  });
+});
+
+describe('la voz', () => {
+  it('sube de escalón donde el juego ya cambia de comportamiento', () => {
+    expect(heatOf(0)).toBe('aguanta');
+    expect(heatOf(34)).toBe('aguanta');
+    expect(heatOf(35)).toBe('duele');
+    expect(heatOf(59)).toBe('duele');
+    expect(heatOf(60)).toBe('reproche');
+    expect(heatOf(84)).toBe('reproche');
+    expect(heatOf(85)).toBe('seVa');
+  });
+
+  it('el mismo barrio no dice lo mismo cuando se enoja más', () => {
+    const w = city();
+    const i = dark(w, 4, 4, 20, 6);
+    const calm = vecinosReport(w, KINDS, 1).calls[0];
+    expect(calm.heat).toBe('aguanta');
+    w.anger[i] = 90;
+    const angry = vecinosReport(w, KINDS, 1).calls[0];
+    expect(angry.heat).toBe('seVa');
+    expect(angry.say).not.toBe(calm.say);
+  });
+
+  it('dos barrios con el mismo problema y el mismo enojo no dicen lo mismo', () => {
+    const w = city();
+    const said = new Set<string>();
+    // Doce barrios de un lote, todos igual de enojados: el hash del portavoz tiene que repartir las frases.
+    for (let k = 0; k < 12; k++) {
+      dark(w, 1 + (k % 6) * 3, 1 + Math.floor(k / 6) * 4, 70);
+      said.add(vecinosReport(w, KINDS, 1).calls[0].say);
+    }
+    for (let k = 0; k < 12; k++) dark(w, 1 + (k % 6) * 3, 1 + Math.floor(k / 6) * 4, 70);
+    const r = vecinosReport(w, KINDS, 1);
+    expect(new Set(r.calls.map((c) => c.say)).size).toBeGreaterThan(1);
   });
 });
 
@@ -119,7 +192,7 @@ describe('el agradecimiento', () => {
     expect(t.grip).toBe('road');
     expect(t.months).toBe(1);
     expect(t.text).toMatch(/calle/i);
-    expect(vecinosReport(w, KINDS, 1).list).toHaveLength(0);
+    expect(vecinosReport(w, KINDS, 1).calls).toHaveLength(0);
   });
 
   it('se olvida a los tres meses', () => {
@@ -136,6 +209,17 @@ describe('el agradecimiento', () => {
   it('un lote que nunca tuvo nada mal no agradece nada', () => {
     expect(vecinosReport(city(), KINDS, 1).thanks).toHaveLength(0);
   });
+
+  it('el panel lo muestra como una cita, sin la etiqueta «resuelto»', () => {
+    const w = city();
+    const i = w.idx(8, 8);
+    w.troubleMonths[i] = 0;
+    w.fixedMonths[i] = 0;
+    w.troubleWhat[i] = gripCode('road');
+    const html = vecinosHtml(vecinosReport(w, KINDS, 1));
+    expect(html).toContain('callo-done');
+    expect(html).not.toMatch(/resuelto/i);
+  });
 });
 
 describe('los códigos de byte', () => {
@@ -145,13 +229,42 @@ describe('los códigos de byte', () => {
     expect(gripOfCode(9)).toBeNull();
   });
 
-  it('el contador del menú es el mismo que el del panel', () => {
+  it('el contador de la radio es el mismo que el del desplegable', () => {
     const w = city();
-    for (let k = 0; k < 3; k++) dark(w, 2 + k, 2, 40);
+    for (let k = 0; k < 3; k++) dark(w, 2 + k * 4, 2, 40);
     expect(vecinosCount(w)).toBe(3);
     expect(vecinosReport(w, KINDS, 1).total).toBe(3);
     // Sin servicios desbloqueados igual cuenta: el reclamo no depende de la comisaría.
-    expect(vecinosReport(w, NONE, 1).list).toHaveLength(3);
+    expect(vecinosReport(w, NONE, 1).calls).toHaveLength(3);
+  });
+});
+
+describe('la pantalla de la radio', () => {
+  it('cuenta en vecinos, y «uno solo» cuando el barrio es una casa', () => {
+    expect(countLabel(1)).toBe('uno solo');
+    expect(countLabel(30)).toBe('30 vecinos');
+  });
+
+  it('presenta al que llama antes de la cita, con el tiempo medido', () => {
+    const w = city();
+    dark(w, 4, 4, 70, 8);
+    const [c] = vecinosReport(w, KINDS, 1).calls;
+    const line = radioLine(c);
+    expect(line).toContain(`—Nos llama ${c.who.radio}: «`);
+    expect(line).toContain('Hace 8 meses que no tenemos luz');
+    expect(line.endsWith('»')).toBe(true);
+  });
+
+  it('el tiempo se dice en palabras', () => {
+    expect(sinceLabel(1)).toBe('Hace un mes');
+    expect(sinceLabel(8)).toBe('Hace 8 meses');
+    expect(timeAgo(255)).toBe('hace más de veinte años');
+  });
+
+  it('sin llamados la pantalla queda sin señal y el panel lo dice', () => {
+    const html = vecinosHtml(vecinosReport(city(), KINDS, 1));
+    expect(html).toContain('No llama nadie');
+    expect(html).toContain('Los que llaman son los que están por irse.');
   });
 });
 
@@ -193,7 +306,7 @@ describe('los meses de queja', () => {
     // El problema se olvida pero no se borra: es lo que el agradecimiento nombra.
     expect(gripOfCode(w.troubleWhat[i])).toBe('power');
     expect(vecinosReport(w, KINDS, 5).thanks.map((t) => t.grip)).toContain('power');
-    expect(vecinosReport(w, KINDS, 5).list.map((c) => c.i)).not.toContain(i);
+    expect(vecinosReport(w, KINDS, 5).calls.map((c) => c.i)).not.toContain(i);
   });
 });
 

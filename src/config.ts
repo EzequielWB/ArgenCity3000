@@ -618,7 +618,8 @@ export const ANGER = {
  * tarjetas; el resto se cuenta agrupado. `thanksFor` son los meses que vive un agradecimiento.
  */
 export const VECINOS = {
-  listed: 4,
+  /** Cuántos llamados entran en el desplegable: cinco, el más enojado arriba. */
+  listed: 5,
   angerMin: 12,
   thanksFor: 3,
   thanksListed: 2,
