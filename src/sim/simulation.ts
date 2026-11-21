@@ -392,6 +392,17 @@ export class Simulation {
    * first. The monthly step and the card of the lot read this same function, so a number the player
    * sees is the number the city acts on.
    */
+  /**
+   * Qué le está gastando la paciencia a un lote, y cuánto por mes.
+   *
+   * Las quejas son de **falla**, no de cobertura parcial: algo que está roto y se puede arreglar. Por eso
+   * la falta de salita y de escuela **no** está acá, aunque la burbuja del lote las muestre: una escuela
+   * cubre un radio y una ciudad grande siempre tiene barrios afuera, así que enojar por eso vaciaba todas
+   * las casas aunque el jugador hiciera todo bien (medido: 0 habitantes en el año 11 con el peso de las
+   * otras quejas, y en el año 15 con un tercio del peso). Su costo se paga en la aprobación, que es donde
+   * tiene que doler: `computeApproval` resta hasta 8 puntos por salud y 6 por educación.
+   * `tests/servicios-no-vacian.test.ts` ata la decisión.
+   */
   unrest(i: number, zone: ZoneKind): { rise: number; worst: Cause | null } {
     const w = this.world;
     const causes: { cause: Cause; rise: number }[] = [];
