@@ -11,6 +11,22 @@ import type { Farm, Market, Silo, World } from './world';
 export type Cell = [number, number];
 
 /**
+ * Lo mínimo que hace falta para mover toneladas: un mundo entero sirve, y también una **copia** de los silos.
+ *
+ * El panel de presupuesto tiene que pronosticar la cosecha del mes sin comerse el stock del jugador, así que
+ * el cierre del mes corre sobre un clon y estas funciones no distinguen uno de otro. Mover el reparto a un
+ * parámetro estructural es lo que evita tener dos reglas —una para el mundo y otra para el pronóstico— que
+ * se desincronizan al primer cambio.
+ */
+export interface Silos {
+  silos: Silo[];
+}
+
+export interface Markets {
+  markets: Market[];
+}
+
+/**
  * Las celdas que ocupa una pieza anclada en (x, y): siempre `size * size`, y el ancla **se corre hacia
  * adentro** si la pieza no entra, como la de una usina, un depósito o un servicio.
  *
@@ -46,17 +62,17 @@ export function marketAt(w: World, x: number, y: number): Market | null {
 }
 
 /** Las toneladas guardadas en toda la ciudad. */
-export function storedTons(w: World): number {
+export function storedTons(w: Silos): number {
   return w.silos.reduce((sum, s) => sum + Math.max(0, s.tons), 0);
 }
 
 /** Cuánto entra en total: sin silos no se guarda nada, y sin lugar la cosecha se pierde. */
-export function siloRoom(w: World): number {
+export function siloRoom(w: Silos): number {
   return w.silos.length * SILO_CAPACITY;
 }
 
 /** Toneladas que la ciudad puede convertir en pesos por mes: lo que suman sus ferias. */
-export function marketRoom(w: World): number {
+export function marketRoom(w: Markets): number {
   return w.markets.length * MARKET_THROUGHPUT;
 }
 
@@ -67,7 +83,7 @@ export function marketRoom(w: World): number {
  * avisa. Reparte desde el primer silo con lugar para que el stock quede parejo y la merma no castigue siempre
  * al mismo.
  */
-export function storeTons(w: World, tons: number): number {
+export function storeTons(w: Silos, tons: number): number {
   let left = Math.max(0, tons);
   for (const silo of w.silos) {
     if (left <= 0) break;
@@ -86,7 +102,7 @@ export function storeTons(w: World, tons: number): number {
  * Vacía el primer silo que tiene carga antes de pasar al siguiente, al revés que `storeTons`: así el stock
  * que queda arriba de todo sigue siendo igual de viejo y la merma no castiga a un silo distinto cada mes.
  */
-export function takeTons(w: World, tons: number): number {
+export function takeTons(w: Silos, tons: number): number {
   let left = Math.max(0, tons);
   let took = 0;
   for (const silo of w.silos) {

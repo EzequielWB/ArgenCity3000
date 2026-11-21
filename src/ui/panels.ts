@@ -1,5 +1,5 @@
 import { TILE } from '../world/world';
-import { BANKRUPT_MONTHS, GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, SERVICE_KINDS, type GovernmentKind, type ServiceKind } from '../config';
+import { BANKRUPT_MONTHS, CROPS, GOVERNMENTS, GOVERNMENT_KINDS, LOANS, MAX_FUNDING, MAX_TAX, MIN_TAX, SERVICE_KINDS, type GovernmentKind, type ServiceKind } from '../config';
 import type { Simulation } from '../sim/simulation';
 import { averageTax } from '../sim/demand';
 import type { ZoneKind } from '../world/world';
@@ -9,6 +9,7 @@ import type { Game } from '../game';
 import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
+import { previewHarvest } from '../sim/campo';
 import { dateOf } from '../sim/calendar';
 import { COAST_BOOST, factorOf, incomeFactor, lockOf } from '../sim/effects';
 import { detailOf } from '../sim/events';
@@ -96,8 +97,16 @@ function money(v: number, sign = false): string {
   return `<span class="${cls}">${sign && v > 0 ? '+' : ''}${formatMoney(v)}</span>`;
 }
 
-function budgetTable(b: BudgetReport, dry = 0): string {
+/**
+ * La planilla del mes, con una línea por concepto.
+ *
+ * El campo sólo aparece si hay algo que contar: un jugador sin lote ni silo no tiene por qué leer dos filas en
+ * cero, pero el que tiene una cadena las ve siempre —también en julio, cuando la cosecha es cero— porque un
+ * ingreso que aparece una vez al año y una planilla que cambia de tamaño son la misma trampa.
+ */
+export function budgetTable(b: BudgetReport, dry = 0): string {
   const row = (label: string, v: number, cls = '') => `<tr class="${cls}"><td>${label}</td><td>${money(v)}</td></tr>`;
+  const campo = b.farmIncome !== 0 || b.farmUpkeep !== 0;
   return `<div class="planilla"><table class="budget">
     ${row('Impuestos residenciales', b.taxR)}
     ${row('Impuestos comerciales', b.taxC)}
@@ -105,6 +114,7 @@ function budgetTable(b: BudgetReport, dry = 0): string {
     ${row('Pesca y turismo', b.coastIncome)}
     ${row('Aeropuertos y puertos', b.hubIncome)}
     ${row('Edificios únicos', b.uniqueIncome)}
+    ${campo ? row('Cosecha', b.farmIncome) : ''}
     ${row('Total ingresos', b.income, 'total')}
     ${row('Calles y puentes', b.roads)}
     ${row('Tendido eléctrico', b.lines)}
@@ -120,6 +130,7 @@ function budgetTable(b: BudgetReport, dry = 0): string {
     ${row('Transporte', b.transport)}
     ${row('Aeropuertos y puertos', b.hubs)}
     ${row('Edificios únicos', b.uniques)}
+    ${campo ? row('Silos y feria', b.farmUpkeep) : ''}
     ${row('Cuota del crédito', b.loan)}
     ${row('Administración municipal', b.services)}
     ${row('Total gastos', b.expenses, 'total')}
@@ -182,10 +193,16 @@ export function openBudget(game: Game): void {
   `);
   const refresh = () => {
     const boost = factorOf(sim.state.effects, COAST_BOOST);
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, dateOf(sim.state.tick).month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods);
+    const month = dateOf(sim.state.tick).month;
+    // La cosecha del mes se pronostica con el mismo cierre que la va a cobrar: si el mes no es de cosecha da
+    // cero, y el jugador ve en la planilla que el campo sólo paga una vez al año.
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods, previewHarvest(game.world, month, sim.state.order));
     $('#budgetNow').innerHTML = budgetTable(b, sim.state.dry);
     // The year is the average of the seasons, not the month in course.
-    $('#yearly').innerHTML = money(monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods).balance * 12, true);
+    // El año lleva **una** cosecha, la del mes que corresponde, a precio de cosecha: es el piso, porque el que
+    // aguanta hasta junio cobra más y el que vende flojo cobra menos.
+    const year = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods, previewHarvest(game.world, CROPS.trigo.harvest, sim.state.order));
+    $('#yearly').innerHTML = money(year.balance * 12, true);
     const d = sim.demand;
     const avg = averageTax(sim.state.taxes);
     const demand = `Demanda: residencial ${d.R} · comercial ${d.C} · industrial ${d.I}.`;

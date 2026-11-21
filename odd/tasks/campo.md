@@ -101,7 +101,7 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   de calle de tierra sin tendido. `S1`
 - **T4** — ~~`endOfMonth`: cosecha en el mes que corresponde, merma, y la venta que decide la orden.~~ **Hecho.**
   `settleHarvest` + el ingreso en `monthlyBudget` + la noticia del diario. `S3 S5 S6` `ae4fa08`…
-- **T5** — `monthlyBudget`: `farmIncome` y `farmUpkeep` en `BudgetReport`, con su línea en el panel de
+- **T5** — ~~`monthlyBudget`: `farmIncome` y `farmUpkeep` en `BudgetReport`, con su línea en el panel de
   presupuesto. `S7`
 - **T6** — Panel del campo: precio del mes, stock por silo, y los dos campos de la orden. `S4 S5`
 - **T7** — Arte pixel: lote de trigo (2×2, con el rastrojo del mes), silo y feria, con su fila en el board y
@@ -171,6 +171,21 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   **$516** vendiendo en diciembre. La cadena sigue teniendo sentido —una feria pide 48 lotes y la cosecha de
   un solo mes obliga a **cinco silos**— y el campo deja de ser la jugada obvia. El payback de un lote sigue
   en tres días porque **la tierra es barata a propósito** (S1): lo caro de verdad son el silo y la feria.
+- **L21** — **T5 hecho: el campo aparece en la planilla y el pronóstico no gasta stock.** Dos filas nuevas en
+  `budgetTable`, **Cosecha** en ingresos y **Silos y feria** en gastos, que sólo se dibujan si el jugador tiene
+  algo que contar: una ciudad sin campo no gana dos renglones en cero, pero la que tiene cadena los ve también
+  en julio —con el ingreso en cero— porque un ingreso anual y una planilla que cambia de tamaño son la misma
+  trampa.
+  Para que el panel pueda **pronosticar** sin cobrar, `settleHarvest` se partió en dos: el cierre corre sobre
+  una **copia** de los silos (`closeMonth`) y `settleHarvest` escribe el resultado sobre el mundo, mientras
+  `previewHarvest` devuelve el mismo reporte sin tocar nada. Es **la misma función**, no una fórmula parecida:
+  un pronóstico calculado aparte se desincroniza a la primera regla nueva y el jugador ve un número que el
+  juego no le va a pagar. Para no duplicar el reparto de toneladas, `storeTons`/`takeTons`/`storedTons`/`siloRoom`/
+  `marketRoom` pasaron de `World` a un tipo estructural (`Silos`, `Markets`): el mundo entero encaja y un clon
+  de los silos también.
+  El pronóstico entró en **tres** lugares, no en uno: la planilla del mes, el "saldo anual estimado" (con la
+  cosecha del mes que corresponde, a precio de cosecha: es el piso, no el techo) y la barra de arriba del
+  juego, que si no estimaba el mes sin el campo y en diciembre aparecía un regalo.
 - **L15** — **Verificación antes de probar local**, y trajo un bug: el `footprint` de las tres piezas **recortaba**
   contra el borde del mapa en vez de correr el ancla para adentro como la usina, el depósito y los servicios.
   Una feria puesta en la esquina pisaba **una** celda y se cobraban los $600 enteros, con el dibujo de 3×3

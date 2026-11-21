@@ -13,6 +13,7 @@ import { saveToSlot } from './save/slots';
 import { incomeFactor } from './sim/effects';
 import { moodOf } from './sim/favor';
 import { monthlyBudget, type BudgetReport } from './sim/budget';
+import { previewHarvest } from './sim/campo';
 import { dateLabel, dateOf, weekLabel } from './sim/calendar';
 import { coastRefusal } from './sim/coast';
 import { grantLine } from './sim/mayor';
@@ -811,7 +812,10 @@ ${stalled}` : ''}`;
     const s = this.sim.state;
     const now = performance.now();
     if (force || !this.outlookBudget || now - this.outlookAt > 400) {
-      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, dateOf(s.tick).month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.sim.mods);
+      // La barra de arriba estima el mes que viene: si el campo va a cobrar, lo tiene que decir acá y no
+      // aparecer como un regalo en diciembre. `previewHarvest` calcula sobre una copia y no gasta stock.
+      const month = dateOf(s.tick).month;
+      this.outlookBudget = monthlyBudget(this.world, s.taxes, s.funding, s.loan, month, s.green, 1, s.transport, s.government, incomeFactor(s.effects), s.roads, s.plants, this.sim.mods, previewHarvest(this.world, month, s.order));
       this.outlookAt = now;
     }
     const o = describeOutlook(this.outlookBudget, s.cash);

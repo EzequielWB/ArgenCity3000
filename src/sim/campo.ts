@@ -1,6 +1,6 @@
 import { CROPS, type Crop, type CropKind } from '../config';
 import { marketRoom, storedTons, storeTons, takeTons } from '../world/farms';
-import type { World } from '../world/world';
+import type { Silo, World } from '../world/world';
 
 // La tabla de cultivos vive en `config.ts`, con los demás catálogos del juego; se reexporta para que el que
 // piensa en el campo no tenga que saber dónde está guardada.
@@ -154,9 +154,39 @@ export interface HarvestReport {
  * propio daño y el primero en vender nunca pagaría el costo de saturar.
  */
 export function settleHarvest(w: World, month: number, order: SellOrder): HarvestReport {
+  const { report, silos } = closeMonth(w, month, order);
+  for (let i = 0; i < silos.length; i++) w.silos[i].tons = silos[i].tons;
+  w.farmPressure = nextPressure(w.farmPressure, report.sold);
+  return report;
+}
+
+/**
+ * El mismo cierre del mes, calculado sobre una copia de los silos: no toca el stock ni la presión.
+ *
+ * Es lo que usa el panel para decir "este mes el campo deja $X" antes de que el mes cierre. La cuenta es
+ * **la misma función**, no una fórmula parecida: un pronóstico que se calcula aparte se desincroniza del
+ * cobro real a la primera regla nueva, y el jugador termina viendo un número que el juego no le va a pagar.
+ */
+export function previewHarvest(w: World, month: number, order: SellOrder): HarvestReport {
+  return closeMonth(w, month, order).report;
+}
+
+/**
+ * El cierre del mes del campo, sobre una copia del stock.
+ *
+ * El orden importa y es el de la realidad. Primero la **merma**, sobre lo que ya estaba guardado —lo viejo se
+ * estropea, no lo que entra hoy—; después la **cosecha**, que reparte los lotes entre los silos y pierde lo
+ * que no entra; y al final la **venta**, que es lo único que convierte toneladas en pesos.
+ *
+ * El precio se lee **antes** de anotar la presión de esta venta: el jugador cobra el mercado que encontró, y
+ * el que vuelca mucho lo ablanda para el mes que viene. Al revés se cobraría un precio que ya incluye su
+ * propio daño y el primero en vender nunca pagaría el costo de saturar.
+ */
+function closeMonth(w: World, month: number, order: SellOrder): { report: HarvestReport; silos: Silo[] } {
   const m = wrapMonth(month);
+  const silos = w.silos.map((s) => ({ ...s }));
   let spoiled = 0;
-  for (const silo of w.silos) {
+  for (const silo of silos) {
     const had = Math.max(0, silo.tons);
     const after = spoil(had);
     spoiled += had - after;
@@ -164,14 +194,13 @@ export function settleHarvest(w: World, month: number, order: SellOrder): Harves
   }
   let grown = 0;
   for (const farm of w.farms) if (CROPS[farm.crop].harvest === m) grown += CROPS[farm.crop].tons;
-  const lost = grown > 0 ? storeTons(w, grown) : 0;
+  const lost = grown > 0 ? storeTons({ silos }, grown) : 0;
   const price = priceOf(m, w.farmPressure);
-  const want = Math.round(tonsToSell(storedTons(w), price, order, marketRoom(w)));
-  const sold = takeTons(w, want);
-  w.farmPressure = nextPressure(w.farmPressure, sold);
-  return { month: m, price, grown, lost, spoiled, sold, income: sold * price };
+  const want = Math.round(tonsToSell(storedTons({ silos }), price, order, marketRoom(w)));
+  const sold = takeTons({ silos }, want);
+  const report: HarvestReport = { month: m, price, grown, lost, spoiled, sold, income: sold * price };
+  return { report, silos };
 }
-
 /**
  * Lo que el diario dice del cierre del campo, o null si no pasó nada.
  *

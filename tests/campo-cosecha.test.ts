@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { CROPS, MARKET_THROUGHPUT, SILO_CAPACITY, TICKS_PER_MONTH } from '../src/config';
-import { MERMA, PRICE_RANGE, harvestNews, settleHarvest, spoil, tonsToSell, type SellOrder } from '../src/sim/campo';
+import { MERMA, PRICE_RANGE, harvestNews, previewHarvest, settleHarvest, spoil, tonsToSell, type SellOrder } from '../src/sim/campo';
 import { Simulation, newSimState } from '../src/sim/simulation';
+import { budgetTable } from '../src/ui/panels';
+import type { BudgetReport } from '../src/sim/budget';
 import { storedTons } from '../src/world/farms';
 import { SEA_LEVEL } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
@@ -248,5 +250,61 @@ describe('el diario cuenta la cosecha', () => {
     sim.report('Nota de color.');
     for (let k = 0; k < 12 * TICKS_PER_MONTH; k++) sim.tick();
     expect(sim.state.news.some((n) => n.text.startsWith('El campo:'))).toBe(true);
+  });
+});
+
+describe('el panel pronostica sin cobrar', () => {
+  it('el pronóstico es el mismo número que después se cobra', () => {
+    const w = campo(4, 2, 1);
+    w.silos[0]!.tons = 50;
+    const dicho = previewHarvest(w, 12, { minPrice: 0, keepTons: 0 });
+    const cobrado = settleHarvest(w, 12, { minPrice: 0, keepTons: 0 });
+    expect(dicho).toEqual(cobrado);
+  });
+
+  it('mirar el pronóstico no gasta stock ni mueve el precio del mercado', () => {
+    const w = campo(4, 2, 1);
+    w.silos[0]!.tons = 100;
+    w.farmPressure = 0.3;
+    const antes = w.silos.map((s) => s.tons);
+    previewHarvest(w, 12, { minPrice: 0, keepTons: 0 });
+    previewHarvest(w, 6, { minPrice: 100, keepTons: 40 });
+    expect(w.silos.map((s) => s.tons)).toEqual(antes);
+    expect(w.farmPressure).toBe(0.3);
+  });
+
+  it('pronosticar dos veces seguidas da lo mismo: la primera no dejó basura', () => {
+    const w = campo(2, 1, 1);
+    const a = previewHarvest(w, 12, { minPrice: 0, keepTons: 0 });
+    const b = previewHarvest(w, 12, { minPrice: 0, keepTons: 0 });
+    expect(a).toEqual(b);
+  });
+});
+
+describe('la planilla del presupuesto', () => {
+  const base = (farm: { farmIncome: number; farmUpkeep: number }): BudgetReport => ({
+    taxR: 100, taxC: 0, taxI: 0, roads: 0, lines: 0, parks: 0, plants: 0, services: 0,
+    schools: 0, clinics: 0, police: 0, firefighters: 0, hospitals: 0, universities: 0,
+    loan: 0, coast: 0, transport: 0, hubs: 0, hubIncome: 0, coastIncome: 0,
+    uniques: 0, uniqueIncome: 0, ...farm,
+    income: 100 + farm.farmIncome, expenses: farm.farmUpkeep, balance: 100 + farm.farmIncome - farm.farmUpkeep,
+  });
+
+  it('cuando hay campo, la cosecha entra en los ingresos y su mantenimiento en los gastos', () => {
+    const html = budgetTable(base({ farmIncome: 14400, farmUpkeep: 100 }));
+    expect(html).toContain('Cosecha');
+    expect(html).toContain('14.400');
+    expect(html).toContain('Silos y feria');
+  });
+
+  it('sin campo la planilla no gana dos filas en cero', () => {
+    const html = budgetTable(base({ farmIncome: 0, farmUpkeep: 0 }));
+    expect(html).not.toContain('Cosecha');
+  });
+
+  it('con silos pero sin cosecha la fila del gasto ya está y la del ingreso dice cero', () => {
+    const html = budgetTable(base({ farmIncome: 0, farmUpkeep: 15 }));
+    expect(html).toContain('Silos y feria');
+    expect(html).toMatch(/Cosecha<\/td><td><span class="">\$ 0<\/span>/);
   });
 });
