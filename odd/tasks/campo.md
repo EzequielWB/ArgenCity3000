@@ -118,7 +118,7 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
 - **T9** — ~~Las tres piezas tienen ficha: rinde, stock, precio del mes y el aviso de cadena cortada.~~
   **Hecho**, ver L27. `S3 S4` `e91334b`
 - **T10** — ~~El campo se desbloquea en Ciudad pujante (2.500) y tiene su línea propia en el diario.~~
-  **Hecho**, ver L28. `S8`
+  **Hecho**, ver L28. `S8` `9cab637`
 
 ## Log
 
