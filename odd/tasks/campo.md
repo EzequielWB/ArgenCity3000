@@ -81,7 +81,14 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
 - Criterio de aceptación: `monthlyBudget` con campo devuelve `farmIncome` y `farmUpkeep` no nulos, y
   `income - expenses` sigue cerrando con las cuatro semanas.
 
-### S8 — Alcance del corte 1
+### S8 — El campo no es lo primero que ve el jugador
+- Entra en **Ciudad pujante (2.500 habitantes)**, no en Caserío: tres piezas nuevas que hay que juntar antes
+  de cobrar un peso no se le ofrecen a una ciudad de cien habitantes.
+- Criterio de aceptación: con 2.499 habitantes las tres herramientas están bloqueadas y el diario no dijo
+  nada del campo; al cruzar 2.500 aparecen las tres y el diario publica una línea que nombra el trigo, el silo
+  y la feria.
+
+### S9 — Alcance del corte 1
 - Entra: **trigo, silo, feria, precio con forma, orden de venta, merma, presupuesto**.
 - No entra todavía, y queda anotado para las vueltas siguientes: maíz y soja (misma pieza, otro
   calendario), **tambo y ganadería** (producen todos los meses: rompen el molde del pico y merecen su
@@ -110,6 +117,8 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   orden de S5 decida de verdad.~~ **Hecho**, ver L26. `S4 S5 S6` `12095c9`
 - **T9** — ~~Las tres piezas tienen ficha: rinde, stock, precio del mes y el aviso de cadena cortada.~~
   **Hecho**, ver L27. `S3 S4` `e91334b`
+- **T10** — ~~El campo se desbloquea en Ciudad pujante (2.500) y tiene su línea propia en el diario.~~
+  **Hecho**, ver L28. `S8`
 
 ## Log
 
@@ -272,6 +281,25 @@ presupuesto deja de ser una suma y pasa a ser un problema de caja.
   vuelve plata. De paso, `farmStateOf` se mudó de `pixelArt.ts` a `sim/campo.ts` —el estado del lote es una
   regla del cultivo: el mapa y la ficha tienen que decir lo mismo— y `MONTH_NAMES` agregó los meses enteros
   para prosa, que `MONTHS` es abreviado porque es una fecha.
+- **L28** — **El campo se muda de hito, y el diario lo dice.** El campo entraba en Caserío (100 habitantes),
+  y ahí era una trampa a medio terminar: el jugador recién llegado veía tres herramientas nuevas que no podía
+  pagar ni entender. Decisión del usuario: *"que salga en el diario pero que se desbloquee a los 2.500
+  habitantes"*. Las tres piezas se mudan a **Ciudad pujante (2.500)**, donde la ciudad ya tiene tamaño para que
+  el campo sea parte de ella y no un atajo. Caserío se queda con la salita, los bomberos y el muelles de
+  pescadores.
+  El diario ya tenía el mecanismo: `milestoneHeadline` nombra las herramientas que se habilitan, así que el
+  titular salió solo. Pero en ese hito entran **siete** cosas y el campo quedaba séptimo, detrás del hospital y
+  la universidad. Se le dio **su propia línea** (`campoHeadline`), publicada justo después del titular del hito:
+  *"…ya puede sembrar: habilitaron los lotes de trigo, pero sin silo la cosecha se pierde y sin feria no se
+  cobra"*. La segunda mitad es la que importa: un lote solo no cobra nada.
+  Verificado en el diario de verdad, no en un test: la partida del probe (3.913 habitantes, con luz y calles) se
+  guardó, se le puso el hito en Ciudad y se corrió un mes. Las dos líneas aparecen, en ese orden.
+  Tres intentos fallidos por el camino, que valen como advertencia: (1) una ciudad plantada a mano con 2.496
+  habitantes se derrumba en un mes sin luz y sin servicios, y nunca cruza el hito —hace falta una partida
+  sana—; (2) vaciar `state.news` para ver limpio **cierra el diario**, porque `paperOpen()` se deriva de las
+  noticias guardadas, y entonces el hito no publica nada; (3) con el diario en su tope de 50, la noticia nueva
+  entra al principio pero el conteo no cambia, así que mirar `news.length` no dice nada.
+  Para eso el probe ganó `SAVE=archivo.json`: guarda la partida del año 15, con luz, calles y servicios.
 - **L15** — **Verificación antes de probar local**, y trajo un bug: el `footprint` de las tres piezas **recortaba**
   contra el borde del mapa en vez de correr el ancla para adentro como la usina, el depósito y los servicios.
   Una feria puesta en la esquina pisaba **una** celda y se cobraban los $600 enteros, con el dibujo de 3×3

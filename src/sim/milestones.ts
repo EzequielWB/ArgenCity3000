@@ -16,12 +16,13 @@ export interface Milestone {
 
 export const MILESTONES: readonly Milestone[] = [
   { pop: 0, name: 'Paraje', grant: 0, unlocks: ['query', 'bulldoze', 'roadDirt', 'road', 'roadPaved', 'roadBoulevard', 'line', 'lineConcrete', 'zoneR', 'zoneC', 'zoneI', 'park', 'plant'] },
-  { pop: 100, name: 'Caserío', grant: 1500, // El campo entra entero o no entra: un lote sin silo ni feria produce y no cobra, y esa trampa no se le
-  // hace a un jugador que recién arranca.
-  unlocks: ['clinic', 'fire', 'fishing', 'farm', 'silo', 'market'] },
+  { pop: 100, name: 'Caserío', grant: 1500, unlocks: ['clinic', 'fire', 'fishing'] },
   { pop: 200, name: 'Pueblo', grant: 2500, unlocks: ['school', 'police', 'promenade'] },
   { pop: 1000, name: 'Ciudad', grant: 5000, unlocks: ['plantGas', 'port', 'resort', 'bus'] },
-  { pop: 2500, name: 'Ciudad pujante', grant: 8000, unlocks: ['plantWind', 'harbor', 'hospital', 'university'] },
+  // El campo entra entero o no entra: un lote sin silo ni feria produce y no cobra, y esa trampa no se le hace
+  // a un jugador que recién arranca. Pero también pide plata y una decisión de dónde ponerlo, así que no entra
+  // en Caserío: espera a que la ciudad tenga tamaño para que el campo sea parte de ella y no un atajo.
+  { pop: 2500, name: 'Ciudad pujante', grant: 8000, unlocks: ['plantWind', 'harbor', 'hospital', 'university', 'farm', 'silo', 'market'] },
   { pop: 5000, name: 'Gran ciudad', grant: 12000, unlocks: ['lighthouse', 'airport'] },
   {
     pop: 25000,

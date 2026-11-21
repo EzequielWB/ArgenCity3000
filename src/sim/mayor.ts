@@ -88,6 +88,14 @@ export function milestoneHeadline(city: string, name: string, opens: string, gov
   return `${city} ya es ${name}: ${opens ? `se habilita ${opens} y ` : ''}${line}`;
 }
 
+/**
+ * El día que se habilita el campo. Va en su propia línea y no dentro del titular del hito: en Ciudad pujante
+ * entran siete cosas a la vez y el campo quedaba séptimo, detrás del puerto y la universidad. La segunda mitad
+ * es la que importa —el jugador tiene que saber que el lote solo no cobra nada—.
+ */
+export const campoHeadline = (city: string): string =>
+  `${city} ya puede sembrar: habilitaron los lotes de trigo, pero sin silo la cosecha se pierde y sin feria no se cobra`;
+
 /** October under a theocracy: nobody votes, the city goes to Mass. */
 export const misaHeadline = (year: number): string => `Misa mayor ${year}: la ciudad entera acompaña al Intendente en procesión y le agradece al cielo`;
 

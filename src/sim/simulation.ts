@@ -41,7 +41,7 @@ import { SMOKE_BUBBLE } from './warnings';
 import { GROWTH_APPETITE, HUMBLE, addBuilding, averageTax, cityTotals, computeDemand, educatedShare, isHoldout, levelCap, spawnLevel, type Demand, type Totals } from './demand';
 import { computeCrime, computeLandValue, computeParks, computePollution, computeRoadAccess, computeServices } from './fields';
 import { loanPaidOff, loanOwed, type Loan } from './loans';
-import { DICTATOR_FOLLOWUPS, dictatorHeadline, foundingHeadline, electionHeadline, intendente, milestoneHeadline, misaHeadline, pollHeadline } from './mayor';
+import { DICTATOR_FOLLOWUPS, campoHeadline, dictatorHeadline, foundingHeadline, electionHeadline, intendente, milestoneHeadline, misaHeadline, pollHeadline } from './mayor';
 import { FAVOR, computeFavor, judgementChance, moodOf, stepFavor, wrathApproval, wrathFires, wrathSick, type FavorReport } from './favor';
 import { PLAN, newPlan, planPremium, type FivePlan } from './plan';
 import { advanceMilestones, nextMilestone, unlockNames } from './milestones';
@@ -1210,6 +1210,8 @@ export class Simulation {
       if (!this.paperOpen()) continue;
       const opens = unlockNames(m, (t) => toolInfo(t).label.toLowerCase());
       this.publish(milestoneHeadline(this.cityName, m.name, opens, s.government, m.grant), true);
+      // El campo tiene su propia línea: en el titular del hito queda enterrado entre las otras seis herramientas.
+      if (m.unlocks.includes('farm')) this.publish(campoHeadline(this.cityName), false);
     }
   }
 

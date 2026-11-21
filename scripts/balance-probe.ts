@@ -12,6 +12,8 @@ import { generateTerrain } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool, type ToolId } from '../src/world/tools';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { COSTS, DEFAULT_TAX, SERVICES, SILO_CAPACITY, TICKS_PER_MONTH, type ServiceKind } from '../src/config';
+import { writeFileSync } from 'node:fs';
+import { serialize } from '../src/save/save';
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -185,4 +187,11 @@ for (let year = 1; year <= 15; year++) {
     console.log(`  factores: ${sim.approval.factors.map((f) => `${f.label} ${f.points > 0 ? '+' : ''}${f.points}`).join(' · ')}`);
     console.log(`  tránsito: peor ${sim.congestion.worst} % · atascados ${Math.round(sim.congestion.jammedShare * 100)} % · transporte ${b.transport}/mes · abandonados ${sim.abandonedCount}`);
   }
+}
+
+// Una partida de verdad, con luz, calles y servicios: sirve para probar la interfaz sin construir a mano una
+// ciudad que se derrumba en el primer mes por falta de todo. Va al final, con la ciudad ya en régimen.
+if (process.env['SAVE']) {
+  writeFileSync(String(process.env['SAVE']), serialize({ name: sim.cityName, seed: 1, world: w, sim: sim.state }));
+  console.log(`partida guardada en ${process.env['SAVE']}`);
 }
