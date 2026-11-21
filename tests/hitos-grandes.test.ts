@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { settlementType } from '../src/core/format';
-import { INITIAL_CASH } from '../src/config';
+import { CITY_GOAL, INITIAL_CASH } from '../src/config';
 import { headlinesFor, type CitySnapshot } from '../src/sim/news';
 import { MILESTONES, advanceMilestones, isUnlocked, milestoneForPop, milestoneOfTool, nextMilestone } from '../src/sim/milestones';
 
@@ -24,23 +24,29 @@ const base: CitySnapshot = {
 };
 
 describe('the ladder of milestones', () => {
-  it('now climbs to 200.000', () => {
-    expect(MILESTONES.map((m) => m.pop).slice(-3)).toEqual([50000, 100000, 200000]);
-    expect(MILESTONES.map((m) => m.name).slice(-3)).toEqual(['Gran metrópolis', 'Megaciudad', 'Área metropolitana']);
+  it('climbs to half a million, which is the goal', () => {
+    expect(MILESTONES.map((m) => m.pop).slice(-4)).toEqual([50000, 100000, 200000, 500000]);
+    expect(MILESTONES.map((m) => m.name).slice(-4)).toEqual(['Gran metrópolis', 'Megaciudad', 'Área metropolitana', 'Medio millón']);
+    expect(MILESTONES[MILESTONES.length - 1].pop).toBe(CITY_GOAL);
     expect(nextMilestone(MILESTONES.length - 1)).toBeNull();
   });
 
   it('reaches the new ones with the population, and pays each one once', () => {
-    expect(milestoneForPop(49999)).toBe(MILESTONES.length - 4);
-    expect(milestoneForPop(50000)).toBe(MILESTONES.length - 3);
-    expect(milestoneForPop(199999)).toBe(MILESTONES.length - 2);
-    expect(milestoneForPop(200000)).toBe(MILESTONES.length - 1);
+    expect(milestoneForPop(49999)).toBe(MILESTONES.length - 5);
+    expect(milestoneForPop(50000)).toBe(MILESTONES.length - 4);
+    expect(milestoneForPop(199999)).toBe(MILESTONES.length - 3);
+    expect(milestoneForPop(200000)).toBe(MILESTONES.length - 2);
+    expect(milestoneForPop(499999)).toBe(MILESTONES.length - 2);
+    expect(milestoneForPop(500000)).toBe(MILESTONES.length - 1);
 
-    const state = { milestone: MILESTONES.length - 4, cash: 0 };
+    const state = { milestone: MILESTONES.length - 5, cash: 0 };
     const reached = advanceMilestones(state, 200000);
     expect(reached.map((m) => m.name)).toEqual(['Gran metrópolis', 'Megaciudad', 'Área metropolitana']);
     expect(state.cash).toBe(50000 + 80000 + 120000);
     expect(advanceMilestones(state, 250000)).toEqual([]);
+    // La meta paga una vez y cierra la escalera: después de ella no hay nada.
+    expect(advanceMilestones(state, CITY_GOAL).map((m) => m.name)).toEqual(['Medio millón']);
+    expect(advanceMilestones(state, 900000)).toEqual([]);
   });
 
   it('pays more at every step', () => {

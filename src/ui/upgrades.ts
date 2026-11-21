@@ -1,4 +1,5 @@
 /** The roguelike windows: the three cards on the table, and the end of the run. */
+import { CITY_GOAL } from '../config';
 import { formatNumber } from '../core/format';
 import type { Game } from '../game';
 import { dateLabel } from '../sim/calendar';
@@ -97,22 +98,57 @@ function summaryHtml(run: RunState, tick: number): string {
 }
 
 /**
- * The end of the run, won or lost. It cannot be dismissed: the only ways out leave this city behind,
- * either for the start screen or for a fresh run on the same map.
+ * How the city went, for a classic game: there is no run and no upgrades to list, so the summary is the
+ * city itself. `lines` comes from the caller because the numbers live in the simulation, not in a panel.
  */
-export function openRunOver(game: Game, reason: keyof typeof ENDINGS, onMenu: () => void, onRestart: () => void): void {
-  const run = game.sim.state.run;
-  if (!run) return;
+function citySummaryHtml(lines: readonly [string, string][], tick: number): string {
+  return `<h3>La ciudad</h3>
+    <ul class="run-picks">${lines.map(([k, v]) => `<li>${escapeHtml(k)}: <strong>${escapeHtml(v)}</strong></li>`).join('')}</ul>
+    <p><small>${escapeHtml(dateLabel(tick))}</small></p>`;
+}
+
+/**
+ * The end of a game, won or lost. In a run it cannot be dismissed: the only ways out leave the city behind.
+ * A classic win can be dismissed, because winning should not take the city away from a player who wants to
+ * keep looking at it.
+ */
+export function endScreenHtml(reason: keyof typeof ENDINGS, classic: boolean, summary: string): string {
   const end = ENDINGS[reason];
-  const body = openModal(
-    `<p class="event-kicker">Fin de la run${reason === 'ganada' ? ' · ganada' : ''}</p>
+  // «Ganaste la run» sólo vale en una run: en el clásico la palabra no significa nada para el jugador.
+  const line = classic && reason === 'ganada' ? `La ciudad llegó a los ${formatNumber(CITY_GOAL)} habitantes. Ganaste la partida.` : end.line;
+  return `<p class="event-kicker">${classic ? 'Fin de la partida' : 'Fin de la run'}${reason === 'ganada' ? ' · ganada' : ''}</p>
     <h2>${end.title}</h2>
-    <p>${end.line}</p>
-    ${summaryHtml(run, game.sim.state.tick)}
-    <div class="row"><button id="runAgain" class="primary" type="button">Reiniciar el mismo mapa</button><button id="runMenu" type="button">Volver al menú</button></div>`,
-    undefined,
-    reason === 'ganada' ? 'plaqueta' : undefined,
-  );
+    <p>${line}</p>
+    ${summary}
+    <div class="row">${
+      classic
+        ? `<button id="endKeep" class="primary" type="button">Seguir mirando</button><button id="endMenu" type="button">Volver al menú</button>`
+        : `<button id="runAgain" class="primary" type="button">Reiniciar el mismo mapa</button><button id="runMenu" type="button">Volver al menú</button>`
+    }</div>`;
+}
+
+export function openEndScreen(
+  game: Game,
+  reason: keyof typeof ENDINGS,
+  onMenu: () => void,
+  onRestart: () => void,
+  cityLines?: readonly [string, string][],
+  /** Classic only: what to do when the player chooses to keep looking at the city. */
+  onKeep?: () => void,
+): void {
+  const run = game.sim.state.run;
+  const classic = !run;
+  const tick = game.sim.state.tick;
+  const summary = run ? summaryHtml(run, tick) : citySummaryHtml(cityLines ?? [], tick);
+  const body = openModal(endScreenHtml(reason, classic, summary), undefined, reason === 'ganada' ? 'plaqueta' : undefined);
+  if (classic) {
+    body.querySelector('#endKeep')!.addEventListener('click', () => {
+      closeModal();
+      onKeep?.();
+    });
+    body.querySelector('#endMenu')!.addEventListener('click', onMenu);
+    return;
+  }
   lockModal();
   body.querySelector('#runAgain')!.addEventListener('click', onRestart);
   body.querySelector('#runMenu')!.addEventListener('click', onMenu);

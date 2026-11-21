@@ -173,6 +173,13 @@ export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
 export const START_YEAR = 1990;
 
 /**
+ * Residents that win a classic game. It is the last milestone and the same number the roguelike run asks
+ * for: one city, one yardstick. The classic keeps three more milestones than the run's drafts, so the goal
+ * has to be a milestone or nobody announces it.
+ */
+export const CITY_GOAL = 500_000;
+
+/**
  * Quality of every street cell, in the order the player can build them. `capacity` multiplies the
  * lanes a cell carries (see `sim/congestion.ts`); a band of streets carries by its weakest cell.
  * The index is what `World.roadTier` and the save store, so the first one has to stay asphalt and

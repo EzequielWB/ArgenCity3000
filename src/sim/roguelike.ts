@@ -4,11 +4,11 @@
  * Every upgrade moves one of the knobs in `RunMods`, and the systems that already own each number
  * read those knobs instead of a second set of rules.
  */
-import { TICKS_PER_MONTH } from '../config';
+import { CITY_GOAL, TICKS_PER_MONTH } from '../config';
 import { Rng } from '../core/rng';
 
-/** Residents that win the run. */
-export const RUN_GOAL = 500_000;
+/** Residents that win the run: the same number that wins a classic game, so nobody learns two endings. */
+export const RUN_GOAL = CITY_GOAL;
 
 /**
  * Population marks where the player drafts. The goal itself is the win, not a pick, so the last mark

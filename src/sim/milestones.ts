@@ -2,7 +2,7 @@
  * Milestones: population goals that unlock tools and bring a grant from the Province. A milestone
  * once reached is never lost, even if the city shrinks.
  */
-import { GOVERNMENT_UNIQUES } from '../config';
+import { CITY_GOAL, GOVERNMENT_UNIQUES } from '../config';
 import type { ToolId } from '../world/tools';
 
 export interface Milestone {
@@ -35,6 +35,9 @@ export const MILESTONES: readonly Milestone[] = [
   { pop: 50000, name: 'Gran metrópolis', grant: 50000, unlocks: [] },
   { pop: 100000, name: 'Megaciudad', grant: 80000, unlocks: [] },
   { pop: 200000, name: 'Área metropolitana', grant: 120000, unlocks: [] },
+  // La meta del modo clásico. Es un hito y no un número suelto para que la barra lo anuncie y el jugador
+  // sepa desde el año uno a dónde va; ganar no desbloquea nada porque no queda nada después.
+  { pop: CITY_GOAL, name: 'Medio millón', grant: 200000, unlocks: [] },
 ];
 
 /** Index of the milestone that unlocks a tool. */

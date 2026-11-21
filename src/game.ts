@@ -17,7 +17,7 @@ import { previewHarvest } from './sim/campo';
 import { dateLabel, dateOf, weekLabel } from './sim/calendar';
 import { coastRefusal } from './sim/coast';
 import { grantLine } from './sim/mayor';
-import { isUnlocked, nextMilestone, unlockNames } from './sim/milestones';
+import { MILESTONES, isUnlocked, nextMilestone, unlockNames } from './sim/milestones';
 import { describeOutlook, placementNote, placementUpkeep } from './sim/outlook';
 import { windOutput } from './sim/plants';
 import { reachCells } from './sim/power';
@@ -27,7 +27,7 @@ import { Simulation } from './sim/simulation';
 import { APPROVAL, nextElectionYear } from './sim/politics';
 import { RUN_GOAL, RUN_PICKS, runOver } from './sim/roguelike';
 import { openApproval, openElectionLost, openElectionWon, openEvent, openMilestone } from './ui/panels';
-import { openRunOver, openUpgrades } from './ui/upgrades';
+import { openEndScreen, openUpgrades } from './ui/upgrades';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
 import { applyPlan, dragCells, footprintOfTool, isCoastTool, planTool, plantKindOfTool, routeRefusal, toolInfo, uniqueKindOfTool, type Plan, type ToolId } from './world/tools';
@@ -142,6 +142,8 @@ export class Game implements PointerTarget {
   private shownLost: boolean;
   /** How the run ended, once it is shown: the window is not opened twice. */
   private shownRunOver: 'ganada' | 'eleccion' | 'caja' | null = null;
+  /** Whether the classic win was already celebrated: «Seguir mirando» must not be re-opened by a save. */
+  private shownWin = false;
   /** Fires already announced with the siren. */
   private firesHeard = 0;
 
@@ -766,7 +768,7 @@ ${stalled}` : ''}`;
       this.shownRunOver = over;
       this.setSpeed(0);
       this.hooks.sound.play('news');
-      openRunOver(this, over, () => this.hooks.leave(), () => this.hooks.restart());
+      openEndScreen(this, over, () => this.hooks.leave(), () => this.hooks.restart());
       return;
     }
     // The draft stops the clock like an event does, and the clock goes back where it was when it is answered.
@@ -788,6 +790,22 @@ ${stalled}` : ''}`;
     if (result.outcome) toast(result.outcome);
   }
 
+  /**
+   * Lo que la pantalla de fin dice de una partida clásica. No hay mejoras que listar: el resumen es la
+   * ciudad, con los números que el jugador estuvo mirando toda la partida.
+   */
+  private citySummary(): readonly [string, string][] {
+    const s = this.sim.state;
+    const approval = s.government === 'teocracia' ? `Favor ${s.favor} %` : `${s.approval} %`;
+    return [
+      ['Ciudad', this.name],
+      ['Habitantes', formatNumber(this.sim.totals.pop)],
+      ['Año', String(dateOf(s.tick).year)],
+      ['Caja', formatMoney(s.cash)],
+      ['Aprobación', approval],
+    ];
+  }
+
   /** The next goal under the population, the locked tools, and the plaque when a milestone is reached. */
   private updateMilestone(): void {
     const reached = this.sim.state.milestone;
@@ -795,6 +813,18 @@ ${stalled}` : ''}`;
     if (reached > this.announcedMilestone && !this.hooks.isModalOpen()) {
       this.announcedMilestone = reached;
       this.hooks.sound.play('news');
+      // El último hito ES la meta: en vez de una plaqueta que se cierra sola, la pantalla de fin. En la run
+      // el cierre lo dispara `updateRun` con su propio resumen, así que acá sólo va el clásico.
+      if (reached === MILESTONES.length - 1 && !this.sim.state.run && !this.shownWin) {
+        this.shownWin = true;
+        // La pantalla frena el reloj como un evento; «Seguir mirando» lo devuelve donde estaba.
+        if (this.speed > 0) this.speedBeforeEvent = this.speed;
+        this.setSpeed(0);
+        openEndScreen(this, 'ganada', () => this.hooks.leave(), () => this.hooks.restart(), this.citySummary(), () =>
+          this.setSpeed(this.speedBeforeEvent),
+        );
+        return;
+      }
       openMilestone(this, reached);
     }
     if (reached === this.shownMilestone) return;

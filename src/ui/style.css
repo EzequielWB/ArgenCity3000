@@ -1628,6 +1628,17 @@ ol.steps li {
   font-weight: 600;
 }
 
+/*
+ * La plaqueta va con letra oscura sobre marrón: el gris de `.event-kicker` y de `small` (que es el mismo
+ * `--muted` de los paneles azules) se pierde ahí. La pantalla de fin de partida vive en esta plaqueta, así
+ * que sus renglones chicos también se leen.
+ */
+.modal-card[data-shape='plaqueta'] .event-kicker,
+.modal-card[data-shape='plaqueta'] small,
+.modal-card[data-shape='plaqueta'] h3 {
+  color: #4a2a12;
+}
+
 .plaqueta h2 {
   margin: 0;
   padding: 0;
