@@ -198,6 +198,9 @@ export const MAX_ROAD_TIER = ROAD_TIERS.length - 1;
 export const ASPHALT: RoadTier = 0;
 export const DIRT: RoadTier = 3;
 
+/** La calzada más ancha que el mapa dibuja con carriles: lo que pase de acá es una playa de asfalto. */
+export const MAX_BAND = 12;
+
 /** Where a tier stands in quality, worst first: dirt, asphalt, reinforced pavement, boulevard. */
 export const roadRank = (tier: number): number => (tier === DIRT ? -1 : tier);
 

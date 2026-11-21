@@ -1,5 +1,6 @@
 import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES, GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, HUBS, LINE_TIERS, PLANTS, PLANT_SIZE, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, lineRank, roadRank, type CoastKind, type GovernmentKind, type HubKind, type LineTier, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
 import { coastFits } from '../sim/coast';
+import { crossSection } from './roads';
 import { levelBlocks } from './leveling';
 import { connectedToRoute } from './route';
 import { serviceAt, serviceFootprint } from './services';
@@ -433,9 +434,18 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
     const water = w.isWater(x, y);
     // A better street over an existing one is an upgrade in place: only the difference is charged.
     if (tier !== null && t === TILE.ROAD) {
-      const was = w.roadTier[i] as RoadTier;
-      if (roadRank(tier) > roadRank(was)) {
-        out.push([x, y]);
+      // La cuadra entera, no la calzada suelta: una avenida es una sola calle, y mejorar una sola de sus
+      // calzadas deja el mapa dibujándola como la más débil —o sea, sin cambio visible— y al consultar
+      // mintiendo. Cada calzada paga su diferencia y la que ya está mejor se queda como está.
+      for (const [cx, cy] of crossSection(w, x, y)) {
+        const j = w.idx(cx, cy);
+        // La celda del arrastre ya quedó marcada arriba: se procesa igual, o el plan la saltea y la calzada
+        // que el jugador tocó es justo la que no se mejora.
+        if (j !== i && seen.has(j)) continue;
+        seen.add(j);
+        const was = w.roadTier[j] as RoadTier;
+        if (roadRank(tier) <= roadRank(was)) continue;
+        out.push([cx, cy]);
         cost += ROAD_TIERS[tier].cost - ROAD_TIERS[was].cost;
       }
       continue;

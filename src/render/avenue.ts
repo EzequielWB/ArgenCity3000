@@ -5,7 +5,7 @@
  *
  * The analysis works on WORLD cells and does not depend on the view rotation.
  */
-import { weakerRoad, type RoadTier } from '../config';
+import { MAX_BAND, weakerRoad, type RoadTier } from '../config';
 
 export const KIND = {
   /** Not a road. */
@@ -22,8 +22,8 @@ export const KIND = {
 
 export type RoadKind = (typeof KIND)[keyof typeof KIND];
 
-/** Widest band that is told apart into lanes; anything wider is drawn as plain asphalt. */
-export const MAX_BAND = 12;
+/** La banda más ancha que se dibuja con carriles. Vive en `config` porque la mejora de calles la usa. */
+export { MAX_BAND };
 
 // A cell's analysis is packed into 16 bits: kind (3) | width (4) | index (4) | tier (2).
 export const kindOf = (code: number): RoadKind => (code & 7) as RoadKind;

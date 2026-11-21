@@ -41,6 +41,7 @@ import { SEA_LEVEL } from '../world/terrain';
 import { facilityAt } from '../world/hubs';
 import { uniqueFootprint, uniqueWorks } from '../world/uniques';
 import { busColorOf, busNumberOf, streetNear } from '../world/transport';
+import { roadTierSeen } from '../world/roads';
 import { serviceAnchorIndex } from '../world/services';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf, type Unique, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
@@ -142,7 +143,10 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
     };
   }
   if (tile === TILE.ROAD) {
-    const tier = ROAD_TIERS[w.roadTier[i]];
+    // La calidad que se informa es la que se ve: la de la calzada más débil de la cuadra, que es la que el
+    // mapa dibuja y la que el tránsito cuenta. Leer el dato de la celda suelta decía «Bulevar» sobre una
+    // calzada que se veía de tierra (ver `world/roads.ts`).
+    const tier = ROAD_TIERS[roadTierSeen(w, x, y)];
     return {
       title: water ? 'Puente' : 'Calle',
       lines: [height, `Calidad: ${tier.label}`, `Tránsito: ${w.traffic[i]} % de su capacidad`, w.powered[i] ? 'Con luz (la calle no lleva la luz)' : 'Sin luz (la calle no lleva la luz)'],
