@@ -32,8 +32,8 @@ un desplegable que cuelga del gabinete del header, sin velo y sin frenar el relo
   > la izquierda estilo "RB", "RM" y asi sacalas, y abajo lo de "Las casas que reclaman lo mismo
   > y estan..." sacalo.»
 
-- **S6 — Es un desplegable, no un modal.** Cuelga del gabinete de la radio, alineado a su borde
-  izquierdo, sin pico. No hay velo, no hay `lockModal`, el reloj sigue corriendo. Se cierra con
+- **S6 — Es un desplegable, no un modal.** El gabinete va pegado al RCI —lo pidió así— y el
+  desplegable cuelga de su borde izquierdo, sin pico. No hay velo, no hay `lockModal`, el reloj sigue corriendo. Se cierra con
   Escape, con un click afuera o tocando la radio otra vez. El primer click afuera **cierra y no
   hace nada más**: si además construyera la herramienta seleccionada, cerrar el panel dejaría una
   obra puesta. Un modal de verdad (feriado, elección) lo cierra.
@@ -122,3 +122,9 @@ la elige el hash del primer barrio; los siguientes alternan desde ahí.
 **L8 — Lo que quedó afuera a propósito.** Agrupar por barrio con nombre propio («todo Villa
 Florito sin luz») y la carta del vecino que se fue por abandono. El agrupado por vecindad ya
 resuelve el conteo; el nombre del barrio sería una capa más de fiction sin efecto en el juego.
+
+**L9 — El gabinete va al lado del RCI.** Con `margin-left: auto` la radio saltaba al extremo derecho
+y dejaba un hueco entre el RCI y ella: parecía un botón del sistema, no un aparato de la ciudad.
+Ahora el gabinete arranca a 8 px del RCI y el aire queda entre la pantalla y el menú, que ya tiene
+su propio `margin-left: auto`. Medido a 1920: RCI termina en 747, la radio arranca en 755, la
+pantalla cierra en 1376 y el menú empieza en 1667.

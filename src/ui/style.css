@@ -2593,10 +2593,10 @@ table.precios td.tags {
 
 /* ---------- Radio Barrio ---------- */
 
-/* El gabinete vive en la barra, a la derecha del RCI, y el desplegable cuelga de su borde izquierdo. */
+/* El gabinete vive pegado al RCI, y el desplegable cuelga de su borde izquierdo. El menú se queda con el
+   aire de la derecha: la radio es un aparato de la ciudad, no otro botón del sistema. */
 .radio {
   position: relative;
-  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
