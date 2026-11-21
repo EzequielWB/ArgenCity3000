@@ -44,7 +44,9 @@ un desplegable que cuelga del gabinete del header, sin velo y sin frenar el relo
   desplegable, que no entran en un renglón) y su ancho es el de la frase **más larga de la tanda**,
   para que la barra no baile cada seis segundos. Arranca por el llamado más enojado y rota cada
   6 s; se detiene con el puntero encima o con el desplegable abierto, y se pega a un llamado nuevo
-  más grave en cuanto aparece.
+  más grave en cuanto aparece. **Nunca se corta**: si la ventana es angosta y el ancho disponible no
+  alcanza para la frase, la pantalla se convierte en una cinta que se desliza de lado, con
+  `prefers-reduced-motion` respetado.
   > «que el mensaje del vecino que aparece en la barra de la interfaz ocupe el largo del mensaje,
   > no de mas»
 
@@ -128,3 +130,10 @@ y dejaba un hueco entre el RCI y ella: parecía un botón del sistema, no un apa
 Ahora el gabinete arranca a 8 px del RCI y el aire queda entre la pantalla y el menú, que ya tiene
 su propio `margin-left: auto`. Medido a 1920: RCI termina en 747, la radio arranca en 755, la
 pantalla cierra en 1376 y el menú empieza en 1667.
+
+**L10 — La frase se cortaba.** Con el tope de 520 px, «—Nos llama la flia. Giménez: «Hace 8 meses que
+no tenemos luz.»» se quedaba en «…no tenemos lu». Ahora el tope es `min(720px, calc(100vw - 1134px))`
+—el espacio real entre la pantalla y el menú— y el ancho se calcula con `measureText` más el padding
+y el borde. Como red de seguridad, si aun así no entra se desliza: `clientWidth - 24` es el espacio
+real (`clientWidth` ya descuenta el borde) y la diferencia se anima con `alternate`. Medido: 1920 la
+muestra entera; 1600 la desliza 43 px.

@@ -121,6 +121,29 @@ export class Radio {
     const c = this.calls[this.idx];
     if (!c) return;
     this.say.textContent = radioLine(c);
+    this.fitLine();
+  }
+
+  /**
+   * Si la frase no entra en el ancho que la barra le puede dar, no se corta: se desliza de lado. En 1920 la
+   * pantalla se adapta a la frase más larga y esto no hace nada; en ventanas angostas el `max-width` capa el
+   * ancho y la pantalla se convierte en una cinta.
+   */
+  private fitLine(): void {
+    // `clientWidth` ya descuenta el borde: sólo queda restar el padding horizontal.
+    const room = this.screen.clientWidth - 24;
+    if (room <= 0) {
+      // La pantalla está oculta (ventana angosta, sólo el gabinete): no hay nada que medir.
+      this.screen.classList.remove('slide');
+      return;
+    }
+    const need = this.say.getBoundingClientRect().width;
+    const over = Math.ceil(need - room);
+    this.screen.classList.toggle('slide', over > 2);
+    if (over > 2) {
+      this.screen.style.setProperty('--dist', `-${over + 6}px`);
+      this.screen.style.setProperty('--dur', `${Math.max(5, Math.round((over + 6) / 28))}s`);
+    }
   }
 
   /**

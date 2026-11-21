@@ -878,6 +878,7 @@ button.chapa:focus-visible {
   text-overflow: ellipsis;
 }
 
+
 #minimapBox {
   position: absolute;
   right: 14px;
@@ -2701,7 +2702,7 @@ table.precios td.tags {
 .radio-screen {
   flex: none;
   height: 38px;
-  max-width: min(520px, calc(100vw - 1120px));
+  max-width: min(720px, calc(100vw - 1134px));
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -2728,6 +2729,34 @@ table.precios td.tags {
   color: #4e7a56;
   text-shadow: none;
   box-shadow: inset 0 0 12px #14251a;
+}
+
+/* El span no se encoge: así se puede medir cuánto mide de verdad y animar sólo si no entra. */
+.radio-screen > span {
+  flex: none;
+}
+
+/*
+ * Si la frase no entra en el ancho que la barra puede darle, en vez de cortarla se desliza de lado. Es un
+ * respaldo: en 1920 la pantalla se adapta a la frase y no hay desborde.
+ */
+.radio-screen.slide > span {
+  animation: radio-slide var(--dur, 8s) linear infinite alternate;
+}
+
+@keyframes radio-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--dist, 0));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radio-screen.slide > span {
+    animation: none;
+  }
 }
 
 .radio-drop {
