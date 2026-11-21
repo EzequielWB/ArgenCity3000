@@ -18,6 +18,9 @@
   --r: #7cc06a;
   --c: #6fb7e0;
   --i: #e0b542;
+  /* La madera de la radio: el único mueble del juego que no es chapa ni cartel. */
+  --wood-line: #6b4a12;
+  --parch-dim: #c9ab86;
   --font-body: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
   --font-title: 'Bungee', 'Chakra Petch', 'Segoe UI', sans-serif;
   /* Raised edge of a button: light from the top left, as on the pixel ornaments. */
@@ -2588,159 +2591,315 @@ table.precios td.tags {
   margin-top: -4px;
 }
 
-/* ---------- Los vecinos ---------- */
+/* ---------- Radio Barrio ---------- */
 
-/* El botón del menú avisa con un punto, igual que el diario en el teléfono. */
-#btnVecinos {
+/* El gabinete vive en la barra, a la derecha del RCI, y el desplegable cuelga de su borde izquierdo. */
+.radio {
   position: relative;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
 }
 
-#btnVecinos.unread::after {
+.radio-btn {
+  position: relative;
+  flex: none;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  cursor: pointer;
+  background: linear-gradient(#5a3a1e, #3a2410);
+  border: 2px solid #000;
+  border-radius: 3px;
+  box-shadow: var(--bevel), 3px 3px 0 #000;
+  font: inherit;
+  color: var(--cream);
+}
+
+.radio-btn.on {
+  background: linear-gradient(#7a4e20, #4a2e14);
+  box-shadow: inset 0 0 0 2px var(--gold), 3px 3px 0 #000;
+}
+
+.radio-led {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid #200;
+  box-shadow: 0 0 6px #ff5a4a;
+}
+
+.radio-btn.off .radio-led {
+  background: #2a2018;
+  border-color: #120c06;
+  box-shadow: none;
+}
+
+.radio-dial {
+  flex: none;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(#e0c9a0, #8f6a3a);
+  border: 2px solid #200;
+}
+
+.radio-btn.off .radio-dial {
+  opacity: 0.55;
+}
+
+.radio-dial::after {
   content: '';
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #f2c230;
-  border: 2px solid #000;
+  left: 50%;
+  top: 2px;
+  width: 2px;
+  height: 9px;
+  background: #200;
+  transform: translateX(-50%) rotate(38deg);
+  transform-origin: bottom;
 }
 
-.vec-lede {
-  margin: 0 0 12px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.vec-empty {
-  margin: 10px 0;
-  padding: 12px;
+.radio-lbl {
+  font-family: var(--font-title);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
   text-align: center;
-  background: var(--deep);
-  border-left: 3px solid var(--line);
-  color: var(--muted);
-  font-size: 13px;
+  color: var(--gold-light);
 }
 
-.vec-list {
+.radio-btn.off .radio-lbl {
+  color: #a08050;
+}
+
+.radio-n {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  background: var(--red);
+  color: #fff;
+  border: 2px solid #000;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La pantalla mide el mensaje, no lo que sobra: el ancho lo fija `fitScreen` con la frase más larga. */
+.radio-screen {
+  flex: none;
+  height: 38px;
+  max-width: min(520px, calc(100vw - 1120px));
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  overflow: hidden;
+  background: #0b1a10;
+  border: 3px solid #000;
+  box-shadow: inset 0 0 12px #1d5440;
+  font-family: 'Courier New', monospace;
+  font-size: 12.5px;
+  color: #8fe0a0;
+  text-shadow: 0 0 6px rgba(143, 224, 160, 0.55);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Sin lugar para la pantalla, la radio queda como gabinete: sigue avisando con el número y abriendo el panel. */
+@media (max-width: 1500px) {
+  .radio-screen {
+    display: none;
+  }
+}
+
+.radio-screen.off {
+  color: #4e7a56;
+  text-shadow: none;
+  box-shadow: inset 0 0 12px #14251a;
+}
+
+.radio-drop {
+  position: absolute;
+  top: 62px;
+  left: 0;
+  z-index: 60;
+  min-width: 520px;
+  max-width: calc(100vw - 24px);
+  padding: 7px 12px 8px;
+  background: linear-gradient(#5a3a1e, #3a2410);
+  border: 3px solid var(--wood-line);
+  box-shadow: inset 0 0 0 2px #2a1a08, 0 10px 22px rgba(0, 0, 0, 0.55), 6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.drop-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--wood-line);
+}
+
+.drop-head h2 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  color: var(--gold-light);
+  text-shadow: 0 -2px 0 var(--gold), 2px 2px 0 #2a1a08;
+}
+
+.drop-count {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--parch-dim);
+  white-space: nowrap;
+}
+
+.drop-list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.vec {
+.callo {
+  padding: 5px 0 4px;
+  border-bottom: 1px solid rgba(107, 74, 18, 0.5);
+}
+
+.callo:last-child {
+  border-bottom: 0;
+}
+
+.callo-head {
   display: flex;
-  gap: 10px;
-  padding: 10px 0;
-  border-top: 1px solid #26543f;
+  align-items: center;
+  gap: 8px;
 }
 
-.vec:first-child {
-  border-top: 0;
-}
-
-.vec-face {
+.callo-who {
   flex: none;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  background: var(--raised);
-  border: 2px solid var(--deep);
-  box-shadow: var(--bevel);
-  color: var(--gold-light);
-  font-family: var(--font-title);
-  font-size: 13px;
-  letter-spacing: 0.04em;
-}
-
-.vec-body {
-  min-width: 0;
-}
-
-.vec-name {
+  font-size: 12.5px;
   font-weight: 700;
-  font-size: 14px;
-  line-height: 1.2;
+  color: var(--gold-light);
 }
 
-.vec-addr {
-  font-size: 11px;
-  letter-spacing: 0.04em;
+.callo-meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--parch-dim);
 }
 
-.vec-say {
-  margin: 6px 0 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--cream);
-}
-
-.vec-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.vec-anger {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.vec-bar {
+.callo-bar {
+  flex: none;
   display: block;
-  width: 64px;
-  height: 8px;
-  background: var(--deep);
-  border: 1px solid #26543f;
+  width: 32px;
+  height: 5px;
+  background: #1b1410;
+  border: 1px solid #6b4a12;
 }
 
-.vec-bar b {
+.callo-bar b {
   display: block;
   height: 100%;
 }
 
-.vec-go {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 3px 10px;
-  cursor: pointer;
-}
-
-.vec-more {
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  background: var(--deep);
-  border-left: 3px solid var(--gold);
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.vec-done .vec-say {
-  font-style: italic;
-  color: #a8cfa8;
-}
-
-.vec-stamp {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 6px;
-  background: var(--r);
-  color: var(--deep);
-  border: 2px solid var(--deep);
+.callo-pct {
+  flex: none;
+  min-width: 28px;
+  text-align: right;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+}
+
+.callo-go {
+  flex: none;
+  padding: 1px 7px;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: var(--cream);
+  background: #6b4a12;
+  border: 2px solid #1b1410;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.16), inset -2px -2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.callo-say {
+  margin: 1px 0 0;
+  font-size: 11.5px;
+  line-height: 1.3;
+  font-style: italic;
+  color: var(--parch);
+}
+
+/* El agradecimiento es una cita más, sin sello: la distinción la hace el color. */
+.callo-done {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 2px solid var(--wood-line);
+  font-size: 11.5px;
+  font-style: italic;
+  color: #bfe0b8;
+}
+
+.drop-rest {
+  margin: 5px 0 0;
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--parch-dim);
+}
+
+.drop-empty {
+  padding: 18px 6px 16px;
+  text-align: center;
+}
+
+.drop-ico {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 9px;
+  border: 2px solid #6b4a12;
+  border-radius: 50%;
+  font-size: 15px;
+  color: #a08050;
+}
+
+.drop-empty p {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--parch);
+}
+
+.drop-empty small {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--parch-dim);
 }

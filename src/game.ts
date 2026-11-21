@@ -1,6 +1,5 @@
 import type { Sound } from './audio/sound';
-import { vecinosButtonLabel } from './ui/vecinos';
-import { vecinosCount } from './sim/vecinos';
+import { Radio } from './ui/radio';
 import { BANKRUPT_MONTHS, GOVERNMENTS, POWER_REACH, TICKS_PER_MONTH, type GovernmentKind } from './config';
 import { formatMoney, formatNumber, settlementType } from './core/format';
 import { toView, type Rotation } from './core/iso';
@@ -132,6 +131,7 @@ export class Game implements PointerTarget {
   private shownNews = '';
   /** Último mes en que se contaron las quejas de los vecinos: el botón del menú no se recuenta por cuadro. */
   private troubleMonth = -1;
+  private radio: Radio | null = null;
     /** The month's estimated budget shown in the top bar: recomputed a few times per second and after edits. */
   private outlookBudget: BudgetReport | null = null;
   private outlookAt = 0;
@@ -185,6 +185,7 @@ export class Game implements PointerTarget {
     this.toolbar.showGovernmentUnique(uniqueOfGovernment(this.sim.state.government));
     this.buildSpeed();
     this.startCamera();
+    this.radio = new Radio(this);
     this.updateHud(true);
     window.addEventListener('resize', this.onResize);
     $<HTMLCanvasElement>('#minimap').addEventListener('pointerdown', this.onMinimap);
@@ -201,6 +202,7 @@ export class Game implements PointerTarget {
     cancelAnimationFrame(this.raf);
     this.detach();
     this.toolbar.destroy();
+    this.radio?.destroy();
     window.removeEventListener('resize', this.onResize);
     $<HTMLCanvasElement>('#minimap').removeEventListener('pointerdown', this.onMinimap);
     this.closeInfo();
@@ -702,10 +704,7 @@ ${stalled}` : ''}`;
     const month = Math.floor(s.tick / TICKS_PER_MONTH);
     if (force || month !== this.troubleMonth) {
       this.troubleMonth = month;
-      const quejas = vecinosCount(this.world);
-      const btn = $('#btnVecinos');
-      btn.textContent = vecinosButtonLabel(quejas);
-      btn.classList.toggle('unread', quejas > 0);
+      this.radio?.refresh();
     }
     const promise = this.sim.commitmentText();
     const warning = $('#promise');

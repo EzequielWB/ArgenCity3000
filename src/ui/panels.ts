@@ -18,13 +18,11 @@ import { detailOf } from '../sim/events';
 import { FAVOR, moodOf } from '../sim/favor';
 import { PLAN, planMonthsLeft, planPremium } from '../sim/plan';
 import { loanEndLabel, loanInstalment, loanOwed, loanTotal } from '../sim/loans';
-import { MILESTONES, isUnlocked, unlockNames } from '../sim/milestones';
+import { MILESTONES, unlockNames } from '../sim/milestones';
 import { monthsToElection, nextElectionYear, type ApprovalFactor } from '../sim/politics';
 import { toolInfo } from '../world/tools';
 import { $, escapeHtml, toast } from './dom';
 import { governmentCardsHtml } from './government';
-import { vecinosHtml } from './vecinos';
-import { vecinosReport } from '../sim/vecinos';
 
 let closeHook: (() => void) | null = null;
 /** A window that has to be answered (a random event): the backdrop, the cross and Esc do not close it. */
@@ -42,6 +40,8 @@ export function openModal(html: string, onClose?: () => void, shape?: ModalShape
   body.innerHTML = html;
   $('#modalCard').dataset.shape = shape ?? '';
   $('#modal').classList.remove('hidden');
+  // Los flotantes del header (la radio) se cierran solos: dos capas juntas se comen los clics.
+  document.dispatchEvent(new CustomEvent('modal:open'));
   closeHook = onClose ?? null;
   locked = false;
   $('#modal').classList.remove('locked');
@@ -848,25 +848,3 @@ export function openEvent(game: Game): void {
   );
 }
 
-/**
- * El panel de los vecinos: las quejas de la ciudad con nombre, dirección y tiempo.
- *
- * «Ir» es lo único que hace: cierra la ventana, lleva la cámara al lote y abre su tarjeta. No arregla nada
- * desde acá a propósito — el juego se resuelve en el mapa, y una lista que resuelve sola convierte el
- * problema en un botón.
- */
-export function openVecinos(game: Game): void {
-  const m = game.sim.state.milestone;
-  const kinds = { health: isUnlocked('clinic', m), crime: isUnlocked('police', m), school: isUnlocked('school', m) };
-  const body = openModal(vecinosHtml(vecinosReport(game.world, kinds, game.seed)));
-  for (const btn of body.querySelectorAll<HTMLButtonElement>('.vec-go')) {
-    btn.addEventListener('click', () => {
-      const i = Number(btn.dataset.go);
-      const x = i % game.world.n;
-      const y = Math.floor(i / game.world.n);
-      closeModal();
-      game.view.centreOn(x, y);
-      game.inspect(x, y);
-    });
-  }
-}
