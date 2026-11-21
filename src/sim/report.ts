@@ -26,6 +26,10 @@ import {
   UNIQUES,
   UNIQUE_LIMIT,
   WIND,
+  CROPS,
+  MARKET_THROUGHPUT,
+  SILO_CAPACITY,
+  UPKEEP,
   type CoastKind,
   type ServiceKind,
   type UniqueKind,
@@ -40,7 +44,9 @@ import { busColorOf, busNumberOf, streetNear } from '../world/transport';
 import { serviceAnchorIndex } from '../world/services';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf, type Unique, type ZoneKind } from '../world/world';
 import { serviceUpkeep } from './budget';
-import { MONTHS, dateOf } from './calendar';
+import { MONTHS, MONTH_NAMES, dateOf } from './calendar';
+import { farmStateOf, priceOf } from './campo';
+import { campoBroken, storedTons } from '../world/farms';
 import { coastWorks, seasonOf, tourismFor, type Season } from './coast';
 import { HUMBLE, SERVICE_NEED, TAX_DEMAND_POINTS, isHoldout, levelCap } from './demand';
 import { residentsServed, utilization } from './fields';
@@ -232,6 +238,9 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
   }
   const coast = coastOf(tile);
   if (coast) return describeCoast(w, sim, i, coast);
+  if (tile === TILE.FARM) return describeFarm(w, sim);
+  if (tile === TILE.SILO) return describeSilo(w, x, y);
+  if (tile === TILE.MARKET) return describeMarket(w, sim);
   if (tile === TILE.PARK) {
     const area = w.parkArea[i];
     const care = w.parkCare[i];
@@ -440,4 +449,83 @@ function growthHint(w: World, sim: Simulation, i: number, zone: ZoneKind, level:
     return zone === 'I' ? 'Para crecer más necesita una ciudad más grande.' : 'Para crecer más necesita más valor del suelo (plazas, agua, menos humo) o más población.';
   }
   return undefined;
+}
+
+/** El nombre que el jugador lee para cada estado del lote; el mismo idioma que usa el dibujo. */
+const FARM_STATE_TEXT: Record<string, string> = {
+  arado: 'recién arado, sembrado este mes',
+  crecido: 'con el trigo en pie',
+  rastrojo: 'con el rastrojo de la cosecha pasada',
+};
+
+/**
+ * La ficha del lote de trigo.
+ *
+ * Dice lo que el jugador necesita para decidir si le sirve: cuánto rinde al año, cuándo, en qué anda hoy, y
+ * —lo más importante— si la cadena está cortada. Sin esto el lote se anunciaba como «Terreno libre», que es
+ * la peor clase de mentira: la que hace dudar de si la pieza está puesta.
+ */
+function describeFarm(w: World, sim: Simulation): { title: string; lines: string[]; hint?: string } {
+  const month = dateOf(sim.state.tick).month;
+  const crop = CROPS.trigo;
+  const roto = campoBroken(w);
+  return {
+    title: `Lote de ${crop.label.toLowerCase()}`,
+    lines: [
+      `Rinde ${crop.tons} toneladas por año`,
+      `Se siembra en ${MONTH_NAMES[crop.sow - 1]} y se cosecha en ${MONTH_NAMES[crop.harvest - 1]}`,
+      `Hoy está ${FARM_STATE_TEXT[farmStateOf(month)]}`,
+      'No necesita luz, agua ni calle: lo que cuesta es la cadena',
+      'No paga mantenimiento',
+    ],
+    hint:
+      roto === 'silo'
+        ? 'Sin un silo, cada cosecha se pierde en el lote: construí uno antes de diciembre.'
+        : roto === 'feria'
+          ? 'Sin una feria el trigo no se convierte en plata: el silo se llena y la cosecha siguiente no entra.'
+          : undefined,
+  };
+}
+
+/** La ficha del silo: lo que tiene, lo que le entra y lo que cuesta. */
+function describeSilo(w: World, x: number, y: number): { title: string; lines: string[]; hint?: string } {
+  const silo = w.siloAt(x, y);
+  const tons = Math.round(Math.max(0, silo?.tons ?? 0));
+  const lleno = tons >= SILO_CAPACITY;
+  return {
+    title: 'Silo de chapa',
+    lines: [
+      `Guarda ${formatNumber(tons)} de ${formatNumber(SILO_CAPACITY)} toneladas`,
+      `Guarda en total la ciudad: ${formatNumber(storedTons(w))} toneladas en ${w.silos.length} silo${w.silos.length === 1 ? '' : 's'}`,
+      `Mantenimiento: $${formatNumber(UPKEEP.silo)} por mes`,
+      'El trigo guardado se estropea: la merma se lleva el 4 % por mes',
+    ],
+    hint: lleno
+      ? 'Está lleno: la próxima cosecha que no entre se pierde en el lote. Hacé otro silo o vendé antes de diciembre.'
+      : w.markets.length === 0
+        ? 'Sin feria no hay quien compre: el trigo se queda acá y la merma se lo come.'
+        : undefined,
+  };
+}
+
+/** La ficha de la feria: el precio del mes, lo que puede vender y lo que cuesta. */
+function describeMarket(w: World, sim: Simulation): { title: string; lines: string[]; hint?: string } {
+  const month = dateOf(sim.state.tick).month;
+  const price = priceOf(month, w.farmPressure);
+  return {
+    title: 'Feria de concentración',
+    lines: [
+      `Vende hasta ${formatNumber(MARKET_THROUGHPUT)} toneladas por mes`,
+      `El trigo paga $${formatNumber(price)} la tonelada en ${MONTH_NAMES[month - 1]}`,
+      `Tiene ${formatNumber(storedTons(w))} toneladas para vender`,
+      `Mantenimiento: $${formatNumber(UPKEEP.market)} por mes`,
+      'El precio se mueve con la estación y con lo que la ciudad vuelque al mercado',
+    ],
+    hint:
+      w.silos.length === 0
+        ? 'No hay ningún silo: sin dónde guardar, no llega trigo a la feria.'
+        : storedTons(w) === 0
+          ? 'No hay trigo guardado: esperá la cosecha de diciembre o construí más lotes.'
+          : undefined,
+  };
 }

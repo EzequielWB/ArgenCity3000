@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CROPS } from '../src/config';
-import { farmStateOf, paintFarm } from '../src/render/pixelArt';
+import { paintFarm } from '../src/render/pixelArt';
+import { farmStateOf } from '../src/sim/campo';
 
 interface Art {
   px: { w: number; h: number; data: Uint8ClampedArray };

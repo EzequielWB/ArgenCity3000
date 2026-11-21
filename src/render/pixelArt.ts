@@ -13,7 +13,8 @@
  */
 import { Pixels, bayer, hex, noise, shade, type Paint, type Pt, type RGB, type WallPaint } from './pixel';
 import type { Sprite } from './sprites';
-import { BUS_COLORS, CROPS, SERVICE_SIZE, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
+import { BUS_COLORS, SERVICE_SIZE, type CoastKind, type HubKind, type PlantKind, type ServiceKind } from '../config';
+import type { FarmState } from '../sim/campo';
 
 /** Face tones measured on the reference. */
 const LEFT = 0.69;
@@ -6114,25 +6115,6 @@ const TRIGO_SOMBRA = hex('#8f7420');
 const CHAPA_SILO = ramp('#c8d0d8');
 const CHAPA_VIEJA = ramp('#9aa4ae');
 const TINGLADO = ramp('#7f9cba');
-
-/** En qué anda el lote: la tierra pelada, el trigo en pie o el rastrojo que queda después de la cosecha. */
-export type FarmState = 'arado' | 'crecido' | 'rastrojo';
-
-/**
- * El estado del lote en un mes del año.
- *
- * Sale del calendario del cultivo y no de un contador propio: la siembra es en mayo y la cosecha en diciembre,
- * así que en mayo el lote está recién arado, de junio a noviembre el trigo está en pie, y de diciembre a abril
- * queda el rastrojo. Un lote que se ve igual todo el año hace que la cosecha —que es el momento que el jugador
- * espera— no se note en el mapa.
- */
-export function farmStateOf(month: number): FarmState {
-  const crop = CROPS.trigo;
-  const m = ((Math.floor(month) - 1) % 12 + 12) % 12 + 1;
-  if (m === crop.sow) return 'arado';
-  if (m > crop.sow && m < crop.harvest) return 'crecido';
-  return 'rastrojo';
-}
 
 /** La paja del rastrojo: el trigo cortado, más pálido y más seco que la espiga. */
 const PAJA = ['#b79a5a', '#cdb072', '#ddc48c'].map(hex);

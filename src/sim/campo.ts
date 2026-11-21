@@ -171,6 +171,25 @@ export function previewHarvest(w: World, month: number, order: SellOrder): Harve
   return closeMonth(w, month, order).report;
 }
 
+/** En qué anda el lote: la tierra pelada, el trigo en pie o el rastrojo que queda después de la cosecha. */
+export type FarmState = 'arado' | 'crecido' | 'rastrojo';
+
+/**
+ * El estado del lote en un mes del año.
+ *
+ * Sale del calendario del cultivo y no de un contador propio: la siembra es en mayo y la cosecha en diciembre,
+ * así que en mayo el lote está recién arado, de junio a noviembre el trigo está en pie, y de diciembre a abril
+ * queda el rastrojo. Vive acá y no en el dibujo porque es una regla del cultivo —el mapa y la ficha del lote
+ * tienen que decir lo mismo— y el arte sólo la pinta.
+ */
+export function farmStateOf(month: number): FarmState {
+  const crop = CROPS.trigo;
+  const m = wrapMonth(month);
+  if (m === crop.sow) return 'arado';
+  if (m > crop.sow && m < crop.harvest) return 'crecido';
+  return 'rastrojo';
+}
+
 /**
  * El cierre del mes del campo, sobre una copia del stock.
  *

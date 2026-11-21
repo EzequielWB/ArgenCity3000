@@ -6,6 +6,7 @@ import { serviceAt, serviceFootprint } from '../world/services';
 import { busColorOf, depotAt } from '../world/transport';
 import { busFootprint } from '../world/tools';
 import { campoBroken, farmFootprint, marketFootprint, siloFootprint } from '../world/farms';
+import { farmStateOf } from '../sim/campo';
 import { HUBS, type HubKind } from '../config';
 import { facilityAt, hubFootprint } from '../world/hubs';
 import { uniqueFootprint } from '../world/uniques';
@@ -36,7 +37,7 @@ import { PAL, mix, rgb, toRgb } from './color';
 import { hubHeight, isPlatform, surfaceHeights, uniqueHeight, viewCornerHeights, plantHeight, type Pt } from './geometry';
 import { abandonedBuildingSprite, buildingSprite, burningBuildingSprite, routeSignSpriteFor, uniqueSprite, type Sprite } from './sprites';
 import { parkTreeHere } from './park';
-import { busDepotPixelSprite, coastPixelSprite, farmPixelSprite, farmStateOf, marketPixelSprite, poleAttach, polePixelSprite, siloPixelSprite, treePixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, servicePixelSprite, type HubView } from './pixelArt';
+import { busDepotPixelSprite, coastPixelSprite, farmPixelSprite, marketPixelSprite, poleAttach, polePixelSprite, siloPixelSprite, treePixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, servicePixelSprite, type HubView } from './pixelArt';
 import { wireCell, wireTargets } from './wire';
 
 /** Room above the map for tall buildings and below it for the map's side walls. */

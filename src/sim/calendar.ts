@@ -3,6 +3,9 @@ import { hash2 } from '../core/rng';
 
 export const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
+/** Los doce meses con el nombre entero y en minúscula, para prosa: la fecha usa `MONTHS`, abreviado. */
+export const MONTH_NAMES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
 /** In-game date as a pure function of the tick count. Months are 1-based. */
 export function dateOf(tick: number): { month: number; year: number } {
   const months = Math.floor(tick / TICKS_PER_MONTH);
