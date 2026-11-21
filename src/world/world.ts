@@ -148,6 +148,18 @@ export class World {
   /** 0–100: how tired the neighbours of this lot are of what is wrong and nobody fixes. At 100 they leave. */
   readonly anger: Uint8Array;
   /**
+   * Meses que lleva este lote con algo mal (0 = nada). Lo escribe `stepAnger` y lo lee el panel de los
+   * vecinos: «hace ocho meses que la luz se corta» es el dato, no una figura. Se satura a los 255 meses.
+   */
+  readonly troubleMonths: Uint8Array;
+  /** Meses desde que el último problema del lote se arregló (−1 = nunca). Es lo que da el agradecimiento. */
+  readonly fixedMonths: Int8Array;
+  /**
+   * Qué problema tenía el lote, como código de `GRIPES` (0 = ninguno). Se queda escrito después de
+   * arreglarlo: es lo que le permite al vecino agradecer por lo que se arregló y no por otra cosa.
+   */
+  readonly troubleWhat: Uint8Array;
+  /**
    * 1 on streets that came with a real-place map: they are only charged once buildings use
    * them. Any change of tile on the cell clears it, so a street bulldozed and built again is
    * the player's own (building a street over a street changes nothing).
@@ -239,6 +251,9 @@ export class World {
     this.variant = new Uint8Array(size);
     this.abandoned = new Uint8Array(size);
     this.anger = new Uint8Array(size);
+    this.troubleMonths = new Uint8Array(size);
+    this.fixedMonths = new Int8Array(size).fill(-1);
+    this.troubleWhat = new Uint8Array(size);
     this.inherited = new Uint8Array(size);
     this.route = new Uint8Array(size);
     this.roadTier = new Uint8Array(size);
@@ -292,6 +307,9 @@ export class World {
     this.level[i] = level;
     this.abandoned[i] = 0;
     this.anger[i] = 0;
+    this.troubleMonths[i] = 0;
+    this.fixedMonths[i] = -1;
+    this.troubleWhat[i] = 0;
     this.inherited[i] = 0;
     this.roadTier[i] = 0;
     this.lineTier[i] = 0;

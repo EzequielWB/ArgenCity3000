@@ -50,11 +50,10 @@ import { runwayHeadline, servicesCostHeadline, servicesOutweighIncome } from './
 import { uniqueApproval, uniqueFavor } from '../world/uniques';
 import { APPROVAL, approvalAppetite, computeApproval, demolitionPoints, electionDue, monthsToElection, stepApproval, type ApprovalReport } from './politics';
 import { computePower, type PowerReport } from './power';
-import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
+import { gripCode, gripOfCause } from './vecinos';import { monthsLeft, newCommitment, promiseDone, promiseKept, promiseWhat, type Commitment, type PromiseKind } from './commitments';
 import { eventById, eventOfMonth, type CityEvent } from './events';
 import { advanceTornado, newTornado, tornadoAllowedAt, tornadoCellsOf, tornadoDone, tornadoWidthFor, type TornadoRun } from './tornado';
-import { NO_MODS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type PickResult, type RunMods, type RunState } from './roguelike';
-import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
+import { NO_MODS, RUN_GOAL, dueMark, openOffer, runMods, takeUpgrade, type PickResult, type RunMods, type RunState } from './roguelike';import { COAST_BOOST, COAST_WORN, DROUGHT, FREEZE, INDUSTRY_BOOM, MIRACLE, INDUSTRY_FROZEN, NO_BLACKOUT, factorOf, incomeFactor, lockOf, tickEffects, type Effects } from './effects';
 
 export interface SimState {
   tick: number;
@@ -429,18 +428,37 @@ export class Simulation {
     for (let i = 0; i < w.anger.length; i++) {
       if (w.level[i] === 0) {
         w.anger[i] = 0;
+        w.troubleMonths[i] = 0;
+        w.fixedMonths[i] = -1;
         continue;
       }
       if (w.abandoned[i] || w.fire[i]) continue;
       const zone = zoneOf(w.tiles[i]);
-      const rise = zone ? this.unrest(i, zone).rise : 0;
-      if (rise === 0) {
+      const unrest = zone ? this.unrest(i, zone) : { rise: 0, worst: null };
+      if (unrest.rise === 0) {
+        // Lo que se arregló queda como agradecimiento un par de meses y después se olvida.
+        if (w.troubleMonths[i] > 0) {
+          w.troubleMonths[i] = 0;
+          w.fixedMonths[i] = 0;
+        } else if (w.fixedMonths[i] >= 0 && w.fixedMonths[i] < 100) w.fixedMonths[i]++;
         w.anger[i] = Math.max(0, w.anger[i] - ANGER.forgive);
         continue;
       }
-      w.anger[i] = Math.min(100, w.anger[i] + Math.min(ANGER.cap, rise));
+      // Se guarda qué lo tiene mal para que el agradecimiento hable de eso y no de otra cosa. Si el problema
+      // cambió, los meses empiezan de nuevo: una casa que estuvo dos años en crisis y ayer se quedó sin luz
+      // lleva un mes sin luz, no dos años. La crisis no es un problema del lote y no le suma meses.
+      const grip = gripOfCause(unrest.worst);
+      if (grip) {
+        const code = gripCode(grip);
+        if (w.troubleWhat[i] !== code) w.troubleMonths[i] = 0;
+        if (w.troubleMonths[i] < 255) w.troubleMonths[i]++;
+        w.troubleWhat[i] = code;
+      }
+      w.fixedMonths[i] = -1;
+      w.anger[i] = Math.min(100, w.anger[i] + Math.min(ANGER.cap, unrest.rise));
       if (w.anger[i] < 100) continue;
       w.anger[i] = 0; // the next owner starts from scratch
+      w.troubleMonths[i] = 0; // irse no es arreglar: no hay nada que agradecer
       this.setAbandoned(i, true);
     }
   }

@@ -60,6 +60,8 @@ export const SAVE_VERSION = 21;
  * they open as classic games; versions 1 to 19 have no unique buildings, so they have none.
  */
 const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+import { GRIPES } from '../sim/vecinos';
+
 const GAME_ID = 'argencity3000';
 
 export interface SaveData {
@@ -75,6 +77,13 @@ export function toBase64(bytes: Uint8Array): string {
   let s = '';
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s);
+}
+
+/** `fixedMonths` guarda −1 para «nunca»; el byte no tiene negativos, así que se escribe corrido uno. */
+function monthsFixed(w: World): Uint8Array {
+  const out = new Uint8Array(w.fixedMonths.length);
+  for (let i = 0; i < out.length; i++) out[i] = w.fixedMonths[i] + 1;
+  return out;
 }
 
 /** Decodes a byte grid, checking its size and that no value goes above `max`. */
@@ -113,6 +122,10 @@ export function serialize(d: SaveData): string {
     variant: toBase64(w.variant),
     abandoned: toBase64(w.abandoned),
     anger: toBase64(w.anger),
+    // Los meses de queja de cada lote existen desde el panel de los vecinos: un save más viejo no los trae.
+    trouble: toBase64(w.troubleMonths),
+    fixed: toBase64(monthsFixed(w)),
+    what: toBase64(w.troubleWhat),
     inherited: toBase64(w.inherited),
     route: toBase64(w.route),
     roadTier: toBase64(w.roadTier),
@@ -163,6 +176,14 @@ export function deserialize(text: string): SaveData {
     world.abandoned.set(fromBase64(data.abandoned, size, 1, 'Los edificios abandonados'));
     // A city saved before the neighbours had patience opens with a clean slate, not with a pent-up one.
     if (data.anger !== undefined) world.anger.set(fromBase64(data.anger, size, 100, 'El enojo de los vecinos'));
+    // Los meses de queja son más nuevos que el enojo: una ciudad vieja abre sin reclamos con fecha.
+    if (data.trouble !== undefined) world.troubleMonths.set(fromBase64(data.trouble, size, 255, 'Los meses de queja'));
+    if (data.fixed !== undefined) {
+      const raw = fromBase64(data.fixed, size, 101, 'Los agradecimientos');
+      for (let i = 0; i < size; i++) world.fixedMonths[i] = raw[i] - 1;
+    }
+    // Qué problema tenía cada lote: es lo que el agradecimiento nombra cuando ya se arregló.
+    if (data.what !== undefined) world.troubleWhat.set(fromBase64(data.what, size, GRIPES.length, 'El problema de cada lote'));
     world.fire.set(fromBase64(data.fire, size, 255, 'Los incendios'));
   }
   // Streets inherited from a real-place map exist from version 3 on.

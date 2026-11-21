@@ -610,6 +610,22 @@ export const ANGER = {
   forgive: 10,
 } as const;
 
+/**
+ * El panel de los vecinos.
+ *
+ * `angerMin` es lo que convierte la lista en una prioridad: con cuatro meses de enojo (16) el lote ya está
+ * en camino a vaciarse, y lo que está flojo no gasta una de las cuatro tarjetas. `listed` es el tope de
+ * tarjetas; el resto se cuenta agrupado. `thanksFor` son los meses que vive un agradecimiento.
+ */
+export const VECINOS = {
+  listed: 4,
+  angerMin: 12,
+  thanksFor: 3,
+  thanksListed: 2,
+  /** Qué parte de los vecinos son «la familia <apellido>» en vez de Doña o Don. */
+  familyShare: 0.22,
+} as const;
+
 /** A zone needs a road within this many cells (Manhattan distance). */
 export const ROAD_REACH = 3;
 
