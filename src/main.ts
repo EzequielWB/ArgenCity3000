@@ -143,12 +143,25 @@ function showStart(): void {
   name.select();
 }
 
+/** The cheats belong to one game: the next city hangs its own listener and this one goes. */
+let killCheats: (() => void) | null = null;
+
 function launch(data: SaveData): void {
   game?.destroy();
   $('#start').classList.add('hidden');
   $('#app').classList.remove('hidden');
   game = new Game(data, { isModalOpen, sound, leave: showStart, restart: startNew });
-  if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = game;
+  const launched = game;
+  if (import.meta.env.DEV) {
+    (window as unknown as { __game: Game }).__game = launched;
+    // Cargado sólo acá: el build de producción borra esta rama y con ella el módulo, así que los trucos no
+    // viajan al juego publicado ni como código muerto.
+    void import('./ui/cheats').then(({ installCheats, cheatsHelp }) => {
+      killCheats?.();
+      killCheats = installCheats(launched);
+      console.info(`Trucos locales — ${cheatsHelp()}`);
+    });
+  }
   if (data.sim.tick === 0) {
     // A real-city map is a section of a city: it comes with its streets and no provincial route.
     const hasRoute = data.world.route.some((v) => v);
