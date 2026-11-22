@@ -17,6 +17,9 @@ export type Layer = 'none' | 'power' | 'traffic' | 'pollution' | 'landValue' | '
 
 export const ZOOMS = [0.25, 0.5, 1, 2, 3] as const;
 
+/** Above this many buildings with the same problem, the bubbles for that problem are not drawn. */
+const BUBBLE_MASS = 40;
+
 /** Milliseconds per frame for drawing overlay chunks (they are flat polygons: cheap). */
 const LAYER_BUDGET_MS = 8;
 /** Most overlay chunk canvases kept alive; the ones in view are never dropped. */
@@ -327,8 +330,16 @@ export class View {
       const issues: Issue[] = !f.lit ? ['power'] : !f.street ? ['road'] : [];
       if (issues.length) items.push({ i: w.idx(Math.min(w.n - 1, f.pieces[0].x + 1), f.pieces[0].y), issues });
     }
-    this.bubbles = { at: time, items };
-    return items;
+    // A bubble per house says which house is in trouble. When half the town is missing the same thing, they
+    // say nothing and cover the map: that is what the layer view and the neighbours' panel are for.
+    const mass = new Map<Issue, number>();
+    for (const it of items) for (const issue of it.issues) mass.set(issue, (mass.get(issue) ?? 0) + 1);
+    const everywhere = new Set([...mass].filter(([, count]) => count > BUBBLE_MASS).map(([issue]) => issue));
+    const kept = everywhere.size === 0
+      ? items
+      : items.map((it) => ({ i: it.i, issues: it.issues.filter((issue) => !everywhere.has(issue)) })).filter((it) => it.issues.length > 0);
+    this.bubbles = { at: time, items: kept };
+    return kept;
   }
 
   /**

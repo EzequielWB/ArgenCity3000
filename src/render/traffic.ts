@@ -68,7 +68,7 @@ const FADE = 0.4;
  * Purely decorative: the simulation does not depend on them.
  */
 export class Traffic {
-  static readonly MAX_CARS = 260;
+  static readonly MAX_CARS = 120;
 
   cars: Car[] = [];
   target = 0;
