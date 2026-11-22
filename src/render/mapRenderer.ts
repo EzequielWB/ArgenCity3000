@@ -51,7 +51,7 @@ const MAX_LIVE_CHUNKS = 110;
 /** Milliseconds of chunk drawing allowed per frame while the picture catches up with the camera. */
 export const FRAME_BUDGET_MS = 30;
 /** Budget of the frame after the whole map was invalidated (new game, load, rotation). */
-export const URGENT_BUDGET_MS = 450;
+export const URGENT_BUDGET_MS = 30;
 /** Chunks this far outside the view are drawn ahead of time while the camera is still and the view is complete. */
 const PREFETCH_PX = CHUNK_SIZE * 2;
 const BASE_HEIGHT = 0;
@@ -165,11 +165,27 @@ export class MapRenderer {
     for (let id = 0; id < this.hasContent.length; id++) this.hasContent[id] = chunkMayHaveContent(this.shape, chunkRect(this.grid, id)) ? 1 : 0;
   }
 
-  /** Puts the map in a month; redraws everything only when the month is not the one on screen. */
+  /** Puts the map in a month; only the fields look different, so only the chunks with a field are redrawn. */
   setMonth(month: number): void {
     if (month === this.month) return;
+    const before = farmStateOf(this.month);
     this.month = month;
-    this.redrawAll();
+    // The month changes nothing but the crops: the wheat goes from ploughed to grown to stubble three times a
+    // year. Redrawing the whole map for it made the map reload on every month change, which at full speed is
+    // every couple of seconds, and the player read it as the game redrawing itself non stop.
+    if (farmStateOf(month) === before) return;
+    const n = this.world.n;
+    const tiles = this.world.tiles;
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i] !== TILE.FARM) continue;
+      const x = i % n;
+      const [vx, vy] = toView(x, (i - x) / n, this.rot, n);
+      for (const piece of this.piecesOf(this.cellBounds(vx, vy))) {
+        const c = this.chunks.get(piece.id);
+        if (c) c.valid = false;
+      }
+      this.missing = 1;
+    }
   }
 
   /** Visible chunks that are still being drawn: 0 when the last frame showed the whole view. */
