@@ -97,6 +97,57 @@ describe('mejorar una avenida', () => {
   });
 });
 
+/** Una avenida de tierra de dos calzadas a lo largo de x (y=10, y=11, x=2..11), cruzada por una calle
+ *  de una calzada a lo largo de y (x=6, y=2..19), más larga que la avenida: el cruce del reporte. */
+function crossed(): World {
+  const w = new World(generateMap(5, N, 'plain'));
+  for (let x = 2; x <= 11; x++) {
+    for (const y of [10, 11]) {
+      const i = w.idx(x, y);
+      w.tiles[i] = TILE.ROAD;
+      w.roadTier[i] = DIRT;
+    }
+  }
+  for (let y = 2; y <= 19; y++) {
+    const i = w.idx(6, y);
+    w.tiles[i] = TILE.ROAD;
+    w.roadTier[i] = DIRT;
+  }
+  return w;
+}
+
+describe('mejorar en un cruce', () => {
+  /**
+   * S7: lo que reportó el jugador. En el cruce, la calle transversal más larga le ganaba el eje a la
+   * avenida: la sección pasaba a ser la calzada entera, el plan marcaba como vistas las celdas que
+   * venían después y la segunda calzada quedaba en tierra desde el cruce hasta el final del arrastre.
+   */
+  it('un arrastre por la avenida mejora las dos calzadas también en el cruce', () => {
+    const w = crossed();
+    applyPlan(w, planOf(w, 'road', 2, 10, 11, 10));
+    for (let x = 2; x <= 11; x++) {
+      expect(w.roadTier[w.idx(x, 10)]).toBe(0);
+      expect(w.roadTier[w.idx(x, 11)]).toBe(0);
+      expect(drawn(w, x, 10)).toBe(0);
+      expect(drawn(w, x, 11)).toBe(0);
+    }
+  });
+
+  /** Tocar el cruce mejora el cruce entero (el cuadro 2x2 de calle), no la calle transversal. */
+  it('tocar el cruce mejora el cruce entero, no la calle de al lado', () => {
+    const w = crossed();
+    const plan = planOf(w, 'road', 6, 10, 6, 10);
+    expect(plan.cells.length).toBeLessThanOrEqual(4);
+    expect(plan.cells).toContainEqual([6, 10]);
+    expect(plan.cells).toContainEqual([6, 11]);
+    expect(plan.cells.every(([x]) => x >= 6 && x <= 7)).toBe(true);
+    applyPlan(w, plan);
+    expect(w.roadTier[w.idx(6, 11)]).toBe(0);
+    expect(drawn(w, 6, 11)).toBe(0);
+    expect(w.roadTier[w.idx(6, 12)]).toBe(DIRT); // la calle transversal conserva su calidad
+  });
+});
+
 /** Cuántas celdas distintas toca un plan de una calzada en una sección ancha. */
 function planCells(w: World): number {
   return planOf(w, 'roadBoulevard', 10, 5, 10, 18).cells.length / (18 - 5 + 1);

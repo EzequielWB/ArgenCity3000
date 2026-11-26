@@ -24,16 +24,14 @@ function run(w: World, x: number, y: number, dx: number, dy: number): number {
 }
 
 /**
- * Las calzadas que corren al lado de una celda de calle: el tramo continuo perpendicular a la cuadra.
- * El eje de la cuadra es su tramo más largo, igual que lee el mapa. Una sección más ancha que `MAX_BAND`
- * no es una calle (es una playa de estacionamiento) y se devuelve sola.
+ * La sección de la calle que corre a lo largo de (dx, dy): las celdas de al lado, transversales a la
+ * cuadra. Es `null` cuando esa dirección no es la de una calle acá: la sección se pasa de `MAX_BAND`
+ * o alguna de sus celdas corre para el otro lado. En un cruce los tramos se funden y una de las dos
+ * candidatas miente —devolvería la calzada entera de la otra calle—; este chequeo es el que lo pesca.
  */
-export function crossSection(w: World, x: number, y: number): [number, number][] {
-  if (w.tiles[w.idx(x, y)] !== TILE.ROAD) return [[x, y]];
-  const along = run(w, x, y, 1, 0) >= run(w, x, y, 0, 1) ? [1, 0] : [0, 1];
+function sliceOf(w: World, x: number, y: number, along: [number, number]): [number, number][] | null {
   const across: [number, number] = [along[1], along[0]];
-  const width = run(w, x, y, across[0], across[1]);
-  if (width > MAX_BAND) return [[x, y]];
+  if (run(w, x, y, across[0], across[1]) > MAX_BAND) return null;
   const cells: [number, number][] = [];
   // Se camina en las dos direcciones desde la celda, y se da vuelta el tramo para que salga en orden.
   const back: [number, number][] = [];
@@ -47,7 +45,51 @@ export function crossSection(w: World, x: number, y: number): [number, number][]
       cy += across[1] * dir;
     }
   }
-  return [...back.reverse(), [x, y], ...cells];
+  const out: [number, number][] = [...back.reverse(), [x, y], ...cells];
+  for (const [cx, cy] of out) {
+    if (run(w, cx, cy, along[0], along[1]) < run(w, cx, cy, across[0], across[1])) return null;
+  }
+  return out;
+}
+
+/** El cuadro 2x2 de calle que contiene (x, y), o `null` si ninguno de los cuatro es todo calle. */
+function blockOf2x2(w: World, x: number, y: number): [number, number][] | null {
+  for (const [dx, dy] of [
+    [0, 0],
+    [-1, 0],
+    [0, -1],
+    [-1, -1],
+  ] as const) {
+    const ax = x + dx;
+    const ay = y + dy;
+    const cells: [number, number][] = [
+      [ax, ay],
+      [ax + 1, ay],
+      [ax, ay + 1],
+      [ax + 1, ay + 1],
+    ];
+    if (cells.every(([cx, cy]) => w.inBounds(cx, cy) && w.tiles[w.idx(cx, cy)] === TILE.ROAD)) return cells;
+  }
+  return null;
+}
+
+/**
+ * Las calzadas que corren al lado de una celda de calle: el tramo continuo perpendicular a la cuadra.
+ * El eje de la cuadra es su tramo más largo, igual que lee el mapa. En un cruce de verdad —donde las
+ * dos secciones mienten— la celda pertenece a dos calles a la vez y se devuelve el cruce entero (el
+ * cuadro 2x2): mejorarlo por partes dejaría una celda a mitad que el mapa dibuja con la más débil.
+ * Una sección más ancha que `MAX_BAND` no es una calle (es una playa de estacionamiento) y se devuelve sola.
+ */
+export function crossSection(w: World, x: number, y: number): [number, number][] {
+  if (w.tiles[w.idx(x, y)] !== TILE.ROAD) return [[x, y]];
+  const hRun = run(w, x, y, 1, 0);
+  const vRun = run(w, x, y, 0, 1);
+  const hx = sliceOf(w, x, y, [1, 0]);
+  const hy = sliceOf(w, x, y, [0, 1]);
+  const slice = hx && hy ? (hRun >= vRun ? hx : hy) : (hx ?? hy);
+  if (slice) return slice;
+  if (hRun > MAX_BAND && vRun > MAX_BAND) return [[x, y]];
+  return blockOf2x2(w, x, y) ?? [[x, y]];
 }
 
 /**
