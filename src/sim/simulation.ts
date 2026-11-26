@@ -840,6 +840,11 @@ export class Simulation {
     };
   }
 
+  /** El perfil de la apuesta del campo: qué parte de los lotes va en soja, de 0 a 100. */
+  setCampoRisk(risk: number): void {
+    this.state.campoRisk = Math.max(0, Math.min(100, Math.round(risk)));
+  }
+
   tick(): void {
     const w = this.world;
     const s = this.state;

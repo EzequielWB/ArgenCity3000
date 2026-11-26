@@ -10,8 +10,9 @@ import type { Game } from '../game';
 import { deserialize, serialize, type SaveData } from '../save/save';
 import { SLOTS, deleteSlot, loadFromSlot, saveToSlot, slotInfo, type SlotId } from '../save/slots';
 import { monthlyBudget, type BudgetReport } from '../sim/budget';
-import { MERMA, previewHarvest } from '../sim/campo';
-import { campoAdviceHtml, campoStatusHtml, lastHarvestHtml, priceTableHtml } from './campo';
+import { hashString } from '../core/rng';
+import { previewHarvest } from '../sim/campo';
+import { campoStatusHtml, lastHarvestHtml, priceStripHtml } from './campo';
 import { dateOf } from '../sim/calendar';
 import { COAST_BOOST, factorOf, incomeFactor, lockOf } from '../sim/effects';
 import { detailOf } from '../sim/events';
@@ -200,12 +201,12 @@ export function openBudget(game: Game): void {
     const month = dateOf(sim.state.tick).month;
     // La cosecha del mes se pronostica con el mismo cierre que la va a cobrar: si el mes no es de cosecha da
     // cero, y el jugador ve en la planilla que el campo sólo paga una vez al año.
-    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods, previewHarvest(game.world, month, sim.state.order));
+    const b = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, month, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods, previewHarvest(game.world, month, sim.state.order, sim.state.campoRisk, hashString(game.name), dateOf(sim.state.tick).year));
     $('#budgetNow').innerHTML = budgetTable(b, sim.state.dry);
     // The year is the average of the seasons, not the month in course.
     // El año lleva **una** cosecha, la del mes que corresponde, a precio de cosecha: es el piso, porque el que
     // aguanta hasta junio cobra más y el que vende flojo cobra menos.
-    const year = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods, previewHarvest(game.world, CROPS.trigo.harvest, sim.state.order));
+    const year = monthlyBudget(game.world, sim.state.taxes, sim.state.funding, sim.state.loan, undefined, sim.state.green, boost, sim.state.transport, sim.state.government, incomeFactor(sim.state.effects), sim.state.roads, sim.state.plants, sim.mods, previewHarvest(game.world, CROPS.trigo.harvest, sim.state.order, sim.state.campoRisk, hashString(game.name), dateOf(sim.state.tick).year));
     $('#yearly').innerHTML = money(year.balance * 12, true);
     const d = sim.demand;
     const avg = averageTax(sim.state.taxes);
@@ -429,37 +430,30 @@ export function openFarm(game: Game): void {
   const tope = Math.max(100, marketRoom(w) * 6, s.order.keepTons);
   const body = openModal(`
     <h2>El campo</h2>
-    <p><small>El trigo se siembra en mayo y se cosecha en diciembre. La feria vende todos los meses hasta su tope,
-    y lo que queda en el silo se estropea: esperar paga más caro, pero no es gratis.</small></p>
     <div id="campoStatus">${campoStatusHtml(w)}</div>
-    <h3>Este mes</h3>
-    <div id="campoAdvice"></div>
-    <h3>La orden de venta</h3>
+    <div class="tax"><label for="campoRisk">Perfil de la apuesta: soja rinde el doble, pero el clima puede dejarla en cero</label><input type="range" id="campoRisk" min="0" max="100" step="5" value="${s.campoRisk}"><output id="outRisk">${s.campoRisk} %</output></div>
     <div class="tax"><label for="campoMin">No vender por debajo de</label><input type="range" id="campoMin" min="0" max="200" step="5" value="${s.order.minPrice}"><output id="outMin">${formatMoney(s.order.minPrice)}</output></div>
     <div class="tax"><label for="campoKeep">No bajar de</label><input type="range" id="campoKeep" min="0" max="${tope}" step="10" value="${s.order.keepTons}"><output id="outKeep">${formatNumber(s.order.keepTons)} t</output></div>
-    <p><small>Guardar cuesta: la merma se lleva el ${Math.round(MERMA * 100)} % por mes, y el silo tiene que aguantar
-    lo que espera. Con la orden en cero, la feria vende todo lo que hay todos los meses.</small></p>
-    <h3>Cómo se mueve el precio en el año</h3>
-    ${priceTableHtml(dateOf(s.tick).month, w.farmPressure)}
+    <p><small>Guardar cuesta: la merma se lleva el 4 % por mes de lo que espera en el silo.</small></p>
+    ${priceStripHtml(dateOf(s.tick).month, w.farmPressure)}
     <h3>El último cierre</h3>
     ${lastHarvestHtml(s.harvest)}
   `);
   const refresh = () => {
-    const month = dateOf(sim.state.tick).month;
-    $('#campoAdvice').innerHTML = campoAdviceHtml(w, month, sim.state.order);
     $('#campoStatus').innerHTML = campoStatusHtml(w);
+    body.querySelector<HTMLOutputElement>('#outRisk')!.textContent = `${sim.state.campoRisk} %`;
     body.querySelector<HTMLOutputElement>('#outMin')!.textContent = formatMoney(sim.state.order.minPrice);
     body.querySelector<HTMLOutputElement>('#outKeep')!.textContent = `${formatNumber(sim.state.order.keepTons)} t`;
   };
   const read = () => {
+    sim.setCampoRisk(Number(body.querySelector<HTMLInputElement>('#campoRisk')!.value));
     sim.setSellOrder({
       minPrice: Number(body.querySelector<HTMLInputElement>('#campoMin')!.value),
       keepTons: Number(body.querySelector<HTMLInputElement>('#campoKeep')!.value),
     });
     refresh();
   };
-  body.querySelector<HTMLInputElement>('#campoMin')!.addEventListener('input', read);
-  body.querySelector<HTMLInputElement>('#campoKeep')!.addEventListener('input', read);
+  for (const id of ['#campoRisk', '#campoMin', '#campoKeep']) body.querySelector<HTMLInputElement>(id)!.addEventListener('input', read);
   refresh();
 }
 

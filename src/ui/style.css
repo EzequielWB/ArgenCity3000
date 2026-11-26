@@ -2592,6 +2592,48 @@ table.precios td.tags {
   margin-top: -4px;
 }
 
+/*
+ * La tira de precios del año: doce barras al pie de la modal, la más alta en invierno y la más baja en
+ * cosecha. La forma del año se lee de un vistazo, sin una tabla de doce filas.
+ */
+.campo-tira {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 110px;
+  margin: 10px 0;
+}
+
+.campo-precio {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.campo-precio small {
+  font-size: 10px;
+  color: var(--ink-soft, #6b6255);
+}
+
+.campo-barra {
+  width: 62%;
+  background: #7f9cba;
+}
+
+.campo-precio.now .campo-barra {
+  background: #d23a32;
+}
+
+.campo-sello {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
 /* ---------- Radio Barrio ---------- */
 
 /* El gabinete vive pegado al RCI, y el desplegable cuelga de su borde izquierdo. El menú se queda con el
