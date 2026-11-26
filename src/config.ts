@@ -241,8 +241,8 @@ export const COSTS = {
   line: LINE_TIERS[WOODEN_LINE].cost,
   zone: 5,
   park: 20,
-  /** El campo: la tierra es barata, lo que cuesta es acopiar y vender. */
-  farm: 30,
+  /** El campo: la tierra se paga una vez, lo que cuesta es acopiar y vender. */
+  farm: 60,
   silo: 90,
   market: 180,
   plant: 3000,
@@ -261,6 +261,8 @@ export const UPKEEP = {
   /** El silo y la feria cobran todos los meses, vendan o no: es lo que hace que guardar cueste. */
   silo: 5,
   market: 8,
+  /** El lote también se mantiene todo el año: la apuesta tranquila tiene que dejar un margen chico. */
+  farm: 3,
   plant: 260,
   /**
    * Administration per resident. Raised from 0.06 when service upkeep started to depend on use
@@ -283,7 +285,7 @@ export const PLANT_SIZE = 2;
  * plano y el guardado no se desincronicen.
  */
 /** Los cultivos que el jugador puede sembrar. */
-export type CropKind = 'trigo';
+export type CropKind = 'trigo' | 'soja';
 
 export interface Crop {
   label: string;
@@ -303,13 +305,15 @@ export interface Crop {
  * o sea $1.262 por celda y año contra los $739 de una celda de torres y los $756 de una industrial, y encima
  * sin pedir luz, agua, calles ni servicios. Llenar el mapa de trigo era la jugada óptima.
  *
- * Con 20 toneladas el campo queda a la altura de los edificios y conserva la ventaja que le toca —cobra una
- * vez al año, con la merma comiéndose lo que se guarda, y no pide nada— sin pasarles por arriba. Si en otra
- * medición vuelve a convenir llenar el mapa, se baja acá y no en el precio: el precio tiene forma de estación
- * y la temporada no se toca para arreglar un número.
+ * Con 3 toneladas el trigo queda como la apuesta tranquila: cubre su mantenimiento con un margen chico
+ * y nada más. La soja (ver `CLIMATE` en `sim/campo.ts`) es la apuesta arriesgada: rinde más del doble
+ * pero el clima del año puede dejarla en la mitad o en cero. Si en otra medición vuelve a convenir llenar
+ * el mapa, se baja acá y no en el precio: el precio tiene forma de estación y la temporada no se toca
+ * para arreglar un número.
  */
 export const CROPS: Record<CropKind, Crop> = {
-  trigo: { label: 'Trigo', sow: 5, harvest: 12, tons: 6 },
+  trigo: { label: 'Trigo', sow: 5, harvest: 12, tons: 3 },
+  soja: { label: 'Soja', sow: 5, harvest: 12, tons: 8 },
 };
 
 export const FARM_SIZE = 2;

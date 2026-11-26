@@ -28,7 +28,7 @@ import {
   type ZoneTaxes,
 } from '../config';
 import { formatMoney } from '../core/format';
-import { Rng } from '../core/rng';
+import { Rng, hashString } from '../core/rng';
 import { toolInfo } from '../world/tools';
 import { TILE, World, coastOf, serviceOf, zoneOf, type ZoneKind } from '../world/world';
 import { buildingName } from './report';
@@ -62,6 +62,8 @@ export interface SimState {
   funding: ServiceFunding;
   /** La orden de venta del campo: el jugador fija los umbrales y el sistema vende. */
   order: SellOrder;
+  /** El perfil de la apuesta del campo: qué parte de los lotes va en soja, de 0 a 100 (ver `cropOf`). */
+  campoRisk: number;
   /** El recibo del último cierre del campo; null hasta la primera cosecha. */
   harvest: HarvestReport | null;
   /** Budget for green spaces (plazas), 0 to `MAX_FUNDING`. It decides how well plazas are kept. */
@@ -129,6 +131,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     taxes: { R: DEFAULT_TAX, C: DEFAULT_TAX, I: DEFAULT_TAX },
     funding: { ...DEFAULT_FUNDING },
     order: { minPrice: 0, keepTons: 0 },
+    campoRisk: 0,
     harvest: null,
     green: 100,
     transport: 100,
@@ -1258,7 +1261,7 @@ export class Simulation {
     const month = dateOf(s.tick - 1).month;
     // La cosecha se resuelve antes del presupuesto: el ingreso de la feria es plata de este mes y tiene que
     // entrar por la misma caja que el impuesto, no por un costado.
-    s.harvest = settleHarvest(w, month, s.order);
+    s.harvest = settleHarvest(w, month, s.order, s.campoRisk, hashString(this.cityName), dateOf(s.tick - 1).year);
     // La cosecha entra de golpe y sin aviso sería un misterio en la caja: el diario dice qué pasó con las
     // toneladas, que es lo único que explica un salto de miles de pesos en un mes.
     const harvestLine = harvestNews(s.harvest);

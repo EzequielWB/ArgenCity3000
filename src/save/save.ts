@@ -439,6 +439,8 @@ function parseSim(raw: unknown): SimState {
   // Format 14 added the temporary effects of the events (see `sim/effects.ts`).
   const effects = parseEffects(s.effects);
   need(isInt(s.rngState), 'La partida está dañada');
+  // El perfil de la apuesta del campo llegó con este formato; un save anterior arriesga cero.
+  need(s.campoRisk === undefined || (isInt(s.campoRisk) && s.campoRisk >= 0 && s.campoRisk <= 100), 'El perfil del campo es inválido');
   need(typeof s.crisis === 'boolean', 'La partida está dañada');
   need(Array.isArray(s.news) && Array.isArray(s.history), 'La partida está dañada');
   const news = (s.news as unknown[]).map((item) => {
@@ -545,10 +547,15 @@ function parseHarvest(raw: unknown): HarvestReport | null {
   const nums = ['month', 'price', 'grown', 'lost', 'spoiled', 'sold', 'income'] as const;
   for (const k of nums) need(isInt(r[k]) || typeof r[k] === 'number', 'El recibo de la cosecha es inválido');
   for (const k of nums) if (!Number.isFinite(r[k] as number)) return null;
+  // El clima y la soja llegaron con el perfil: un recibo de antes no jugó al dado y no dice nada de eso.
+  const soy = isInt(r.soy) ? (r.soy as number) : 0;
+  const climate = typeof r.climate === 'number' && Number.isFinite(r.climate) ? (r.climate as number) : 1;
   return {
     month: r.month as number,
     price: r.price as number,
     grown: r.grown as number,
+    soy,
+    climate,
     lost: r.lost as number,
     spoiled: r.spoiled as number,
     sold: r.sold as number,
@@ -609,6 +616,7 @@ function parseCommitment(raw: unknown): Commitment | null {
     roads: (s.roads as number | undefined) ?? 100,
     plants: (s.plants as number | undefined) ?? 100,
     order: parseOrder(s.order),
+    campoRisk: (s.campoRisk as number | undefined) ?? 0,
     harvest: parseHarvest(s.harvest),
     grief: (s.grief as number | undefined) ?? 0,
     commitment,

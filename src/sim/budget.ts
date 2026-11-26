@@ -46,7 +46,7 @@ export interface BudgetReport {
   uniqueIncome: number;
   /** Lo que la feria cobró este mes por la cosecha. Es de golpe: once meses en cero y uno grande. */
   farmIncome: number;
-  /** El mantenimiento del silo y de la feria, que se cobra vendan o no: guardar cuesta. */
+  /** El mantenimiento de los silos y las ferias, que se cobra vendan o no: guardar cuesta. */
   farmUpkeep: number;
   income: number;
   expenses: number;
@@ -174,7 +174,7 @@ export function monthlyBudget(
     uniques: uniqueUpkeep(w),
     uniqueIncome,
     farmIncome: Math.round(farm?.income ?? 0),
-    farmUpkeep: w.silos.length * UPKEEP.silo + w.markets.length * UPKEEP.market,
+    farmUpkeep: w.silos.length * UPKEEP.silo + w.markets.length * UPKEEP.market + w.farms.length * UPKEEP.farm,
   };
   const income = r.taxR + r.taxC + r.taxI + r.coastIncome + r.hubIncome + r.uniqueIncome + r.farmIncome;
   const expenses = r.roads + r.lines + r.parks + r.plants + r.services + r.schools + r.clinics + r.police + r.firefighters + r.hospitals + r.universities + r.loan + r.coast + r.transport + r.hubs + r.uniques + r.farmUpkeep;

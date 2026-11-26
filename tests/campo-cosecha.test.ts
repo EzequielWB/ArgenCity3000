@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { CROPS, MARKET_THROUGHPUT, SILO_CAPACITY, TICKS_PER_MONTH } from '../src/config';
-import { MERMA, PRICE_RANGE, harvestNews, previewHarvest, settleHarvest, spoil, tonsToSell, type SellOrder } from '../src/sim/campo';
+import { CROPS, MARKET_THROUGHPUT, SILO_CAPACITY, START_YEAR, TICKS_PER_MONTH } from '../src/config';
+import { MERMA, PRICE_RANGE, climateMult, cropOf, harvestNews, previewHarvest, settleHarvest, spoil, tonsToSell, type SellOrder } from '../src/sim/campo';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { budgetTable } from '../src/ui/panels';
 import type { BudgetReport } from '../src/sim/budget';
+import { hashString } from '../src/core/rng';
 import { storedTons } from '../src/world/farms';
 import { SEA_LEVEL } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
@@ -29,6 +30,74 @@ function campo(farms: number, silos: number, ferias: number): World {
   for (let k = 0; k < ferias; k++) build('market', 20 + k * 4, 20);
   return world;
 }
+
+describe('la apuesta del campo', () => {
+  it('el perfil reparte soja por orden de lote: cero es todo trigo, cien es todo soja', () => {
+    expect([0, 1].map((i) => cropOf(i, 2, 0))).toEqual(['trigo', 'trigo']);
+    expect([0, 1].map((i) => cropOf(i, 2, 100))).toEqual(['soja', 'soja']);
+    expect([0, 1, 2, 3].map((i) => cropOf(i, 4, 50))).toEqual(['soja', 'soja', 'trigo', 'trigo']);
+  });
+
+  it('el clima es un dado puro por año: misma semilla, mismo clima, y hay sequía y plaga', () => {
+    expect(climateMult(1990, 7)).toBe(climateMult(1990, 7));
+    const climas = new Set(Array.from({ length: 500 }, (_, k) => climateMult(1980 + k, k * 13 + 5)));
+    expect([...climas].sort()).toEqual([0, 0.5, 1]);
+  });
+
+  it('la soja rinde más que el trigo, y el trigo no conoce clima', () => {
+    const soja = campo(1, 1, 0);
+    const trigo = campo(1, 1, 0);
+    const rS = previewHarvest(soja, HARVEST, VENDER_SIEMPRE, 100, 7);
+    const rT = previewHarvest(trigo, HARVEST, VENDER_SIEMPRE, 0, 7);
+    expect(rT.grown).toBe(TONS);
+    expect(rS.grown).toBe(CROPS.soja.tons * climateMult(START_YEAR, 7));
+    expect(rS.climate).toBe(climateMult(START_YEAR, 7));
+  });
+
+  it('la cosecha de soja del año cobra el clima del año entero: la sequía muerde a todos los lotes', () => {
+    const w = campo(4, 1, 0);
+    const r = previewHarvest(w, HARVEST, VENDER_SIEMPRE, 100, 7);
+    expect(r.grown).toBe(4 * CROPS.soja.tons * climateMult(START_YEAR, 7));
+  });
+
+  it('la simulación siembra lo que dice el perfil y el recibo trae el clima', () => {
+    const w = campo(2, 1, 1);
+    const sim = new Simulation(w, newSimState(11), 'Villa');
+    sim.state.campoRisk = 100;
+    for (let t = 0; t < HARVEST * TICKS_PER_MONTH; t++) sim.tick();
+    expect(sim.state.harvest!.grown).toBe(2 * CROPS.soja.tons * climateMult(START_YEAR, hashString('Villa')));
+    expect(sim.state.harvest!.climate).toBe(climateMult(START_YEAR, hashString('Villa')));
+  });
+
+  it('la noticia del cierre dice el clima cuando la soja lo padece', () => {
+    const seedDe = (m: number): number =>
+      Array.from({ length: 2000 }, (_, k) => k).find((s) => climateMult(START_YEAR, s) === m)!;
+    for (const [clima, palabra] of [[0.5, 'la sequía'], [0, 'la plaga']] as const) {
+      const w = campo(1, 1, 1);
+      const r = settleHarvest(w, HARVEST, VENDER_SIEMPRE, 100, seedDe(clima));
+      expect(r.climate).toBe(clima);
+      expect(harvestNews(r)).toContain(palabra);
+    }
+  });
+
+  it('con perfil tranquilo el año deja una ganancia sutil y asegurada', () => {
+    // Trigo puro: el pico del año no llega ni a la mitad de lo que rendía el balance viejo.
+    const w = campo(2, 1, 1);
+    const year: number[] = [];
+    for (let m = 1; m <= 12; m++) year.push(previewHarvest(w, m, { minPrice: 0, keepTons: 0 }, 0, 7).income);
+    expect(Math.max(...year)).toBeLessThan(900);
+  });
+
+  it('arriesgando todo, un año bueno deja mucho más que el tranquilo', () => {
+    // Un año de lluvia plena en soja paga más del doble que el trigo del mismo año.
+    const buenAno = Array.from({ length: 2000 }, (_, k) => k).find((s) => climateMult(START_YEAR, s) === 1)!;
+    const soja = campo(2, 1, 1);
+    const trigo = campo(2, 1, 1);
+    const rS = previewHarvest(soja, HARVEST, { minPrice: 0, keepTons: 0 }, 100, buenAno);
+    const rT = previewHarvest(trigo, HARVEST, { minPrice: 0, keepTons: 0 }, 0, buenAno);
+    expect(rS.income).toBeGreaterThan(rT.income * 2);
+  });
+});
 
 describe('la cosecha', () => {
   it('en el mes de cosecha el stock sube de golpe; en los otros once no', () => {
@@ -227,21 +296,21 @@ describe('la orden se guarda', () => {
 
 describe('el diario cuenta la cosecha', () => {
   it('la nota dice cuánto se cosechó, cuánto se vendió y a qué precio', () => {
-    const r = { month: 12, price: 120, grown: 120, lost: 0, spoiled: 0, sold: 120, income: 14400 };
+    const r = { month: 12, price: 120, grown: 120, soy: 0, climate: 1, lost: 0, spoiled: 0, sold: 120, income: 14400 };
     const line = harvestNews(r)!;
-    expect(line).toContain('120 toneladas de trigo');
+    expect(line).toContain('120 toneladas');
     expect(line).toContain('vendió 120 a $120');
     expect(line).toContain('14.400');
   });
 
   it('avisa cuando la cosecha no entró y cuando la merma se llevó su parte', () => {
-    const line = harvestNews({ month: 12, price: 120, grown: 300, lost: 100, spoiled: 8, sold: 0, income: 0 })!;
+    const line = harvestNews({ month: 12, price: 120, grown: 300, soy: 0, climate: 1, lost: 100, spoiled: 8, sold: 0, income: 0 })!;
     expect(line).toContain('100 se perdieron');
     expect(line).toContain('la merma se llevó 8');
   });
 
   it('un mes sin campo, sin venta y sin merma no es noticia', () => {
-    expect(harvestNews({ month: 3, price: 150, grown: 0, lost: 0, spoiled: 0, sold: 0, income: 0 })).toBeNull();
+    expect(harvestNews({ month: 3, price: 150, grown: 0, soy: 0, climate: 1, lost: 0, spoiled: 0, sold: 0, income: 0 })).toBeNull();
   });
 
   it('en el cierre de diciembre la noticia está en el diario', () => {
