@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { milestoneOfTool } from '../src/sim/milestones';
 import { describeCell } from '../src/sim/report';
 import { Simulation, newSimState } from '../src/sim/simulation';
-import { buildingIssues } from '../src/sim/warnings';
+import { BUBBLE_MASS, buildingIssues, capBubbleItems, type Issue } from '../src/sim/warnings';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { TILE, World } from '../src/world/world';
 
@@ -136,6 +136,35 @@ describe('the bubbles over a building', () => {
     w.powered[i] = 0;
     w.fire[i] = 1;
     expect(buildingIssues(w, i, all)).toEqual([]);
+  });
+});
+
+describe('the cap of bubbles when a problem is town-wide', () => {
+  it('passes the list through while every problem fits under the cap', () => {
+    const items = [{ i: 0, issues: ['power'] as Issue[] }, { i: 1, issues: ['crime'] as Issue[] }];
+    expect(capBubbleItems(items, new Uint8Array(2))).toEqual(items);
+  });
+
+  it('keeps the angriest BUBBLE_MASS buildings for a problem over the cap, so the complaint is always seen', () => {
+    const items = Array.from({ length: BUBBLE_MASS + 5 }, (_, i) => ({ i, issues: ['power'] as Issue[] }));
+    const anger = new Uint8Array(BUBBLE_MASS + 5);
+    anger[0] = 100;
+    anger[BUBBLE_MASS + 4] = 90;
+    const kept = capBubbleItems(items, anger);
+    expect(kept.length).toBe(BUBBLE_MASS);
+    expect(kept.some((it) => it.i === 0)).toBe(true);
+    expect(kept.some((it) => it.i === BUBBLE_MASS + 4)).toBe(true);
+  });
+
+  it('a building past the cap still shows its other complaints', () => {
+    const items = Array.from({ length: BUBBLE_MASS + 1 }, (_, i) => ({
+      i,
+      issues: (i === BUBBLE_MASS ? ['power', 'crime'] : ['power']) as Issue[],
+    }));
+    const kept = capBubbleItems(items, new Uint8Array(BUBBLE_MASS + 1));
+    const last = kept.find((it) => it.i === BUBBLE_MASS);
+    expect(last?.issues).toEqual(['crime']);
+    expect(kept.filter((it) => it.issues.includes('power')).length).toBe(BUBBLE_MASS);
   });
 });
 

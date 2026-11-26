@@ -23,6 +23,42 @@ const JAM_MARGIN = 30;
 /** Smoke above this makes homes lose their people. */
 export const SMOKE_BUBBLE = 70;
 
+/** One building with something wrong, as the map keeps it: its cell and its problems. */
+export interface BubbleItem {
+  i: number;
+  issues: Issue[];
+}
+
+/**
+ * Above this many buildings with the same problem, the rest of them lose that bubble: a town-wide
+ * shortage says nothing forty times over and the balloons would cover the map. The complaint itself is
+ * never hidden — the angriest buildings keep it (see `capBubbleItems`) — because a blackout the player
+ * cannot see empties the town all the same.
+ */
+export const BUBBLE_MASS = 40;
+
+/**
+ * Caps the bubbles of a problem that went town-wide: while every problem fits under `BUBBLE_MASS` the
+ * list goes through as it is; past it, the `BUBBLE_MASS` buildings with the most anger keep that bubble
+ * and the rest lose it (keeping their other problems), so the player still sees the complaint somewhere.
+ */
+export function capBubbleItems(items: BubbleItem[], anger: ArrayLike<number>): BubbleItem[] {
+  const mass = new Map<Issue, number>();
+  for (const it of items) for (const issue of it.issues) mass.set(issue, (mass.get(issue) ?? 0) + 1);
+  const over = [...mass].filter(([, count]) => count > BUBBLE_MASS);
+  if (over.length === 0) return items;
+  const keep = new Map<Issue, Set<number>>();
+  for (const [issue] of over) {
+    const withIssue: number[] = [];
+    for (let idx = 0; idx < items.length; idx++) if (items[idx].issues.includes(issue)) withIssue.push(idx);
+    withIssue.sort((a, b) => anger[items[b].i] - anger[items[a].i]);
+    keep.set(issue, new Set(withIssue.slice(0, BUBBLE_MASS)));
+  }
+  return items
+    .map((it, idx) => ({ i: it.i, issues: it.issues.filter((issue) => !keep.has(issue) || keep.get(issue)!.has(idx)) }))
+    .filter((it) => it.issues.length > 0);
+}
+
 /**
  * The problems of the building on cell `i`, most serious first. `kinds` says which services the city has
  * unlocked: a bubble for the health post or the police is not shown before the player can build them.
