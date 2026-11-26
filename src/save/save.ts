@@ -547,15 +547,17 @@ function parseHarvest(raw: unknown): HarvestReport | null {
   const nums = ['month', 'price', 'grown', 'lost', 'spoiled', 'sold', 'income'] as const;
   for (const k of nums) need(isInt(r[k]) || typeof r[k] === 'number', 'El recibo de la cosecha es inválido');
   for (const k of nums) if (!Number.isFinite(r[k] as number)) return null;
-  // El clima y la soja llegaron con el perfil: un recibo de antes no jugó al dado y no dice nada de eso.
+  // El clima, la soja y el camino llegaron con el perfil: un recibo de antes no jugó al dado ni pidió calles.
   const soy = isInt(r.soy) ? (r.soy as number) : 0;
   const climate = typeof r.climate === 'number' && Number.isFinite(r.climate) ? (r.climate as number) : 1;
+  const unreached = isInt(r.unreached) ? (r.unreached as number) : 0;
   return {
     month: r.month as number,
     price: r.price as number,
     grown: r.grown as number,
     soy,
     climate,
+    unreached,
     lost: r.lost as number,
     spoiled: r.spoiled as number,
     sold: r.sold as number,

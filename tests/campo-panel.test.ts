@@ -10,13 +10,20 @@ import { World } from '../src/world/world';
 const N = 32;
 const TONS = CROPS.trigo.tons;
 
-function campo(farms: number, silos: number, ferias: number): World {
+function campo(farms: number, silos: number, ferias: number, calle = true): World {
   const w = new World({ n: N, corners: new Uint8Array((N + 1) * (N + 1)).fill(SEA_LEVEL + 1), trees: new Uint8Array(N * N) });
-  const plan = (tool: Parameters<typeof planTool>[1], ax: number, ay: number) =>
-    applyPlan(w, planTool(w, tool, dragCells(tool, ax, ay, ax, ay, 1, N)));
+  const plan = (tool: Parameters<typeof planTool>[1], ax: number, ay: number, bx = ax, by = ay) =>
+    applyPlan(w, planTool(w, tool, dragCells(tool, ax, ay, bx, by, 1, N)));
   for (let k = 0; k < farms; k++) plan('farm', 2 + k * 3, 2);
   for (let k = 0; k < silos; k++) plan('silo', 20, 2 + k * 3);
   for (let k = 0; k < ferias; k++) plan('market', 24, 20 + k * 4);
+  if (calle) {
+    // Una calle por fila de lotes, unida con la cadena por x=19: sin camino el camión no llega.
+    const filas = Math.ceil(farms / 10);
+    for (let r = 0; r < filas; r++) plan('road', 1, 4 + r * 3, 19, 4 + r * 3);
+    plan('road', 19, 5, 19, 19);
+    plan('road', 19, 20, 23, 20);
+  }
   return w;
 }
 

@@ -5,8 +5,8 @@
  * las celdas que ocupa llevan el tile que le corresponde. El stock no vive en el lote sino en los silos: un
  * lote produce y entrega, y lo que espera para venderse está en el silo, que es lo que se llena.
  */
-import { FARM_SIZE, MARKET_SIZE, MARKET_THROUGHPUT, SILO_CAPACITY, SILO_SIZE } from '../config';
-import type { Farm, Market, Silo, World } from './world';
+import { FARM_SIZE, MARKET_SIZE, MARKET_THROUGHPUT, ROAD_REACH, SILO_CAPACITY, SILO_SIZE } from '../config';
+import { TILE, type Farm, type Market, type Silo, type World } from './world';
 
 export type Cell = [number, number];
 
@@ -39,10 +39,12 @@ export interface Campo {
  * Es una sola pregunta y no dos porque el aviso del mapa es uno solo: la estaca dice "acá hay un problema" y
  * el panel del campo dice cuál. Devuelve `null` en una ciudad sin campo, donde no hay cadena que cortar.
  */
-export function campoBroken(w: Campo): 'silo' | 'feria' | null {
+export function campoBroken(w: World): 'silo' | 'feria' | 'camino' | null {
   if (w.farms.length === 0 && w.silos.length === 0 && w.markets.length === 0) return null;
   if (w.farms.length > 0 && w.silos.length === 0) return 'silo';
   if (w.markets.length === 0 && (w.farms.length > 0 || storedTons(w) > 0)) return 'feria';
+  // El camión es el último eslabón: con silo y feria puestos, sin camino igual no llega nada.
+  if (w.farms.length > 0 && farmServida(w).some((s) => !s)) return 'camino';
   return null;
 }
 
@@ -94,6 +96,81 @@ export function siloRoom(w: Silos): number {
 /** Toneladas que la ciudad puede convertir en pesos por mes: lo que suman sus ferias. */
 export function marketRoom(w: Markets): number {
   return w.markets.length * MARKET_THROUGHPUT;
+}
+
+/**
+ * Las calles por las que puede andar el camión: las que llegan, por calle, a alguna feria.
+ *
+ * El camión carga en la feria o en el silo —la cadena entera— y sale por las calles que los tocan; una
+ * calle suelta que no une nada con la cadena no sirve, por larga que sea. Es un BFS sobre celdas de calle
+ * sembrado con las que tocan cada pieza, el mismo idioma que el `roadAccess` de los lotes.
+ */
+export function truckNetwork(w: World): Uint8Array {
+  const n = w.n;
+  const on = new Uint8Array(n * n);
+  const queue = new Int32Array(n * n);
+  let tail = 0;
+  const seed = (x: number, y: number): void => {
+    if (x < 0 || y < 0 || x >= n || y >= n) return;
+    const i = y * n + x;
+    if (w.tiles[i] !== TILE.ROAD || on[i]) return;
+    on[i] = 1;
+    queue[tail++] = i;
+  };
+  for (const market of w.markets) {
+    for (let dy = -1; dy <= MARKET_SIZE; dy++) for (let dx = -1; dx <= MARKET_SIZE; dx++) seed(market.x + dx, market.y + dy);
+  }
+  for (const silo of w.silos) {
+    for (let dy = -1; dy <= SILO_SIZE; dy++) for (let dx = -1; dx <= SILO_SIZE; dx++) seed(silo.x + dx, silo.y + dy);
+  }
+  for (let head = 0; head < tail; head++) {
+    const i = queue[head];
+    const x = i % n;
+    const y = (i - x) / n;
+    for (const j of [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < n - 1 ? i + n : -1]) {
+      if (j >= 0 && w.tiles[j] === TILE.ROAD && !on[j]) {
+        on[j] = 1;
+        queue[tail++] = j;
+      }
+    }
+  }
+  return on;
+}
+
+/**
+ * Qué lotes traen su cosecha: el camión sale del lote y encuentra, en hasta `ROAD_REACH` pasos, una calle
+ * de la red del camión. Devuelve un booleano por lote, en el orden de `w.farms`. Cada lote camina solo:
+ * el alcance de uno no le roba celdas al otro.
+ */
+export function farmServida(w: World, network?: Uint8Array): boolean[] {
+  const net = network ?? truckNetwork(w);
+  const n = w.n;
+  return w.farms.map((farm) => {
+    const dist = new Int16Array(n * n).fill(-1);
+    const queue = new Int32Array(n * n);
+    let tail = 0;
+    for (let dy = 0; dy < FARM_SIZE; dy++) {
+      for (let dx = 0; dx < FARM_SIZE; dx++) {
+        const i = (farm.y + dy) * n + (farm.x + dx);
+        dist[i] = 0;
+        queue[tail++] = i;
+      }
+    }
+    for (let head = 0; head < tail; head++) {
+      const i = queue[head];
+      if (w.tiles[i] === TILE.ROAD && net[i]) return true; // el camión llegó
+      if (dist[i] >= ROAD_REACH) continue;
+      const x = i % n;
+      const y = (i - x) / n;
+      for (const j of [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < n - 1 ? i + n : -1]) {
+        if (j >= 0 && dist[j] < 0) {
+          dist[j] = dist[i] + 1;
+          queue[tail++] = j;
+        }
+      }
+    }
+    return false;
+  });
 }
 
 /**

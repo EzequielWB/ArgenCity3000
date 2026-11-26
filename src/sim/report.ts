@@ -496,18 +496,20 @@ function describeFarm(w: World, sim: Simulation): { title: string; lines: string
   return {
     title: `Lote de ${crop.label.toLowerCase()}`,
     lines: [
-      `Rinde ${crop.tons} toneladas por año`,
+      `Rinde de ${CROPS.trigo.tons} (trigo) a ${CROPS.soja.tons} (soja) toneladas por año`,
       `Se siembra en ${MONTH_NAMES[crop.sow - 1]} y se cosecha en ${MONTH_NAMES[crop.harvest - 1]}`,
       `Hoy está ${FARM_STATE_TEXT[farmStateOf(month)]}`,
-      'No necesita luz, agua ni calle: lo que cuesta es la cadena',
-      'No paga mantenimiento',
+      `Mantenimiento: $${formatNumber(UPKEEP.farm)} por mes`,
+      'Pide camino: sin calle hasta la cadena, el camión no llega',
     ],
     hint:
       roto === 'silo'
         ? 'Sin un silo, cada cosecha se pierde en el lote: construí uno antes de diciembre.'
         : roto === 'feria'
           ? 'Sin una feria el trigo no se convierte en plata: el silo se llena y la cosecha siguiente no entra.'
-          : undefined,
+          : roto === 'camino'
+            ? 'Sin camino hasta la cadena, el camión no puede traer la cosecha: dibujá una calle desde el lote.'
+            : undefined,
   };
 }
 

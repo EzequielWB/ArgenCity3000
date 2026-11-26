@@ -5,7 +5,7 @@ import { Simulation, newSimState } from '../src/sim/simulation';
 import { budgetTable } from '../src/ui/panels';
 import type { BudgetReport } from '../src/sim/budget';
 import { hashString } from '../src/core/rng';
-import { storedTons } from '../src/world/farms';
+import { campoBroken, storedTons } from '../src/world/farms';
 import { SEA_LEVEL } from '../src/world/terrain';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { World } from '../src/world/world';
@@ -20,16 +20,53 @@ const TONS = CROPS.trigo.tons;
 /** El jugador que vende todo apenas puede: el default. */
 const VENDER_SIEMPRE: SellOrder = { minPrice: 0, keepTons: 0 };
 
-/** Un mundo con la cadena puesta: `farms` lotes, `silos` silos y `ferias` ferias, todo sobre tierra libre. */
-function campo(farms: number, silos: number, ferias: number): World {
+/** Un mundo con la cadena puesta: `farms` lotes, `silos` silos y `ferias` ferias, todo sobre tierra libre.
+ *  Con calle (el default) va una calle que une los lotes con la feria: sin ella el camión no llega. */
+function campo(farms: number, silos: number, ferias: number, calle = true): World {
   const world = flat();
-  const build = (tool: Parameters<typeof planTool>[1], ax: number, ay: number) =>
-    applyPlan(world, planTool(world, tool, dragCells(tool, ax, ay, ax, ay, 1, N)));
+  const build = (tool: Parameters<typeof planTool>[1], ax: number, ay: number, bx = ax, by = ay) =>
+    applyPlan(world, planTool(world, tool, dragCells(tool, ax, ay, bx, by, 1, N)));
   for (let k = 0; k < farms; k++) build('farm', 2 + (k % 6) * 3, 2 + Math.floor(k / 6) * 3);
   for (let k = 0; k < silos; k++) build('silo', 20 + k * 3, 2);
   for (let k = 0; k < ferias; k++) build('market', 20 + k * 4, 20);
+  if (calle) {
+    // Una calle por fila de lotes, unida por x=19 con la feria: sin camino el camión no llega.
+    const filas = Math.ceil(farms / 6);
+    for (let r = 0; r < filas; r++) build('road', 1, 4 + r * 3, 19, 4 + r * 3);
+    build('road', 19, 5, 19, 21);
+  }
   return world;
 }
+
+describe('el camión', () => {
+  it('un lote sin camino hacia la feria no cosecha: las toneladas se quedan en el campo', () => {
+    const w = campo(1, 1, 1, false);
+    const r = previewHarvest(w, HARVEST, VENDER_SIEMPRE, 0, 7);
+    expect(r.grown).toBe(0);
+    expect(r.unreached).toBe(TONS);
+  });
+
+  it('una calle unida a la feria trae el camión; una calle suelta junto al lote, no', () => {
+    const w = campo(1, 1, 1, false);
+    applyPlan(w, planTool(w, 'road', dragCells('road', 1, 4, 6, 4, 1, N)));
+    expect(previewHarvest(w, HARVEST, VENDER_SIEMPRE, 0, 7).unreached).toBe(TONS);
+    applyPlan(w, planTool(w, 'road', dragCells('road', 6, 4, 19, 21, 1, N)));
+    const r = previewHarvest(w, HARVEST, VENDER_SIEMPRE, 0, 7);
+    expect(r.grown).toBe(TONS);
+    expect(r.unreached).toBe(0);
+  });
+
+  it('la noticia cuenta las toneladas que el camión no pudo traer', () => {
+    const w = campo(1, 1, 1, false);
+    const r = settleHarvest(w, HARVEST, VENDER_SIEMPRE, 0, 7);
+    expect(harvestNews(r)).toContain('sin camino');
+  });
+
+  it('la cadena rota por falta de camino avisa, y con la calle puesta deja de avisar', () => {
+    expect(campoBroken(campo(1, 1, 1, false))).toBe('camino');
+    expect(campoBroken(campo(1, 1, 1))).toBeNull();
+  });
+});
 
 describe('la apuesta del campo', () => {
   it('el perfil reparte soja por orden de lote: cero es todo trigo, cien es todo soja', () => {
@@ -296,7 +333,7 @@ describe('la orden se guarda', () => {
 
 describe('el diario cuenta la cosecha', () => {
   it('la nota dice cuánto se cosechó, cuánto se vendió y a qué precio', () => {
-    const r = { month: 12, price: 120, grown: 120, soy: 0, climate: 1, lost: 0, spoiled: 0, sold: 120, income: 14400 };
+    const r = { month: 12, price: 120, grown: 120, soy: 0, climate: 1, unreached: 0, lost: 0, spoiled: 0, sold: 120, income: 14400 };
     const line = harvestNews(r)!;
     expect(line).toContain('120 toneladas');
     expect(line).toContain('vendió 120 a $120');
@@ -304,13 +341,13 @@ describe('el diario cuenta la cosecha', () => {
   });
 
   it('avisa cuando la cosecha no entró y cuando la merma se llevó su parte', () => {
-    const line = harvestNews({ month: 12, price: 120, grown: 300, soy: 0, climate: 1, lost: 100, spoiled: 8, sold: 0, income: 0 })!;
+    const line = harvestNews({ month: 12, price: 120, grown: 300, soy: 0, climate: 1, unreached: 0, lost: 100, spoiled: 8, sold: 0, income: 0 })!;
     expect(line).toContain('100 se perdieron');
     expect(line).toContain('la merma se llevó 8');
   });
 
   it('un mes sin campo, sin venta y sin merma no es noticia', () => {
-    expect(harvestNews({ month: 3, price: 150, grown: 0, soy: 0, climate: 1, lost: 0, spoiled: 0, sold: 0, income: 0 })).toBeNull();
+    expect(harvestNews({ month: 3, price: 150, grown: 0, soy: 0, climate: 1, unreached: 0, lost: 0, spoiled: 0, sold: 0, income: 0 })).toBeNull();
   });
 
   it('en el cierre de diciembre la noticia está en el diario', () => {

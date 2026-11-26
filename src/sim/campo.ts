@@ -1,6 +1,6 @@
 import { CROPS, START_YEAR, type Crop, type CropKind } from '../config';
 import { hash2 } from '../core/rng';
-import { marketRoom, storedTons, storeTons, takeTons } from '../world/farms';
+import { marketRoom, farmServida, storedTons, storeTons, takeTons } from '../world/farms';
 import type { Silo, World } from '../world/world';
 
 // La tabla de cultivos vive en `config.ts`, con los demás catálogos del juego; se reexporta para que el que
@@ -174,6 +174,8 @@ export interface HarvestReport {
   soy: number;
   /** El clima del año: `1` lluvia plena, `0.5` sequía, `0` plaga. El trigo no lo conoce. */
   climate: number;
+  /** Toneladas que el camión no pudo traer: lotes sin camino hacia una feria. */
+  unreached: number;
   /** Lo que no entró en los silos: sin lugar, la cosecha se pierde. */
   lost: number;
   /** Lo que se comió la merma antes de la cosecha. */
@@ -253,11 +255,18 @@ function closeMonth(w: World, month: number, order: SellOrder, risk: number, see
     silo.tons = after;
   }
   const climate = climateMult(year, seed);
+  const servidas = farmServida(w);
   let grown = 0;
   let soy = 0;
+  let unreached = 0;
   w.farms.forEach((_, k) => {
     const crop = cropOf(k, w.farms.length, risk);
     if (CROPS[crop].harvest !== m) return;
+    // Sin camino, el camión no llega y la cosecha se queda en el lote: el campo también pide calles.
+    if (!servidas[k]) {
+      unreached += CROPS[crop].tons;
+      return;
+    }
     // El clima corta la soja, no el trigo: la apuesta tranquila no juega al dado.
     const tons = CROPS[crop].tons * (crop === 'soja' ? climate : 1);
     grown += Math.round(tons);
@@ -267,7 +276,7 @@ function closeMonth(w: World, month: number, order: SellOrder, risk: number, see
   const price = priceOf(m, w.farmPressure);
   const want = Math.round(tonsToSell(storedTons({ silos }), price, order, marketRoom(w)));
   const sold = takeTons({ silos }, want);
-  const report: HarvestReport = { month: m, price, grown, soy, climate, lost, spoiled, sold, income: sold * price };
+  const report: HarvestReport = { month: m, price, grown, soy, climate, unreached, lost, spoiled, sold, income: sold * price };
   return { report, silos };
 }
 /**
@@ -278,11 +287,12 @@ function closeMonth(w: World, month: number, order: SellOrder, risk: number, see
  * vendió y a qué precio— y avisa aparte cuando hubo merma o cuando la cosecha no entró por falta de silo.
  */
 export function harvestNews(r: HarvestReport): string | null {
-  // La plaga se cuenta aunque no haya quedado nada: el diciembre sin plata necesita su explicación.
-  if (r.grown === 0 && r.sold === 0 && r.spoiled === 0 && !(r.soy > 0 && climateWord(r.climate))) return null;
+  // La plaga y el camino ausente se cuentan aunque no haya quedado nada: el diciembre sin plata necesita su explicación.
+  if (r.grown === 0 && r.sold === 0 && r.spoiled === 0 && !(r.soy > 0 && climateWord(r.climate)) && r.unreached === 0) return null;
   const partes: string[] = [];
   if (r.grown > 0) partes.push(`se cosecharon ${r.grown} toneladas`);
   if (r.sold > 0) partes.push(`la feria vendió ${r.sold} a $${r.price} la tonelada y entraron $${r.income.toLocaleString('es-AR')}`);
+  if (r.unreached > 0) partes.push(`${r.unreached} toneladas se quedaron en el lote: sin camino para el camión`);
   if (r.lost > 0) partes.push(`${r.lost} se perdieron por falta de lugar en los silos`);
   if (r.spoiled > 0) partes.push(`la merma se llevó ${r.spoiled}`);
   // El clima se cuenta sólo si hubo soja que padecerlo: el trigo no juega al dado y el clima bueno no es noticia.

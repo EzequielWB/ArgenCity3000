@@ -7,15 +7,17 @@ import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { World } from '../src/world/world';
 
 const N = 32;
-const TONS = CROPS.trigo.tons;
+
 
 function mundo(): { w: World; sim: Simulation } {
   const w = new World({ n: N, corners: new Uint8Array((N + 1) * (N + 1)).fill(SEA_LEVEL + 1), trees: new Uint8Array(N * N) });
-  const plan = (tool: Parameters<typeof planTool>[1], ax: number, ay: number) =>
-    applyPlan(w, planTool(w, tool, dragCells(tool, ax, ay, ax, ay, 1, N)));
+  const plan = (tool: Parameters<typeof planTool>[1], ax: number, ay: number, bx = ax, by = ay) =>
+    applyPlan(w, planTool(w, tool, dragCells(tool, ax, ay, bx, by, 1, N)));
   plan('farm', 2, 2);
   plan('silo', 10, 2);
   plan('market', 16, 2);
+  // Sin camino el camión no llega: la cadena de la ficha viene con su calle.
+  plan('road', 1, 4, 15, 4);
   return { w, sim: new Simulation(w, newSimState(3, 'democracia'), 'Villa Trigal') };
 }
 
@@ -35,7 +37,7 @@ describe('la ficha del lote de trigo', () => {
     const r = ficha(w, sim, 2, 2, 7);
     expect(r.title.toLowerCase()).toContain('trigo');
     const texto = r.lines.join(' ');
-    expect(texto).toContain(`${TONS} toneladas`);
+    expect(texto).toContain(`${CROPS.trigo.tons} (trigo) a ${CROPS.soja.tons} (soja) toneladas`);
     expect(texto).toContain('diciembre');
   });
 
