@@ -33,7 +33,7 @@ import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
 import { applyPlan, dragCells, footprintOfTool, isCoastTool, planTool, plantKindOfTool, routeRefusal, toolInfo, uniqueKindOfTool, type Plan, type ToolId } from './world/tools';
 import { uniqueFootprint, uniqueOfGovernment, uniqueRefusal } from './world/uniques';
-import { busArea, busRefusal, busLineProblem } from './world/transport';
+import { busRefusal, busLineProblem } from './world/transport';
 import { openBusLine } from './ui/busline';
 import { UndoHistory } from './world/history';
 import { World } from './world/world';
@@ -580,7 +580,7 @@ export class Game implements PointerTarget {
       cells: shown,
       valid: new Set(plan.cells.map(([x, y]) => this.world.idx(x, y))),
       color: PREVIEW_COLORS[this.tool] ?? 'rgba(255,255,255,0.4)',
-      halo: plantKind ? reachCells(this.world.n, shown, POWER_REACH) : this.tool === 'bus' ? busArea(this.world.n, shown[0][0], shown[0][1]) : undefined,
+      halo: plantKind ? reachCells(this.world.n, shown, POWER_REACH) : undefined,
     };
     const tip = $('#tooltip');
     tip.classList.remove('hidden');

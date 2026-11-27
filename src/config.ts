@@ -646,12 +646,13 @@ export const BUS_SIZE = 2;
 /**
  * Una línea de colectivos: una cochera de 2×2 y los colectivos que salen de ahí.
  *
- * El radio es el rombo de lotes que la línea atiende. Estaba en 9 y dejaba barrios enteros afuera en una
- * ciudad mediana: con 14 una línea cubre el doble de manzanas y el jugador necesita la mitad de cocheras
- * para el mismo agujero de tránsito. `trips` se descuenta de **cada** calle del área, no se reparte, así
- * que el radio más grande no debilita el alivio: lo lleva más lejos.
+ * El alivio del tránsito es global (see `transit.ts`): la flota entera se lleva viajeros de
+ * todas las calles de la ciudad, repartidos según lo que carga cada una. `trips` es lo que
+ * lleva una línea y `share` es el techo poblacional: los colectivos no pueden llevar más
+ * viajeros que esa parte de la gente que viaja por la ciudad. `radius` queda solo para el
+ * dibujo: por ahí vagan los colectivos que salen de la cochera.
  */
-export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 14, trips: 500, buses: 3 } as const;
+export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 14, trips: 500, buses: 3, share: 0.35 } as const;
 /**
  * The commercial hubs of the transport category: an airport and a harbour for walks and cruises. A
  * piece takes `w`×`h` lots, always the same way round, and pieces that share an edge are one

@@ -49,7 +49,7 @@ export interface Car {
   color: number;
   age: number;
   life: number;
-  /** For the bus of a line: the cell of its depot, which is as far as the bus goes (`BUS.radius`). */
+  /** For the bus of a line: the cell of its depot, around which the drawn bus wanders (`BUS.radius`). */
   depot?: number;
 }
 

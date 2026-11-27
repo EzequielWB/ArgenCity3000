@@ -100,17 +100,3 @@ export function streetNear(w: World, x: number, y: number): boolean {
 export function busRefusal(w: World, x: number, y: number): string | null {
   return w.isWater(x, y) ? `${BUS.label}: tiene que estar en tierra` : null;
 }
-
-/** The lots a depot at (x, y) covers: the diamond of `BUS.radius` lots around it, kept inside the map. */
-export function busArea(n: number, x: number, y: number): [number, number][] {
-  const out: [number, number][] = [];
-  for (let dy = -BUS.radius; dy <= BUS.radius; dy++) {
-    for (let dx = -BUS.radius; dx <= BUS.radius; dx++) {
-      if (Math.abs(dx) + Math.abs(dy) > BUS.radius) continue;
-      const cx = x + dx;
-      const cy = y + dy;
-      if (cx >= 0 && cy >= 0 && cx < n && cy < n) out.push([cx, cy]);
-    }
-  }
-  return out;
-}

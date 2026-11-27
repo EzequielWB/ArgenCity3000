@@ -135,8 +135,8 @@ export function computeCongestion(w: World, transport = 100, roads = 100): Conge
   const routes = [route(w, sources, sinksC, cJobs / jobs), route(w, sources, sinksI, iJobs / jobs)];
   const raw = new Float32Array(size);
   for (const r of routes) for (let i = 0; i < size; i++) raw[i] += r.load[i];
-  // The buses of the lines take their trips off the streets of their area, in place.
-  applyTransit(w, raw, transport);
+  // The buses of the lines take the fleet's trips off the whole city's streets, capped by the population.
+  applyTransit(w, raw, transport, trips);
 
   const condition = roadCondition(roads);
   // Capacity: the lanes of the avenue a cell belongs to, each one carrying what its quality says.

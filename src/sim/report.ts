@@ -239,8 +239,8 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
       title: `Línea ${busNumberOf(w.busLine[i])} (${color})`,
       lines: [
         height,
-        `Cubre ${BUS.radius} lotes a la redonda`,
-        `Sus colectivos se llevan ${formatNumber(Math.round(BUS.trips * transitFactor(sim.state.transport)))} viajeros de las calles de su área, repartidos según lo que carga cada una; dos líneas se llevan el doble, pero una avenida muy cargada sigue cargada`,
+        `Alivia el tránsito de toda la ciudad, repartido según lo que carga cada calle`,
+        `Su flota lleva hasta ${formatNumber(Math.round(BUS.trips * transitFactor(sim.state.transport)))} viajeros por línea; los colectivos no se llevan más que el ${Math.round(BUS.share * 100)} % de los viajeros de la ciudad, así que cada línea rinde con unos ${formatNumber(Math.round(BUS.trips / BUS.share))} vecinos`,
         `Presupuesto de transporte: ${sim.state.transport} %${sim.state.transport < 100 ? ' (pasan menos colectivos)' : sim.state.transport > 100 ? ' (pasan más colectivos)' : ''}`,
         `Mantenimiento: $${formatNumber(Math.round(BUS.upkeep * transitFactor(sim.state.transport)))} por mes`,
         works ? 'Con calle cerca: los colectivos andan' : `Sin calle a ${ROAD_REACH} lotes o menos: no funciona`,

@@ -12,7 +12,7 @@ import { toolPrice } from '../src/ui/toolbar';
 import { SEA_LEVEL, type Terrain } from '../src/world/terrain';
 import { UndoHistory } from '../src/world/history';
 import { applyPlan, busFootprint, footprintOfTool, groupOfTool, planTool, toolInfo } from '../src/world/tools';
-import { busArea, busColorOf, busLineProblem, busNumberOf, busRefusal, busStations, depotAt, freeBusNumber, packBusLine } from '../src/world/transport';
+import { busColorOf, busLineProblem, busNumberOf, busRefusal, busStations, depotAt, freeBusNumber, packBusLine } from '../src/world/transport';
 import { TILE, World } from '../src/world/world';
 
 function flat(n = 16): Terrain {
@@ -224,14 +224,6 @@ describe('placing a bus line', () => {
     applyPlan(w, planTool(w, 'bus', [[8, 7]]));
     expect(busStations(w).map((s) => s.number)).toEqual([148, 1]);
   });
-
-  it('covers a diamond of lots around it, inside the map', () => {
-    const area = busArea(16, 0, 0);
-    expect(area).toContainEqual([0, 0]);
-    expect(area).toContainEqual([BUS.radius, 0]);
-    expect(area).not.toContainEqual([BUS.radius, 1]);
-    expect(area.every(([x, y]) => x >= 0 && y >= 0 && x < 16 && y < 16)).toBe(true);
-  });
 });
 
 function road(w: World, x0: number, y0: number, x1: number, y1: number): void {
@@ -257,46 +249,34 @@ function commuterTown(): World {
 describe('what the bus lines do for the traffic', () => {
   const at = (w: World, x: number) => w.traffic[w.idx(x, 10)];
 
-  it('takes its commuters off the streets of its area, and only of those', () => {
+  it('takes its commuters off the streets of the whole city, not of a ring around the depot', () => {
     const w = commuterTown();
-    computeCongestion(w);
-    // Los puntos de control están fuera del rombo de `BUS.radius` medido desde el depósito (15, 8):
-    // x=0 queda a 17 lotes y x=28 a 15, los dos más lejos que el alcance de la línea.
-    const [outsideWest, middle, outsideEast] = [at(w, 0), at(w, 15), at(w, 28)];
-    expect(middle).toBeGreaterThan(outsideWest); // the first towers' share has not joined the street yet
-    depot(w, 15, 8, 0, 60); // two lots from the street, `BUS.radius` lots of reach
-    computeCongestion(w);
-    expect(at(w, 15)).toBeLessThan(middle);
-    expect(at(w, 9)).toBeLessThan(middle); // inside the diamond
-    expect(at(w, 0)).toBe(outsideWest); // outside it
-    expect(at(w, 28)).toBe(outsideEast);
+    const before = computeCongestion(w).worst;
+    depot(w, 15, 8, 0, 60); // two lots from the street
+    const after = computeCongestion(w).worst;
+    // El alivio es gente, no un porcentaje: mejora el embotellamiento y no lo borra.
+    expect(after).toBeLessThan(before);
+    expect(after).toBeGreaterThan(100);
   });
 
-  it('takes the same people off every street it serves, whatever that street is carrying', () => {
+  it('takes the same share off every street, whatever that street is carrying', () => {
     const w = commuterTown();
     depot(w, 15, 8, 0, 60);
-    const i = w.idx(15, 10);
+    const west = w.idx(0, 10);
+    const east = w.idx(30, 10);
     for (const perCell of [600, 900, 2000]) {
       const load = loaded(w, perCell);
-      applyTransit(w, load, 100);
-      // Cada celda baja exactamente los viajeros de la línea, no un porcentaje de lo que tenía.
-      expect(load[i]).toBeCloseTo(perCell - BUS.trips, 5);
+      const result = applyTransit(w, load, 100);
+      // La flota entera se lleva BUS.trips viajeros, repartidos por lo que carga cada calle.
+      expect(result.taken).toBeCloseTo(BUS.trips, 5);
+      expect(load[west] / perCell).toBeCloseTo(load[east] / perCell, 5);
+      expect(load[west]).toBeLessThan(perCell);
     }
-    // Por eso el alivio relativo se cae cuando la calle carga más: 500 de 600 no es 500 de 2.000.
-    const share = (perCell: number) => BUS.trips / perCell;
-    expect(share(2000)).toBeLessThan(share(600));
   });
 
-  it('adds up where lines overlap, and only a load smaller than the buses is taken whole', () => {
+  it('takes a load smaller than the fleet whole, and the unused capacity is idle', () => {
     const w = commuterTown();
-    const streetsOf = (x: number, y: number) => busArea(w.n, x, y).filter(([cx, cy]) => w.tiles[w.idx(cx, cy)] === TILE.ROAD).length;
     depot(w, 15, 8, 0, 60);
-    const one = loaded(w, 2000);
-    expect(applyTransit(w, one, 100).taken).toBeCloseTo(BUS.trips * streetsOf(15, 8), 5);
-    depot(w, 14, 8, 1, 61);
-    const two = loaded(w, 2000);
-    // Dos líneas se llevan los viajeros de las dos áreas: los mismos por celda, sumados.
-    expect(applyTransit(w, two, 100).taken).toBeCloseTo(BUS.trips * (streetsOf(15, 8) + streetsOf(14, 8)), 5);
     // Una calle con menos carga que los colectivos se queda en cero, y la línea queda ociosa.
     const thin = loaded(w, 4);
     const result = applyTransit(w, thin, 100);
@@ -325,12 +305,15 @@ describe('what the bus lines do for the traffic', () => {
     expect(at(w, 15)).toBe(base);
   });
 
-  it('can bring a saturated street under its capacity, so the street does not have to be widened', () => {
+  it('the population caps the relief: two lines cannot fix the jam of a small town on their own', () => {
     const w = commuterTown();
+    const before = computeCongestion(w).worst;
+    expect(before).toBeGreaterThan(100);
+    depot(w, 12, 8, 0, 60);
+    depot(w, 26, 8, 1, 61);
+    // 1280 vecinos tienen un techo de 448 viajeros: mejora el peor tramo, y lo deja saturado.
+    expect(computeCongestion(w).worst).toBeLessThan(before);
     expect(computeCongestion(w).worst).toBeGreaterThan(100);
-    depot(w, 12, 8, 0, 60); // covers the street from x = 5 to 19
-    depot(w, 26, 8, 1, 61); // and from x = 19 to the end
-    expect(computeCongestion(w).worst).toBeLessThan(100);
   });
 
   it('cost their upkeep each month, in a line of the budget of their own', () => {
@@ -410,7 +393,8 @@ describe('the card of a bus depot', () => {
     sim.refresh();
     const ok = describeCell(w, sim, 4, 7);
     expect(ok.title).toBe('Línea 148 (azul)');
-    expect(ok.lines.join(' ')).toContain(`Cubre ${BUS.radius} lotes`);
+    expect(ok.lines.join(' ')).toContain('Alivia el tránsito de toda la ciudad');
+    expect(ok.lines.join(' ')).toMatch(/el 35 % de los viajeros/);
     expect(ok.lines.join(' ')).toMatch(/\$90 por mes/);
     expect(ok.hint).toBeUndefined();
 
@@ -432,17 +416,12 @@ describe('the budget for transport', () => {
     expect(transitFactor(500)).toBe(MAX_FUNDING / 100); // there is a ceiling
     const w = commuterTown();
     depot(w, 15, 8, 0, 60);
-    // La tripulación de una línea: siete celdas de calle en su área por los viajeros de cada una.
-    const perCell = (funding: number) => {
-      const base = 900;
-      const load = loaded(w, base);
-      applyTransit(w, load, funding);
-      return base - load[w.idx(15, 10)];
-    };
-    expect(perCell(100)).toBeCloseTo(BUS.trips, 5);
-    expect(perCell(50)).toBeCloseTo(BUS.trips / 2, 5);
-    expect(perCell(0)).toBe(0);
-    expect(perCell(120)).toBeGreaterThan(perCell(100));
+    // La flota de una línea, entera y a media frecuencia.
+    const relief = (funding: number) => applyTransit(w, loaded(w, 900), funding).taken;
+    expect(relief(100)).toBeCloseTo(BUS.trips, 5);
+    expect(relief(50)).toBeCloseTo(BUS.trips / 2, 5);
+    expect(relief(0)).toBe(0);
+    expect(relief(120)).toBeGreaterThan(relief(100));
   });
 
   it('leaves more traffic on the street the less is spent', () => {
@@ -457,9 +436,10 @@ describe('the budget for transport', () => {
     expect(full).toBeLessThan(half);
     expect(half).toBeLessThan(none);
     // Y más presupuesto es más viajeros: cinco líneas al 120 % se llevan más que cinco al 100 %.
-    for (const d of [[16, 8], [17, 8], [14, 8], [13, 8]] as const) depot(w, d[0], d[1], 0, 70 + d[0]);
+    // Cocheras separadas: las huellas de 2×2 pegadas se tapan las celdas entre sí.
+    for (const [x, num] of [[6, 71], [11, 72], [21, 73], [26, 74]] as const) depot(w, x, 8, 0, num);
     const five = applyTransit(w, loaded(w, 9000), 120).taken;
-    expect(five).toBeGreaterThan(5 * BUS.trips);
+    expect(five).toBeCloseTo(5 * BUS.trips * 1.2, 5);
   });
 
   it('costs the same share of the upkeep', () => {
@@ -536,11 +516,11 @@ describe('the frequency on the street and on the card', () => {
     depot(w, 4, 7, 1, 148);
     const sim = new Simulation(w, newSimState(1), 'X');
     sim.refresh();
-    // La ficha dice viajeros, no porcentajes, porque es lo que la línea hace.
-    expect(describeCell(w, sim, 4, 7).lines.join(' ')).toMatch(/se llevan 500 viajeros.*Presupuesto de transporte: 100 %.*\$90 por mes/);
+    // La ficha dice viajeros y techo, no rangos, porque es lo que la línea hace.
+    expect(describeCell(w, sim, 4, 7).lines.join(' ')).toMatch(/hasta 500 viajeros por línea.*el 35 % de los viajeros.*Presupuesto de transporte: 100 %.*\$90 por mes/s);
     sim.setTransport(50);
     const half = describeCell(w, sim, 4, 7).lines.join(' ');
-    expect(half).toMatch(/se llevan 250 viajeros/);
+    expect(half).toMatch(/hasta 250 viajeros por línea/);
     expect(half).toMatch(/50 % \(pasan menos colectivos\)/);
     expect(half).toMatch(/\$45 por mes/);
   });
