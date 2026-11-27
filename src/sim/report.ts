@@ -409,9 +409,23 @@ function noLightHint(sim: Simulation, i: number, pronoun: 'lo' | 'la'): string {
     // El estado ya lo dice la lista de la tarjeta («Sin luz»), así que acá va la causa y la salida.
     return `No le llega el tendido: acerca${pronoun} a la usina o a otro edificio con luz (alcance de ${POWER_REACH} lotes), o tendé un tendido eléctrico.`;
   }
-  const { use, capacity } = sim.power;
-  const falta = Math.max(0, use - capacity);
-  return `La red no da abasto: la ciudad pide ${formatNumber(use)} MW y hay ${formatNumber(capacity)} · faltan ${formatNumber(falta)} MW. Hace falta otra usina conectada.`;
+  // La red de esta celda no da abasto, pero eso no dice nada del total de la ciudad: otra isla puede
+  // tener de sobra. Con los números de la red y el sobrante, el jugador ve si lo suyo es una usina
+  // nueva o un tendido que una las dos.
+  const net = sim.power.nets?.[w.powerNet[i] - 1];
+  if (!net || sim.power.nets.length === 1) {
+    const { use, capacity } = sim.power;
+    const falta = Math.max(0, use - capacity);
+    return `La red no da abasto: la ciudad pide ${formatNumber(use)} MW y hay ${formatNumber(capacity)} · faltan ${formatNumber(falta)} MW. Hace falta otra usina conectada.`;
+  }
+  const falta = Math.max(0, net.use - net.capacity);
+  const sobra = Math.max(0, sim.power.capacity - sim.power.use);
+  return (
+    `Tu red no da abasto: pide ${formatNumber(net.use)} MW y tiene ${formatNumber(net.capacity)} · faltan ${formatNumber(falta)} MW.` +
+    (sobra > 0
+      ? ` En otras redes de la ciudad sobran ${formatNumber(sobra)} MW: el problema acá es el tendido, no la cantidad — uní esa red con un tendido eléctrico o construí una usina en esta.`
+      : ' Hace falta otra usina conectada.')
+  );
 }
 
 const ZONE_TAX_NAME: Record<ZoneKind, string> = { R: 'residencial', C: 'comercial', I: 'industrial' };

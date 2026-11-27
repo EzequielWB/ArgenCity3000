@@ -62,6 +62,37 @@ describe('por qué un edificio no tiene luz', () => {
     expect(card.hint).toContain(String(POWER_REACH));
   });
 
+  /** S4: dos islas aisladas. La del edificio apagado está corta, pero a la ciudad, en total, le
+   * sobra energía (la captura del jugador: "pide 11.800 y hay 12.785 · faltan 0"). El consultar
+   * tiene que hablar de LA RED de la celda y proponer tendido, no solo otra usina. */
+  it('distingue la isla corta del total de la ciudad', () => {
+    const w = new World(generateMap(3, 40, 'plain'));
+    // Isla A: una térmica saturada por la hilera de fábricas.
+    w.plants.push({ kind: 'coal', x: 10, y: 20 });
+    for (const [x, y] of [[10, 20], [11, 20], [10, 21], [11, 21]]) w.tiles[w.idx(x, y)] = T.PLANT;
+    for (let k = 0; k < 26; k++) {
+      const x = 13 + k;
+      if (x >= 39) break;
+      w.tiles[w.idx(x, 20)] = T.I;
+      w.level[w.idx(x, 20)] = 5;
+    }
+    // Isla B: una térmica propia sin demanda: acá sobra todo.
+    w.plants.push({ kind: 'coal', x: 5, y: 35 });
+    for (const [x, y] of [[5, 35], [6, 35], [5, 36], [6, 36]]) w.tiles[w.idx(x, y)] = T.PLANT;
+    const sim = simOf(w);
+    expect(sim.power.capacity).toBeGreaterThan(sim.power.use); // a la ciudad le sobra
+    expect(sim.power.shortage).toBe(true); // pero esta red está corta
+    const apagada = [...Array(26).keys()].map((k) => 13 + k).find((x) => !w.powered[w.idx(x, 20)]);
+    expect(apagada).toBeDefined();
+    const card = describeCell(w, sim, apagada!, 20);
+    expect(card.hint).toMatch(/tu red/i); // los números son de la red, no de la ciudad
+    expect(card.hint).toContain('650'); // lo que pide la isla A
+    expect(card.hint).toContain('600'); // lo que tiene
+    expect(card.hint).toContain('550'); // el sobrante de las otras redes
+    expect(card.hint).not.toMatch(/faltan 0/i);
+    expect(card.hint).toMatch(/tendido/i); // la salida es conectar, y también sirve otra usina acá
+  });
+
   /** Con red y capacidad corta, la causa es la otra, y el consultar da los números. */
   it('dice que la red no da abasto, con los megavatios', () => {
     const { w, spots } = plantAndRow(26);

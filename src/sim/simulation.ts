@@ -218,7 +218,7 @@ export class Simulation {
   readonly cityName: string;
   totals: Totals = { pop: 0, cJobs: 0, iJobs: 0 };
   demand: Demand = { R: 0, C: 0, I: 0 };
-  power: PowerReport = { capacity: 0, use: 0, shortage: false };
+  power: PowerReport = { capacity: 0, use: 0, shortage: false, nets: [] };
   congestion: CongestionReport = { trips: 0, worst: 0, jammedShare: 0 };
   /** Share of the residents (0 to 100) living with a school in reach: what the shops grow on. */
   schooled = 0;

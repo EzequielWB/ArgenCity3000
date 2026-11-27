@@ -346,9 +346,9 @@ describe('el corte en la usina', () => {
   it('appears when the grid is at its limit', () => {
     const { sim } = city();
     sim.totals.pop = 3000;
-    sim.power = { capacity: 600, use: 590, shortage: false };
+    sim.power = { capacity: 600, use: 590, shortage: false, nets: [] };
     expect(eventById('corte-de-usina')!.when(sim)).toBe(true);
-    sim.power = { capacity: 600, use: 300, shortage: false };
+    sim.power = { capacity: 600, use: 300, shortage: false, nets: [] };
     expect(eventById('corte-de-usina')!.when(sim)).toBe(false);
   });
 

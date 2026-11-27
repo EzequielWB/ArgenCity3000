@@ -12,6 +12,8 @@ export interface PowerReport {
   use: number;
   /** True when some connected building is left in the dark. */
   shortage: boolean;
+  /** Las redes aisladas de la ciudad, en el orden de `powerNet` − 1: cada una se raciona por su lado. */
+  nets: { capacity: number; use: number }[];
 }
 
 export function buildingPowerUse(tile: number, level: number): number {
@@ -138,6 +140,7 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
   w.powerNet.fill(0);
   w.powerShort.fill(0);
   const visited = new Uint8Array(n * n);
+  const nets: { capacity: number; use: number }[] = [];
   let capacity = 0;
   let use = 0;
   let shortage = false;
@@ -150,6 +153,8 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
     const start = w.idx(plant.x, plant.y);
     if (visited[start]) continue;
     // Collect one network.
+    const netId = nets.length + 1;
+    nets.push({ capacity: 0, use: 0 });
     let head = 0;
     let tail = 0;
     queue[tail++] = start;
@@ -204,12 +209,14 @@ export function computePower(w: World, plantsFunding = 100, mods: RunMods = NO_M
     const short = cap < netUse;
     for (let k = 0; k < tail; k++) {
       const i = queue[k];
-      w.powerNet[i] = 1;
+      w.powerNet[i] = netId;
       if (short) w.powerShort[i] = 1;
     }
+    nets[netId - 1].capacity = cap;
+    nets[netId - 1].use = netUse;
     capacity += cap;
     use += netUse;
   }
   spreadServicePower(w);
-  return { capacity, use, shortage };
+  return { capacity, use, shortage, nets };
 }
