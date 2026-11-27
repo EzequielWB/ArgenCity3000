@@ -28,6 +28,8 @@ import { Simulation } from './sim/simulation';
 import { APPROVAL, nextElectionYear } from './sim/politics';
 import { RUN_GOAL, RUN_PICKS, runOver } from './sim/roguelike';
 import { openApproval, openElectionLost, openElectionWon, openEvent, openMilestone } from './ui/panels';
+import { openSubsidy } from './ui/subsidy';
+import { subsidyDue } from './sim/subsidy';
 import { openEndScreen, openUpgrades } from './ui/upgrades';
 import { $, escapeHtml, toast } from './ui/dom';
 import { Toolbar, lockNotice } from './ui/toolbar';
@@ -302,6 +304,8 @@ export class Game implements PointerTarget {
     if (this.sim.state.pendingEvent && !this.hooks.isModalOpen()) {
       this.pauseForEvent();
     }
+    // El telegrama del subsidio provincial: la caja abajo del mínimo, una sola vez, con el reloj parado.
+    this.maybeSubsidy();
     if (this.sim.state.tick % (TICKS_PER_MONTH * 12) === 0) {
       try {
         saveToSlot('auto', this.saveData());
@@ -504,9 +508,21 @@ export class Game implements PointerTarget {
   /** Called when an event is answered: the answer may have moved money, approval or a promise. */
   /** The clock stops for the event and remembers its speed, to go back to it when the Intendente answers. */
   private pauseForEvent(): void {
+    this.pauseClock();
+    openEvent(this);
+  }
+
+  /** Stops the clock and remembers its speed, for whoever will resume it with `afterEvent`. */
+  private pauseClock(): void {
     if (this.speed > 0) this.speedBeforeEvent = this.speed;
     this.setSpeed(0);
-    openEvent(this);
+  }
+
+  /** El telegrama del subsidio: la caja quedó abajo del mínimo, se para el reloj hasta responder. */
+  private maybeSubsidy(): void {
+    if (!subsidyDue(this.sim.state) || this.hooks.isModalOpen()) return;
+    this.pauseClock();
+    openSubsidy(this);
   }
 
   afterEvent(): void {

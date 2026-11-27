@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Beneficio provincial — variantes</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@400;700&family=Cutive+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #e0a526; --gold-light: #ffe08a; --gold-dark: #8f5f12;
+    --red: #c9342c; --celeste: #74acdf; --paper: #f1e6cf; --ink: #1b1410;
+    --cream: #f6f2e8; --bordo: #7a2f3a; --base: #12382b; --deep: #0a241b;
+    --font-body: 'Chakra Petch', sans-serif; --font-title: 'Bungee', sans-serif;
+  }
+  body { margin: 0; background: var(--deep); font-family: var(--font-body); color: var(--cream); }
+  .page { max-width: 760px; margin: 0 auto; padding: 18px 16px 40px; }
+  .tag { display: flex; align-items: baseline; gap: 10px; margin: 34px 0 12px; }
+  .tag h2 { margin: 0; font-family: var(--font-title); font-weight: 400; font-size: 15px; color: var(--gold); letter-spacing: 1px; }
+  .tag p { margin: 0; font-size: 13px; color: #9db08a; }
+  .dim { position: fixed; inset: 0; pointer-events: none; } /* nada: las tarjetas sueltas sobre el fondo */
+
+  /* ---------- base modal card (la del juego) ---------- */
+  .card {
+    position: relative;
+    background: var(--base);
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000, inset 0 0 0 2px rgba(255,255,255,0.06);
+    padding: 22px 26px;
+  }
+  .card .kicker { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-light); font-weight: 700; }
+  .card h3 { margin: 6px 0 10px; font-family: var(--font-title); font-weight: 400; font-size: 22px; color: var(--gold); text-shadow: 0 -2px 0 var(--gold-light), 2px 2px 0 var(--red), 4px 4px 0 #000; letter-spacing: 1px; }
+  .card p { margin: 8px 0; font-size: 15px; line-height: 1.45; color: var(--paper); }
+  .opts { display: flex; gap: 12px; margin-top: 16px; }
+  .opts button {
+    font-family: var(--font-body); font-weight: 700; font-size: 14px;
+    padding: 10px 16px; cursor: pointer;
+    border: 2px solid var(--gold); background: var(--raised); color: var(--cream);
+    box-shadow: 3px 3px 0 #000;
+  }
+  .opts button:hover { background: var(--line); }
+  .opts .no { background: transparent; border-color: #3a5c4c; color: #9db08a; }
+  .opts .no:hover { background: rgba(255,255,255,0.05); }
+  .fine { font-size: 12px; color: #9db08a; margin-top: 10px; }
+
+  /* ---------- V1: telegrama ---------- */
+  .telegram { background: var(--paper); color: var(--ink); }
+  .telegram::before {
+    content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px;
+    background: repeating-linear-gradient(90deg, var(--paper) 0 8px, transparent 8px 16px);
+  }
+  .telegram .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--ink); padding-bottom: 8px; }
+  .telegram .head b { font-size: 13px; letter-spacing: 1.5px; }
+  .telegram .head span { font-family: 'Cutive Mono', monospace; font-size: 12px; }
+  .telegram .body { font-family: 'Cutive Mono', monospace; font-size: 14px; line-height: 1.7; padding: 12px 0 4px; }
+  .telegram .body .money { font-weight: 700; background: #f9e3a8; padding: 0 4px; }
+  .telegram .opts button { font-family: var(--font-body); }
+  .telegram .aceptar { background: #2c7a46; border-color: #1d5a30; color: #fff; }
+  .telegram .aceptar:hover { background: #379358; }
+  .telegram .rechazar { background: transparent; border-color: #8a7d64; color: #6b5f49; }
+  .stamp {
+    position: absolute; top: 84px; right: 22px; width: 108px; height: 108px;
+    border: 4px double var(--red); border-radius: 50%; color: var(--red);
+    display: grid; place-items: center; text-align: center;
+    font-weight: 700; font-size: 11px; line-height: 1.25; letter-spacing: 1px;
+    transform: rotate(-12deg); opacity: 0.85;
+    mask-image: repeating-linear-gradient(45deg, #000 0 3px, rgba(0,0,0,0.75) 3px 6px);
+  }
+
+  /* ---------- V2: despacho urgente ---------- */
+  .urgente { background: var(--bordo); }
+  .urgente .kicker { color: var(--gold-light); }
+  .urgente .monto { font-family: var(--font-title); font-size: 34px; color: #9fdc8a; text-shadow: 3px 3px 0 #000; margin: 4px 0 8px; }
+  .urgente .opts button { background: #5f1f28; }
+  .urgente .opts button:hover { background: #8f3743; }
+  .urgente .cinta {
+    position: absolute; top: -10px; left: -6px; background: var(--red); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: 2px; padding: 4px 10px;
+    box-shadow: 2px 2px 0 #000; transform: rotate(-2deg);
+  }
+
+  /* ---------- V3: sobre lacrado ---------- */
+  .sobre { background: var(--enamel-dark); text-align: center; }
+  .sobre .kicker { color: #c9b79a; }
+  .sobre h3 { color: var(--gold); }
+  .sello {
+    width: 96px; height: 96px; margin: 10px auto 6px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #d4543f, var(--red) 60%, #7d1f1a);
+    box-shadow: 0 4px 0 #000, inset 0 0 0 4px rgba(0,0,0,0.25);
+    display: grid; place-items: center; color: var(--gold-light);
+    font-family: var(--font-title); font-size: 26px; cursor: pointer;
+    border: none; transition: transform .15s;
+  }
+  .sello:hover { transform: scale(1.06) rotate(-4deg); }
+  .sobre .opts { justify-content: center; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="tag"><h2>V1 — Telegrama provincial</h2><p>papel + máquina de escribir + sello de goma: documento burocrático</p></div>
+  <div class="card telegram">
+    <div class="head"><b>GOBIERNO DE LA PROVINCIA — MINISTERIO DE ASUNTOS MUNICIPALES</b><span>TELEGRAMA Nº 0047</span></div>
+    <div class="stamp">SUBSIDIO<br>EXTRAORDINARIO<br>·ÚNICO·</div>
+    <div class="body">
+      SEÑOR INTENDENTE: SABEMOS DE SUS APUROS. LA PROVINCIA AUTORIZA UN SUBSIDIO DE
+      <span class="money">$15.000</span> PARA LA COMODA MUNICIPAL. COBRAR UNA SOLA VEZ.
+      QUEDA ASIENTO EN EL EXPEDIENTE. ATENTAMENTE, LA CASA DE CAMPO.
+    </div>
+    <div class="opts">
+      <button class="aceptar">Cobrar los $15.000</button>
+      <button class="rechazar">Gracias, no lo necesito</button>
+    </div>
+    <p class="fine">Aceptarlo queda en el expediente: la Provincia te lo va a recordar.</p>
+  </div>
+
+  <div class="tag"><h2>V2 — Despacho urgente</h2><p>bordó + cinta roja + monto grande: se lee como evento de juego, en caliente</p></div>
+  <div class="card urgente">
+    <div class="cinta">CAJA EN ROJO</div>
+    <div class="kicker">Beneficio provincial — una sola vez</div>
+    <h3>La Provincia te tira un salvavidas</h3>
+    <div class="monto">+$15.000</div>
+    <p>La caja quedó en rojo y los vecinos lo notan. El Gobierno Provincial libera un subsidio de <b>$15.000</b> para que la ciudad respire. Solo se otorga <b>una vez por intendencia</b>.</p>
+    <div class="opts">
+      <button>Aceptar el subsidio</button>
+      <button class="no">Seguir solo</button>
+    </div>
+  </div>
+
+  <div class="tag"><h2>V3 — Sobre lacrado</h2><p>azul enamely sello de laca: aceptar = romper el sello, el gesto es la decisión</p></div>
+  <div class="card sobre">
+    <div class="kicker">ENCOMIENDA OFICIAL — REMITENTE: LA PROVINCIA</div>
+    <h3>Un sobre llegó a tu despacho</h3>
+    <p>La caja está en números rojos. Dentro del sobre hay un decreto de subsidio por <b>$15.000</b>. Rompelo para cobrarlo, o devolvelo sin abrir.</p>
+    <button class="sello">ROMPER</button>
+    <div class="opts">
+      <button class="no" style="background:transparent;border-color:#2c4a6e;color:#9db08a">Devolver el sobre sin abrir</button>
+    </div>
+    <p class="fine">El subsidio se otorga una sola vez por intendencia.</p>
+  </div>
+
+</div>
+</body>
+</html>

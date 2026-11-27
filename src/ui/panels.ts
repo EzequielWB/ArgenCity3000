@@ -34,7 +34,7 @@ export function isModalOpen(): boolean {
 }
 
 /** Panels drawn as an object instead of the usual framed card: a ballot paper, a bronze plaque or a bordó card. */
-export type ModalShape = 'boleta' | 'plaqueta' | 'feriado' | 'mejora';
+export type ModalShape = 'boleta' | 'plaqueta' | 'feriado' | 'mejora' | 'telegrama';
 
 export function openModal(html: string, onClose?: () => void, shape?: ModalShape): HTMLElement {
   const body = $('#modalBody');

@@ -654,6 +654,12 @@ export const BUS_SIZE = 2;
  */
 export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 14, trips: 500, buses: 3, share: 0.35 } as const;
 /**
+ * El subsidio provincial: cuando la caja municipal baja de `trigger`, la Provincia ofrece
+ * `amount` una sola vez por partida (see `sim/subsidy.ts`), para que un intendente nuevo
+ * respire mientras estabiliza la ciudad.
+ */
+export const SUBSIDY = { trigger: 5000, amount: 15000 } as const;
+/**
  * The commercial hubs of the transport category: an airport and a harbour for walks and cruises. A
  * piece takes `w`×`h` lots, always the same way round, and pieces that share an edge are one
  * facility whose level is how many pieces it has (`HUB_LEVELS`: the pieces each level asks for).

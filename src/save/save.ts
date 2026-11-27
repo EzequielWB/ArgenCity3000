@@ -605,6 +605,8 @@ function parseCommitment(raw: unknown): Commitment | null {
   need(s.party === undefined || (typeof s.party === 'string' && s.party.length <= 32), 'El partido de la partida es inválido');
   // The favor of God and the five-year plan exist from version 17 on: older cities have neither.
   need(s.favor === undefined || (typeof s.favor === 'number' && s.favor >= 0 && s.favor <= 100), 'El favor divino de la partida es inválido');
+  // El telegrama del subsidio se ofrece una sola vez: en un save viejo todavía no se mandó.
+  need(s.subsidy === undefined || typeof s.subsidy === 'boolean', 'El subsidio provincial es inválido');
   const plan = parsePlan(s.plan);
   // The roguelike run exists from version 18 on.
   const run = parseRun(s.run);
@@ -643,6 +645,7 @@ function parseCommitment(raw: unknown): Commitment | null {
     government: (s.government as GovernmentKind | undefined) ?? 'democracia',
     party: (s.party as string | undefined) ?? '',
     favor: (s.favor as number | undefined) ?? FAVOR.start,
+    subsidy: (s.subsidy as boolean | undefined) ?? false,
     plan,
     run,
   };

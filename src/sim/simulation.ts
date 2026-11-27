@@ -116,6 +116,8 @@ export interface SimState {
   party: string;
   /** Favor of God, 0 to 100 (see `sim/favor.ts`): it only moves under a theocracy. */
   favor: number;
+  /** El telegrama del subsidio provincial ya se mandó (se cobró o se rechazó). Una sola vez por partida. */
+  subsidy: boolean;
   /** The five-year plan the Party asked for, or null (see `sim/plan.ts`): it only exists under communism. */
   plan: FivePlan | null;
   /** The roguelike run, or null in a classic game (see `sim/roguelike.ts`). */
@@ -156,6 +158,7 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     dry: 0,
     loan: null,
     favor: FAVOR.start,
+    subsidy: false,
     plan: government === 'comunismo' ? newPlan(0, 0) : null,
     run,
   };

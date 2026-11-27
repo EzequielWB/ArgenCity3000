@@ -564,6 +564,52 @@ button.chapa:focus-visible {
   color: var(--paper);
 }
 
+/* El telegrama del subsidio provincial: papel de ministerio, cuerpo de máquina de escribir y un
+   sello de goma rojo que dice «único». La única forma del modal que no es chapa ni mueble: es
+   correspondencia que llegó del Gobierno de la Provincia. */
+.modal-card[data-shape='telegrama'] {
+  background: var(--paper);
+  color: var(--ink);
+}
+.modal-card[data-shape='telegrama'] .tg-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.modal-card[data-shape='telegrama'] .tg-num {
+  font-family: 'Cutive Mono', 'Courier New', monospace;
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+.modal-card[data-shape='telegrama'] .tg-body {
+  margin: 12px 0 0;
+  font-family: 'Cutive Mono', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.modal-card[data-shape='telegrama'] .tg-money {
+  background: #f9e3a8;
+  padding: 0 4px;
+}
+.modal-card[data-shape='telegrama'] .tg-stamp {
+  position: absolute;
+  top: 78px;
+  right: 26px;
+  width: 106px;
+  height: 106px;
+  display: grid;
+  place-items: center;
+  border: 4px double var(--red);
+  border-radius: 50%;
+  color: var(--red);
+  font-weight: 700;
+  font-size: 11px;
   line-height: 1.3;
   letter-spacing: 1px;
   text-align: center;
@@ -572,6 +618,32 @@ button.chapa:focus-visible {
   /* La tinta del sello no cubre parejo: rayas para que el papel se lea a través. */
   mask-image: repeating-linear-gradient(45deg, #000 0 3px, rgba(0, 0, 0, 0.72) 3px 6px);
   pointer-events: none;
+}
+.modal-card[data-shape='telegrama'] .event-options button {
+  border-color: #1d5a30;
+}
+.modal-card[data-shape='telegrama'] .event-options button[data-accept] {
+  background: #2c7a46;
+  color: #fff;
+}
+.modal-card[data-shape='telegrama'] .event-options button[data-accept]:hover {
+  background: #379358;
+}
+.modal-card[data-shape='telegrama'] .event-options button[data-accept] b {
+  color: #fff;
+}
+.modal-card[data-shape='telegrama'] .event-options button[data-decline] {
+  background: transparent;
+  border-color: #8a7d64;
+}
+.modal-card[data-shape='telegrama'] .event-options button[data-decline] b {
+  color: #6b5f49;
+}
+.modal-card[data-shape='telegrama'] .event-options button[data-decline]:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.modal-card[data-shape='telegrama'] p small {
+  color: #6b5f49;
 }
 
 /* A promise the neighbours are waiting on: red, on top of the map, with the time left. */
