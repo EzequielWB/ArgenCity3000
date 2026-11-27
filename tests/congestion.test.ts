@@ -117,6 +117,30 @@ describe('estimated congestion', () => {
     expect(w.traffic[w.idx(20, 10)]).toBe(Math.round((100 * toIndustry) / TRAFFIC.laneCapacity));
   });
 
+  it('reparte los viajeros entre comercios cercanos aunque uno esté un poco más lejos', () => {
+    const w = commuterTown();
+    w.setTile(20, 9, TILE.C, 5); // 100 puestos de trabajo a 20 pasos
+    w.setTile(30, 9, TILE.C, 5); // y otro con los mismos a 30: hoy recibe 0
+    computeCongestion(w);
+    expect(w.traffic[w.idx(29, 10)]).toBeGreaterThan(0); // una parte va al comercio lejano
+    expect(w.traffic[w.idx(8, 10)]).toBeGreaterThan(0);
+  });
+
+  it('reparte los viajeros entre las calles empatadas: la avenida paralela deja de estar muerta', () => {
+    const w = new World(flat());
+    road(w, 0, 10, 20, 10);
+    road(w, 0, 12, 20, 12);
+    road(w, 2, 11, 2, 11);
+    road(w, 20, 11, 20, 11);
+    for (let x = 4; x <= 11; x++) w.setTile(x, 11, TILE.R, 5); // casas entre las dos calles, a 1 de cada una
+    for (let x = 13; x <= 15; x++) w.setTile(x, 9, TILE.C, 5); // comercios al lado del pasillo y=10
+    const first = computeCongestion(w);
+    expect(w.traffic[w.idx(8, 12)]).toBeGreaterThan(0); // la paralela lleva su mitad
+    expect(first.worst).toBeLessThan(Math.round((100 * residents) / TRAFFIC.laneCapacity)); // y el pasillo ya no aplasta solo
+    const again = computeCongestion(w);
+    expect(again.worst).toBe(first.worst); // determinista
+  });
+
   it('lowers the land value along a saturated street and slows the growth there', () => {
     const jammed = commuterTown(1);
     const wide = commuterTown(3);

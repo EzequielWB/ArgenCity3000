@@ -585,7 +585,7 @@ export const PLANT_LIFE = { full: 600, decay: 120, floor: 0.5 } as const;
  * `valueFrom` percent loses `valuePerPoint` of land value per point, and above `slowFrom` it
  * grows more slowly, down to `slowest` of its usual pace.
  */
-export const TRAFFIC = { laneCapacity: 1200, valueFrom: 60, valuePerPoint: 0.3, slowFrom: 90, slowest: 0.25 } as const;
+export const TRAFFIC = { laneCapacity: 1200, valueFrom: 60, valuePerPoint: 0.3, slowFrom: 90, slowest: 0.25, split: 3 } as const;
 
 /** A street is "saturada" from this much load on: slow traffic and, with time, an empty building. */
 export const JAM_CROWDED = TRAFFIC.slowFrom + 30;
