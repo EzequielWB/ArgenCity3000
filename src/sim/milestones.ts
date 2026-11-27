@@ -23,7 +23,7 @@ export const MILESTONES: readonly Milestone[] = [
   // a un jugador que recién arranca. Pero también pide plata y una decisión de dónde ponerlo, así que no entra
   // en Caserío: espera a que la ciudad tenga tamaño para que el campo sea parte de ella y no un atajo.
   { pop: 2500, name: 'Ciudad pujante', grant: 8000, unlocks: ['plantWind', 'harbor', 'hospital', 'university', 'farm', 'silo', 'market'] },
-  { pop: 5000, name: 'Gran ciudad', grant: 12000, unlocks: ['lighthouse', 'airport'] },
+  { pop: 5000, name: 'Gran ciudad', grant: 12000, unlocks: ['lighthouse', 'airport', 'plantNuclear'] },
   {
     pop: 25000,
     name: 'Metrópolis',

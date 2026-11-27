@@ -73,6 +73,7 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
   plant: 'rgba(200,70,47,0.5)',
   plantGas: 'rgba(120,150,170,0.55)',
   plantWind: 'rgba(240,240,235,0.6)',
+  plantNuclear: 'rgba(150,220,180,0.55)',
   school: 'rgba(80,150,230,0.55)',
   clinic: 'rgba(60,180,110,0.55)',
   hospital: 'rgba(60,180,110,0.55)',
@@ -89,7 +90,7 @@ const PREVIEW_COLORS: Partial<Record<ToolId, string>> = {
 const STALL_LABELS = { shortage: 'apagones', taxes: 'impuestos altos', blight: 'abandono', stopped: 'la ciudad está frenada' } as const;
 
 /** Tools that show a coverage layer while they are picked: each service shows what it covers, the plants and the line show the light, the street shows the traffic. */
-const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', hospital: 'health', university: 'edu', plant: 'power', plantGas: 'power', plantWind: 'power', line: 'power', bus: 'traffic', roadDirt: 'traffic', road: 'traffic', roadPaved: 'traffic', roadBoulevard: 'traffic' };
+const TOOL_LAYERS: Partial<Record<ToolId, Layer>> = { school: 'edu', clinic: 'health', police: 'crime', fire: 'fireCover', hospital: 'health', university: 'edu', plant: 'power', plantGas: 'power', plantWind: 'power', plantNuclear: 'power', line: 'power', bus: 'traffic', roadDirt: 'traffic', road: 'traffic', roadPaved: 'traffic', roadBoulevard: 'traffic' };
 
 export interface GameHooks {
   isModalOpen(): boolean;

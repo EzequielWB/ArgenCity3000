@@ -10,7 +10,7 @@ import { uniqueFootprint, uniqueRefusal } from './uniques';
 import { farmFootprint, marketFootprint, siloFootprint } from './farms';
 import { TILE, World, coastTile, hubOf, hubTile, serviceOf, serviceTile, zoneOf, zoneTile, type ZoneKind } from './world';
 
-export type ToolId = 'query' | 'bulldoze' | 'farm' | 'silo' | 'market' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'lineConcrete' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | ServiceKind | CoastKind | UniqueKind;
+export type ToolId = 'query' | 'bulldoze' | 'farm' | 'silo' | 'market' | 'bus' | 'airport' | 'harbor' | 'roadDirt' | 'road' | 'roadPaved' | 'roadBoulevard' | 'line' | 'lineConcrete' | 'zoneR' | 'zoneC' | 'zoneI' | 'park' | 'plant' | 'plantGas' | 'plantWind' | 'plantNuclear' | ServiceKind | CoastKind | UniqueKind;
 
 export type ToolShape = 'point' | 'line' | 'rect' | 'anchor';
 
@@ -83,6 +83,7 @@ const ALL_TOOLS: readonly ToolInfo[] = [
   { id: 'plant', label: 'Usina a carbón', key: '9', shape: 'anchor', help: 'Usina térmica de 2×2. Barata, pero contamina mucho.' },
   { id: 'plantGas', label: 'Usina a gas', key: 'j', shape: 'anchor', help: 'Usina de 2×2. Más cara de construir y de mantener, casi no contamina.' },
   { id: 'plantWind', label: 'Parque eólico', key: 'k', shape: 'anchor', help: 'Molinos de 2×2. No contaminan y cuestan poco de mantener; rinden más en lo alto de una loma y cerca del agua.' },
+  { id: 'plantNuclear', label: 'Usina nuclear', key: '_', shape: 'anchor', help: 'Usina de 2×2. Carísima de construir y de mantener, pero rinde cuatro térmicas en el mismo terreno y no contamina nada.' },
   { id: 'school', label: 'Escuela', key: 'y', shape: 'point', help: 'Educación: sin escuela no se levantan torres ni oficinas.' },
   { id: 'clinic', label: 'Salita', key: 'u', shape: 'point', help: 'Salud: sin salita las casas no pasan de chalet.' },
   { id: 'police', label: 'Comisaría', key: 'i', shape: 'point', help: 'Seguridad: baja el delito en los barrios densos.' },
@@ -129,7 +130,7 @@ export function isForeignUnique(tool: ToolId, government: GovernmentKind): boole
   return own !== undefined && own !== government;
 }
 
-const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
+const PLANT_TOOLS: Partial<Record<ToolId, PlantKind>> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind', plantNuclear: 'nuclear' };
 
 /**
  * Las tres piezas del campo: cuánto ocupan y cuánto cuestan.
@@ -188,7 +189,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   { id: 'zones', label: 'Zonas', tools: ['zoneR', 'zoneC', 'zoneI', 'park'] },
   { id: 'campo', label: 'Campo', tools: ['farm', 'silo', 'market'] },
   { id: 'services', label: 'Servicios', tools: ['school', 'clinic', 'police', 'fire', 'hospital', 'university'] },
-  { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind'] },
+  { id: 'plants', label: 'Usinas', tools: ['plant', 'plantGas', 'plantWind', 'plantNuclear'] },
   { id: 'coast', label: 'Costa', tools: ['fishing', 'promenade', 'port', 'resort', 'lighthouse'] },
   { id: 'transport', label: 'Transportes', tools: ['bus', 'harbor', 'airport'] },
   {
@@ -629,6 +630,7 @@ export function applyPlan(w: World, plan: Plan): void {
       case 'plant':
       case 'plantGas':
       case 'plantWind':
+      case 'plantNuclear':
         w.setTile(x, y, TILE.PLANT);
         w.terrain.trees[i] = 0;
         break;

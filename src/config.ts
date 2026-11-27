@@ -332,12 +332,15 @@ export const PLANT_CAPACITY = 600;
  * depends on where it stands (see `WIND`): `capacity` is its best case.
  * `smoke` is the pollution at the plant and `smokeRadius` how far it spreads.
  */
-export type PlantKind = 'coal' | 'gas' | 'wind';
-export const PLANT_KINDS: readonly PlantKind[] = ['coal', 'gas', 'wind'];
+export type PlantKind = 'coal' | 'gas' | 'wind' | 'nuclear';
+export const PLANT_KINDS: readonly PlantKind[] = ['coal', 'gas', 'wind', 'nuclear'];
 export const PLANTS: Record<PlantKind, { label: string; cost: number; upkeep: number; capacity: number; smoke: number; smokeRadius: number }> = {
   coal: { label: 'Usina térmica', cost: COSTS.plant, upkeep: UPKEEP.plant, capacity: PLANT_CAPACITY, smoke: 60, smokeRadius: 6 },
   gas: { label: 'Usina a gas', cost: 5500, upkeep: 400, capacity: 600, smoke: 18, smokeRadius: 4 },
   wind: { label: 'Parque eólico', cost: 4500, upkeep: 110, capacity: 400, smoke: 0, smokeRadius: 0 },
+  // La nuclear es la usina de nivel mayor: cuesta una fortuna y no contamina, pero rinde cuatro
+  // térmicas en el mismo terreno de 2×2. Para la metrópoli que ya no sabe dónde poner usinas.
+  nuclear: { label: 'Usina nuclear', cost: 24000, upkeep: 1600, capacity: PLANT_CAPACITY * 4, smoke: 0, smokeRadius: 0 },
 };
 /**
  * Wind farm output in MW: `base` on open flat land, plus `perLevel` for each level its site stands

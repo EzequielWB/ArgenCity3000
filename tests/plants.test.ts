@@ -105,7 +105,7 @@ describe('power plant kinds', () => {
     old.plants = old.plants.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y }));
     expect(deserialize(JSON.stringify(old)).world.plants.map((p) => p.kind)).toEqual(['coal', 'coal']);
     const bad = JSON.parse(text);
-    bad.plants[0].kind = 'nuclear';
+    bad.plants[0].kind = 'vapor';
     expect(() => deserialize(JSON.stringify(bad))).toThrow('Hay una usina de un tipo desconocido');
   });
 });

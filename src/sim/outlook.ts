@@ -76,7 +76,7 @@ export function serviceUpkeepRange(kind: ServiceKind): { min: number; max: numbe
   return { min: Math.round(SERVICES[kind].upkeep * FIXED_SHARE), max: SERVICES[kind].upkeep };
 }
 
-const PLANT_OF_TOOL: Record<string, PlantKind | undefined> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind' };
+const PLANT_OF_TOOL: Record<string, PlantKind | undefined> = { plant: 'coal', plantGas: 'gas', plantWind: 'wind', plantNuclear: 'nuclear' };
 const ROAD_TIER_OF_TOOL: Record<string, RoadTier | undefined> = { roadDirt: 3, road: 0, roadPaved: 1, roadBoulevard: 2 };
 const LINE_TIER_OF_TOOL: Record<string, LineTier | undefined> = { line: 0, lineConcrete: 1 };
 

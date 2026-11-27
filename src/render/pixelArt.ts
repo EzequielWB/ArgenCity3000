@@ -2502,6 +2502,41 @@ export function paintCoalPlant(): { px: Pixels; ax: number; ay: number; smoke: [
   return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
 }
 
+/** La torre de refrigeración: prisma ancho de hormigón, con la garganta y el vapor arriba. */
+function coolingTower(p: Pen, u: number, v: number, h: number): void {
+  const bands: Patch[] = [
+    { t0: 0, t1: 99, k0: 0, k1: 2, c: shade(CONCRETE[1], 0.8) },
+    { t0: 0, t1: 99, k0: h - 2, k1: h, c: shade(CONCRETE[0], 1.15) },
+  ];
+  p.box(u, v, u + 0.34, v + 0.34, 1.5, h, CONCRETE, 'plain', bands, undefined, shade(CONCRETE[1], 0.92));
+  const [x, y] = p.P(u + 0.17, v + 0.17, 1.5 + h);
+  p.smoke.push([Math.round(x - p.ax), Math.round(y - p.ay)]);
+}
+
+/** La nuclear: dos torres de refrigeración al fondo, la cúpula del reactor y la sala de turbinas
+ * adelante. Sin humo: el vapor blanco de las torres es el único gesto. */
+export function paintNuclearPlant(): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
+  const p = penLot(2, 60);
+  pad(p);
+  // Las torres primero: la sala de turbinas les tapa el pie.
+  coolingTower(p, 0.16, 0.12, 38);
+  coolingTower(p, 0.64, 0.12, 38);
+  // La cúpula de contención del reactor, al fondo a la derecha.
+  p.sphere(1.28, 0.5, 1.5, 8);
+  const [rx, ry] = p.P(1.28, 0.5, 1.5 + 10);
+  p.px.rect(Math.round(rx) - 5, Math.round(ry) + 9, 11, 1, CONCRETE[2]);
+  // La sala de turbinas, larga y baja, con su vidrio a la calle.
+  p.box(0.14, 1.02, 1.34, 1.62, 1.5, 14, CHAPA, 'sheet', [
+    { t0: 0, t1: 99, k0: 7, k1: 12, c: GLASS_LIT },
+    { t0: 0, t1: 99, k0: 12, k1: 14, c: shade(CHAPA[1], 1.18) },
+  ], [{ t0: 0, t1: 99, k0: 7, k1: 12, c: shade(GLASS_LIT, 0.84) }]);
+  p.gable(0.12, 1.0, 1.36, 1.64, 15.5, 4, CHAPA, CHAPA[1], 'sheet');
+  // El puesto de control junto al portón.
+  p.box(0.2, 1.68, 0.62, 1.92, 1.5, 7, WHITE_PAINT, 'plain', [{ t0: 3, t1: 11, k0: 3, k1: 5, c: GLASS }]);
+  p.pipeRun(p.P(0.62, 0.62, 4), p.P(1.1, 0.72, 4), STEEL[1]);
+  return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
+}
+
 /** The gas plant: two spherical holders, a turbine hall in blue glass and a thin stack that hardly smokes. */
 export function paintGasPlant(): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
   const p = penLot(2, 44);
@@ -2563,7 +2598,7 @@ const plantCache = new Map<string, Sprite>();
 export function plantPixelSprite(kind: PlantKind): Sprite {
   let sprite = plantCache.get(kind);
   if (!sprite) {
-    sprite = spriteOf(kind === 'coal' ? paintCoalPlant() : kind === 'gas' ? paintGasPlant() : paintWindFarm());
+    sprite = spriteOf(kind === 'coal' ? paintCoalPlant() : kind === 'gas' ? paintGasPlant() : kind === 'nuclear' ? paintNuclearPlant() : paintWindFarm());
     plantCache.set(kind, sprite);
   }
   return sprite;

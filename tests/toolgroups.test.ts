@@ -18,7 +18,7 @@ describe('tool groups', () => {
       // El campo va después de las zonas: es la categoría que no es ni casa, ni calle, ni servicio.
       ['Campo', ['farm', 'silo', 'market']],
       ['Servicios', ['school', 'clinic', 'police', 'fire', 'hospital', 'university']],
-      ['Usinas', ['plant', 'plantGas', 'plantWind']],
+      ['Usinas', ['plant', 'plantGas', 'plantWind', 'plantNuclear']],
       ['Costa', ['fishing', 'promenade', 'port', 'resort', 'lighthouse']],
       ['Transportes', ['bus', 'harbor', 'airport']],
       ['Únicos', ['obelisco', 'calvario', 'puente', 'teatro', 'estadio', 'cabildo', 'regimiento', 'planetario', 'santuario', 'sindicato']],
@@ -44,6 +44,7 @@ describe('tool prices in the toolbar', () => {
     expect(toolPrice('plant')).toBe(PLANTS.coal.cost);
     expect(toolPrice('plantGas')).toBe(PLANTS.gas.cost);
     expect(toolPrice('plantWind')).toBe(PLANTS.wind.cost);
+    expect(toolPrice('plantNuclear')).toBe(PLANTS.nuclear.cost);
     expect(toolPrice('police')).toBe(SERVICES.police.cost);
   });
 

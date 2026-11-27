@@ -61,6 +61,9 @@ export const TOOL_ICONS: Record<ToolId, string> = {
   plantWind: svg(
     '<path d="M3 24l13-6.5L29 24l-13 6.5z" fill="#b8ad8c"/><path d="M15 25l.6-15h.8l.6 15z" fill="#f4f0e6" stroke="#9aa3a8" stroke-width=".5"/><path d="M16 10L16 1M16 10l8 4.5M16 10l-8 4.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="10" r="1.6" fill="#c8462f"/>',
   ),
+  plantNuclear: svg(
+    '<path d="M3 23l13-6.5L29 23l-13 6.5z" fill="#b9b2a4"/><path d="M8 22a7 7 0 0114 0z" fill="#dfe5e8" stroke="#9aa3a8" stroke-width=".8"/><path d="M10.5 22a4.5 4.5 0 019 0z" fill="#c3ced4"/><rect x="22" y="13" width="6" height="9" fill="#c3ced4"/><rect x="23.2" y="14.2" width="3.6" height="6.6" fill="#f4f0e6"/><circle cx="25" cy="17.5" r="1.1" fill="#ffd84a"/>',
+  ),
   school: svg(
     '<path d="M4 22V14l12-6 12 6v8l-12 6z" fill="#f4f0e6" stroke="#5a3a22" stroke-width="1"/><path d="M4 18l12 6 12-6" stroke="#6fb7e0" stroke-width="2" fill="none"/><path d="M3 14l13-7 13 7-13 2z" fill="#b4532f"/><path d="M7 3v11" stroke="#d9d4cc" stroke-width="1.2"/><rect x="7.6" y="3" width="8" height="2" fill="#74acdf"/><rect x="7.6" y="5" width="8" height="2" fill="#fff"/><rect x="7.6" y="7" width="8" height="2" fill="#74acdf"/>',
   ),
