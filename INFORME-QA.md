@@ -12,6 +12,17 @@ Fecha: 2026-11-17 · Suite base: **103 archivos de test, 1478 tests, todos verde
 
 Efecto colateral de A3 (intencional): la ficha de la cochera ahora dice «Su calle no llega a ningún edificio: no funciona» en vez de «Sin calle a 3 lotes», y un depósito en un barrio recién zonificado (sin edificios) queda ocioso hasta que llegue gente — coherente con el diseño de que los colectivos corren donde hay viajeros.
 
+## Modelado: revisión visual y de solapado (post-informe)
+
+Ficha de modelos: `qa-modelos.html` + `qa-modelos-sheet.ts` (correr `npm run dev` y abrir `/qa-modelos.html`). Renderiza todos los pintores sobre su huella isométrica y audita por píxeles el sangrado fuera de la huella.
+
+- **M1 — Anclaje y solapado: bien.** Auditoría de caja alfa contra el rombo de la huella en ~90 sprites (zonas 1–5 × 8 variantes, servicios, usinas, depósitos, postes, árboles, costa, hubs, vehículos, los 10 únicos, estados de abandono/fuego): todos quedan dentro de su lote. Únicas excepciones, de diseño: el muelle de pescadores sangra +3 px hacia el agua (el espigón sale al río) y el Calvario +3 px en la silueta del cerro.
+- **M2 — Las piezas de aeropuerto/puerto no pueden desalinearse.** Cada pieza es un recorte de UNA pintura de la instalación completa (`paintHubPiece`), así que la costura entre piezas no existe: los mismos píxeles salen del mismo dibujo. Verificado en código y a la vista.
+- **M3 — Progresión de niveles legible y estados derivados.** R1 casilla → R5 torre y C1 kiosco → C5 bar se distinguen bien; las 8 variantes de R5/C5 varían tapas y carteles sin romper la paleta. Abandono y fuego se derivan de la base con filtros (`abandonedOf`/`burningOf`), así que nunca divergen del edificio original.
+- **M4 — Escenas de conexión correctas.** Casas contra la calle, lote+silo+feria pegados, cochera 2×2 con vehículos encima, usina con postes y línea, hospital 3×3 contra la calle y cabildo 3×2: sin intersecciones ni huecos.
+- **M5 — observación de diseño: los sprites no rotan con la cámara.** La rotación (tecla del juego) gira el mapa pero cada edificio muestra siempre la misma fachada (los pintores no tienen parámetro de vista, salvo las piezas de hubs por `side`). La luz está fijada a la pantalla (el terreno pinta «iluminado arriba-izquierda» en coordenadas de vista), así que es coherente; igual conviene saberlo: a 180° todo edificio muestra el mismo frente.
+- **M6 — detalle menor:** las 8 variantes de R5 son torres casi iguales (varían remate y antena); C5 e I tienen mucha más variedad de color. Si algún día se quiere más diferencia entre torres, ahí es.
+
 ## Tránsito: revisión extendida (post-informe)
 
 Probe: `qa-transito.ts` (correr con `npx vite-node qa-transito.ts`), salida completa en `qa-transito.txt`. Dos partes: 12 años orgánicos con bot (uno pasivo, uno que reacciona comprando colectivos y bulevares) y una grilla sintética pura (`computeCongestion`) para barrer palancas a magnitud.
