@@ -2537,11 +2537,13 @@ function coolingTower(p: Pen, cu: number, cv: number, h: number, base: number): 
 export function paintNuclearPlant(): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
   const p = penLot(3, 64);
   pad(p);
-  // Las torres primero, separadas: casi no se solapan y las dos bocas se leen.
-  coolingTower(p, 0.9, 0.5, 34, 1.8);
-  coolingTower(p, 2.4, 1.15, 34, 1.8);
-  // La cúpula de contención del reactor, al centro y delante de las torres.
+  // Una sola torre grande, protagonista como en la foto: dos gordas no entran sin taparse en 3×3.
+  coolingTower(p, 1.7, 0.9, 40, 2.3);
+  // La cúpula de contención del reactor, al centro y delante de la torre.
   p.sphere(1.12, 1.42, 1.5, 10);
+  // Un galpón auxiliar al fondo a la izquierda, para que el predio no quede vacío.
+  p.box(0.24, 0.42, 0.86, 0.94, 1.5, 9, CHAPA, 'sheet', [{ t0: 0, t1: 99, k0: 5, k1: 7, c: GLASS_LIT }]);
+  p.gable(0.22, 0.4, 0.88, 0.96, 10.5, 3, CHAPA, CHAPA[1], 'sheet');
   const [rx, ry] = p.P(1.12, 1.42, 1.5 + 12);
   p.px.rect(Math.round(rx) - 6, Math.round(ry) + 11, 13, 1, CONCRETE[2]);
   // La sala de turbinas, larga y baja, con su vidrio a la calle.
