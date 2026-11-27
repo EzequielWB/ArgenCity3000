@@ -10,7 +10,7 @@
  * the same share of its upkeep.
  */
 import { BUS, MAX_FUNDING } from '../config';
-import { busStations, streetNear } from '../world/transport';
+import { busStations, servedStreet } from '../world/transport';
 import { TILE, type World } from '../world/world';
 
 /** The share of a line's effect that a budget (percent) pays for: 1 at 100 %, 0 at 0 %. */
@@ -29,7 +29,7 @@ export function applyTransit(w: World, load: Float32Array, funding = 100, commut
   const each = BUS.trips * transitFactor(funding);
   const stations = busStations(w);
   let working = 0;
-  for (const s of stations) if (streetNear(w, s.x, s.y)) working++;
+  for (const s of stations) if (servedStreet(w, s.x, s.y)) working++;
   const relief = Math.min(working * each, commuters * BUS.share);
   let total = 0;
   for (let i = 0; i < w.tiles.length; i++) if (w.tiles[i] === TILE.ROAD) total += load[i];

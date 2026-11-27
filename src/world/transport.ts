@@ -96,6 +96,54 @@ export function streetNear(w: World, x: number, y: number): boolean {
   return false;
 }
 
+/**
+ * True when the depot has a street **de verdad**: no basta con asfalto cerca — la red de esa calle
+ * tiene que llegar a algún lote atendido (un edificio con acceso de calle). Si no, una baldosa de
+ * asfalto de $10 pegada a la cochera pondría en la calle a la flota entera de la ciudad.
+ */
+export function servedStreet(w: World, x: number, y: number): boolean {
+  const n = w.n;
+  const seen = new Uint8Array(n * n);
+  const queue: number[] = [];
+  /** Un edificio con acceso de calle a menos de ROAD_REACH de esta celda de calle. */
+  const reachesCity = (rx: number, ry: number): boolean => {
+    for (let dy = -ROAD_REACH; dy <= ROAD_REACH; dy++) {
+      for (let dx = -ROAD_REACH; dx <= ROAD_REACH; dx++) {
+        if (Math.abs(dx) + Math.abs(dy) > ROAD_REACH || !w.inBounds(rx + dx, ry + dy)) continue;
+        if (w.isOccupied((ry + dy) * n + (rx + dx))) return true;
+      }
+    }
+    return false;
+  };
+  const seed = (rx: number, ry: number): void => {
+    const i = ry * n + rx;
+    if (seen[i] || w.tiles[i] !== TILE.ROAD) return;
+    seen[i] = 1;
+    queue.push(i);
+  };
+  for (let dy = -ROAD_REACH; dy <= ROAD_REACH; dy++) {
+    for (let dx = -ROAD_REACH; dx <= ROAD_REACH; dx++) {
+      if (Math.abs(dx) + Math.abs(dy) > ROAD_REACH || !w.inBounds(x + dx, y + dy)) continue;
+      seed(x + dx, y + dy);
+    }
+  }
+  for (let head = 0; head < queue.length; head++) {
+    const i = queue[head];
+    const cx = i % n;
+    if (reachesCity(cx, (i - cx) / n)) return true;
+    for (const [nx, ny] of [
+      [cx - 1, (i - cx) / n],
+      [cx + 1, (i - cx) / n],
+      [cx, (i - cx) / n - 1],
+      [cx, (i - cx) / n + 1],
+    ] as const) {
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      seed(nx, ny);
+    }
+  }
+  return false;
+}
+
 /** Why a bus depot cannot go on a lot, or null when it can (a lot that is merely taken is not a reason given here). A street is not needed to build it, only for its buses to run. */
 export function busRefusal(w: World, x: number, y: number): string | null {
   return w.isWater(x, y) ? `${BUS.label}: tiene que estar en tierra` : null;

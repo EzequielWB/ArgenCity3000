@@ -40,7 +40,7 @@ import { buildingIssues, type Issue } from './warnings';
 import { SEA_LEVEL } from '../world/terrain';
 import { facilityAt } from '../world/hubs';
 import { uniqueFootprint, uniqueWorks } from '../world/uniques';
-import { busColorOf, busNumberOf, streetNear } from '../world/transport';
+import { busColorOf, busNumberOf, servedStreet, streetNear } from '../world/transport';
 import { roadTierSeen } from '../world/roads';
 import { serviceAnchorIndex } from '../world/services';
 import { TILE, World, coastOf, hubOf, serviceOf, zoneOf, type Unique, type ZoneKind } from '../world/world';
@@ -233,7 +233,7 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
     };
   }
   if (tile === TILE.BUS) {
-    const works = streetNear(w, x, y);
+    const works = servedStreet(w, x, y);
     const color = BUS_COLORS[busColorOf(w.busLine[i])].name.toLowerCase();
     return {
       title: `Línea ${busNumberOf(w.busLine[i])} (${color})`,
@@ -243,9 +243,9 @@ function describeBase(w: World, sim: Simulation, x: number, y: number): CellRepo
         `Su flota lleva hasta ${formatNumber(Math.round(BUS.trips * transitFactor(sim.state.transport)))} viajeros por línea; los colectivos no se llevan más que el ${Math.round(BUS.share * 100)} % de los viajeros de la ciudad, así que cada línea rinde con unos ${formatNumber(Math.round(BUS.trips / BUS.share))} vecinos`,
         `Presupuesto de transporte: ${sim.state.transport} %${sim.state.transport < 100 ? ' (pasan menos colectivos)' : sim.state.transport > 100 ? ' (pasan más colectivos)' : ''}`,
         `Mantenimiento: $${formatNumber(Math.round(BUS.upkeep * transitFactor(sim.state.transport)))} por mes`,
-        works ? 'Con calle cerca: los colectivos andan' : `Sin calle a ${ROAD_REACH} lotes o menos: no funciona`,
+        works ? 'Con calle conectada a la ciudad: los colectivos andan' : 'Su calle no llega a ningún edificio: no funciona',
       ],
-      hint: works ? undefined : 'Sin una calle cerca no sale ningún colectivo: trazá una calle al lado de la cochera.',
+      hint: works ? undefined : 'La calle de la cochera tiene que formar parte de la red: conectala con la ciudad o pegale edificios atendidos.',
     };
   }
   const coast = coastOf(tile);

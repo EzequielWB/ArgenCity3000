@@ -388,6 +388,7 @@ describe('the card of a bus depot', () => {
   it('names the line, says what it does, and warns when no street is in reach', () => {
     const w = new World(flat(16));
     road(w, 0, 5, 15, 5);
+    w.setTile(6, 4, TILE.R, 5); // la calle de la cochera llega a gente atendida
     depot(w, 4, 7, 1, 148);
     const sim = new Simulation(w, newSimState(1), 'X');
     sim.refresh();

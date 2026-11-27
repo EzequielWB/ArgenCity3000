@@ -41,6 +41,7 @@ describe('el alivio de los colectivos es global', () => {
   it('alivia calles lejos de la cochera, también en la esquina opuesta', () => {
     const w = new World(flat());
     road(w, 0, 10, 40, 10);
+    w.setTile(5, 9, TILE.R, 5); // la calle de la cochera llega a gente: la red está viva
     depot(w, 2, 8); // cochera al oeste
     const load = new Float32Array(w.n * w.n);
     load[w.idx(40, 10)] = 1000; // la única calle cargada está a 38 lotes, afuera de cualquier rombo viejo
@@ -81,5 +82,35 @@ describe('el alivio de los colectivos es global', () => {
       if (w.tiles[i] !== TILE.ROAD) continue;
       expect(load[i]).toBeCloseTo(9000 * expectedKeep, 1);
     }
+  });
+
+  it('una calle suelta, desconectada de la red y sin edificios, no pone la flota en la calle', () => {
+    const w = commuterTown();
+    // Una celda de asfalto pegada a la cochera pero desconectada de la red: $10 no pueden
+    // activar el alivio global de la ciudad entera.
+    depot(w, 43, 43);
+    road(w, 45, 44, 45, 44);
+    const load = loaded(w, 9000);
+    const { taken, idle } = applyTransit(w, load, 100, 1280);
+    expect(taken).toBe(0);
+    expect(idle).toBeCloseTo(BUS.trips, 5);
+  });
+
+  it('un lote zonificado sin edificio junto al poste suelto tampoco basta: no hay a quién llevar', () => {
+    const w = commuterTown();
+    // La trampa más barata: zonificar junto al poste suelto. Sin edificio no hay viajeros que
+    // levantar, así que el componente de la cochera no sirve a nadie.
+    depot(w, 43, 43);
+    road(w, 45, 44, 45, 44);
+    w.setTile(46, 44, TILE.R);
+    const { taken } = applyTransit(w, loaded(w, 9000), 100, 1280);
+    expect(taken).toBe(0);
+  });
+
+  it('la cochera servida por la red de verdad sigue dando el alivio completo', () => {
+    const w = commuterTown();
+    depot(w, 15, 8);
+    const taken = applyTransit(w, loaded(w, 9000), 100, 1280).taken;
+    expect(taken).toBeCloseTo(1280 * BUS.share, 5);
   });
 });
