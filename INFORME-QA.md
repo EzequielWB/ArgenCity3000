@@ -50,11 +50,11 @@ Desparramar el trabajo acorta y reparte los caminos; bajar densidad baja la gene
 4. Revisar que no haya una celda más débil (tierra/asfalto) dentro de cada bulevar: la banda entera cobra por la peor.
 5. Presupuesto de calles en 100 %+.
 
-### Qué puede hacer el juego (propuestas, no aplicadas)
+### Qué puede hacer el juego (estado del reparto)
 
-- **T1 fix**: destinos alternativos — cada manzana reparte entre los 2–3 comercios más cercanos (barato: es otro BFS), o segunda pasada reencauzando lo que cruza una celda >100 %.
-- **T2 fix**: alivio por zona (usar `BUS.radius`) o por corredor en vez de proporcional global, y/o subir el tope `BUS.share` con población (0,35 → escala).
-- Etiquetar `jamGrowthFactor` como decisión: hoy el equilibrio de toda ciudad madura ES el atasco (~180 %); si no es la intención, el piso 0,25 y `slowFrom` 90 son las dos variables.
+- **T1 fix — APLICADO** (después de esta revisión): reparto de destinos en 3 grupos por cercanía (peso inverso al cuadrado de la distancia) y reparto entre salidas empatadas de cada lote. Efecto medido con el mismo probe: la avenida paralela del demo pasa de 0 % a llevar su parte y el pasillo baja de 107 % a 88 %; a escala (ciudad de referencia), desparramar trabajos baja atascados 36→22 %, ancho 4 queda en 98 %/0 % atascados y el combo en 57 %/0 %; la orgánica pasiva termina con peor 113 % (antes 190 %). Probe: `qa-transito.ts`, salida en `qa-transito.txt`. Ejemplo visual del antes/después y la rampa de crecimiento: `qa-reparto-visual.html` (también en el chat).
+- **T2 fix pendiente**: alivio de colectivos por zona (usar `BUS.radius`, que sigue muerto en config) o por corredor en vez de proporcional global, y/o subir el tope `BUS.share` con población.
+- Etiquetar `jamGrowthFactor` como decisión: aún con reparto, el equilibrio de toda ciudad madura sigue siendo el atasco (piso 0,25, `slowFrom` 90); si no es la intención, son las dos variables a mover.
 
 ## Cómo reproducir
 

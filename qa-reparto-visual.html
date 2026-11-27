@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reparto de tránsito: antes vs después</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font-family: var(--font-sans, system-ui, sans-serif); color: var(--foreground, #e5e7eb); }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 8px 8px 24px; }
+  h1 { font-size: 19px; margin: 14px 4px 2px; }
+  h2 { font-size: 14px; margin: 0 0 8px; color: var(--muted-foreground, #9ca3af); font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
+  p.note { font-size: 13px; color: var(--muted-foreground, #9ca3af); margin: 4px 4px 16px; }
+  .panel { background: var(--card, #1a1d23); border: 1px solid var(--border, #2a2e37); border-radius: var(--radius, 10px); padding: 14px 14px 10px; margin-bottom: 14px; }
+  .panel.antes { border-color: #7f1d1d55; }
+  .panel.despues { border-color: #14532d55; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-bottom: 10px; }
+  .antes .tag { background: #7f1d1d33; color: #fca5a5; }
+  .despues .tag { background: #14532d33; color: #86efac; }
+  .map { display: grid; grid-template-columns: 22px repeat(11, 1fr) 22px; gap: 2px; align-items: stretch; }
+  .map .lbl { font-size: 9px; color: var(--muted-foreground, #9ca3af); display: flex; align-items: center; justify-content: center; }
+  .cell { position: relative; border-radius: 3px; min-height: 26px; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700; color: #111827; }
+  .cell.edificio { background: #3b82f6; color: #eff6ff; }
+  .cell.comercio { background: #f59e0b; color: #451a03; }
+  .cell.vacio { background: transparent; }
+  .cell.cero { background: #374151; color: #9ca3af; }
+  .leyenda { display: flex; gap: 12px; margin-top: 10px; font-size: 11px; color: var(--muted-foreground, #9ca3af); flex-wrap: wrap; }
+  .leyenda b { color: var(--foreground, #e5e7eb); font-weight: 600; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .veredicto { font-size: 13px; margin: 10px 2px 2px; }
+  .veredicto b { color: var(--foreground, #e5e7eb); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; color: var(--muted-foreground, #9ca3af); font-weight: 600; padding: 6px 6px; border-bottom: 1px solid var(--border, #2a2e37); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  td { padding: 7px 6px; border-bottom: 1px solid var(--border, #2a2e3766); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .barwrap { position: relative; height: 16px; background: var(--secondary, #262a33); border-radius: 4px; overflow: hidden; min-width: 90px; }
+  .bar { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+  .bar.antes { background: #f87171; }
+  .bar.despues { background: #34d399; }
+  .limit { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--foreground, #e5e7eb); opacity: .55; }
+  .chart { margin-top: 4px; }
+  .chart .row { display: grid; grid-template-columns: 92px 1fr 1fr; gap: 6px; align-items: center; margin: 5px 0; }
+  .chart .stg { font-size: 11.5px; color: var(--muted-foreground, #9ca3af); }
+  .val { font-size: 10.5px; font-weight: 700; color: var(--foreground, #e5e7eb); margin-left: 6px; font-variant-numeric: tabular-nums; }
+  .pct { display: inline-flex; align-items: center; width: 100%; }
+  .jm { font-size: 10.5px; color: var(--muted-foreground, #9ca3af); }
+  .jm b { color: #fca5a5; font-weight: 700; }
+  .jm b.ok { color: #86efac; }
+  .foot { font-size: 11.5px; color: var(--muted-foreground, #9ca3af); margin-top: 12px; line-height: 1.5; }
+  @media (max-width: 560px) { .map { grid-template-columns: 14px repeat(11, 1fr) 14px; } .cell { font-size: 8px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Reparto de tránsito: antes vs después</h1>
+  <p class="note">Mismo barrio de juguete en los dos casos: 8 torres (1.280 viajeros) entre dos calles paralelas idénticas, 3 comercios a la derecha sobre el pasillo. Números del motor real (computeCongestion), no ilustrativos.</p>
+
+  <div class="panel antes">
+    <span class="tag">ANTES · ruta única (la más corta)</span>
+    <h2>Todo el flujo se emboca en un solo camino</h2>
+    <div class="map" id="mapA"></div>
+    <div class="leyenda">
+      <span><span class="dot" style="background:#3b82f6"></span><b>torres</b></span>
+      <span><span class="dot" style="background:#f59e0b"></span><b>comercios</b></span>
+      <span><span class="dot" style="background:#34d399"></span><b>calle &lt; 80&nbsp;%</b></span>
+      <span><span class="dot" style="background:#fbbf24"></span><b>80–100&nbsp;%</b></span>
+      <span><span class="dot" style="background:#f87171"></span><b>saturada &gt; 100&nbsp;%</b></span>
+      <span><span class="dot" style="background:#374151"></span><b>sin flujo</b></span>
+    </div>
+    <p class="veredicto">El pasillo carga <b>107&nbsp;%</b> (todos los rojos son la misma celda de siempre) y la paralela, a dos celdas de cada casa, queda <b>en 0&nbsp;%</b>: cada manzana elegía UN destino y UNA salida, y el empate lo resolvía siempre igual. <b>100&nbsp;% de los viajeros</b> cruza una celda atascada.</p>
+  </div>
+
+  <div class="panel despues">
+    <span class="tag">DESPUÉS · con reparto</span>
+    <h2>Cada lote reparte entre sus salidas empatadas y entre comercios cercanos</h2>
+    <div class="map" id="mapB"></div>
+    <p class="veredicto">La paralela <b>lleva su parte</b> (9–23&nbsp;%), el pasillo baja a 63–88&nbsp;% y <b>nadie queda atascado</b>: peor calle 88&nbsp;% y 0&nbsp;% de viajeros atascados, con la misma cantidad de torres y de comercios.</p>
+  </div>
+
+  <div class="panel">
+    <span class="tag" style="background:#1e3a8a33;color:#93c5fd">EL CRECIMIENTO</span>
+    <h2>Cuántas torres aguanta el barrio antes del primer atasco</h2>
+    <div class="chart" id="chart"></div>
+    <p class="veredicto">Antes el barrio se trababa recién creadas <b>8 torres</b> y se clavaba en 133&nbsp;% para siempre. Con reparto, las mismas torres crecen hasta <b>10–12</b> antes de que aparezca el primer cuello, y el pico sube más despacio. (La barra blanca es la línea de saturación, 100&nbsp;%.)</p>
+    <p class="foot">Cómo funciona el reparto: cada lote con dos calles igual de cerca manda la mitad de sus viajeros por cada una, y los destinos se reparten entre grupos de comercios por cercanía (peso inverso al cuadrado de la distancia). Con un solo destino el resultado es idéntico al de la ruta única. Cambio en <b>src/sim/congestion.ts</b> + <b>TRAFFIC.split</b>; 1480 tests verdes.</p>
+  </div>
+</div>
+
+<script>
+  const GREY = '#374151', GREEN = '#34d399', AMBER = '#fbbf24', RED = '#f87171';
+  const colorOf = (p) => (p === 0 ? GREY : p <= 80 ? GREEN : p <= 100 ? AMBER : RED);
+
+  // Números del motor: corredor (y=10) y paralela (y=12), celdas x=6..16, con 8 torres.
+  const antes = { cor: [40,53,67,80,93,107,107,107,0,0,0], par: [0,0,0,0,0,0,0,0,0,0,0] };
+  const despues = { cor: [50,57,63,70,77,83,83,88,58,42,23], par: [17,11,9,11,17,23,23,23,23,23,23] };
+  // x=13,14,15 son las celdas de llegada (debajo de los comercios): el flujo termina ahí.
+  const arrival = (x) => x >= 13;
+
+  function map(container, data) {
+    const el = document.getElementById(container);
+    let html = '<div class="lbl"></div>';
+    for (let k = 0; k < 11; k++) html += `<div class="lbl" style="min-height:14px">${6 + k}</div>`;
+    html += '<div class="lbl"></div>';
+    // fila comercios (encima del pasillo)
+    html += '<div class="lbl"></div>';
+    for (let k = 0; k < 11; k++) {
+      const x = 6 + k;
+      html += x >= 13 && x <= 15
+        ? '<div class="cell comercio" title="comercio nivel 5">C</div>'
+        : '<div class="cell vacio"></div>';
+    }
+    html += '<div class="lbl"></div>';
+    // pasillo y=10
+    html += '<div class="lbl">y10</div>';
+    for (let k = 0; k < 11; k++) {
+      const p = data.cor[k];
+      const label = arrival(6 + k) && p === 0 ? '·' : p + '%';
+      html += `<div class="cell" style="background:${colorOf(p)};color:${p === 0 ? '#9ca3af' : '#111827'}">${label}</div>`;
+    }
+    html += '<div class="lbl"></div>';
+    // casas entre las calles
+    html += '<div class="lbl">←→</div>';
+    for (let k = 0; k < 11; k++) {
+      const x = 6 + k;
+      html += x <= 11
+        ? '<div class="cell edificio" title="torre nivel 5: 160 viajeros">R</div>'
+        : '<div class="cell vacio"></div>';
+    }
+    html += '<div class="lbl"></div>';
+    // paralela y=12
+    html += '<div class="lbl">y12</div>';
+    for (let k = 0; k < 11; k++) {
+      const p = data.par[k];
+      html += `<div class="cell ${p === 0 ? 'cero' : ''}" style="${p === 0 ? '' : `background:${colorOf(p)};color:#111827`}">${p === 0 ? '0%' : p + '%'}</div>`;
+    }
+    html += '<div class="lbl"></div>';
+    el.innerHTML = html;
+  }
+  map('mapA', antes);
+  map('mapB', despues);
+
+  // Rampa de crecimiento: peor calle y % de viajeros atascados, torres 4..16.
+  const growth = [
+    { t: 4,  aW: 53,  aJ: 0,   dW: 52,  dJ: 0 },
+    { t: 6,  aW: 80,  aJ: 0,   dW: 71,  dJ: 0 },
+    { t: 8,  aW: 107, aJ: 100, dW: 88,  dJ: 0 },
+    { t: 10, aW: 133, aJ: 100, dW: 106, dJ: 79 },
+    { t: 12, aW: 133, aJ: 83,  dW: 112, dJ: 70 },
+    { t: 14, aW: 133, aJ: 71,  dW: 118, dJ: 100 },
+    { t: 16, aW: 133, aJ: 63,  dW: 132, dJ: 100 },
+  ];
+  const MAX = 140;
+  const chart = document.getElementById('chart');
+  let html = '<div class="row" style="margin-bottom:2px"><div class="stg"></div><div class="stg">peor calle · <span style="color:#f87171">antes</span> / <span style="color:#34d399">después</span></div><div class="stg">% de viajeros atascados · antes / después</div></div>';
+  for (const g of growth) {
+    const wA = (g.aW / MAX) * 100, wD = (g.dW / MAX) * 100;
+    html += `<div class="row">`;
+    html += `<div class="stg">${g.t} torres · ${g.t * 160} viajeros</div>`;
+    html += `<div>`;
+    html += `<div class="barwrap"><div class="limit" style="left:${(100 / MAX) * 100}%"></div><span class="pct"><span class="bar antes" style="width:${wA}%"></span></span><span class="val">${g.aW}%</span></div>`;
+    html += `<div class="barwrap" style="margin-top:2px"><span class="pct"><span class="bar despues" style="width:${wD}%"></span></span><span class="val">${g.dW}%</span></div>`;
+    html += `</div>`;
+    html += `<div><div class="jm"><b class="${g.aJ === 0 ? 'ok' : ''}">${g.aJ}%</b> / <b class="${g.dJ === 0 ? 'ok' : ''}">${g.dJ}%</b></div></div>`;
+    html += `</div>`;
+  }
+  chart.innerHTML = html;
+</script>
+</body>
+</html>
