@@ -2534,29 +2534,34 @@ function coolingTower(p: Pen, cu: number, cv: number, h: number, base: number): 
 /** La nuclear 3×3: dos torres hiperboloides al fondo, la cúpula del reactor y la sala de turbinas
  * adelante, con el patio de transformadores al costado. Sin humo: el vapor blanco de las torres
  * es el único gesto. */
+/** La nuclear 3×3, con cada pieza en su rincón para que nada tape a nada: la torre al fondo a la
+ * derecha, la cúpula del reactor al fondo a la izquierda, la sala de turbinas al frente a la
+ * izquierda, el patio de transformadores al frente a la derecha y el puesto de control en la
+ * esquina. Sin humo: el vapor blanco de la torre es el único gesto. */
+/** La nuclear 3×3, con cada pieza en su rincón para que nada tape a nada: la torre al fondo a la
+ * izquierda, la cúpula del reactor a la derecha, la sala de turbinas al frente a la izquierda, el
+ * patio de transformadores al frente a la derecha y el puesto de control en la esquina. Sin humo:
+ * el vapor blanco de la torre es el único gesto. */
 export function paintNuclearPlant(): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
   const p = penLot(3, 64);
   pad(p);
-  // Una sola torre grande, protagonista como en la foto: dos gordas no entran sin taparse en 3×3.
-  coolingTower(p, 1.7, 0.9, 40, 2.3);
-  // La cúpula de contención del reactor, al centro y delante de la torre.
-  p.sphere(1.12, 1.42, 1.5, 10);
-  // Un galpón auxiliar al fondo a la izquierda, para que el predio no quede vacío.
-  p.box(0.24, 0.42, 0.86, 0.94, 1.5, 9, CHAPA, 'sheet', [{ t0: 0, t1: 99, k0: 5, k1: 7, c: GLASS_LIT }]);
-  p.gable(0.22, 0.4, 0.88, 0.96, 10.5, 3, CHAPA, CHAPA[1], 'sheet');
-  const [rx, ry] = p.P(1.12, 1.42, 1.5 + 12);
-  p.px.rect(Math.round(rx) - 6, Math.round(ry) + 11, 13, 1, CONCRETE[2]);
+  // La torre, al fondo: la que quedó bien en la prueba de dos.
+  coolingTower(p, 0.9, 0.5, 34, 1.8);
+  // La cúpula de contención del reactor, a la derecha de la torre y sin rozarla.
+  p.sphere(2.35, 0.95, 1.5, 9);
+  const [rx, ry] = p.P(2.35, 0.95, 1.5 + 11);
+  p.px.rect(Math.round(rx) - 5, Math.round(ry) + 10, 11, 1, CONCRETE[2]);
   // La sala de turbinas, larga y baja, con su vidrio a la calle.
-  p.box(0.16, 2.0, 1.86, 2.56, 1.5, 15, CHAPA, 'sheet', [
+  p.box(0.15, 1.8, 1.35, 2.45, 1.5, 14, CHAPA, 'sheet', [
     { t0: 0, t1: 99, k0: 7, k1: 12, c: GLASS_LIT },
-    { t0: 0, t1: 99, k0: 12, k1: 15, c: shade(CHAPA[1], 1.18) },
+    { t0: 0, t1: 99, k0: 12, k1: 14, c: shade(CHAPA[1], 1.18) },
   ], [{ t0: 0, t1: 99, k0: 7, k1: 12, c: shade(GLASS_LIT, 0.84) }]);
-  p.gable(0.14, 1.98, 1.88, 2.58, 16.5, 4, CHAPA, CHAPA[1], 'sheet');
-  // El patio de transformadores, al costado derecho: bastidores con sus aisladores.
-  p.box(2.24, 1.66, 2.86, 2.86, 1.5, 4, [STEEL[2], STEEL[1], STEEL[2]], 'plain');
-  for (const [tu, tv] of [[2.34, 1.86], [2.62, 1.86], [2.34, 2.6], [2.62, 2.6]]) p.box(tu, tv, tu + 0.08, tv + 0.08, 5.5, 5, [STEEL[0], STEEL[0], STEEL[2]], 'plain');
-  // El puesto de control junto al portón.
-  p.box(0.2, 2.68, 0.66, 2.92, 1.5, 7, WHITE_PAINT, 'plain', [{ t0: 3, t1: 11, k0: 3, k1: 5, c: GLASS }]);
+  p.gable(0.13, 1.78, 1.37, 2.47, 15.5, 4, CHAPA, CHAPA[1], 'sheet');
+  // El patio de transformadores, al frente a la derecha: bastidores con sus aisladores.
+  p.box(1.95, 1.95, 2.85, 2.75, 1.5, 4, [STEEL[2], STEEL[1], STEEL[2]], 'plain');
+  for (const [tu, tv] of [[2.05, 2.1], [2.45, 2.1], [2.05, 2.5], [2.45, 2.5]]) p.box(tu, tv, tu + 0.08, tv + 0.08, 5.5, 5, [STEEL[0], STEEL[0], STEEL[2]], 'plain');
+  // El puesto de control junto al portón, en la esquina del frente.
+  p.box(0.2, 2.68, 0.6, 2.92, 1.5, 7, WHITE_PAINT, 'plain', [{ t0: 3, t1: 11, k0: 3, k1: 5, c: GLASS }]);
   return { px: p.px, ax: p.ax, ay: p.ay, smoke: p.smoke };
 }
 
