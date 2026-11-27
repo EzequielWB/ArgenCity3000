@@ -2537,9 +2537,9 @@ function coolingTower(p: Pen, cu: number, cv: number, h: number, base: number): 
 export function paintNuclearPlant(): { px: Pixels; ax: number; ay: number; smoke: [number, number][] } {
   const p = penLot(3, 64);
   pad(p);
-  // Las torres primero: se tapan entre sí como en el predio real, y la sala les tapa el pie.
-  coolingTower(p, 0.95, 0.7, 36, 1.9);
-  coolingTower(p, 2.05, 1.0, 36, 1.9);
+  // Las torres primero, separadas: casi no se solapan y las dos bocas se leen.
+  coolingTower(p, 0.9, 0.5, 34, 1.8);
+  coolingTower(p, 2.4, 1.15, 34, 1.8);
   // La cúpula de contención del reactor, al centro y delante de las torres.
   p.sphere(1.12, 1.42, 1.5, 10);
   const [rx, ry] = p.P(1.12, 1.42, 1.5 + 12);
