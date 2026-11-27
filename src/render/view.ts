@@ -9,6 +9,7 @@ import { cellScreenCorners, type Pt } from './geometry';
 import { FRAME_BUDGET_MS, MapRenderer } from './mapRenderer';
 import { drawBubble } from './bubbles';
 import { Traffic, drawTraffic } from './traffic';
+import { Trucks, drawTrucks } from './trucks';
 import { Vessels, drawBoats, drawPlanes } from './vessels';
 import { drawTornado } from './tornadoArt';
 import type { TornadoRun } from '../sim/tornado';
@@ -70,6 +71,8 @@ export class View {
   tornado: TornadoRun | null = null;
   /** The planes and boats of the airports and harbours. */
   readonly vessels: Vessels;
+  /** Las camionetas del chacarero: en cosecha llevan la cosecha a la cadena. */
+  readonly trucks: Trucks;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -79,6 +82,7 @@ export class View {
     this.ctx = canvas.getContext('2d')!;
     this.traffic = new Traffic(world, 12345);
     this.vessels = new Vessels(world, 54321);
+    this.trucks = new Trucks(world, 98765);
     this.refreshTraffic();
     this.resize();
   }
@@ -116,10 +120,11 @@ export class View {
     this.layerMissing = 0;
   }
 
-  /** Recounts cars per street; call after edits and every month. */
-  refreshTraffic(): void {
+  /** Recounts cars per street; call after edits and every month. The trucks re-form per harvest month. */
+  refreshTraffic(month = 0): void {
     this.traffic.refresh();
     this.vessels.refresh();
+    this.trucks.refresh(month);
   }
 
   /** Screen (CSS px) → cache canvas coordinates. */
@@ -238,7 +243,10 @@ export class View {
     const visible = (x: number, y: number, m = 40) => x > vx0 - m && x < vx1 + m && y > vy0 - m && y < vy1 + m;
 
     if (z >= 0.5) drawBoats(g, this.vessels, this.map, [vx0, vy0, vx1, vy1]);
-    if (z >= 1) drawTraffic(g, this.traffic, this.map, [vx0, vy0, vx1, vy1]);
+    if (z >= 1) {
+      drawTraffic(g, this.traffic, this.map, [vx0, vy0, vx1, vy1]);
+      drawTrucks(g, this.trucks, this.map, [vx0, vy0, vx1, vy1]);
+    }
     if (z >= 0.5) drawPlanes(g, this.vessels, this.map, [vx0, vy0, vx1, vy1]);
     // El tornado se dibuja arriba de todo: es lo único del juego que no tiene que quedar tapado por nada.
     if (this.tornado) drawTornado(g, this.tornado, this.world, this.map, time);

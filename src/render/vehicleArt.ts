@@ -396,3 +396,88 @@ export function carPixelSprite(kind: 'car' | 'taxi' | 'bus', color: number, dir:
   }
   return sprite;
 }
+
+/** El rojo de la lona y la madera del baulaje: el camión del campo se lee por ahí. */
+const LONA_ROJA: RGB = hex('#b23a2e');
+const BAULAJE: RGB = hex('#6e4a2f');
+
+/**
+ * El camión del chacarero, al estilo del país: cabina blanca de trompa chata, baulaje de madera con la
+ * lona roja de la carga que baja del nivel de la cabina, y el conjunto más largo que un auto —un
+ * camioncito de verdad, no un colectivo—. Dos volúmenes: la cabina adelante, la jaula atrás.
+ */
+export function truckVehicle(dir: Heading): { px: Pixels; ax: number; ay: number } {
+  const len = 0.8;
+  const hw = 0.1;
+  const CAB_H = 3;
+  const BED_H = 2;
+  const p = rig(CAB_H + 2, 16 * (len + 2 * hw) + 8);
+  const put = frame(dir);
+  const at = (q: Pt, z = 0): Pt => p.P(q[0], q[1], z);
+  const capIsU = dir === 0 || dir === 2;
+  const nose = dir === 0 || dir === 1;
+  // Una caja dentro de la carrocería: esquinas y las dos caras que la cámara ve.
+  const box = (t0: number, t1: number): { corners: Pt[]; cap: [Pt, Pt]; side: [Pt, Pt] } => {
+    const cs = [put(t1, -hw), put(t1, hw), put(t0, hw), put(t0, -hw)];
+    const umax = Math.max(...cs.map((q) => q[0]));
+    const vmax = Math.max(...cs.map((q) => q[1]));
+    const onU = cs.filter((q) => q[0] === umax);
+    const onV = cs.filter((q) => q[1] === vmax);
+    const cap = capIsU ? ([onU[0], onU[1]] as [Pt, Pt]) : ([onV[0], onV[1]] as [Pt, Pt]);
+    const side = capIsU ? ([onV[0], onV[1]] as [Pt, Pt]) : ([onU[0], onU[1]] as [Pt, Pt]);
+    return { corners: cs, cap, side };
+  };
+  const foot = (face: [Pt, Pt]): [Pt, Pt] => [at(face[0]), at(face[1])];
+  // Sombra bajo la carrocería entera.
+  p.px.shadow(
+    [...box(-len / 2, len / 2).corners].map((q) => {
+      const [x, y] = at(q, -0.5);
+      return [x - 0.5, y + 1] as Pt;
+    }),
+    0.34,
+  );
+  // La jaula: falda de madera, lona roja encima y techo del toldo bajado del nivel de la cabina.
+  // La de atrás siempre se dibuja antes: la cabina la tapa cuando el camión va de frente.
+  const bed = box(-len / 2, len / 2 - 0.3);
+  p.px.wall(...foot(bed.side), BED_H, (_t, k) => (k === 0 ? BAULAJE : shade(LONA_ROJA, 0.92)));
+  p.px.poly(bed.corners.map((q) => at(q, BED_H)), () => shade(LONA_ROJA, 0.78));
+  for (const t of [0.12, 0.5, 0.88]) {
+    const [x, y] = along(foot(bed.side), t);
+    p.px.rect(Math.round(x), Math.round(y) - 1, 1, 1, TYRE);
+  }
+  // El guardo trasero de la jaula: pilotos si se ve la cola de la jaula, madera si no.
+  const tail = foot(bed.cap);
+  for (const t of [0.1, 0.9]) {
+    const [x, y] = along(tail, t);
+    p.px.rect(Math.round(x), Math.round(y) - 1, 1, 1, !capIsU && !nose ? TAILLIGHT : BAULAJE);
+  }
+  // La cabina: blanca, parabrisas oscuro adelante (o vidrio trasero cuando se aleja) y faros abajo.
+  const cab = box(len / 2 - 0.26, len / 2);
+  p.px.wall(...foot(cab.side), CAB_H, (_t, k) => (k === CAB_H - 1 ? shade(WHITE, 0.9) : WHITE));
+  p.px.wall(...foot(cab.cap), CAB_H, (_t, k) =>
+    k === 0 ? shade(WHITE, 0.62) : nose ? GLASS_DARK : shade(WHITE, 0.86),
+  );
+  p.px.poly(cab.corners.map((q) => at(q, CAB_H)), () => WHITE);
+  const [wx, wy] = along(foot(cab.side), 0.35);
+  p.px.rect(Math.round(wx), Math.round(wy) - 1, 1, 1, TYRE);
+  const capF = foot(cab.cap);
+  for (const t of [0.14, 0.86]) {
+    const [x, y] = along(capF, t);
+    p.px.rect(Math.round(x), Math.round(y) - 1, 1, 1, nose ? HEADLIGHT : TAILLIGHT);
+  }
+  // El entrepaño entre cabina y jaula, para que se lea la unión de los dos volúmenes.
+  const gap = box(len / 2 - 0.3, len / 2 - 0.26);
+  p.px.wall(...foot(gap.cap), 1, () => shade(BAULAJE, 0.7));
+  return { px: p.px, ax: p.ax, ay: p.ay };
+}
+
+/** La camioneta en sprite, una por rumbo, cacheada como sus pares. */
+export function truckPixelSprite(dir: Heading): Sprite {
+  const key = `truck:${dir}`;
+  let sprite = vehicleCache.get(key);
+  if (!sprite) {
+    sprite = spriteOf(truckVehicle(dir));
+    vehicleCache.set(key, sprite);
+  }
+  return sprite;
+}
