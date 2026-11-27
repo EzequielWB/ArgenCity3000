@@ -1,0 +1,91 @@
+QA de tránsito — Argencity 3000
+
+
+=== 1. ORGÁNICO 12 AÑOS — bot que no reacciona ===
+  mes   1 · pop   179 · peor   3 % · atascados   0 % · viajeros    75 · líneas 0 · bulevares col 8 · caja 25324
+  mes   6 · pop   597 · peor  17 % · atascados   0 % · viajeros   563 · líneas 0 · bulevares col 8 · caja 22253
+  mes  12 · pop  1116 · peor  35 % · atascados   0 % · viajeros  1048 · líneas 0 · bulevares col 8 · caja 23976
+  mes  18 · pop  1553 · peor  50 % · atascados   0 % · viajeros  1513 · líneas 0 · bulevares col 8 · caja 18797
+  mes  24 · pop  2270 · peor  59 % · atascados   0 % · viajeros  2276 · líneas 0 · bulevares col 8 · caja 10712
+  mes  30 · pop  3290 · peor  82 % · atascados   0 % · viajeros  3264 · líneas 0 · bulevares col 8 · caja 13996
+  mes  36 · pop  4472 · peor 105 % · atascados  47 % · viajeros  4338 · líneas 0 · bulevares col 8 · caja 14755
+  mes  42 · pop  4803 · peor 116 % · atascados  47 % · viajeros  4782 · líneas 0 · bulevares col 8 · caja 12973
+  mes  48 · pop  5067 · peor 128 % · atascados  59 % · viajeros  5073 · líneas 0 · bulevares col 8 · caja 27039
+  mes  54 · pop  5208 · peor 132 % · atascados  60 % · viajeros  5223 · líneas 0 · bulevares col 8 · caja 29489
+  mes  60 · pop  5171 · peor 126 % · atascados  58 % · viajeros  5166 · líneas 0 · bulevares col 8 · caja 31861
+  mes  66 · pop  5324 · peor 133 % · atascados  59 % · viajeros  5388 · líneas 0 · bulevares col 8 · caja 34574
+  mes  72 · pop  5218 · peor 124 % · atascados  57 % · viajeros  5223 · líneas 0 · bulevares col 8 · caja 37302
+  mes  78 · pop  5309 · peor 127 % · atascados  57 % · viajeros  5298 · líneas 0 · bulevares col 8 · caja 40072
+  mes  84 · pop  5275 · peor 126 % · atascados  57 % · viajeros  5269 · líneas 0 · bulevares col 8 · caja 42946
+  mes  90 · pop  5211 · peor 114 % · atascados  83 % · viajeros  5223 · líneas 0 · bulevares col 8 · caja 45631
+  mes  96 · pop  5173 · peor 119 % · atascados  74 % · viajeros  5102 · líneas 0 · bulevares col 8 · caja 47871
+  mes 102 · pop  5252 · peor 120 % · atascados  75 % · viajeros  5244 · líneas 0 · bulevares col 8 · caja 50144
+  mes 108 · pop  5106 · peor 117 % · atascados  78 % · viajeros  5176 · líneas 0 · bulevares col 8 · caja 52130
+  mes 114 · pop  4906 · peor 111 % · atascados  68 % · viajeros  4979 · líneas 0 · bulevares col 8 · caja 53826
+  mes 120 · pop  5133 · peor 113 % · atascados  77 % · viajeros  5142 · líneas 0 · bulevares col 8 · caja 55752
+  mes 126 · pop  5165 · peor 120 % · atascados  79 % · viajeros  5203 · líneas 0 · bulevares col 8 · caja 57794
+  mes 132 · pop  4841 · peor 116 % · atascados  71 % · viajeros  4987 · líneas 0 · bulevares col 8 · caja 59532
+  mes 138 · pop  4827 · peor 112 % · atascados  72 % · viajeros  4828 · líneas 0 · bulevares col 8 · caja 60861
+  mes 144 · pop  4912 · peor 113 % · atascados  71 % · viajeros  4967 · líneas 0 · bulevares col 8 · caja 62406
+  → final: pop 4912 · peor 113% · atascados 71% · 43 abandonados · aprobación 25%
+
+=== 1. ORGÁNICO 12 AÑOS — bot que compra colectivos y bulevares cuando se atasca ===
+  mes   1 · pop   179 · peor   3 % · atascados   0 % · viajeros    75 · líneas 0 · bulevares col 8 · caja 25324
+  mes   6 · pop   597 · peor  17 % · atascados   0 % · viajeros   563 · líneas 0 · bulevares col 8 · caja 22253
+  mes  12 · pop  1116 · peor  35 % · atascados   0 % · viajeros  1048 · líneas 0 · bulevares col 8 · caja 23976
+  mes  18 · pop  1553 · peor  50 % · atascados   0 % · viajeros  1513 · líneas 0 · bulevares col 8 · caja 18797
+  mes  24 · pop  2270 · peor  59 % · atascados   0 % · viajeros  2276 · líneas 0 · bulevares col 8 · caja 10712
+  mes  30 · pop  3290 · peor  82 % · atascados   0 % · viajeros  3264 · líneas 0 · bulevares col 8 · caja 13996
+  mes  36 · pop  4399 · peor 110 % · atascados  49 % · viajeros  4339 · líneas 3 · bulevares col 8 · caja 11548
+  mes  42 · pop  4727 · peor 122 % · atascados  59 % · viajeros  4699 · líneas 3 · bulevares col 8 · caja 9095
+  mes  48 · pop  5102 · peor 123 % · atascados  58 % · viajeros  5074 · líneas 4 · bulevares col 8 · caja 20144
+  mes  54 · pop  5172 · peor 124 % · atascados  58 % · viajeros  5198 · líneas 4 · bulevares col 8 · caja 20527
+  mes  60 · pop  5349 · peor 130 % · atascados  59 % · viajeros  5343 · líneas 4 · bulevares col 8 · caja 21045
+  mes  66 · pop  5441 · peor 133 % · atascados  59 % · viajeros  5438 · líneas 4 · bulevares col 8 · caja 21659
+  mes  72 · pop  5548 · peor 134 % · atascados  82 % · viajeros  5554 · líneas 4 · bulevares col 8 · caja 22582
+  mes  78 · pop  5461 · peor 134 % · atascados  82 % · viajeros  5479 · líneas 4 · bulevares col 8 · caja 23562
+  mes  84 · pop  5290 · peor 127 % · atascados  81 % · viajeros  5313 · líneas 4 · bulevares col 8 · caja 24151
+  mes  90 · pop  5299 · peor 126 % · atascados  81 % · viajeros  5285 · líneas 4 · bulevares col 8 · caja 24648
+  mes  96 · pop  5225 · peor 128 % · atascados  58 % · viajeros  5288 · líneas 4 · bulevares col 8 · caja 25103
+  mes 102 · pop  5345 · peor 126 % · atascados  81 % · viajeros  5359 · líneas 4 · bulevares col 8 · caja 25755
+  mes 108 · pop  5430 · peor 129 % · atascados  82 % · viajeros  5416 · líneas 4 · bulevares col 8 · caja 26471
+  mes 114 · pop  5418 · peor 127 % · atascados  81 % · viajeros  5464 · líneas 4 · bulevares col 8 · caja 27211
+  mes 120 · pop  5410 · peor 129 % · atascados  82 % · viajeros  5428 · líneas 4 · bulevares col 8 · caja 27868
+  mes 126 · pop  5232 · peor 129 % · atascados  82 % · viajeros  5338 · líneas 4 · bulevares col 8 · caja 28271
+  mes 132 · pop  5270 · peor 126 % · atascados  82 % · viajeros  5291 · líneas 4 · bulevares col 8 · caja 28561
+  mes 138 · pop  5246 · peor 124 % · atascados  82 % · viajeros  5227 · líneas 4 · bulevares col 8 · caja 28841
+  mes 144 · pop  5273 · peor 126 % · atascados  82 % · viajeros  5302 · líneas 4 · bulevares col 8 · caja 29093
+  → final: pop 5273 · peor 126% · atascados 82% · 25 abandonados · aprobación 26%
+
+Referencias: capacidad de una celda = carriles × 1200 × tier (asfalto 1, pavimento 1.6, bulevar 1.8) × presupuesto.
+Torre nivel 5: 160 viajeros. Casita nivel 1: 3. Comercio/fábrica nivel 5: 100/120.
+Colectivos: 500 por línea, tope 35 % de los viajeros. Calle lenta desde 90 %.
+Tiers: Asfalto ×1, Pavimento reforzado ×1.6, Bulevar ×1.8, Calle de tierra ×0.5
+
+=== 2. MAGNITUD: la misma ciudad creciendo, calles simples de asfalto ===
+  ciudad 6×3 manzanas                            viajeros  14400 · peor 252 % · atascados  62 % · celdas >100%:  30 (prom 168 %) · max 252 % · ~14400 viajeros
+  ciudad 8×4 manzanas                            viajeros  31680 · peor 255 % · atascados  85 % · celdas >100%:  92 (prom 190 %) · max 255 % · ~31680 viajeros
+  ciudad 10×5 manzanas                           viajeros  54720 · peor 255 % · atascados  93 % · celdas >100%: 183 (prom 209 %) · max 255 % · ~54720 viajeros
+  ciudad 12×6 manzanas                           viajeros  83520 · peor 255 % · atascados  95 % · celdas >100%: 285 (prom 224 %) · max 255 % · ~83520 viajeros
+
+=== 3. PALANCAS sobre la ciudad de referencia (bulevares dobles cada 2 manzanas) ===
+  base: avenidas dobles de bulevar cada 2 manzanas viajeros  12000 · peor 193 % · atascados  49 % · celdas >100%:  15 (prom 150 %) · max 193 % · carriles por avenida: 2
+  + 4 líneas de colectivos                       viajeros  11360 · peor 174 % · atascados  48 % · celdas >100%:  13 (prom 139 %) · max 174 % · tope: 35 % de los viajeros
+  + 8 líneas de colectivos                       viajeros  11360 · peor 174 % · atascados  48 % · celdas >100%:  13 (prom 139 %) · max 174 % · tope: 35 % de los viajeros
+  + 16 líneas de colectivos                      viajeros  11360 · peor 174 % · atascados  48 % · celdas >100%:  13 (prom 139 %) · max 174 % · tope: 35 % de los viajeros
+  + 32 líneas de colectivos                      viajeros  11360 · peor 174 % · atascados  48 % · celdas >100%:  13 (prom 139 %) · max 174 % · tope: 35 % de los viajeros
+  avenidas dobles de bulevar en TODAS las calles viajeros   9600 · peor 162 % · atascados  46 % · celdas >100%:   8 (prom 131 %) · max 162 %
+  avenidas dobles de BULEVAR con ancho 4         viajeros   7200 · peor  98 % · atascados   0 % · celdas >100%:   0 (prom 0 %) · max 98 %
+  trabajos desparramados (comercio en cada manzana) viajeros  15840 · peor 120 % · atascados  22 % · celdas >100%:   4 (prom 114 %) · max 120 %
+  menos densidad: torres de nivel 4 en vez de 5  viajeros   4500 · peor  82 % · atascados   0 % · celdas >100%:   0 (prom 0 %) · max 82 %
+  calle débil: una celda de tierra en cada avenida viajeros  12000 · peor 193 % · atascados  49 % · celdas >100%:  17 (prom 145 %) · max 193 %
+  combo: trabajos desparramados + bulevares en todas + 8 colectivos viajeros  11200 · peor  57 % · atascados   0 % · celdas >100%:   0 (prom 0 %) · max 57 %
+  presupuesto de calles 60 %                     viajeros  12000 · peor 241 % · atascados  67 % · celdas >100%:  24 (prom 160 %) · max 241 %
+  presupuesto de calles 80 %                     viajeros  12000 · peor 214 % · atascados  59 % · celdas >100%:  20 (prom 152 %) · max 214 %
+  presupuesto de calles 110 %                    viajeros  12000 · peor 184 % · atascados  49 % · celdas >100%:  14 (prom 147 %) · max 184 %
+
+=== 4. ¿REPARTEN LA CARGA DOS CALLES PARALELAS? (la ruta es única: la más corta) ===
+  8 torres (1280 viajeros) → 3 comercios: por el pasillo y=10:
+    celdas x=8..13 del pasillo: 63/70/77/83/83/88 %
+    mismas celdas de la paralela y=12: 9/11/17/23/23/23 %
+  → la paralela no atrae nada: elegiría el mismo destino por la misma distancia, y el camino no cambia.

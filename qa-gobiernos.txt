@@ -1,0 +1,19 @@
+
+40 corridas de 25 años: 2 semillas × 2 estilos × 2 mapas × 5 gobiernos
+
+Por gobierno   pico mediano   llegó a 150k   perdió   caja mediana   abandonados medianos
+democracia            1758             0%     100%        -672643                  331
+dictadura             1174             0%     100%        -583580                  254
+tecnocracia           1991             0%     100%        -650221                  320
+teocracia             1724             0%     100%        -603679                  320
+comunismo            55804             0%     100%          19272                    0
+
+Por estilo de jugador  (pico de población mediano / % que perdió elecciones)
+                    democracia       dictadura     tecnocracia       teocracia       comunismo
+agresivo           1696 / 100%     1070 / 100%     1720 / 100%     1724 / 100%    56355 / 100%
+equilibrado        2051 / 100%     1317 / 100%     2064 / 100%     1850 / 100%    50752 / 100%
+
+Por tipo de mapa  (pico de población mediano / % que perdió elecciones)
+                    democracia       dictadura     tecnocracia       teocracia       comunismo
+coast              1758 / 100%     1165 / 100%     2046 / 100%     1724 / 100%    55804 / 100%
+sierras            2051 / 100%     1218 / 100%     1991 / 100%     1766 / 100%    67588 / 100%
