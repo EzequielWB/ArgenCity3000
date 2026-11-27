@@ -94,6 +94,8 @@ export interface ToolbarActions {
 
 export class Toolbar {
   private opened: string | null = null;
+  private end: boolean | null = null;
+  private row: HTMLElement;
 
   constructor(
     private bar: HTMLElement,
@@ -105,7 +107,10 @@ export class Toolbar {
       (g) =>
         `<button class="cat" type="button" data-fly="${g.id}" aria-expanded="false" aria-controls="flyout" title="${escapeHtml(`${g.label}: ${g.tools.map((t) => toolInfo(t).label).join(', ')}`)}">${GROUP_ICONS[g.id]}<span>${escapeHtml(g.label)}</span></button>`,
     ).join('');
-    bar.innerHTML = `${cats}
+    // En teléfono la fila de botones scrollea de costado dentro de .bar-row y #toolbar se queda
+    // quieto: así la flecha del desplazamiento es absoluta sobre la barra y no depende del sticky
+    // del contenedor que scrollea (que Safari no ancla). En escritorio .bar-row es display: contents.
+    bar.innerHTML = `<div class="bar-row">${cats}
       <button type="button" data-act="undo" title="Deshacer la última obra (Ctrl+Z)">Deshacer</button>
       <div class="group-label" id="layerLabel">Capa</div>
       <button type="button" data-fly="${LAYERS_FLYOUT}" aria-expanded="false" aria-controls="flyout" aria-describedby="layerLabel" title="Elegir la capa que se ve sobre el mapa (C pasa a la siguiente)"><span id="layerName"></span></button>
@@ -115,7 +120,7 @@ export class Toolbar {
         <button type="button" data-act="rotr" title="Rotar a la derecha (E)" aria-label="Rotar a la derecha">⟳</button>
         <button type="button" data-act="zin" title="Acercar (+)" aria-label="Acercar">＋</button>
         <button type="button" data-act="zout" title="Alejar (−)" aria-label="Alejar">−</button>
-      </div>`;
+      </div></div>`;
 
     const toolRow = (t: ToolId) => {
       const info = toolInfo(t);
@@ -129,12 +134,27 @@ export class Toolbar {
     bar.addEventListener('click', this.onBarClick);
     flyout.addEventListener('click', this.onFlyoutClick);
     document.addEventListener('pointerdown', this.onOutside);
+    this.row = bar.querySelector<HTMLElement>('.bar-row')!;
+    this.row.addEventListener('scroll', this.onScroll, { passive: true });
+    window.addEventListener('resize', this.onScroll, { passive: true });
+    this.onScroll();
   }
+
+  /** La flecha del desplazamiento se apaga cuando no queda nada a la derecha (o nada que desplazar). */
+  private onScroll = (): void => {
+    const atEnd = this.row.scrollLeft + this.row.clientWidth >= this.row.scrollWidth - 8;
+    if (atEnd !== this.end) {
+      this.end = atEnd;
+      this.bar.classList.toggle('end', atEnd);
+    }
+  };
 
   destroy(): void {
     this.close();
     this.bar.removeEventListener('click', this.onBarClick);
     this.flyout.removeEventListener('click', this.onFlyoutClick);
+    this.row.removeEventListener('scroll', this.onScroll);
+    window.removeEventListener('resize', this.onScroll);
     document.removeEventListener('pointerdown', this.onOutside);
   }
 

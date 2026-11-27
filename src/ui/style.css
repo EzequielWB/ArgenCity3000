@@ -564,6 +564,16 @@ button.chapa:focus-visible {
   color: var(--paper);
 }
 
+  line-height: 1.3;
+  letter-spacing: 1px;
+  text-align: center;
+  transform: rotate(-12deg);
+  opacity: 0.85;
+  /* La tinta del sello no cubre parejo: rayas para que el papel se lea a través. */
+  mask-image: repeating-linear-gradient(45deg, #000 0 3px, rgba(0, 0, 0, 0.72) 3px 6px);
+  pointer-events: none;
+}
+
 /* A promise the neighbours are waiting on: red, on top of the map, with the time left. */
 #promise {
   position: absolute;
@@ -629,6 +639,13 @@ button.chapa:focus-visible {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--gold-dark) var(--deep);
+}
+
+/* En escritorio la fila es transparente para el layout: los botones quedan como hijos directos de
+   la columna. En teléfono (abajo) es la fila que scrollea, dejando a #toolbar quieto de telón. */
+.bar-row {
+  display: contents;
+}
   line-height: 1.05;
 }
 
@@ -2067,6 +2084,13 @@ ol.steps li {
       'tools';
   }
 
+  /* La interfaz al 90 %: misma pantalla, más mundo a la vista. El input del mapa mide con el rect
+     escalado del canvas (clientX - rect.left), así que el puntero queda alineado igual. */
+  #app {
+    zoom: 0.9;
+    height: calc(100dvh / 0.9);
+  }
+
   #app.no-news {
     grid-template-columns: 1fr;
   }
@@ -2188,17 +2212,57 @@ ol.steps li {
     text-align: left;
   }
 
-  /* Tool bar along the bottom: big icons, scrolls sideways. */
+  /* Tool bar along the bottom: big icons, scrolls sideways. #toolbar no scrollea: la fila interna
+     (.bar-row) es la que se desplaza, y la flecha queda absoluta sobre la barra, siempre al borde,
+     sin depender del sticky dentro del contenedor scroleable (Safari no lo ancla). */
   #toolbar {
+    position: relative;
     flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    border-right: 0;
+    border-top: 4px solid var(--gold-dark);
+    overflow: hidden;
+  }
+
+  .bar-row {
+    display: flex;
     align-items: stretch;
     gap: 6px;
     padding: 6px max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
-    border-right: 0;
-    border-top: 4px solid var(--gold-dark);
-    overflow: auto hidden;
+    overflow-x: auto;
     overscroll-behavior: contain;
     scrollbar-width: none;
+  }
+
+  /* Heurística de desplazamiento: queda más barra de la que se ve, y sin scrollbare la única señal
+     es este pistón pegado al borde derecho con una flecha. Es opaco: los botones se cortan en la
+     flecha y nada asoma del otro lado — es el fin de la barra. Se apaga al llegar al final. */
+  #toolbar::after {
+    content: '›';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    z-index: 1; /* por encima de los botones: nada pasa por debajo de la flecha */
+    color: var(--gold-light);
+    font-size: 22px;
+    font-weight: 700;
+    text-shadow: 1px 1px 0 #000, 0 0 6px rgba(0, 0, 0, 0.9);
+    background: linear-gradient(90deg, var(--deep) 45%, var(--base));
+    border-left: 2px solid var(--gold-dark);
+    pointer-events: none;
+  }
+
+  #toolbar.end::after {
+    content: '';
+    width: 0;
+    margin-left: 0;
+    background: none;
   }
 
   #toolbar button {
@@ -2298,17 +2362,15 @@ ol.steps li {
   }
 
   #modal {
-    padding: 0;
+    padding: 16px 10px;
   }
 
   #modal .modal-card,
   #modal .modal-card[data-shape] {
-    width: 100%;
+    width: min(540px, 100%);
     max-width: none;
-    height: 100dvh;
-    max-height: none;
-    padding-left: 16px;
-    padding-right: 16px;
+    height: auto;
+    max-height: calc(100dvh - 32px);
   }
 
   .modal-card .close,
@@ -2346,6 +2408,13 @@ ol.steps li {
 }
 
 @media (max-width: 900px) {
+  /* El botón del diario (z 6) y su hoja (z 7) viven en #stage, sin contexto de apilado propio, y el
+     desplegable de la radio queda atrapado dentro del contexto del topbar (z 2): subiendo el topbar
+     por encima de ambos, la radio lo tapa cuando se abre. Los modales siguen arriba (z 10). */
+  #topbar {
+    z-index: 8;
+  }
+
   #btnDiario {
     display: block;
     position: absolute;
@@ -2812,6 +2881,22 @@ table.precios td.tags {
   background: linear-gradient(#5a3a1e, #3a2410);
   border: 3px solid var(--wood-line);
   box-shadow: inset 0 0 0 2px #2a1a08, 0 10px 22px rgba(0, 0, 0, 0.55), 6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* En pantallas chicas el desplegable deja de ser un cartel anclado y pasa a ser una hoja a lo ancho:
+   min-width 520 contra un viewport de 390 le gana a max-width y la lista de quejas queda afuera. */
+@media (max-width: 950px) {
+  .radio-drop {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: 130px; /* lo fija el script al abrir: justo debajo del gabinete de la radio */
+    min-width: 0;
+    max-width: none;
+    max-height: 55dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 .drop-head {

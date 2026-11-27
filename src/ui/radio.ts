@@ -108,6 +108,12 @@ export class Radio {
     this.drop.classList.remove('hidden');
     this.btn.setAttribute('aria-expanded', 'true');
     this.btn.classList.add('on');
+    // En pantalla chica el desplegable es una hoja fija: va justo debajo del gabinete, donde esté.
+    if (getComputedStyle(this.drop).position === 'fixed') {
+      this.drop.style.top = `${Math.round(this.root.getBoundingClientRect().bottom + 6)}px`;
+    } else {
+      this.drop.style.removeProperty('top');
+    }
   }
 
   /** Pasa a la siguiente voz. Con el puntero encima o el desplegable abierto, la radio se calla. */
