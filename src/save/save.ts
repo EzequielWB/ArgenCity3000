@@ -46,7 +46,7 @@ import { busFootprint } from '../world/tools';
 import { MAX_TILE, TILE, World, hubOf, hubTile, serviceOf, serviceTile, zoneOf, type Plant } from '../world/world';
 import { ALL_UNIQUE_KINDS, UNIQUES, type UniqueKind } from '../config';
 
-export const SAVE_VERSION = 21;
+export const SAVE_VERSION = 22;
 /**
  * Versions this build can still read. Version 1 had no abandoned buildings or fires;
  * versions 1 and 2 had one tax for every zone, no service budgets and no inherited streets;
@@ -57,9 +57,11 @@ export const SAVE_VERSION = 21;
  * provincial route, so they have none and their streets are free to start anywhere; versions 1 to
  * 8 had one kind of street, so all of theirs are asphalt; versions 1 to 9 had no form of
  * government, so they are democracies with no party; versions 1 to 17 have no roguelike run, so
- * they open as classic games; versions 1 to 19 have no unique buildings, so they have none.
+ * they open as classic games; versions 1 to 19 have no unique buildings, so they have none;
+ * versions 1 to 21 have no mark of big fire nor fire counters, so their fires are common and
+ * their counters start at zero.
  */
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
 import { GRIPES } from '../sim/vecinos';
 
 const GAME_ID = 'argencity3000';
@@ -442,6 +444,12 @@ function parseSim(raw: unknown): SimState {
   // El perfil de la apuesta del campo llegó con este formato; un save anterior arriesga cero.
   need(s.campoRisk === undefined || (isInt(s.campoRisk) && s.campoRisk >= 0 && s.campoRisk <= 100), 'El perfil del campo es inválido');
   need(typeof s.crisis === 'boolean', 'La partida está dañada');
+  // La marca de foco grande y las cuentas de fuego existen desde la versión 22: un save viejo quema
+  // común y abre con las cuentas en cero, que es lo que hacía hasta ahora.
+  need(s.bigFire === undefined || (Array.isArray(s.bigFire) && s.bigFire.every((v) => isInt(v) && (v as number) >= 0)), 'Los focos de la partida son inválidos');
+  const fireStats = (s.fireStats ?? {}) as Record<string, unknown>;
+  const validStat = (v: unknown) => isInt(v) && (v as number) >= 0;
+  need(s.fireStats === undefined || (validStat(fireStats.firesStarted) && validStat(fireStats.firesSaved) && validStat(fireStats.buildingsBurned)), 'Las cuentas de fuego de la partida son inválidas');
   need(Array.isArray(s.news) && Array.isArray(s.history), 'La partida está dañada');
   const news = (s.news as unknown[]).map((item) => {
     const { date, text } = (item ?? {}) as { date?: unknown; text?: unknown };
@@ -646,6 +654,12 @@ function parseCommitment(raw: unknown): Commitment | null {
     party: (s.party as string | undefined) ?? '',
     favor: (s.favor as number | undefined) ?? FAVOR.start,
     subsidy: (s.subsidy as boolean | undefined) ?? false,
+    bigFire: ((s.bigFire as number[] | undefined) ?? []).slice(),
+    fireStats: {
+      firesStarted: (fireStats.firesStarted as number | undefined) ?? 0,
+      firesSaved: (fireStats.firesSaved as number | undefined) ?? 0,
+      buildingsBurned: (fireStats.buildingsBurned as number | undefined) ?? 0,
+    },
     plan,
     run,
   };

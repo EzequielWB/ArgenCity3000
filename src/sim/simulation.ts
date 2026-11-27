@@ -118,6 +118,10 @@ export interface SimState {
   favor: number;
   /** El telegrama del subsidio provincial ya se mandó (se cobró o se rechazó). Una sola vez por partida. */
   subsidy: boolean;
+  /** Los focos del incendio grande (índices de celda): sin esta marca, al cargar un foco grande se vuelve uno común y los bomberos lo salvan. */
+  bigFire: number[];
+  /** Cuántos incendios se prendieron, se apagaron a tiempo y se quemaron desde el día uno. */
+  fireStats: { firesStarted: number; firesSaved: number; buildingsBurned: number };
   /** The five-year plan the Party asked for, or null (see `sim/plan.ts`): it only exists under communism. */
   plan: FivePlan | null;
   /** The roguelike run, or null in a classic game (see `sim/roguelike.ts`). */
@@ -159,6 +163,8 @@ export function newSimState(seed: number, government: GovernmentKind = 'democrac
     loan: null,
     favor: FAVOR.start,
     subsidy: false,
+    bigFire: [],
+    fireStats: { firesStarted: 0, firesSaved: 0, buildingsBurned: 0 },
     plan: government === 'comunismo' ? newPlan(0, 0) : null,
     run,
   };
@@ -240,14 +246,11 @@ export class Simulation {
    */
   powerDirty = false;
   private lightTick = 0;
-  /** Counters for this session (not saved). */
-  stats = { firesStarted: 0, firesSaved: 0, buildingsBurned: 0 };
+  /** Los contadores de fuego viven en el estado: viajan en el save desde la versión 22. */
+  get stats() {
+    return this.state.fireStats;
+  }
   private burning = new Set<number>();
-  /**
-   * Los focos del incendio grande. No se guardan: un incendio grande que se corta a mitad, se guarda y se
-   * carga vuelve a ser uno común, y eso es lo más benigno que se puede hacer con él.
-   */
-  private bigFire = new Set<number>();
   /**
    * El tornado en curso, o null. Se guarda acá y no en el estado porque **no se guarda en disco**: el que
    * se corta a mitad no sigue al cargar, y arrancar un desastre a medias es peor que no tenerlo.
@@ -945,7 +948,7 @@ export class Simulation {
     for (const i of Array.from(this.burning)) {
       w.fire[i]--;
       // Un foco grande arde hasta el final: la cobertura no lo salva. Los demás, sí.
-      const big = this.bigFire.has(i);
+      const big = this.state.bigFire.includes(i);
       const covered = !big && w.fireCover[i] >= FIRE_SAFE_COVER;
       if (!covered && w.fire[i] % 15 === 0) {
         const x = i % n;
@@ -958,7 +961,8 @@ export class Simulation {
       }
       if (w.fire[i] > 0) continue;
       this.burning.delete(i);
-      this.bigFire.delete(i);
+      const bigIndex = this.state.bigFire.indexOf(i);
+      if (bigIndex >= 0) this.state.bigFire.splice(bigIndex, 1);
       if (covered) {
         addBuilding(this.totals, w.tiles[i], w.level[i], 1, this.mods);
         this.stats.firesSaved++;
@@ -1018,7 +1022,7 @@ export class Simulation {
     w.fire[i] = 90;
     w.markDirty(i);
     this.burning.add(i);
-    this.bigFire.add(i);
+    this.state.bigFire.push(i);
     this.stats.firesStarted++;
     this.recomputeDemand();
   }

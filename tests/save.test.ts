@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { LOANS } from '../src/config';
+import { LOANS, TICKS_PER_MONTH } from '../src/config';
 import { generateTerrain } from '../src/world/terrain';
-import { World, TILE } from '../src/world/world';
+import { World, TILE, zoneOf } from '../src/world/world';
 import { applyPlan, dragCells, planTool } from '../src/world/tools';
 import { Simulation, newSimState } from '../src/sim/simulation';
 import { SAVE_VERSION, deserialize, serialize } from '../src/save/save';
@@ -81,6 +81,55 @@ describe('save', () => {
     for (let i = 0; i < w2.tiles.length; i++) if (w2.tiles[i] === TILE.PLANT) w2.tiles[i] = TILE.EMPTY;
     ghost.tiles = serializeBytes(w2.tiles);
     expect(() => deserialize(JSON.stringify(ghost))).toThrow();
+  });
+
+  it('keeps the big-fire mark, so a covered big fire burns down the same after loading', () => {
+    const { world, sim } = city();
+    // Un edificio denso con un cuartel de bomberos cubriéndolo: un fuego común se apaga, uno grande arde.
+    applyPlan(world, planTool(world, 'fire', dragCells('fire', 2, 20, 2, 20, 1, 32)));
+    let target = -1;
+    for (let i = 0; i < world.tiles.length; i++) {
+      if (zoneOf(world.tiles[i]) === 'R' && world.level[i] > 0 && !world.fire[i]) {
+        world.level[i] = 3; // un edificio crecido: el que puede arder
+        (sim as unknown as { ignite(i: number): void }).ignite(i);
+        (sim as unknown as { state: { bigFire: number[] } }).state.bigFire.push(i);
+        target = i;
+        break;
+      }
+    }
+    expect(target).toBeGreaterThanOrEqual(0);
+    const back = deserialize(serialize({ name: 'X', seed: 11, world, sim: sim.state }));
+    const resumed = new Simulation(back.world, back.sim, 'X');
+    expect(back.sim.bigFire).toContain(target);
+    // Con la marca, ambas partidas queman el edificio: la cobertura no lo salva.
+    for (let i = 0; i < 3 * TICKS_PER_MONTH; i++) {
+      sim.tick();
+      resumed.tick();
+    }
+    expect(world.level[target]).toBe(0);
+    expect(back.world.level[target]).toBe(0);
+  });
+
+  it('carries the fire counters, and an old save opens with them at zero', () => {
+    const { world, sim } = city();
+    for (let i = 0; i < world.tiles.length; i++) {
+      if (zoneOf(world.tiles[i]) === 'R' && world.level[i] > 0) {
+        world.level[i] = 3;
+        (sim as unknown as { ignite(i: number): void }).ignite(i);
+        break;
+      }
+    }
+    expect(sim.stats.firesStarted).toBeGreaterThan(0);
+    const back = deserialize(serialize({ name: 'X', seed: 11, world, sim: sim.state }));
+    expect(back.sim.fireStats).toEqual({ firesStarted: sim.stats.firesStarted, firesSaved: sim.stats.firesSaved, buildingsBurned: sim.stats.buildingsBurned });
+
+    // Un save de la versión anterior no trae las cuentas: abre en cero sin romper.
+    const old = JSON.parse(serialize({ name: 'X', seed: 11, world, sim: sim.state })) as { sim: Record<string, unknown> };
+    delete old.sim.fireStats;
+    delete old.sim.bigFire;
+    const legacy = deserialize(JSON.stringify(old));
+    expect(legacy.sim.fireStats).toEqual({ firesStarted: 0, firesSaved: 0, buildingsBurned: 0 });
+    expect(legacy.sim.bigFire).toEqual([]);
   });
 });
 

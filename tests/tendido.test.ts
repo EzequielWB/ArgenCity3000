@@ -142,7 +142,7 @@ describe('saving the quality of the grid', () => {
     const back = deserialize(serialize({ name: 'X', seed: 7, world, sim: sim.state }));
     expect(Array.from(back.world.lineTier)).toEqual(Array.from(world.lineTier));
     expect(Array.from(back.world.lineTier).some((v) => v === 1)).toBe(true);
-    expect(SAVE_VERSION).toBe(21);
+    expect(SAVE_VERSION).toBe(22);
   });
 
   it('opens a save from the version before the qualities as all wood', () => {
