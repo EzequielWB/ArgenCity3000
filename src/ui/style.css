@@ -31,6 +31,44 @@
   color-scheme: dark;
 }
 
+/* Las tres fuentes viajan con el juego (public/fonts/): sin conexión el juego se ve igual. Sólo
+   hace falta el subset latino: cubre acentos, «» y ¿?. */
+@font-face {
+  font-family: 'Bungee';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/bungee-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/chakra-petch-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/chakra-petch-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/chakra-petch-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Cutive Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/cutive-mono-400.woff2') format('woff2');
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1088,6 +1126,26 @@ button.chapa:focus-visible {
 
 .toast.bad {
   border-color: var(--red);
+}
+
+/* El botón "Descargar local": guarda el juego como PWA. Sólo vive en teléfono, que es donde
+   instalar sirve; el icono es la carpa del favicon. */
+#btnInstall {
+  display: none;
+}
+
+#btnInstall svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+@media (pointer: coarse) and (max-width: 950px), (max-width: 600px) {
+  #btnInstall {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
 }
 
 /* El aviso de Dios: el milagro en papel claro con oro (la aurora) y el castigo en rojo hundido en

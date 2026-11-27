@@ -9,6 +9,7 @@ import { pickMayorName } from './sim/mayor';
 import { newRun, type RunState } from './sim/roguelike';
 import { newSimState } from './sim/simulation';
 import { $, toast } from './ui/dom';
+import { bindInstallButton } from './ui/install';
 import { installOrnaments } from './ui/filete';
 import { PHRASES, nextPhrase } from './ui/phrases';
 import { closeModal, dismissModal, initModal, isModalOpen, openBudget, openFarm, openGovernment, openHelp, openSaves } from './ui/panels';
@@ -415,3 +416,20 @@ window.addEventListener('blur', () => {
 });
 
 showStart();
+
+// La app instalable: el service worker se registra (lo genera el build, ver `vite.config.ts`), y el
+// botón del inicio pide el instalador del navegador. En iPhone no hay aviso: ahí el botón enseña
+// el camino del menú Compartir.
+import { registerSW } from 'virtual:pwa-register';
+registerSW({ immediate: true });
+bindInstallButton(
+  $('#btnInstall'),
+  (e) => void e.prompt(),
+  (text) => {
+    // En el inicio #app está oculto y los toasts no se ven: la instrucción vive junto al botón.
+    const note = $('#installNote');
+    note.textContent = text;
+    note.classList.remove('hidden');
+    setTimeout(() => note.classList.add('hidden'), 6000);
+  },
+);

@@ -55,6 +55,7 @@ En el juego, `H` abre la ayuda completa con todos los controles.
 - En **teléfono** la interfaz corre al 90 %, la barra de herramientas va abajo y scrollea de costado con una flecha al borde (se apaga al llegar al final), la radio del barrio abre como hoja de borde a borde y los modales son compactos.
 - Sonido generado en el navegador (sin archivos): murmullo de ciudad y tránsito que crecen con la ciudad, bocinas y pajaritos, y efectos al construir, demoler, deshacer, salir el diario o arrancar un incendio. Se silencia con el botón "Sonido" o la tecla `M`, y la elección se recuerda.
 - Guardado en 3 ranuras más un autoguardado anual, y exportar o importar como archivo `.json`.
+- **Juego instalable (PWA)**: las fuentes viajan con el juego (`public/fonts/`), y el build genera el manifest y el service worker que precachean todo (2,4 MB, mapas incluidos): `npm run build` servido con cualquier servidor estático se instala y corre sin conexión. El botón **«Descargar local»** del inicio (solo en teléfono) pide el instalador del navegador; en iPhone enseña el camino del menú Compartir, que es la única vía que permite iOS.
 
 ## Arquitectura
 
