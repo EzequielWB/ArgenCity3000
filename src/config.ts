@@ -241,10 +241,11 @@ export const COSTS = {
   line: LINE_TIERS[WOODEN_LINE].cost,
   zone: 5,
   park: 20,
-  /** El campo: la tierra se paga una vez, lo que cuesta es acopiar y vender. */
-  farm: 60,
-  silo: 90,
-  market: 180,
+  /** El campo: la tierra se paga una vez, lo que cuesta es acopiar y vender. Ajuste del playtest:
+   *  a $60 un lote se pagaba solo en un par de cosechas. */
+  farm: 240,
+  silo: 240,
+  market: 480,
   plant: 3000,
   bulldoze: 2,
   bulldozeLevel: 10,

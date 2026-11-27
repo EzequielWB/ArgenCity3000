@@ -42,9 +42,21 @@ Verbatim del pedido (L1):
 
 - T1 · S4 S1 · `src/config.ts`, `src/sim/campo.ts`: dado climático + perfil en el cierre (`soy` en `CROPS`, `risk` en estado, multiplicadores y roll). Tests: `tests/campo-cosecha.test.ts`. Commit: `c8c2808`
 - T2 · S2 · `src/world/farms.ts`, `src/sim/campo.ts`: cosecha pide camino a la cadena (silo o feria, `truckNetwork` + `farmServida`); aviso de pérdida y ficha honesta. Tests: `tests/campo-cosecha.test.ts`, `tests/campo-ficha.test.ts`. Commit: `27e17e8`
-- T3 · S2 · `src/render/`: camiones en el mes de cosecha (sprite sobre las calles hacia la feria). Tests: `tests/vehiculos-pixel.test.ts` o propio. Commit: —
+- T3 · S2 · `src/render/trucks.ts` (nuevo, `Trucks` + `drawTrucks`), `src/render/vehicleArt.ts` (`truckVehicle`/`truckPixelSprite`, lona crema + falda roja), `src/world/farms.ts` (`truckFlow` con distancias a la cadena), `src/render/view.ts` + `src/game.ts` (refresh por mes/edición, update en el frame). Una camioneta por lote servido (tope 16), rebota lote↔cadena sobre su propio trazo BFS. Tests: `tests/camiones.test.ts` (5). Commit: — (sin pushear, a pedido)
 - T4 · S3 · `src/ui/campo.ts`, `src/ui/panels.ts`, `src/ui/style.css`: panel mínimo + tira de precios. Tests: `tests/campo-panel.test.ts`. Commit: `0015757`
 - T5 · S1 · perfil en estado y save (resuelto dentro de T1/T4: `campoRisk` en `SimState`, `setCampoRisk`, save). Commit: `c8c2808`
+
+## Specs (ajustes de playtest, ronda 2)
+
+- S6: "se solapan los edificios" / "al colocar a veces son invisibles los lotes" — el sprite del campo flota: `hubHeight` mira las esquinas del footprint más un anillo de una celda extra; en pendiente el anillo de atrás sube el ancla y el sprite se corre sobre el lote de atrás o queda tapado por el suelo de adelante. Criterio: el ancla del campo usa la esquina más alta del **propio** footprint (sin anillo); los lotes se dibujan apoyados en su suelo. Check: test de `padHeight` ≤ `hubHeight` y el caso 2×2 con anillo más alto.
+- S7: "no necesitaría tanta calle para llegar al lote, si hay lotes pegados estos deberían poder llegarse ya que normalmente vos caminas por todo el campo" — un lote contiguo (borde o esquina) a un lote servido queda servido, en cadena. Criterio: `farmServida` propaga por adyacencia entre lotes hasta punto fijo; un lote a 2+ lotes de una calle conectada cosecha; el lote sin cadena sigue sin servir. Check: test con 3 lotes en fila con calle bajo el primero y otro pegado en diagonal.
+- S8: "es todo muy barato de colocar" — sube `COSTS.farm` 60→240, `silo` 90→240, `market` 180→480. Criterio: los precios del panel y el cobro usan los nuevos valores.
+
+## Tasks (ajustes)
+
+- A1 · S6 · `src/render/geometry.ts` (`padHeight`: altura de la esquina de anclaje, no el máximo del footprint), `src/render/mapRenderer.ts` (ancla del campo con `padHeight`). Causa raíz: en pendiente que sube hacia adelante, anclar al máximo flotaba el sprite y las celdas de adelante lo tapaban. Tests: `tests/campo-ancla.test.ts` (4). Verificado en vivo: ancla exactamente a la altura de la esquina de atrás; sprite visible en su lugar. Commit: —
+- A2 · S7 · `src/world/farms.ts`: `farmServida` propaga servidumbre por cadena de lotes contiguos (borde o esquina) hasta punto fijo. Tests: `tests/campo-caminata.test.ts` (4). Commit: —
+- A3 · S8 · `src/config.ts`: `COSTS` farm 240 / silo 240 / market 480. Tests: `tests/campo-precio.test.ts` (+1). Commit: —
 
 ## Log
 

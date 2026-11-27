@@ -34,7 +34,7 @@ import {
   type Rect,
 } from './chunks';
 import { PAL, mix, rgb, toRgb } from './color';
-import { hubHeight, isPlatform, surfaceHeights, uniqueHeight, viewCornerHeights, plantHeight, type Pt } from './geometry';
+import { hubHeight, isPlatform, padHeight, surfaceHeights, uniqueHeight, viewCornerHeights, plantHeight, type Pt } from './geometry';
 import { abandonedBuildingSprite, buildingSprite, burningBuildingSprite, routeSignSpriteFor, uniqueSprite, type Sprite } from './sprites';
 import { parkTreeHere } from './park';
 import { busDepotPixelSprite, coastPixelSprite, farmPixelSprite, marketPixelSprite, poleAttach, polePixelSprite, siloPixelSprite, treePixelSprite, hubPixelSprite, plantPixelSprite, plazaPixelSprite, servicePixelSprite, type HubView } from './pixelArt';
@@ -613,7 +613,7 @@ export class MapRenderer {
       const [minVx, minVy] = [Math.min(...foot.map((c) => c[0])), Math.min(...foot.map((c) => c[1]))];
       const [maxVx, maxVy] = [Math.max(...foot.map((c) => c[0])), Math.max(...foot.map((c) => c[1]))];
       if (vx !== maxVx || vy !== maxVy) return null;
-      const [ax2, ay2] = this.toCache(minVx, minVy, hubHeight(w, pieza.x, pieza.y, size, size));
+      const [ax2, ay2] = this.toCache(minVx, minVy, padHeight(w, pieza.x, pieza.y, size));
       // Cada lote del mapa lleva el mes del calendario y la estaca del aviso: si la cadena está cortada, el
       // dibujo lo dice sin que haya que abrir el panel.
       const sprite =

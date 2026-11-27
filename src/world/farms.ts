@@ -106,8 +106,15 @@ export function marketRoom(w: Markets): number {
  * sembrado con las que tocan cada pieza, el mismo idioma que el `roadAccess` de los lotes.
  */
 export function truckNetwork(w: World): Uint8Array {
+  return truckFlow(w).on;
+}
+
+/** La red del camión y, para cada calle de la red, cuántas cuadras la separan de la cadena (0 en las que
+ *  la tocan). Es lo que usan las camionetas para saber hacia dónde avanzar (ver `render/trucks.ts`). */
+export function truckFlow(w: World): { on: Uint8Array; dist: Int16Array } {
   const n = w.n;
   const on = new Uint8Array(n * n);
+  const dist = new Int16Array(n * n).fill(-1);
   const queue = new Int32Array(n * n);
   let tail = 0;
   const seed = (x: number, y: number): void => {
@@ -115,6 +122,7 @@ export function truckNetwork(w: World): Uint8Array {
     const i = y * n + x;
     if (w.tiles[i] !== TILE.ROAD || on[i]) return;
     on[i] = 1;
+    dist[i] = 0;
     queue[tail++] = i;
   };
   for (const market of w.markets) {
@@ -130,11 +138,12 @@ export function truckNetwork(w: World): Uint8Array {
     for (const j of [x > 0 ? i - 1 : -1, x < n - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < n - 1 ? i + n : -1]) {
       if (j >= 0 && w.tiles[j] === TILE.ROAD && !on[j]) {
         on[j] = 1;
+        dist[j] = dist[i] + 1;
         queue[tail++] = j;
       }
     }
   }
-  return on;
+  return { on, dist };
 }
 
 /**
@@ -145,7 +154,7 @@ export function truckNetwork(w: World): Uint8Array {
 export function farmServida(w: World, network?: Uint8Array): boolean[] {
   const net = network ?? truckNetwork(w);
   const n = w.n;
-  return w.farms.map((farm) => {
+  const out = w.farms.map((farm) => {
     const dist = new Int16Array(n * n).fill(-1);
     const queue = new Int32Array(n * n);
     let tail = 0;
@@ -171,6 +180,27 @@ export function farmServida(w: World, network?: Uint8Array): boolean[] {
     }
     return false;
   });
+  // Los lotes pegados se llegan caminando por el campo: la servidumbre se contagia por la cadena de
+  // lotes contiguos (borde o esquina) hasta punto fijo. El camión carga en el lote que toca la calle;
+  // el resto del arreo va a pie.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < w.farms.length; i++) {
+      if (out[i]) continue;
+      const f = w.farms[i];
+      for (let j = 0; j < w.farms.length; j++) {
+        if (j === i || !out[j]) continue;
+        const g = w.farms[j];
+        if (f.x + FARM_SIZE + 1 >= g.x && g.x + FARM_SIZE + 1 >= f.x && f.y + FARM_SIZE + 1 >= g.y && g.y + FARM_SIZE + 1 >= f.y) {
+          out[i] = true;
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /**

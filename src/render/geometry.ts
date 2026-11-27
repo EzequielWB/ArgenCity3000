@@ -142,6 +142,16 @@ export function hubHeight(w: World, px: number, py: number, fw: number, fh: numb
 }
 
 /**
+ * El campo (lote, silo, feria) se apoya en el suelo de la esquina donde ancla su sprite: la esquina de
+ * atrás del recuadro. Las piezas de la ciudad se dibujan sobre suelo nivelado, donde el máximo del
+ * footprint y esta esquina coinciden; el campo no nivela su suelo, así que en una pendiente que sube
+ * hacia adelante el máximo lo haría flotar y las celdas de adelante taparían su base.
+ */
+export function padHeight(w: World, px: number, py: number, _size: number): number {
+  return cornerAt(w.terrain, px, py);
+}
+
+/**
  * A unique building sits on the highest corner of its footprint like a plant, but never below the
  * water: the puente stands over the river, whose bed is a level under the surface.
  */

@@ -10,6 +10,14 @@ describe('el precio de las herramientas del campo', () => {
     expect(toolPrice('market')).toBe(COSTS.market);
   });
 
+  // S8 (playtest): "es todo muy barato de colocar". Un lote de trigo brinda ~$360 al año a $120 la
+  // tonelada: a $60 se pagaba solo en dos meses. Los precios suben a la escala del resto de la ciudad.
+  it('los costos del campo ya no son tirados de manga', () => {
+    expect(COSTS.farm).toBe(240);
+    expect(COSTS.silo).toBe(240);
+    expect(COSTS.market).toBe(480);
+  });
+
   /**
    * El bug que esto previene: las tres piezas del campo se agregaron a la barra y el precio se quedó en
    * blanco, porque `toolPrice` no tenía casos para ellas y su `default` devuelve `null` —que la barra pinta
