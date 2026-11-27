@@ -711,14 +711,13 @@ button.chapa:focus-visible {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--gold-dark) var(--deep);
+  line-height: 1.05;
 }
 
 /* En escritorio la fila es transparente para el layout: los botones quedan como hijos directos de
    la columna. En teléfono (abajo) es la fila que scrollea, dejando a #toolbar quieto de telón. */
 .bar-row {
   display: contents;
-}
-  line-height: 1.05;
 }
 
 #toolbar button {
