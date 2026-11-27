@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intervención divina — G2 y M2 en mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Bungee&family=Cutive+Mono&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --gold: #e0a526;
+    --gold-light: #ffe08a;
+    --gold-dark: #8f5f12;
+    --gold-ink: #7a4f0e;
+    --red: #c9342c;
+    --bordo: #7a2f3a;
+    --paper: #f1e6cf;
+    --deep: #0a241b;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--deep);
+    color: #f6f2e8;
+    font-family: 'Chakra Petch', 'Segoe UI', sans-serif;
+    padding: 20px 16px 40px;
+  }
+  h1 {
+    font-family: Bungee, sans-serif; font-size: 16px; letter-spacing: .5px;
+    color: var(--gold); text-shadow: 2px 2px 0 #000; margin-bottom: 4px;
+  }
+  .sub { color: #c9b79a; font-size: 12.5px; margin-bottom: 16px; max-width: 640px; }
+  .why { font-size: 11.5px; color: #c9b79a; margin-top: 10px; line-height: 1.45; max-width: 640px; }
+  .why b { color: #f6f2e8; }
+
+  /* The phone: the game's real mobile layout, topbar + map + toolbar */
+  .phone {
+    width: 390px; max-width: 100%;
+    margin: 0 auto 26px;
+    background: #14452f;
+    border: 3px solid #000; border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  .screen { position: relative; height: 300px; }
+  .topbar {
+    height: 34px; background: #12382b; border-bottom: 2px solid var(--gold-dark);
+    display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    font-size: 11px; color: #c9b79a; font-weight: 600; position: relative; z-index: 3;
+  }
+  .topbar .clock { color: var(--gold-light); }
+  .topbar .sp { flex: 1; }
+  .topbar .ico {
+    width: 24px; height: 24px; background: #1d5440; border: 2px solid #8f5f12;
+    display: grid; place-items: center; color: var(--gold-light); font-size: 10px;
+  }
+  .topbar .diario { margin-right: -4px; }
+  .map {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(400px 160px at 75% 10%, #2f7a5c40, transparent 65%),
+      linear-gradient(180deg, #14452f 0%, #0e3324 70%, #0a241b 100%);
+  }
+  .toolbar {
+    height: 56px; background: #0a241b; border-top: 3px solid var(--gold-dark);
+    display: flex; gap: 6px; align-items: stretch; padding: 6px;
+  }
+  .toolbar span { flex: 1; background: #1d5440; border: 2px solid #8f5f12; box-shadow: inset 2px 2px 0 rgba(255,255,255,.18), inset -2px -2px 0 rgba(0,0,0,.35); }
+
+  /* The divine prompt, mobile-adapted: the same G2/M2 language, in one column */
+  .prompt {
+    position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
+    z-index: 2;
+    width: min(330px, calc(100% - 20px));
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    text-align: center;
+    padding: 12px 16px 11px;
+    box-shadow: 5px 5px 0 #000, 0 0 0 1px #000;
+    font-size: 11.5px; line-height: 1.35;
+    animation: drop .5s cubic-bezier(.2, 1.4, .4, 1) both;
+  }
+  @keyframes drop { from { transform: translate(-50%, -14px); opacity: 0; } }
+  .prompt .halo {
+    width: 30px; height: 30px; display: grid; place-items: center;
+  }
+  .prompt b.tit { font-family: Bungee, sans-serif; font-weight: 400; font-size: 12.5px; letter-spacing: .4px; }
+  .prompt small { opacity: .88; }
+
+  /* G2 Aurora (mobile): rayos + doble marco, todo centrado; el ancho se adapta, nunca pisa el diario. */
+  .g2 {
+    background: linear-gradient(180deg, #faf3e2, #f1e6cf);
+    border: 2px solid var(--gold); outline: 2px solid var(--gold-dark); outline-offset: -6px;
+    color: var(--gold-ink);
+  }
+  .g2 .halo {
+    background:
+      repeating-conic-gradient(from -8deg, #e0a52644 0deg 7deg, transparent 7deg 17deg),
+      radial-gradient(circle, #ffe08a 0 30%, #e0a526 62%, #f1e6cf 63%);
+    border-radius: 50%;
+  }
+  .g2 .tit { color: var(--gold-dark); text-shadow: 0 0 6px #ffe08a88; }
+
+  /* M2 Plaga (mobile): rojo que se hunde en bordó, doble filo remachado. */
+  .m2 {
+    background: linear-gradient(180deg, #a8241d, #7a2f3a);
+    border: 3px solid var(--bordo); outline: 2px solid #4a1418; outline-offset: -7px;
+    color: #f6d9d2;
+  }
+  .m2 .ic { color: #f1b0a4; filter: drop-shadow(0 0 5px #4a1418); }
+  .m2 .tit { color: #2b0c0f; }
+
+  .label { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-align: center; margin: 0 0 8px; color: #c9b79a; }
+</style>
+</head>
+<body>
+  <h1>G2 Y M2 EN MOBILE — 390 PX</h1>
+  <p class="sub">El mismo diseño, plegado a una columna: el ancho se adapta al viewport (nunca pisa el botón del diario) y el texto baja debajo del medallón.</p>
+
+  <div class="label">G2 · BENDICIÓN (MILAGRO)</div>
+  <div class="phone">
+    <div class="screen">
+      <div class="map"></div>
+      <div class="topbar"><span class="clock">Ene 2019</span> · $12.400 · 1.204 hab.<span class="sp"></span><span class="ico">☰</span><span class="ico diario">☑</span></div>
+      <div class="prompt g2">
+        <span class="halo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7a4f0e" stroke-width="2.2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></span>
+        <b class="tit">BENDICIÓN DEL TRABAJO</b>
+        <small>Las fábricas piden gente durante tres meses.</small>
+      </div>
+      <div class="toolbar"><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <div class="label">M2 · SEQUÍA (CASTIGO)</div>
+  <div class="phone">
+    <div class="screen">
+      <div class="map"></div>
+      <div class="topbar"><span class="clock">Ene 2019</span> · $12.400 · 1.204 hab.<span class="sp"></span><span class="ico">☰</span><span class="ico diario">☑</span></div>
+      <div class="prompt m2">
+        <span class="halo ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 3a5 5 0 0 1-5 5H8a3 3 0 0 0 0 6h1l-3 7"/><circle cx="9" cy="20" r="1"/><circle cx="13" cy="6" r="1"/></svg></span>
+        <b class="tit">SEQUÍA</b>
+        <small>La plata del mes se seca durante tres meses (ingresos -20 %).</small>
+      </div>
+      <div class="toolbar"><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <p class="why"><b>Cómo se adapta:</b> ancho fluido <code>min(330px, 100% - 20px)</code> centrado bajo la cinta, medallón arriba y texto debajo (una columna en vez de fila). El texto queda a un cuerpo más chico pero Bungee mantiene el título legible, y el marco doble y los rayos sobreviven intactos porque son proporciones, no píxeles fijos.</p>
+  <p class="why"><b>Riesgo a mirar:</b> si Dios manda dos mensajes el mismo mes, el segundo se apila debajo del primero (la columna de toasts ya hace esto); en 390px caben dos antes de tapar demasiado mapa.</p>
+</body>
+</html>

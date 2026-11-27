@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intervención divina — 6 bocetos de prompt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Bungee&family=Cutive+Mono&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --gold: #e0a526;
+    --gold-light: #ffe08a;
+    --gold-dark: #8f5f12;
+    --gold-ink: #7a4f0e;
+    --red: #c9342c;
+    --bordo: #7a2f3a;
+    --paper: #f1e6cf;
+    --ink: #1b1410;
+    --deep: #0a241b;
+    --base: #12382b;
+    --bevel: inset 2px 2px 0 rgba(255,255,255,.18), inset -2px -2px 0 rgba(0,0,0,.35);
+    --bevel-in: inset 2px 2px 0 rgba(0,0,0,.35), inset -2px -2px 0 rgba(255,255,255,.12);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--deep);
+    color: #f6f2e8;
+    font-family: 'Chakra Petch', 'Segoe UI', sans-serif;
+    padding: 20px 16px 40px;
+  }
+  h1 {
+    font-family: Bungee, sans-serif;
+    font-size: 17px;
+    letter-spacing: .5px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000;
+    margin: 8px 0 4px;
+  }
+  .sub { color: #c9b79a; font-size: 12.5px; margin-bottom: 18px; }
+
+  /* Faux game map backdrop, to judge each prompt where it would float */
+  .map {
+    background:
+      radial-gradient(1200px 500px at 80% -10%, #2f7a5c33, transparent 60%),
+      linear-gradient(180deg, #14452f 0%, #0e3324 60%, #0a241b 100%);
+    border: 3px solid var(--gold-dark);
+    box-shadow: 4px 4px 0 #000;
+    padding: 64px 12px 12px;
+    position: relative;
+  }
+  .ribbon {
+    position: absolute; top: 8px; left: 12px; right: 12px; height: 26px;
+    background: #12382b; border: 2px solid var(--gold-dark);
+    display: flex; align-items: center; gap: 10px; padding: 0 10px;
+    font-size: 11px; color: #c9b79a; font-weight: 600;
+  }
+  .ribbon b { color: var(--gold-light); }
+  .ribbon .sep { margin-left: auto; display: flex; gap: 6px; }
+  .ribbon i {
+    display: inline-block; width: 34px; height: 14px;
+    background: #0d2c21; border: 1px solid #2f7a5c;
+  }
+  .toolbar {
+    margin-top: 10px; height: 46px; display: flex; gap: 6px; align-items: stretch;
+  }
+  .toolbar span {
+    flex: 1; background: #1d5440; border: 2px solid #8f5f12;
+    box-shadow: var(--bevel);
+  }
+
+  /* The prompt itself: floats top-center under the ribbon, like the toasts */
+  .prompt {
+    position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px;
+    max-width: calc(100% - 24px);
+    font-size: 12.5px; line-height: 1.35;
+    box-shadow: 5px 5px 0 #000, 0 0 0 1px #000;
+  }
+  .prompt .ic { flex: none; }
+  .prompt b.tit { display: block; font-family: Bungee, sans-serif; font-weight: 400; font-size: 13.5px; letter-spacing: .4px; }
+  .prompt small { display: block; opacity: .85; }
+  .prompt .halo { display: grid; place-items: center; }
+
+  /* ---------- Variant designs ---------- */
+
+  /* G1 Chapa dorada: el lenguaje de chapa del juego, invertido: fondo papel, letras doradas oscuras. */
+  .g1 {
+    background: var(--paper); border: 3px solid var(--gold); box-shadow: var(--bevel), 5px 5px 0 #000;
+    color: var(--gold-ink); padding: 9px 14px;
+  }
+  .g1 .tit { color: var(--gold-dark); }
+  .g1 .ic { color: var(--gold-dark); }
+
+  /* G2 Aurora: doble marco dorado fino, rayos detrás del icono; más ceremonioso, para el milagro grande. */
+  .g2 {
+    background: linear-gradient(180deg, #faf3e2, #f1e6cf);
+    border: 2px solid var(--gold); outline: 2px solid var(--gold-dark); outline-offset: -6px;
+    color: var(--gold-ink); padding: 11px 18px; text-align: center; flex-direction: column; gap: 4px;
+  }
+  .g2 .halo {
+    width: 34px; height: 34px; margin: 0 auto;
+    background:
+      repeating-conic-gradient(from -8deg, #e0a52633 0deg 6deg, transparent 6deg 16deg),
+      radial-gradient(circle, #ffe08a 0 30%, #e0a526 62%, #f1e6cf 63%);
+    border-radius: 50%;
+  }
+  .g2 .tit { color: var(--gold-dark); text-shadow: 0 0 6px #ffe08a88; }
+  .g2 small { color: #7a4f0e; }
+
+  /* G3 Pergamino: papel con filo dorado y medallón; cuerpo en Cutive Mono, como escritura. */
+  .g3 {
+    background: var(--paper);
+    border: 3px double var(--gold-dark);
+    color: var(--gold-ink); padding: 10px 14px;
+  }
+  .g3 .ic {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 2px solid var(--gold); background: #fff8e6;
+    display: grid; place-items: center; color: var(--gold-dark);
+    box-shadow: inset 0 0 0 2px #f1e6cf, var(--bevel);
+  }
+  .g3 .kick { font-family: 'Cutive Mono', monospace; font-size: 10.5px; letter-spacing: 1px; color: var(--gold-dark); display: block; }
+  .g3 .tit { color: var(--gold-dark); font-size: 13px; }
+
+  /* M1 Chapa de ira: la chapa del juego en rojo, marco y letras bordó oscuro para que se lea. */
+  .m1 {
+    background: var(--red); border: 3px solid var(--bordo); box-shadow: var(--bevel), 5px 5px 0 #000;
+    color: #2b0c0f; padding: 9px 14px;
+  }
+  .m1 .tit { color: #4a1418; }
+  .m1 .ic { color: #4a1418; }
+
+  /* M2 Plaga: rojo que se hunde en bordó, marco remachado; la mancha se siente cerrarse encima. */
+  .m2 {
+    background: linear-gradient(180deg, #a8241d, #7a2f3a);
+    border: 3px solid var(--bordo);
+    outline: 2px solid #4a1418; outline-offset: -7px;
+    color: #f6d9d2; padding: 11px 18px; text-align: center; flex-direction: column; gap: 4px;
+  }
+  .m2 .ic {
+    width: 34px; height: 34px; display: grid; place-items: center;
+    color: #f1b0a4;
+    filter: drop-shadow(0 0 5px #4a1418);
+  }
+  .m2 .tit { color: #2b0c0f; }
+
+  /* M3 Sello de castigo: rojo claro con sello circular bordó (el sello del telegrama, ahora de ira). */
+  .m3 {
+    background: #d8564e; border: 3px double var(--bordo);
+    color: #2b0c0f; padding: 10px 14px; position: relative;
+  }
+  .m3 .ic {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 2px dashed var(--bordo); color: #4a1418;
+    display: grid; place-items: center; transform: rotate(-10deg);
+    background: #c9342c55;
+  }
+  .m3 .tit { color: #4a1418; }
+
+  .gallery { margin-top: 22px; }
+  .gal-tit { font-family: Bungee, sans-serif; font-size: 13px; margin: 18px 0 8px; }
+  .gal-tit.good { color: var(--gold-dark); }
+  .gal-tit.bad { color: #e0776f; }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card { background: #0e3324; border: 2px solid #2f7a5c; padding: 12px; }
+  .card .tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; color: #c9b79a; }
+  .stage {
+    position: relative; height: 138px;
+    background: linear-gradient(180deg, #175035, #0e3324);
+    border: 1px solid #12382b; overflow: hidden;
+    display: grid; place-items: center;
+  }
+  .stage .prompt { position: static; transform: none; max-width: 100%; box-shadow: 4px 4px 0 #000; }
+  .why { font-size: 11.5px; color: #c9b79a; margin-top: 8px; line-height: 1.4; }
+  .why b { color: #f6f2e8; }
+
+  svg { display: block; }
+  @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <h1>INTERVENCIÓN DIVINA — 6 BOCETOS</h1>
+  <p class="sub">El mensaje de Dios deja el diario y sube a la pantalla, encima del mapa, donde hoy viven los toasts. Ejemplos: milagro de plata y revuelta de fieles.</p>
+
+  <div class="map">
+    <div class="ribbon"><b>DEMO</b> · 28.175 hab. <div class="sep"><i></i><i></i><i></i></div></div>
+
+    <div class="prompt g1">
+      <span class="ic halo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></span>
+      <span><b class="tit">MILAGRO EN TU CIUDAD</b>La caja se llena sola durante tres meses (ingresos +20 %).</span>
+    </div>
+
+    <div class="toolbar"><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
+
+  <div class="gallery">
+    <div class="gal-tit good">BUENOS — fondo claro, letra dorada, marco dorado</div>
+    <div class="row">
+      <div class="card">
+        <div class="tag">G1 · CHAPA DORADA</div>
+        <div class="stage">
+          <div class="prompt g1">
+            <span class="ic halo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></span>
+            <span><b class="tit">MILAGRO</b>La caja se llena sola durante tres meses (+20 %).</span>
+          </div>
+        </div>
+        <p class="why"><b>Motivo:</b> la chapa clásica del juego invertida: papel con bevel y filo dorado. Es el prompt discreto, hermano de los toasts.</p>
+      </div>
+      <div class="card">
+        <div class="tag">G2 · AURORA</div>
+        <div class="stage">
+          <div class="prompt g2">
+            <span class="halo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7a4f0e" stroke-width="2.2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></span>
+            <span><b class="tit">BENDICIÓN DEL TRABAJO</b><small>Las fábricas piden gente durante tres meses.</small></span>
+          </div>
+        </div>
+        <p class="why"><b>Motivo:</b> centrado y ceremonial: rayos detrás del medallón, doble marco. Reserva para el milagro grande, se siente que el cielo abrió.</p>
+      </div>
+      <div class="card">
+        <div class="tag">G3 · PERGAMINO</div>
+        <div class="stage">
+          <div class="prompt g3">
+            <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 21h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2Z"/><path d="M10 7h4M10 11h4M10 15h2"/></svg></span>
+            <span><span class="kick">ESCRITO EN EL CIELO</span><b class="tit">SANACIÓN</b>Las familias vuelven a los edificios vacíos.</span>
+          </div>
+        </div>
+        <p class="why"><b>Motivo:</b> pergamino con filo dorado y letra de escritura (Cutive Mono). El beneficio queda firmado, como correspondencia divina.</p>
+      </div>
+    </div>
+
+    <div class="gal-tit bad">CASTIGOS — fondo rojo, letra bordó, marco bordó</div>
+    <div class="row">
+      <div class="card">
+        <div class="tag">M1 · CHAPA DE IRA</div>
+        <div class="stage">
+          <div class="prompt m1">
+            <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg></span>
+            <span><b class="tit">CASTIGO DEL CIELO</b>Cayeron rayos sobre tu ciudad: incendios en un barrio.</span>
+          </div>
+        </div>
+        <p class="why"><b>Motivo:</b> la chapa del juego en rojo con bevel bordó. El gemelo oscuro del G1: mismo peso, otro clima.</p>
+      </div>
+      <div class="card">
+        <div class="tag">M2 · PLAGA</div>
+        <div class="stage">
+          <div class="prompt m2">
+            <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 3a5 5 0 0 1-5 5H8a3 3 0 0 0 0 6h1l-3 7"/><circle cx="9" cy="20" r="1"/><circle cx="13" cy="6" r="1"/></svg></span>
+            <span><b class="tit">SEQUÍA</b><small>La plata del mes se seca durante tres meses (ingresos -20 %).</small></span>
+          </div>
+        </div>
+        <p class="why"><b>Motivo:</b> rojo que se hunde en bordó con doble filo remachado, centrado como el G2. El castigo pesado se siente cerrarse encima.</p>
+      </div>
+      <div class="card">
+        <div class="tag">M3 · SELLO DE CASTIGO</div>
+        <div class="stage">
+          <div class="prompt m3">
+            <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/></svg></span>
+            <span><b class="tit">REVUELTA</b>Los fieles le dieron la espalda al Intendente (apoyo -).</span>
+          </div>
+        </div>
+        <p class="why"><b>Motivo:</b> el sello de goma del telegrama, ahora de ira, girado sobre el papel rojo. Mismo motivo de identidad, mensaje contrario.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
