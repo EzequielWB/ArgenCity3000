@@ -1,4 +1,4 @@
-import { FARM_SIZE, HUBS, MARKET_SIZE, PLANT_SIZE, SILO_SIZE, UNIQUES, type CoastKind, type CropKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
+import { FARM_SIZE, HUBS, MARKET_SIZE, SILO_SIZE, UNIQUES, plantSizeOf, type CoastKind, type CropKind, type HubKind, type PlantKind, type ServiceKind, type UniqueKind } from '../config';
 import { isWaterCell, cellMinMax, type Terrain } from './terrain';
 
 /** What occupies a cell. Zones keep their building level in `World.level`. */
@@ -330,7 +330,7 @@ export class World {
   }
 
   plantAt(x: number, y: number): Plant | undefined {
-    return this.plants.find((p) => x >= p.x && x < p.x + PLANT_SIZE && y >= p.y && y < p.y + PLANT_SIZE);
+    return this.plants.find((p) => x >= p.x && x < p.x + plantSizeOf(p.kind) && y >= p.y && y < p.y + plantSizeOf(p.kind));
   }
 
   /** El lote de cultivo que cubre la celda, si hay. */

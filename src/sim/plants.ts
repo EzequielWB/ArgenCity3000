@@ -1,5 +1,5 @@
 /** What each kind of power plant gives and costs. Pure functions of the world. */
-import { PLANTS, PLANT_LIFE, PLANT_SIZE, WIND } from '../config';
+import { PLANTS, PLANT_LIFE, WIND, plantSizeOf } from '../config';
 import type { Plant, World } from '../world/world';
 
 /**
@@ -9,8 +9,8 @@ import type { Plant, World } from '../world/world';
  */
 export function windOutput(w: World, x: number, y: number): number {
   let top = 0;
-  for (let dy = 0; dy < PLANT_SIZE; dy++) {
-    for (let dx = 0; dx < PLANT_SIZE; dx++) {
+  for (let dy = 0; dy < plantSizeOf('wind'); dy++) {
+    for (let dx = 0; dx < plantSizeOf('wind'); dx++) {
       if (w.inBounds(x + dx, y + dy)) top = Math.max(top, w.minMax(x + dx, y + dy)[1]);
     }
   }
@@ -18,8 +18,8 @@ export function windOutput(w: World, x: number, y: number): number {
   let land = 0;
   let water = false;
   const r = WIND.radius;
-  for (let cy = y - r; cy < y + PLANT_SIZE + r; cy++) {
-    for (let cx = x - r; cx < x + PLANT_SIZE + r; cx++) {
+  for (let cy = y - r; cy < y + plantSizeOf('wind') + r; cy++) {
+    for (let cx = x - r; cx < x + plantSizeOf('wind') + r; cx++) {
       if (!w.inBounds(cx, cy)) continue;
       if (w.isWater(cx, cy)) water = true;
       else {

@@ -1,4 +1,4 @@
-import { BUS, FARM_SIZE, MARKET_SIZE, PARK, PLANT_SIZE, SERVICE_SIZE, SILO_SIZE, UNIQUES } from '../config';
+import { BUS, FARM_SIZE, MARKET_SIZE, PARK, PLANT_SIZES, SERVICE_SIZE, SILO_SIZE, UNIQUES, plantSizeOf } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
@@ -157,7 +157,7 @@ export class MapRenderer {
       originY: this.originY,
       halfW: (n * TILE_W) / 2,
       halfH: (n * TILE_H) / 2,
-      wide: TILE_W * (PLANT_SIZE + 0.2) + TILE_W / 2,
+      wide: TILE_W * (Math.max(...Object.values(PLANT_SIZES)) + 0.2) + TILE_W / 2,
       up: MAX_HEIGHT * HEIGHT_STEP + SPRITE_REACH + 16,
       down: 16,
     };
@@ -425,7 +425,7 @@ export class MapRenderer {
     const [tx] = this.toCache(vx, vy, 0);
     const [, topY] = this.toCache(vx, vy, MAX_HEIGHT);
     const [, botY] = this.toCache(vx + 1, vy + 1, BASE_HEIGHT);
-    const wide = TILE_W * (PLANT_SIZE + 0.2);
+    const wide = TILE_W * (Math.max(...Object.values(PLANT_SIZES)) + 0.2);
     return { x0: tx - wide, x1: tx + wide, y0: topY - SPRITE_REACH, y1: botY + 10 };
   }
 
@@ -567,20 +567,18 @@ export class MapRenderer {
     if (tile === TILE.PLANT) {
       const p = w.plantAt(x, y);
       if (!p) return null;
+      const size = plantSizeOf(p.kind);
       let fx = -1;
       let fy = -1;
-      for (const [dx, dy] of [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-        [1, 1],
-      ]) {
-        const [cx, cy] = toView(p.x + dx, p.y + dy, rot, n);
-        fx = Math.max(fx, cx);
-        fy = Math.max(fy, cy);
+      for (let dy = 0; dy < size; dy++) {
+        for (let dx = 0; dx < size; dx++) {
+          const [cx, cy] = toView(p.x + dx, p.y + dy, rot, n);
+          fx = Math.max(fx, cx);
+          fy = Math.max(fy, cy);
+        }
       }
       if (vx !== fx || vy !== fy) return null;
-      const [ax, ay] = this.toCache(fx - (PLANT_SIZE - 1), fy - (PLANT_SIZE - 1), plantHeight(w, p.x, p.y));
+      const [ax, ay] = this.toCache(fx - (size - 1), fy - (size - 1), plantHeight(w, p.x, p.y, size));
       return { sprite: plantPixelSprite(p.kind), ax, ay };
     }
     if (hubOf(tile)) {

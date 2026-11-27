@@ -16,7 +16,7 @@ import {
   MAX_TAX,
   MIN_TAX,
   PLANT_KINDS,
-  PLANT_SIZE,
+  plantSizeOf,
   SILO_CAPACITY,
   SILO_SIZE,
   SERVICE_KINDS,
@@ -268,9 +268,11 @@ export function deserialize(text: string): SaveData {
   for (const p of data.plants as unknown[]) {
     const { x, y, kind, age, warned } = (p ?? {}) as { x?: unknown; y?: unknown; kind?: unknown; age?: unknown; warned?: unknown };
     need(kind === undefined || PLANT_KINDS.includes(kind as PlantKind), 'Hay una usina de un tipo desconocido');
-    need(isInt(x) && isInt(y) && x >= 0 && y >= 0 && x <= (n as number) - PLANT_SIZE && y <= (n as number) - PLANT_SIZE, 'Hay una usina fuera del mapa');
-    for (let dy = 0; dy < PLANT_SIZE; dy++) {
-      for (let dx = 0; dx < PLANT_SIZE; dx++) need(world.tileAt((x as number) + dx, (y as number) + dy) === TILE.PLANT, 'Hay una usina sin terreno');
+    // Cada tipo tiene su huella: la nuclear es 3×3 y el resto 2×2 (PLANT_SIZES).
+    const size = plantSizeOf(((kind as PlantKind | undefined) ?? 'coal'));
+    need(isInt(x) && isInt(y) && x >= 0 && y >= 0 && x <= (n as number) - size && y <= (n as number) - size, 'Hay una usina fuera del mapa');
+    for (let dy = 0; dy < size; dy++) {
+      for (let dx = 0; dx < size; dx++) need(world.tileAt((x as number) + dx, (y as number) + dy) === TILE.PLANT, 'Hay una usina sin terreno');
     }
     // La edad de la usina existe desde la versión 22, y el archivo no subió de versión por ella: una usina
     // que no la trae es una usina nueva, y las viejas partidas se leen igual.
@@ -281,7 +283,7 @@ export function deserialize(text: string): SaveData {
     if (age !== undefined && (age as number) > 0) plant.age = age as number;
     if (warned === true) plant.warned = true;
     world.plants.push(plant);
-    plantCells += PLANT_SIZE * PLANT_SIZE;
+    plantCells += size * size;
   }
   let tilePlants = 0;
   for (let i = 0; i < size; i++) if (tiles[i] === TILE.PLANT) tilePlants++;

@@ -275,8 +275,12 @@ export const UPKEEP = {
   servicesScale: 14000,
 } as const;
 
-/** Power plant footprint, and the output of the coal plant. */
-export const PLANT_SIZE = 2;
+/** Power plant footprints, in lots, and the output of the coal plant. The nuclear sits on 3×3. */
+export const PLANT_SIZES: Record<PlantKind, number> = { coal: 2, gas: 2, wind: 2, nuclear: 3 };
+/** The footprint, in lots, of a plant of the given kind. */
+export function plantSizeOf(kind: PlantKind): number {
+  return PLANT_SIZES[kind];
+}
 
 /**
  * Los tamaños del campo, en lotes.
@@ -340,7 +344,7 @@ export const PLANTS: Record<PlantKind, { label: string; cost: number; upkeep: nu
   wind: { label: 'Parque eólico', cost: 4500, upkeep: 110, capacity: 400, smoke: 0, smokeRadius: 0 },
   // La nuclear es la usina de nivel mayor: cuesta una fortuna y no contamina, pero rinde cuatro
   // térmicas en el mismo terreno de 2×2. Para la metrópoli que ya no sabe dónde poner usinas.
-  nuclear: { label: 'Usina nuclear', cost: 24000, upkeep: 1600, capacity: PLANT_CAPACITY * 4, smoke: 0, smokeRadius: 0 },
+  nuclear: { label: 'Usina nuclear', cost: 48000, upkeep: 3800, capacity: PLANT_CAPACITY * 10, smoke: 0, smokeRadius: 0 },
 };
 /**
  * Wind farm output in MW: `base` on open flat land, plus `perLevel` for each level its site stands

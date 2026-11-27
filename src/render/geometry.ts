@@ -1,4 +1,4 @@
-import { PLANT_SIZE } from '../config';
+import { plantSizeOf } from '../config';
 import { fromView, project, unproject, type Rotation } from '../core/iso';
 import { MAX_HEIGHT, SEA_LEVEL, cornerAt } from '../world/terrain';
 import { TILE, World, hubOf, serviceOf } from '../world/world';
@@ -116,7 +116,7 @@ export function surfaceHeights(w: World, vx: number, vy: number, rot: Rotation):
   if (w.tiles[i] === TILE.PLANT) {
     const p = w.plantAt(x, y);
     if (p) {
-      const m = plantHeight(w, p.x, p.y);
+      const m = plantHeight(w, p.x, p.y, plantSizeOf(p.kind));
       return [m, m, m, m];
     }
   }
@@ -128,9 +128,9 @@ export function surfaceHeights(w: World, vx: number, vy: number, rot: Rotation):
 }
 
 /** A power plant sits on one platform levelled at the highest corner of its whole footprint. */
-export function plantHeight(w: World, px: number, py: number): number {
+export function plantHeight(w: World, px: number, py: number, size: number): number {
   let m = 0;
-  for (let y = py; y <= py + PLANT_SIZE; y++) for (let x = px; x <= px + PLANT_SIZE; x++) m = Math.max(m, cornerAt(w.terrain, x, y));
+  for (let y = py; y <= py + size; y++) for (let x = px; x <= px + size; x++) m = Math.max(m, cornerAt(w.terrain, x, y));
   return m;
 }
 
