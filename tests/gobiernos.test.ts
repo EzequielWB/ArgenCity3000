@@ -143,14 +143,19 @@ describe('the favor of God', () => {
     const { sim } = town('teocracia');
     sim.state.favor = 5;
     months(sim, 6);
-    expect(sim.state.news.some((n) => CATASTROPHE.test(n.text))).toBe(true);
+    const hits = sim.state.news.filter((n) => CATASTROPHE.test(n.text));
+    expect(hits.length).toBeGreaterThan(0);
+    // Cada castigo llega marcado como aviso divino, para que la pantalla lo muestre encima del mapa.
+    expect(hits.every((n) => n.divine === 'bad')).toBe(true);
   });
 
   it('sends miracles when He is pleased', () => {
     const { sim } = town('teocracia');
     sim.state.favor = 98;
     months(sim, 6);
-    expect(sim.state.news.some((n) => MIRACLES.test(n.text))).toBe(true);
+    const hits = sim.state.news.filter((n) => MIRACLES.test(n.text));
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((n) => n.divine === 'good')).toBe(true);
   });
 
   it('is of no concern to any other form of government', () => {
@@ -159,6 +164,8 @@ describe('the favor of God', () => {
     months(sim, 6);
     expect(sim.state.news.some((n) => CATASTROPHE.test(n.text) || MIRACLES.test(n.text))).toBe(false);
     expect(sim.state.favor).toBe(5);
+    // Ninguna otra noticia del diario lleva marca divina.
+    expect(sim.state.news.every((n) => n.divine === undefined)).toBe(true);
   });
 
   it('makes the drought a fifth poorer and the miracle a fifth richer', () => {

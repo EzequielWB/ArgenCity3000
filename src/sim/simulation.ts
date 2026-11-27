@@ -679,18 +679,18 @@ export class Simulation {
     if (kind === 'rayos') {
       const hit = this.builtAround(centre, 5).slice(0, wrathFires(severity));
       for (const i of hit) this.ignite(i);
-      this.publish(`Cayeron rayos sobre ${city}: hay incendios en un barrio y dicen que es el castigo del cielo`, true);
+      this.publish(`Cayeron rayos sobre ${city}: hay incendios en un barrio y dicen que es el castigo del cielo`, true, 'bad');
     } else if (kind === 'plaga') {
       const sick = this.builtAround(centre, 7).filter((i) => zoneOf(this.world.tiles[i]) !== 'I' && !this.world.abandoned[i]).slice(0, wrathSick(severity));
       for (const i of sick) this.setAbandoned(i, true);
       this.recomputeDemand();
-      this.publish(`Plaga de langostas: ${sick.length} edificios de ${city} quedaron vacíos y la gente reza en la calle`, true);
+      this.publish(`Plaga de langostas: ${sick.length} edificios de ${city} quedaron vacíos y la gente reza en la calle`, true, 'bad');
     } else if (kind === 'sequia') {
       this.effect(DROUGHT, 3);
-      this.publish(`Sequía en ${city}: la plata del mes se seca durante tres meses (los ingresos caen un 20 %)`, true);
+      this.publish(`Sequía en ${city}: la plata del mes se seca durante tres meses (los ingresos caen un 20 %)`, true, 'bad');
     } else {
       this.nudgeApproval(-wrathApproval(severity));
-      this.publish(`Revuelta de los fieles en ${city}: dicen que el Intendente le dio la espalda a Dios`, true);
+      this.publish(`Revuelta de los fieles en ${city}: dicen que el Intendente le dio la espalda a Dios`, true, 'bad');
     }
     s.favor = Math.min(100, s.favor + 3); // the wrath is spent: it does not fall without end
   }
@@ -702,7 +702,7 @@ export class Simulation {
     const kind = this.rng.pick(abandoned > 0 ? (['plata', 'sanacion', 'trabajo', 'fe'] as const) : (['plata', 'trabajo', 'fe'] as const));
     if (kind === 'plata') {
       this.effect(MIRACLE, 3);
-      this.publish(`Milagro en ${city}: la caja se llena sola durante tres meses (los ingresos suben un 20 %)`, true);
+      this.publish(`Milagro en ${city}: la caja se llena sola durante tres meses (los ingresos suben un 20 %)`, true, 'good');
     } else if (kind === 'sanacion') {
       const w = this.world;
       let back = 0;
@@ -713,13 +713,13 @@ export class Simulation {
         }
       }
       this.recomputeDemand();
-      this.publish(`Milagro en ${city}: ${back} familias vuelven a los edificios vacíos y lo atribuyen a la fe`, true);
+      this.publish(`Milagro en ${city}: ${back} familias vuelven a los edificios vacíos y lo atribuyen a la fe`, true, 'good');
     } else if (kind === 'trabajo') {
       this.effect(INDUSTRY_BOOM, 3);
-      this.publish(`Bendición del trabajo en ${city}: las fábricas piden gente durante tres meses`, true);
+      this.publish(`Bendición del trabajo en ${city}: las fábricas piden gente durante tres meses`, true, 'good');
     } else {
       this.nudgeApproval(8);
-      this.publish(`Procesión multitudinaria en ${city}: los vecinos le agradecen al Intendente`, true);
+      this.publish(`Procesión multitudinaria en ${city}: los vecinos le agradecen al Intendente`, true, 'good');
     }
   }
 
@@ -1488,9 +1488,9 @@ export class Simulation {
   }
 
   /** Adds a headline. Only the founding and opening ones (`force`) may be written while the paper is closed. */
-  private publish(text: string, force = false): void {
+  private publish(text: string, force = false, divine?: NewsItem['divine']): void {
     if (!force && !this.paperOpen()) return;
-    this.state.news.unshift({ date: dateLabel(this.state.tick), text });
+    this.state.news.unshift({ date: dateLabel(this.state.tick), text, divine });
     if (this.state.news.length > MAX_NEWS) this.state.news.length = MAX_NEWS;
   }
 }

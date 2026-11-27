@@ -53,6 +53,10 @@ export function paperCanOpen(w: World): boolean {
 export interface NewsItem {
   date: string;
   text: string;
+  /** `good` when the news is a miracle and `bad` when it is a catastrophe (see `Simulation.judgement`):
+   *  the screen shows a divine prompt for it, on top of the map. It is not saved: it only matters while
+   *  the news is fresh. */
+  divine?: 'good' | 'bad';
 }
 
 const MILESTONES = [100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 200000];

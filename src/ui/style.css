@@ -1090,6 +1090,90 @@ button.chapa:focus-visible {
   border-color: var(--red);
 }
 
+/* El aviso de Dios: el milagro en papel claro con oro (la aurora) y el castigo en rojo hundido en
+   bordó (la plaga). Vive en la columna de los avisos, encima del mapa; entra cayendo y se va solo. */
+.divine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  max-width: min(340px, calc(100% - 24px));
+  padding: 12px 16px 11px;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.35;
+  box-shadow: 5px 5px 0 #000, 0 0 0 1px #000;
+  animation: divine-drop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes divine-drop {
+  from {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .divine {
+    animation: none;
+  }
+}
+
+.divine .halo {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+}
+
+.divine .tit {
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: 12.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Bueno: la aurora. Papel crema con rayos detrás del medallón y doble filo dorado. */
+.divine.g2 {
+  background: linear-gradient(180deg, #faf3e2, var(--paper));
+  border: 2px solid var(--gold);
+  outline: 2px solid var(--gold-dark);
+  outline-offset: -6px;
+  color: var(--gold-dark);
+}
+
+.divine.g2 .halo {
+  color: var(--gold-dark);
+  background:
+    repeating-conic-gradient(from -8deg, #e0a52644 0deg 7deg, transparent 7deg 17deg),
+    radial-gradient(circle, var(--gold-light) 0 30%, var(--gold) 62%, var(--paper) 63%);
+  border-radius: 50%;
+}
+
+.divine.g2 .tit {
+  color: var(--gold-dark);
+  text-shadow: 0 0 6px #ffe08a88;
+}
+
+/* Castigo: la plaga. Rojo que se hunde en bordó, con el filo remachado. */
+.divine.m2 {
+  background: linear-gradient(180deg, #a8241d, var(--bordo));
+  border: 3px solid var(--bordo);
+  outline: 2px solid #4a1418;
+  outline-offset: -7px;
+  color: #f6d9d2;
+}
+
+.divine.m2 .halo {
+  color: #f1b0a4;
+  filter: drop-shadow(0 0 5px #4a1418);
+}
+
+.divine.m2 .tit {
+  color: #2b0c0f;
+}
+
 /* ---------- Newspaper ---------- */
 
 #diario {

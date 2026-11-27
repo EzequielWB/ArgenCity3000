@@ -32,6 +32,7 @@ import { openSubsidy } from './ui/subsidy';
 import { subsidyDue } from './sim/subsidy';
 import { openEndScreen, openUpgrades } from './ui/upgrades';
 import { $, escapeHtml, toast } from './ui/dom';
+import { showDivine } from './ui/divine';
 import { Toolbar, lockNotice } from './ui/toolbar';
 import { applyPlan, dragCells, footprintOfTool, isCoastTool, planTool, plantKindOfTool, routeRefusal, toolInfo, uniqueKindOfTool, type Plan, type ToolId } from './world/tools';
 import { uniqueFootprint, uniqueOfGovernment, uniqueRefusal } from './world/uniques';
@@ -736,6 +737,9 @@ ${stalled}` : ''}`;
       if (fresh) {
         this.hooks.sound.play('news');
         this.flagNews();
+        // El mensaje de Dios sale de la página del diario y flota sobre el mapa, con su propio vestido.
+        const head = s.news[0];
+        if (head?.divine) showDivine(head.text, head.divine);
       }
       $('#news').innerHTML = s.news
         .map((n, k) => `<li class="${k === 0 && fresh ? 'fresh' : ''}"><time>${escapeHtml(n.date)}</time>${escapeHtml(n.text)}</li>`)
