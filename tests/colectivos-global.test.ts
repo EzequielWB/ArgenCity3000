@@ -44,9 +44,10 @@ describe('el alivio de los colectivos es global', () => {
     w.setTile(5, 9, TILE.R, 5); // la calle de la cochera llega a gente: la red está viva
     depot(w, 2, 8); // cochera al oeste
     const load = new Float32Array(w.n * w.n);
-    load[w.idx(40, 10)] = 1000; // la única calle cargada está a 38 lotes, afuera de cualquier rombo viejo
+    // Tres veces lo que una línea lleva: la línea alivia lo suyo y la calle queda a medio cargar.
+    load[w.idx(40, 10)] = BUS.trips * 2; // la única calle cargada está a 38 lotes, afuera de cualquier rombo viejo
     applyTransit(w, load, 100);
-    expect(load[w.idx(40, 10)]).toBeCloseTo(500, 5);
+    expect(load[w.idx(40, 10)]).toBeCloseTo(BUS.trips, 5);
   });
 
   it('la población pone el techo: mil vecinos y diez líneas alivian menos de una línea entera', () => {

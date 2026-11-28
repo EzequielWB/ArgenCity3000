@@ -67,6 +67,13 @@ function thanksHtml(t: VecinosReport['thanks'][number]): string {
  * El cuerpo del desplegable. El orden es el que trae el informe —el más enojado primero—, así que la primera
  * fila es la que el jugador tiene que atender si quiere que el barrio no se vacíe.
  */
+/**
+ * La nota al pie que sugiere sin ordenar: cuando el barrio no puede salir, la radio repite lo que
+ * el intendente puede hacer (mejor calle, otro transporte) con la voz de consejo, no de reclamo.
+ * Es sutil a propósito: el reclamo ya lo hace el vecino.
+ */
+const JAM_HINT = 'Quizá mejores calles u otros medios de transporte mejoren la situación.';
+
 export function vecinosHtml(report: VecinosReport): string {
   const thanks = report.thanks.map(thanksHtml).join('');
   if (report.calls.length === 0) {
@@ -83,6 +90,8 @@ export function vecinosHtml(report: VecinosReport): string {
   const rest = report.groups > report.calls.length
     ? `<p class="drop-rest">Y ${report.groups - report.calls.length} barrios más, menos enojados.</p>`
     : '';
+  // La nota va al pie, una sola vez, si alguien llama por el tránsito.
+  const jamHint = report.calls.some((c) => c.grip === 'jam') ? `<p class="drop-rest drop-hint">${JAM_HINT}</p>` : '';
   return `
     <div class="drop-head">
       <h2>Los vecinos</h2>
@@ -90,5 +99,6 @@ export function vecinosHtml(report: VecinosReport): string {
     </div>
     <ul class="drop-list">${report.calls.map(callHtml).join('')}</ul>
     ${rest}
+    ${jamHint}
     ${thanks}`;
 }

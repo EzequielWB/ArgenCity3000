@@ -597,7 +597,7 @@ export const PLANT_LIFE = { full: 600, decay: 120, floor: 0.5 } as const;
  * `valueFrom` percent loses `valuePerPoint` of land value per point, and above `slowFrom` it
  * grows more slowly, down to `slowest` of its usual pace.
  */
-export const TRAFFIC = { laneCapacity: 1200, valueFrom: 60, valuePerPoint: 0.3, slowFrom: 90, slowest: 0.25, split: 3 } as const;
+export const TRAFFIC = { laneCapacity: 1350, valueFrom: 60, valuePerPoint: 0.3, slowFrom: 90, slowest: 0.25, split: 3 } as const;
 
 /** A street is "saturada" from this much load on: slow traffic and, with time, an empty building. */
 export const JAM_CROWDED = TRAFFIC.slowFrom + 30;
@@ -664,7 +664,7 @@ export const BUS_SIZE = 2;
  * viajeros que esa parte de la gente que viaja por la ciudad. `radius` queda solo para el
  * dibujo: por ahí vagan los colectivos que salen de la cochera.
  */
-export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 14, trips: 500, buses: 3, share: 0.35 } as const;
+export const BUS = { label: 'Línea de colectivos', size: BUS_SIZE, cost: 900, upkeep: 90, radius: 14, trips: 1500, buses: 3, share: 0.35 } as const;
 /**
  * El subsidio provincial: cuando la caja municipal baja de `trigger`, la Provincia ofrece
  * `amount` una sola vez por partida (see `sim/subsidy.ts`), para que un intendente nuevo

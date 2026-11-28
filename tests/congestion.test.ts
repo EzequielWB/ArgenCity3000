@@ -14,16 +14,16 @@ function road(w: World, x0: number, y0: number, x1: number, y1: number): void {
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) w.setTile(x, y, TILE.ROAD);
 }
 
-/** Eight towers (1.280 residents) at the west end of a street along y = 10 and one factory at its east end. */
+/** Nine towers (1.440 residents: they must overfill one lane at 1.350) at the west end of a street along y = 10 and one factory at its east end. */
 function commuterTown(lanes = 1): World {
   const w = new World(flat());
   road(w, 0, 10, 30, 10 + lanes - 1);
-  for (let x = 0; x < 8; x++) w.setTile(x, 9, TILE.R, 5);
+  for (let x = 0; x < 9; x++) w.setTile(x, 9, TILE.R, 5);
   w.setTile(30, 9, TILE.I, 2);
   return w;
 }
 
-const residents = 8 * CAPACITY.R[5];
+const residents = 9 * CAPACITY.R[5];
 
 describe('estimated congestion', () => {
   it('loads every street cell between the homes and the jobs with the residents that pass', () => {
@@ -38,7 +38,8 @@ describe('estimated congestion', () => {
     expect(report.trips).toBe(residents);
     expect(report.jammedShare).toBeGreaterThan(0.5);
     // Lots feel the traffic of the street they open onto; land far from any street feels none.
-    expect(w.jam[w.idx(7, 9)]).toBe(expected);
+    // (A lot at x=15 opens onto a cell that already carries every tower; at x=7 it carries eight.)
+    expect(w.jam[w.idx(15, 9)]).toBe(expected);
     expect(w.jam[w.idx(20, 30)]).toBe(0);
   });
 
@@ -98,12 +99,12 @@ describe('estimated congestion', () => {
     expect(jobless.traffic[jobless.idx(15, 10)]).toBe(0);
 
     const empty = commuterTown();
-    for (let x = 0; x < 8; x++) empty.abandoned[empty.idx(x, 9)] = 1;
+    for (let x = 0; x < 9; x++) empty.abandoned[empty.idx(x, 9)] = 1;
     computeCongestion(empty);
     expect(empty.traffic[empty.idx(15, 10)]).toBe(0);
 
     const mixed = commuterTown();
-    for (let x = 0; x < 8; x++) mixed.setTile(x, 11, TILE.I, 2); // a workshop across the street from every tower
+    for (let x = 0; x < 9; x++) mixed.setTile(x, 11, TILE.I, 2); // a workshop across the street from every tower
     mixed.setTile(30, 9, TILE.EMPTY);
     computeCongestion(mixed);
     expect(mixed.traffic[mixed.idx(15, 10)]).toBe(0);

@@ -237,12 +237,15 @@ function loaded(w: World, perCell: number): Float32Array {
   return load;
 }
 
-/** Eight towers at the west end of a street along y = 10 and a factory at its east end: a saturated street. */
+/** Twenty-one towers of level 5 (3.360 residents) at the west end of a street along y = 10 and a factory
+ *  at its east end. Suficientes para que el peor tramo sature de verdad y el techo del 35 % no iguale
+ *  los presupuestos (50 % se ve igual a 100 % con menos gente), y no tantas como para que el peor
+ *  tramo se pase del techo del Uint8 (255) y el alivio deje de verse. */
 function commuterTown(): World {
   const w = new World(flat(48));
   road(w, 0, 10, 30, 10);
-  for (let x = 0; x < 8; x++) w.setTile(x, 9, TILE.R, 5);
-  w.setTile(30, 9, TILE.I, 2);
+  for (let x = 0; x < 21; x++) w.setTile(x, 9, TILE.R, 5);
+  w.setTile(28, 9, TILE.I, 2);
   return w;
 }
 
@@ -319,8 +322,10 @@ describe('what the bus lines do for the traffic', () => {
   it('cost their upkeep each month, in a line of the budget of their own', () => {
     const w = commuterTown();
     const none = monthlyBudget(w, 7);
-    depot(w, 15, 8, 0, 60);
-    depot(w, 14, 8, 1, 61);
+    // Cocheras en y=7: al alcance de la calle (ROAD_REACH 3) pero sin comerse lotes de torre,
+    // porque dos torres menos cruzan un milestone de servicios y el delta de gastos deja de ser el transporte.
+    depot(w, 15, 7, 0, 60);
+    depot(w, 14, 7, 1, 61);
     const two = monthlyBudget(w, 7);
     expect(none.transport).toBe(0);
     expect(two.transport).toBe(2 * BUS.upkeep);
@@ -518,10 +523,10 @@ describe('the frequency on the street and on the card', () => {
     const sim = new Simulation(w, newSimState(1), 'X');
     sim.refresh();
     // La ficha dice viajeros y techo, no rangos, porque es lo que la línea hace.
-    expect(describeCell(w, sim, 4, 7).lines.join(' ')).toMatch(/hasta 500 viajeros por línea.*el 35 % de los viajeros.*Presupuesto de transporte: 100 %.*\$90 por mes/s);
+    expect(describeCell(w, sim, 4, 7).lines.join(' ')).toMatch(/hasta 1.500 viajeros por línea.*el 35 % de los viajeros.*Presupuesto de transporte: 100 %.*\$90 por mes/s);
     sim.setTransport(50);
     const half = describeCell(w, sim, 4, 7).lines.join(' ');
-    expect(half).toMatch(/hasta 250 viajeros por línea/);
+    expect(half).toMatch(/hasta 750 viajeros por línea/);
     expect(half).toMatch(/50 % \(pasan menos colectivos\)/);
     expect(half).toMatch(/\$45 por mes/);
   });
