@@ -1,4 +1,4 @@
-import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES, GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, HUBS, LINE_TIERS, PLANTS, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, lineRank, plantSizeOf, roadRank, type CoastKind, type GovernmentKind, type HubKind, type LineTier, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
+import { ALL_UNIQUE_KINDS, ASPHALT, BUS, COAST, COSTS, DIRT, GOVERNMENT_UNIQUES, GOVERNMENT_UNIQUE_KINDS, GOVERNMENTS, HUBS, LINE_TIERS, PLANTS, ROAD_TIERS, SERVICES, UNIQUES, UNIQUE_RULES, lineRank, plantShapeOf, roadRank, type CoastKind, type GovernmentKind, type HubKind, type LineTier, type PlantKind, type RoadTier, type ServiceKind, type UniqueKind } from '../config';
 import { coastFits } from '../sim/coast';
 import { crossSection } from './roads';
 import { levelBlocks } from './leveling';
@@ -256,7 +256,10 @@ export function dragCells(tool: ToolId, ax: number, ay: number, bx: number, by: 
 
 /** The lots a one-piece tool (a power plant, an airport, a harbour or a unique) placed at (x, y) would cover, or null for any other tool. */
 export function footprintOfTool(tool: ToolId, n: number, x: number, y: number): Cell[] | null {
-  if (plantKindOfTool(tool)) return plantFootprint(n, x, y, plantSizeOf(plantKindOfTool(tool)!));
+  if (plantKindOfTool(tool)) {
+    const shape = plantShapeOf(plantKindOfTool(tool)!);
+    return plantFootprint(n, x, y, shape.w, shape.h);
+  }
   const hub = hubKindOfTool(tool);
   if (hub) return hubFootprint(hub, n, x, y);
   if (CAMPO_TOOLS[tool]) return CAMPO_TOOLS[tool]!.foot(n, x, y);
@@ -276,11 +279,11 @@ export function busFootprint(n: number, x: number, y: number): Cell[] {
 }
 
 /** The cells a power plant placed at (x, y) would cover, kept inside the map. */
-export function plantFootprint(n: number, x: number, y: number, size: number): Cell[] {
-  const fx = clamp(x, 0, n - size);
-  const fy = clamp(y, 0, n - size);
+export function plantFootprint(n: number, x: number, y: number, fw: number, fh: number): Cell[] {
+  const fx = clamp(x, 0, n - fw);
+  const fy = clamp(y, 0, n - fh);
   const foot: Cell[] = [];
-  for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) foot.push([fx + dx, fy + dy]);
+  for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) foot.push([fx + dx, fy + dy]);
   return foot;
 }
 
@@ -379,7 +382,7 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
 
   if (plantKind) {
     const [ax, ay] = cells[0] ?? [-1, -1];
-    const foot = plantFootprint(w.n, ax, ay, plantSizeOf(plantKind));
+    const foot = plantFootprint(w.n, ax, ay, plantShapeOf(plantKind).w, plantShapeOf(plantKind).h);
     const ok = foot.every(([x, y]) => w.inBounds(x, y) && !w.isWater(x, y) && !w.route[w.idx(x, y)] && isFreeLot(w, x, y));
     return ok ? { tool, cells: foot, cost: PLANTS[plantKind].cost } : { tool, cells: [], cost: 0 };
   }
@@ -500,8 +503,8 @@ export function planTool(w: World, tool: ToolId, cells: Cell[]): Plan {
           const p = w.plantAt(x, y);
           if (!p || plantsSeen.has(p)) break;
           plantsSeen.add(p);
-          for (let dy = 0; dy < plantSizeOf(p.kind); dy++) {
-            for (let dx = 0; dx < plantSizeOf(p.kind); dx++) {
+          for (let dy = 0; dy < plantShapeOf(p.kind).h; dy++) {
+            for (let dx = 0; dx < plantShapeOf(p.kind).w; dx++) {
               seen.add(w.idx(p.x + dx, p.y + dy));
               out.push([p.x + dx, p.y + dy]);
             }

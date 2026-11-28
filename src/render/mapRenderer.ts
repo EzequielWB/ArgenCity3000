@@ -1,4 +1,4 @@
-import { BUS, FARM_SIZE, MARKET_SIZE, PARK, PLANT_SIZES, SERVICE_SIZE, SILO_SIZE, UNIQUES, plantSizeOf } from '../config';
+import { BUS, FARM_SIZE, MARKET_SIZE, PARK, PLANT_SHAPES, SERVICE_SIZE, SILO_SIZE, UNIQUES } from '../config';
 import { HEIGHT_STEP, TILE_H, TILE_W, fromView, project, toView, unproject, type Rotation } from '../core/iso';
 import { hash2 } from '../core/rng';
 import { GROUND_TOP, MAX_HEIGHT, SEA_LEVEL, rockLine } from '../world/terrain';
@@ -157,7 +157,7 @@ export class MapRenderer {
       originY: this.originY,
       halfW: (n * TILE_W) / 2,
       halfH: (n * TILE_H) / 2,
-      wide: TILE_W * (Math.max(...Object.values(PLANT_SIZES)) + 0.2) + TILE_W / 2,
+      wide: TILE_W * (Math.max(...Object.values(PLANT_SHAPES).map((s) => s.w), ...Object.values(PLANT_SHAPES).map((s) => s.h)) + 0.2) + TILE_W / 2,
       up: MAX_HEIGHT * HEIGHT_STEP + SPRITE_REACH + 16,
       down: 16,
     };
@@ -425,7 +425,7 @@ export class MapRenderer {
     const [tx] = this.toCache(vx, vy, 0);
     const [, topY] = this.toCache(vx, vy, MAX_HEIGHT);
     const [, botY] = this.toCache(vx + 1, vy + 1, BASE_HEIGHT);
-    const wide = TILE_W * (Math.max(...Object.values(PLANT_SIZES)) + 0.2);
+    const wide = TILE_W * (Math.max(...Object.values(PLANT_SHAPES).map((s) => s.w), ...Object.values(PLANT_SHAPES).map((s) => s.h)) + 0.2);
     return { x0: tx - wide, x1: tx + wide, y0: topY - SPRITE_REACH, y1: botY + 10 };
   }
 
@@ -567,19 +567,16 @@ export class MapRenderer {
     if (tile === TILE.PLANT) {
       const p = w.plantAt(x, y);
       if (!p) return null;
-      const size = plantSizeOf(p.kind);
-      let fx = -1;
-      let fy = -1;
-      for (let dy = 0; dy < size; dy++) {
-        for (let dx = 0; dx < size; dx++) {
-          const [cx, cy] = toView(p.x + dx, p.y + dy, rot, n);
-          fx = Math.max(fx, cx);
-          fy = Math.max(fy, cy);
-        }
-      }
-      if (vx !== fx || vy !== fy) return null;
-      const [ax, ay] = this.toCache(fx - (size - 1), fy - (size - 1), plantHeight(w, p.x, p.y, size));
-      return { sprite: plantPixelSprite(p.kind), ax, ay };
+      // Como los únicos: se dibuja una vez, en la celda de adelante de la huella vista por la cámara,
+      // y el sprite es el del predio en esa orientación (4×6 o 6×4 para la nuclear).
+      const shape = PLANT_SHAPES[p.kind];
+      const foot: [number, number][] = [];
+      for (let dy = 0; dy < shape.h; dy++) for (let dx = 0; dx < shape.w; dx++) foot.push(toView(p.x + dx, p.y + dy, rot, n));
+      const [minVx, minVy] = [Math.min(...foot.map((c) => c[0])), Math.min(...foot.map((c) => c[1]))];
+      const [maxVx, maxVy] = [Math.max(...foot.map((c) => c[0])), Math.max(...foot.map((c) => c[1]))];
+      if (vx !== maxVx || vy !== maxVy) return null;
+      const [ax, ay] = this.toCache(minVx, minVy, plantHeight(w, p.x, p.y, shape.w, shape.h));
+      return { sprite: plantPixelSprite(p.kind, maxVx - minVx + 1, maxVy - minVy + 1), ax, ay };
     }
     if (hubOf(tile)) {
       // A piece of an airport or a harbour is drawn once, at the cell in front of its footprint (as seen from the camera).

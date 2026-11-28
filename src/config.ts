@@ -275,11 +275,16 @@ export const UPKEEP = {
   servicesScale: 14000,
 } as const;
 
-/** Power plant footprints, in lots, and the output of the coal plant. The nuclear sits on 3×3. */
-export const PLANT_SIZES: Record<PlantKind, number> = { coal: 2, gas: 2, wind: 2, nuclear: 3 };
+/** Power plant footprints, in lots, and the output of the coal plant. La nuclear es un predio de 4×6. */
+export const PLANT_SHAPES: Record<PlantKind, { w: number; h: number }> = {
+  coal: { w: 2, h: 2 },
+  gas: { w: 2, h: 2 },
+  wind: { w: 2, h: 2 },
+  nuclear: { w: 4, h: 6 },
+};
 /** The footprint, in lots, of a plant of the given kind. */
-export function plantSizeOf(kind: PlantKind): number {
-  return PLANT_SIZES[kind];
+export function plantShapeOf(kind: PlantKind): { w: number; h: number } {
+  return PLANT_SHAPES[kind];
 }
 
 /**
@@ -342,9 +347,9 @@ export const PLANTS: Record<PlantKind, { label: string; cost: number; upkeep: nu
   coal: { label: 'Usina térmica', cost: COSTS.plant, upkeep: UPKEEP.plant, capacity: PLANT_CAPACITY, smoke: 60, smokeRadius: 6 },
   gas: { label: 'Usina a gas', cost: 5500, upkeep: 400, capacity: 600, smoke: 18, smokeRadius: 4 },
   wind: { label: 'Parque eólico', cost: 4500, upkeep: 110, capacity: 400, smoke: 0, smokeRadius: 0 },
-  // La nuclear es la usina de nivel mayor: cuesta una fortuna y no contamina, pero rinde cuatro
-  // térmicas en el mismo terreno de 2×2. Para la metrópoli que ya no sabe dónde poner usinas.
-  nuclear: { label: 'Usina nuclear', cost: 48000, upkeep: 3800, capacity: PLANT_CAPACITY * 10, smoke: 0, smokeRadius: 0 },
+  // La nuclear es la usina de nivel mayor: un predio de 4×6 que cuesta una fortuna y no contamina,
+  // pero rinde dieciséis térmicas y pico. Para la metrópoli entera que depende de una sola pieza.
+  nuclear: { label: 'Usina nuclear', cost: 75000, upkeep: 5500, capacity: PLANT_CAPACITY * 16 + 400, smoke: 0, smokeRadius: 0 },
 };
 /**
  * Wind farm output in MW: `base` on open flat land, plus `perLevel` for each level its site stands

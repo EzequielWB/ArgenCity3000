@@ -15,6 +15,8 @@
 - T4 suite verde + tsc.
 - T5 [S5] tamaño por tipo: `PLANT_SIZES` + `plantSizeOf` (nuclear 3, resto 2); plantFootprint/plantAt/bulldoze/plantHeight/save/mapRenderer dejan de usar la constante única.
 - T6 [S5] nuclear 3×3: 6.000 MW, $48.000, $3.800 de mantenimiento; hito Metrópolis; pintor con torres hiperboloides (cintura y campana) y sala de turbinas al frente.
+- T7 [S6] nuclear 4×6 (24 lotes): `PLANT_SHAPES {w,h}` reemplaza a `PLANT_SIZES`; 10.000 MW, $75.000, $5.500; `plantPixelSprite(kind, vw, vh)` por orientación como los únicos; pintor 4×6 con dos torres, cúpulas, salas y patio de transformadores, imponente.
+- S6 (pedido, verbatim): "yo diria que de 10k de MW, queres armar el diseño? hacela IMPONENTE, que se note que es una pieza fuerte" — sobre la propuesta de 4×6 aprobada.
 
 ## Log
 
@@ -24,3 +26,4 @@
 - L4: suite completa: 1488 tests verdes (105 archivos), tsc limpio. Teclas: la 'n' está reservada (movimiento) y la "'" la usa el santuario; la nuclear quedó con '_'.
 - L5: pedido S2 reescrito con la foto: torres hiperboloides, 3×3, 15 mil+ (va a Metrópolis, 25.000, el primer hito ≥ 15 mil), 6.000 MW = 10 térmicas por $48.000. PLANT_SIZE era una constante única usada en 7 archivos: se reemplaza por PLANT_SIZES por tipo.
 - L6: el pintor de torres: probé fajas de boxes (escalonadas) y discos apilados con blob (anillos); la versión que quedó es silueta continua fila a fila (rect por fila con flanco al sol y en sombra) + boca con canto claro y hueco oscuro, como el montículo de carbón. Dos torres de base 1.9 y 36 de alto, solapadas como en el predio real.
+- L7: el usuario aprobó 4×6 pero con 10.000 MW (menos que los 12.000 propuestos): $75.000 y $5.500 de mantenimiento. El sprite rectangular usa el patrón de los únicos: sprite por orientación (`vw`×`vh` de vista), anclado a la esquina de atrás vía `toCache(minVx, minVy)` y dibujado en la celda de adelante (`maxVx, maxVy`).

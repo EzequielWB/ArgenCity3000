@@ -19,10 +19,10 @@ function ground(g: CanvasRenderingContext2D, sx: number, sy: number, w: number, 
   g.stroke();
 }
 
-function card(g: CanvasRenderingContext2D, kind: PlantKind, label: string, sub: string, x: number, y: number, size: number): void {
-  const sp: Sprite = plantPixelSprite(kind);
-  const sx = x + 16 * size; // punta del rombo de la huella
-  ground(g, sx, y, size, size);
+function card(g: CanvasRenderingContext2D, kind: PlantKind, label: string, sub: string, x: number, y: number, fw: number, fh: number): void {
+  const sp: Sprite = plantPixelSprite(kind, fw, fh);
+  const sx = x + 16 * fh; // punta del rombo de la huella
+  ground(g, sx, y, fw, fh);
   g.drawImage(sp.canvas, sx - sp.ax, y - sp.ay);
   g.fillStyle = '#e2e8f0';
   g.font = 'bold 10px monospace';
@@ -39,6 +39,6 @@ g.imageSmoothingEnabled = false;
 g.fillStyle = '#0f172a';
 g.fillRect(0, 0, 340, 760);
 
-card(g, 'nuclear', 'Usina nuclear', '3×3 · 6.000 MW · sin humo · Metrópolis', 30, 128, 3);
-card(g, 'coal', 'Usina térmica', '2×2 · 600 MW · humo 60', 30, 388, 2);
-card(g, 'gas', 'Usina a gas', '2×2 · 600 MW · humo 18', 30, 560, 2);
+card(g, 'nuclear', 'Usina nuclear', '4×6 · 10.000 MW · sin humo · Metrópolis', 40, 168, 4, 6);
+card(g, 'coal', 'Usina térmica', '2×2 · 600 MW · humo 60', 30, 448, 2, 2);
+card(g, 'gas', 'Usina a gas', '2×2 · 600 MW · humo 18', 30, 620, 2, 2);
