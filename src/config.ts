@@ -348,8 +348,8 @@ export const PLANTS: Record<PlantKind, { label: string; cost: number; upkeep: nu
   gas: { label: 'Usina a gas', cost: 5500, upkeep: 400, capacity: 600, smoke: 18, smokeRadius: 4 },
   wind: { label: 'Parque eólico', cost: 4500, upkeep: 110, capacity: 400, smoke: 0, smokeRadius: 0 },
   // La nuclear es la usina de nivel mayor: un predio de 4×6 que cuesta una fortuna y no contamina,
-  // pero rinde dieciséis térmicas y pico. Para la metrópoli entera que depende de una sola pieza.
-  nuclear: { label: 'Usina nuclear', cost: 75000, upkeep: 5500, capacity: PLANT_CAPACITY * 16 + 400, smoke: 0, smokeRadius: 0 },
+  // pero rinde más de nueve térmicas. Para la metrópoli que no sabe dónde poner más usinas.
+  nuclear: { label: 'Usina nuclear', cost: 45000, upkeep: 4000, capacity: 5500, smoke: 0, smokeRadius: 0 },
 };
 /**
  * Wind farm output in MW: `base` on open flat land, plus `perLevel` for each level its site stands

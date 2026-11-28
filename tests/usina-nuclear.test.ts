@@ -14,10 +14,10 @@ describe('usina nuclear', () => {
     expect(PLANT_KINDS).toContain('nuclear');
     expect(PLANT_SHAPES.nuclear).toEqual({ w: 4, h: 6 });
     expect(PLANT_SHAPES.coal).toEqual({ w: 2, h: 2 });
-    expect(PLANTS.nuclear.capacity).toBe(PLANTS.coal.capacity * 16 + 400);
+    expect(PLANTS.nuclear.capacity).toBe(5500);
     expect(PLANTS.nuclear.smoke).toBe(0);
     expect(PLANTS.nuclear.cost).toBeGreaterThan(PLANTS.gas.cost * 8);
-    expect(PLANTS.nuclear.upkeep).toBeGreaterThan(PLANTS.gas.upkeep * 10);
+    expect(PLANTS.nuclear.upkeep).toBeGreaterThan(PLANTS.gas.upkeep * 9);
   });
 
   it('se construye con la herramienta, ocupa 4×6 y entra en la red eléctrica', () => {
@@ -39,7 +39,7 @@ describe('usina nuclear', () => {
     expect(w.plants[0].kind).toBe('nuclear');
     const [ox, oy] = origen!;
     for (const [x, y] of [[ox, oy], [ox + 3, oy], [ox, oy + 5], [ox + 3, oy + 5]]) expect(w.tileAt(x, y)).toBe(T.PLANT);
-    // 10000 MW alimentan más de 400 fábricas de nivel 5: la capacidad está en el reporte.
+    // 5500 MW alimentan más de 200 fábricas de nivel 5: la capacidad está en el reporte.
     const report = computePower(w, 100);
     expect(report.capacity).toBe(PLANTS.nuclear.capacity);
     // consume puestos de la red como cualquier usina: un galpón pegado al predio prende

@@ -2535,7 +2535,11 @@ function coolingTower(p: Pen, cu: number, cv: number, h: number, base: number): 
   const mry = Math.max(2, Math.round(mouth * 4));
   p.px.blob(x0, Math.round(cyTop), mrx, mry, [shade(CONCRETE[0], 1.22), CONCRETE[0], CONCRETE[1]], shade(CONCRETE[0], 1.3), false);
   p.px.blob(x0, Math.round(cyTop) + 1, Math.max(1, mrx - 2), Math.max(1, mry - 1), [shade(STACK[1], 0.48), shade(STACK[1], 0.4), shade(STACK[1], 0.32)], null, false);
-  p.smoke.push([x0 - p.ax, Math.round(cyTop) - 1 - p.ay]);
+  // Tres columnas de vapor por boca: el pleno del centro y dos laterales más chicos.
+  const myTop = Math.round(cyTop) - 1;
+  p.smoke.push([x0 - p.ax, myTop - p.ay]);
+  p.smoke.push([x0 - Math.round(base * 3) - p.ax, myTop + 2 - p.ay]);
+  p.smoke.push([x0 + Math.round(base * 3) - p.ax, myTop + 2 - p.ay]);
 }
 
 /** La nuclear 3×3: dos torres hiperboloides al fondo, la cúpula del reactor y la sala de turbinas
@@ -2578,6 +2582,9 @@ export function paintNuclearPlant(vw = 4, vh = 6): { px: Pixels; ax: number; ay:
   const [sbu1, sbv1] = uv(5.7, 3.85);
   p.box(sbu0, sbv0, sbu1, sbv1, 1.5, 11, CHAPA, 'sheet', [{ t0: 0, t1: 99, k0: 5, k1: 8, c: GLASS_LIT }], [{ t0: 0, t1: 99, k0: 5, k1: 8, c: GLASS_LIT }]);
   p.gable(sbu0 - 0.02, sbv0 - 0.02, sbu1 + 0.02, sbv1 + 0.02, 12.5, 3, CHAPA, CHAPA[1], 'sheet');
+  // La chimenea de la sala de servicio: la tercera columna de vapor del predio.
+  const [chu, chv] = uv(5.3, 3.55);
+  p.chimney(chu, chv, 13, 9, 0.08);
   // El patio de transformadores, a un costado: bastidor bajo con sus aisladores.
   const [yu0, yv0] = uv(3.9, 0.35);
   const [yu1, yv1] = uv(5.7, 1.5);
