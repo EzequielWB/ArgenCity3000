@@ -2523,6 +2523,13 @@ function coolingTower(p: Pen, cu: number, cv: number, h: number, base: number): 
       p.px.rect(x0 + Math.round(half * 0.6), y, half - Math.round(half * 0.6), 1, shade(CONCRETE[1], 0.7));
     }
   }
+  // La falda al pie: la sombra que la torre apoya en el predio y tres filas curvadas más anchas y
+  // oscuras, para que la bóveda no corte a ras con el hormigón.
+  p.px.blob(x0, Math.round(cyBase) + 3, Math.round(base * 7.5), 4, [shade(PAD[1], 0.8), shade(PAD[1], 0.74), shade(PAD[1], 0.68)], null, false);
+  for (let k = 1; k <= 3; k++) {
+    const half = Math.round(base * 8) + k;
+    p.px.rect(x0 - half, Math.round(cyBase) + k - 1, half * 2, 1, shade(CONCRETE[1], 0.8 - k * 0.05));
+  }
   // La boca: el canto claro y, adentro, la sombra del hueco.
   const mrx = Math.round(mouth * 8);
   const mry = Math.max(2, Math.round(mouth * 4));
@@ -2550,6 +2557,12 @@ export function paintNuclearPlant(vw = 4, vh = 6): { px: Pixels; ax: number; ay:
   const [t2u, t2v] = uv(3.05, 1.05);
   coolingTower(p, t1u, t1v, 40, 2.0);
   coolingTower(p, t2u, t2v, 40, 2.0);
+  // Casas de bombas al pie de cada torre, con el caño que entra: la base no queda suelta.
+  for (const [tu, tv] of [[t1u, t1v], [t2u, t2v]]) {
+    p.box(tu - 0.75, tv + 0.5, tu + 0.15, tv + 0.95, 1.5, 5, CHAPA, 'sheet', [{ t0: 0, t1: 99, k0: 2, k1: 3, c: GLASS_LIT }]);
+    p.gable(tu - 0.77, tv + 0.48, tu + 0.17, tv + 0.97, 6.5, 2, CHAPA, CHAPA[1], 'sheet');
+    p.pipeRun(p.P(tu - 0.3, tv + 1.05, 3), p.P(tu - 0.05, tv + 0.45, 3), STEEL[1]);
+  }
   // Las cúpulas de contención del reactor, al medio del predio.
   const [d1u, d1v] = uv(0.85, 2.5);
   const [d2u, d2v] = uv(2.1, 2.55);
